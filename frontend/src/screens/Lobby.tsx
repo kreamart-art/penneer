@@ -268,6 +268,9 @@ export function Lobby({ game }: { game: GameApi }) {
         ) : (
           <p style={{ textAlign: "center", fontFamily: font.ui, fontSize: 14, color: colors.sub }}>{game.isSpectator ? t("spectatorNote") : t("waitHost")}</p>
         )}
+        <Button variant="ghost" full onClick={game.leaveRoom}>
+          {t("leaveRoom")}
+        </Button>
       </div>
     </Screen>
   );

@@ -39,6 +39,8 @@ class RoomManager:
         self.pending: dict[str, dict[str, dict[str, str]]] = {}
         self.timer_tasks: dict[str, asyncio.Task] = {}
         self.removal_tasks: dict[str, asyncio.Task] = {}
+        # Players who sent their final answers for the round being scored.
+        self.submits: dict[str, set[str]] = {}
 
     # ---- code / lookup -----------------------------------------------------
 
@@ -313,6 +315,7 @@ class RoomManager:
         room.ready_ids = []
         room.history.append(Round())
         self.pending[room.code] = {}
+        self.submits[room.code] = set()
         await self.broadcast(
             room,
             {
@@ -405,6 +408,21 @@ class RoomManager:
             if cat in answers and isinstance(answers[cat], str):
                 bucket[cat] = answers[cat]
 
+    async def submit_answers(self, player_id: str, payload: dict) -> None:
+        """Final answers sent the moment the round ends. Merged into pending and
+        recorded so the server can score as soon as everyone has submitted
+        (instead of guessing with a fixed delay), so nothing gets truncated."""
+        room = self.room_of_player(player_id)
+        if room is None or room.phase not in ("fill", "results"):
+            return
+        answers = payload.get("answers") or {}
+        if isinstance(answers, dict):
+            bucket = self.pending.setdefault(room.code, {}).setdefault(player_id, {})
+            for cat in room.settings.categories:
+                if cat in answers and isinstance(answers[cat], str):
+                    bucket[cat] = answers[cat]
+        self.submits.setdefault(room.code, set()).add(player_id)
+
     async def set_ready(self, player_id: str, payload: dict) -> None:
         """Mark a player ready ("Ik ben klaar"). Informational only: the
         spelleider still decides when the round actually ends."""
@@ -437,10 +455,16 @@ class RoomManager:
         room.phase = "results"
         room.timer.ends_at = None
         room.ready_ids = []  # fresh readiness for the "next round" gate
-        # Tell clients fill is over so they flush their final answers...
+        self.submits[room.code] = set()
+        # Tell clients fill is over so they submit their final answers...
         await self.broadcast(room, {"type": "round_ended"})
-        # ...then give them a brief moment to land, and score from pending.
-        await asyncio.sleep(0.4)
+        # ...then wait until everyone's final submit lands (early-exit), so the
+        # last keystrokes are never lost to a fixed-delay race.
+        expected = {p.id for p in self.playing_players(room) if p.connected and not p.is_bot}
+        for _ in range(25):  # up to ~2.5s
+            if expected.issubset(self.submits.get(room.code, set())):
+                break
+            await asyncio.sleep(0.1)
         await self._score_and_broadcast(room)
 
     async def _score_and_broadcast(self, room: Room) -> None:

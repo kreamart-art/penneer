@@ -33,7 +33,7 @@ export function Reveal({ game }: { game: GameApi }) {
   }, [locked]);
 
   return (
-    <Screen top={<TopBar code={room.code} roundNo={room.round_no} totalRounds={room.settings.rounds} connected={game.state.status === "open"} />}>
+    <Screen top={<TopBar code={room.code} roundNo={room.round_no} totalRounds={room.settings.rounds} connected={game.state.status === "open"} onLeave={game.leaveRoom} />}>
       <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 26 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           {active && <Avatar name={active.name} color={active.color} size={40} crown />}

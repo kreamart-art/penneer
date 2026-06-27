@@ -53,6 +53,8 @@ async def ws_endpoint(ws: WebSocket) -> None:
                 await manager.spin_stop(player_id)
             elif mtype == "update_answers":
                 await manager.update_answers(player_id, data)
+            elif mtype == "submit_answers":
+                await manager.submit_answers(player_id, data)
             elif mtype == "set_ready":
                 await manager.set_ready(player_id, data)
             elif mtype == "stop_round":

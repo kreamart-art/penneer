@@ -201,6 +201,7 @@ export interface GameApi {
   spinStart: () => void;
   spinStop: () => void;
   updateAnswers: (answers: Record<string, string>) => void;
+  submitAnswers: (answers: Record<string, string>) => void;
   setReady: (ready: boolean) => void;
   stopRound: () => void;
   challenge: (player_id: string, cat: string, valid?: boolean) => void;
@@ -311,10 +312,14 @@ export function useGame(): GameApi {
         send({ type: "update_answers", answers });
       }
     },
+    submitAnswers: (answers) => {
+      pendingAnswersRef.current = answers;
+      send({ type: "submit_answers", answers });
+    },
     setReady: (ready) => send({ type: "set_ready", ready }),
     stopRound: () => {
-      // Flush latest before stopping.
-      if (pendingAnswersRef.current) send({ type: "update_answers", answers: pendingAnswersRef.current });
+      // Submit the complete final answers, then stop.
+      if (pendingAnswersRef.current) send({ type: "submit_answers", answers: pendingAnswersRef.current });
       send({ type: "stop_round" });
     },
     challenge: (player_id, cat, valid) =>
@@ -333,7 +338,7 @@ export function useGame(): GameApi {
 
   // Expose the pending-answers flush via the api object for the Fill screen.
   (api as GameApi & { flushAnswers: () => void }).flushAnswers = () => {
-    if (pendingAnswersRef.current) send({ type: "update_answers", answers: pendingAnswersRef.current });
+    if (pendingAnswersRef.current) send({ type: "submit_answers", answers: pendingAnswersRef.current });
   };
 
   return api;

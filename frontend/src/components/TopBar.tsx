@@ -1,4 +1,5 @@
-// Compact top bar: wordmark + room code + round indicator + connection dot.
+// Compact top bar: wordmark + room code + round indicator + connection dot + exit.
+import { LogOut } from "lucide-react";
 import { useT } from "../i18n/i18n";
 import { colors, font, withAlpha } from "../theme/tokens";
 
@@ -7,9 +8,10 @@ interface Props {
   roundNo?: number;
   totalRounds?: number;
   connected: boolean;
+  onLeave?: () => void;
 }
 
-export function TopBar({ code, roundNo, totalRounds, connected }: Props) {
+export function TopBar({ code, roundNo, totalRounds, connected, onLeave }: Props) {
   const { t } = useT();
   return (
     <div
@@ -66,6 +68,18 @@ export function TopBar({ code, roundNo, totalRounds, connected }: Props) {
             boxShadow: `0 0 10px ${connected ? colors.green : colors.red}`,
           }}
         />
+        {onLeave && (
+          <button
+            onClick={() => {
+              if (window.confirm(t("leaveConfirm"))) onLeave();
+            }}
+            aria-label={t("leaveRoom")}
+            title={t("leaveRoom")}
+            style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 2 }}
+          >
+            <LogOut size={18} />
+          </button>
+        )}
       </div>
     </div>
   );

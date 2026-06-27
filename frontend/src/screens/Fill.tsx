@@ -36,10 +36,13 @@ export function Fill({ game }: { game: GameApi }) {
     game.updateAnswers(next);
   };
 
-  // Flush the latest answers when the server ends the fill phase.
+  // Submit the complete final answers the moment the server ends the fill
+  // phase (even untouched fields), so nothing is lost and scoring isn't delayed.
   const token = game.state.roundEndedToken;
+  const answersRef = useRef(answers);
+  answersRef.current = answers;
   useEffect(() => {
-    if (token > 0) (game as GameApi & { flushAnswers?: () => void }).flushAnswers?.();
+    if (token > 0) game.submitAnswers(answersRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
@@ -48,7 +51,7 @@ export function Fill({ game }: { game: GameApi }) {
   };
 
   return (
-    <Screen top={<TopBar code={room.code} roundNo={room.round_no} totalRounds={room.settings.rounds} connected={game.state.status === "open"} />}>
+    <Screen top={<TopBar code={room.code} roundNo={room.round_no} totalRounds={room.settings.rounds} connected={game.state.status === "open"} onLeave={game.leaveRoom} />}>
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         {/* Letter + timer (or no-timer note) */}
         <Card style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
