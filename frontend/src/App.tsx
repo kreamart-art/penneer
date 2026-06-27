@@ -6,6 +6,7 @@ import { useT } from "./i18n/i18n";
 import { Intro } from "./screens/Intro";
 import { LanguagePage } from "./screens/LanguagePage";
 import { Rules } from "./screens/Rules";
+import { Settings } from "./screens/Settings";
 import { Landing } from "./screens/Landing";
 import { Lobby } from "./screens/Lobby";
 import { Reveal } from "./screens/Reveal";
@@ -21,6 +22,7 @@ export default function App() {
   const room = game.state.room;
   const [introDone, setIntroDone] = useState(() => sessionStorage.getItem(INTRO_KEY) === "1");
   const [showRules, setShowRules] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   // In a room: phase-driven screens (skip the whole pre-room flow).
   if (room && game.me) {
@@ -53,5 +55,15 @@ export default function App() {
   }
   if (!lang) return <LanguagePage />;
   if (showRules) return <Rules onBack={() => setShowRules(false)} />;
-  return <Landing game={game} onShowRules={() => setShowRules(true)} />;
+  if (showSettings)
+    return (
+      <Settings
+        onBack={() => setShowSettings(false)}
+        onShowRules={() => {
+          setShowSettings(false);
+          setShowRules(true);
+        }}
+      />
+    );
+  return <Landing game={game} onShowRules={() => setShowRules(true)} onShowSettings={() => setShowSettings(true)} />;
 }

@@ -1,6 +1,6 @@
 // Landing — emblem, wordmark, tagline, name input, create / join, rules link.
 import { useState } from "react";
-import { HelpCircle } from "lucide-react";
+import { HelpCircle, Settings as SettingsIcon } from "lucide-react";
 import { Logo } from "../components/Logo";
 import { Button } from "../components/Button";
 import { Screen, Card } from "../components/Layout";
@@ -21,7 +21,15 @@ const inputStyle: React.CSSProperties = {
   padding: "13px 15px",
 };
 
-export function Landing({ game, onShowRules }: { game: GameApi; onShowRules: () => void }) {
+export function Landing({
+  game,
+  onShowRules,
+  onShowSettings,
+}: {
+  game: GameApi;
+  onShowRules: () => void;
+  onShowSettings: () => void;
+}) {
   const { t } = useT();
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
@@ -41,6 +49,15 @@ export function Landing({ game, onShowRules }: { game: GameApi; onShowRules: () 
 
   return (
     <Screen>
+      <div style={{ display: "flex", justifyContent: "flex-end", paddingTop: 4 }}>
+        <button
+          onClick={onShowSettings}
+          aria-label={t("settings")}
+          style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.sub, display: "flex", padding: 6 }}
+        >
+          <SettingsIcon size={22} />
+        </button>
+      </div>
       <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 22 }}>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
           <div style={{ animation: "float-soft 4s ease-in-out infinite" }}>

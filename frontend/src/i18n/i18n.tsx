@@ -16,6 +16,16 @@ const nl: Dict = {
   watching: "kijkt",
   back: "Terug",
   footer: "penneer.artnomad.nl · een spel van Artnomad",
+  // settings + about
+  settingsTitle: "Instellingen",
+  settings: "Instellingen",
+  language: "Taal",
+  installApp: "Installeer de app",
+  appInstalled: "App is geïnstalleerd",
+  installHint: "Zet Pen Neer op je beginscherm voor snelle toegang.",
+  about: "Over",
+  versionLabel: "Versie",
+  madeBy: "Een spel van Artnomad",
   // landing
   tagline:
     "Draai de letter, ren tegen de klok. Jongen, meisje, dier, vrucht, land. Ieder op zijn eigen telefoon.",
@@ -119,6 +129,15 @@ const en: Dict = {
   watching: "watching",
   back: "Back",
   footer: "penneer.artnomad.nl · a game by Artnomad",
+  settingsTitle: "Settings",
+  settings: "Settings",
+  language: "Language",
+  installApp: "Install the app",
+  appInstalled: "App is installed",
+  installHint: "Add Pen Neer to your home screen for quick access.",
+  about: "About",
+  versionLabel: "Version",
+  madeBy: "A game by Artnomad",
   tagline:
     "Spin the letter, race the clock. Boy, girl, animal, fruit, country. Everyone on their own phone.",
   yourName: "Your name",
