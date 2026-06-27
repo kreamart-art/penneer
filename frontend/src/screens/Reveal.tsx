@@ -42,7 +42,7 @@ export function Reveal({ game }: { game: GameApi }) {
           </span>
         </div>
 
-        <Reel state={reelState} letter={letter} />
+        <Reel state={reelState} letter={letter} exclude={room.used_letters} hard={room.settings.hard_letters} />
 
         <div style={{ minHeight: 160, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }}>
           {locked ? (

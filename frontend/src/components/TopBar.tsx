@@ -18,6 +18,7 @@ export function TopBar({ code, roundNo, totalRounds, connected }: Props) {
         alignItems: "center",
         justifyContent: "space-between",
         padding: "14px 18px",
+        paddingTop: "calc(14px + env(safe-area-inset-top))",
       }}
     >
       <span

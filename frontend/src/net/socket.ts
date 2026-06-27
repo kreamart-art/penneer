@@ -28,6 +28,7 @@ export interface Settings {
 export interface AnswerView {
   text: string;
   valid: boolean;
+  in_list: boolean; // false -> orange "?" (counts, but not found in the category list)
 }
 
 export interface RoundView {
@@ -204,6 +205,7 @@ export interface GameApi {
   stopRound: () => void;
   challenge: (player_id: string, cat: string, valid?: boolean) => void;
   nextRound: () => void;
+  readyNext: () => void;
   playAgain: () => void;
   addBot: () => void;
   removeBot: (bot_id: string) => void;
@@ -318,6 +320,7 @@ export function useGame(): GameApi {
     challenge: (player_id, cat, valid) =>
       send({ type: "challenge_answer", player_id, cat, ...(valid === undefined ? {} : { valid }) }),
     nextRound: () => send({ type: "next_round" }),
+    readyNext: () => send({ type: "ready_next" }),
     playAgain: () => send({ type: "play_again" }),
     addBot: () => send({ type: "add_bot" }),
     removeBot: (bot_id) => send({ type: "remove_bot", bot_id }),

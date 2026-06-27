@@ -1,16 +1,18 @@
 // Shared shells: full-height app background + translucent Card panel.
 import React from "react";
 import { useT } from "../i18n/i18n";
-import { appBackground, colors, font, panelStyle } from "../theme/tokens";
+import { colors, font, panelStyle } from "../theme/tokens";
 
 export function Screen({ children, top }: { children: React.ReactNode; top?: React.ReactNode }) {
   return (
     <div
       style={{
-        minHeight: "100%",
-        background: appBackground,
+        minHeight: "100dvh",
+        // Background comes from the fixed body::before layer (fills safe areas).
         display: "flex",
         flexDirection: "column",
+        // Keep content clear of the notch / status bar when there is no TopBar.
+        paddingTop: top ? undefined : "env(safe-area-inset-top)",
       }}
     >
       {top}
@@ -43,6 +45,7 @@ export function Footer() {
       style={{
         textAlign: "center",
         padding: "10px 0 18px",
+        paddingBottom: "calc(18px + env(safe-area-inset-bottom))",
         fontFamily: font.ui,
         fontSize: 11.5,
         color: colors.faint,

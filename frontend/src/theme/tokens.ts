@@ -19,6 +19,7 @@ export const colors = {
   violetDeep: "#5946DC",
   green: "#36E0AE",
   greenDeep: "#1FB78C",
+  orange: "#FF9F45",
   hairline: "rgba(255,255,255,.10)",
 } as const;
 

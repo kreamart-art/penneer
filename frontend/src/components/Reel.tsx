@@ -1,30 +1,42 @@
 // The slot machine — the centerpiece (§8). Recessed dark tile, top/bottom fade
 // strips, huge gold letter. States: idle (dim "?"), spinning (blurred flicker +
 // gold glow), locked (gold border + outer halo + strong text glow, pop on lock).
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { colors, font, withAlpha } from "../theme/tokens";
 
-const POOL = "ABCDEFGHIJKLMNOPRSTUVWZ".split("");
+const STD_POOL = "ABCDEFGHIJKLMNOPRSTUVWZ".split("");
+const FULL_POOL = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
 type ReelState = "idle" | "spinning" | "locked";
 
 interface Props {
   state: ReelState;
   letter: string; // the locked letter (authoritative)
+  exclude?: string[]; // letters already used this game (drop from the roulette)
+  hard?: boolean; // include Q/X/Y
 }
 
-export function Reel({ state, letter }: Props) {
+export function Reel({ state, letter, exclude = [], hard = false }: Props) {
   const [flick, setFlick] = useState("A");
   const idxRef = useRef(0);
+
+  // The spinning pool excludes letters already played, so a used letter never
+  // flicks past again (the server also never picks it).
+  const pool = useMemo(() => {
+    const base = hard ? FULL_POOL : STD_POOL;
+    const used = new Set(exclude.map((c) => c.toUpperCase()));
+    const left = base.filter((c) => !used.has(c));
+    return left.length ? left : base;
+  }, [exclude, hard]);
 
   useEffect(() => {
     if (state !== "spinning") return;
     const id = setInterval(() => {
-      idxRef.current = (idxRef.current + 1) % POOL.length;
-      setFlick(POOL[idxRef.current]);
+      idxRef.current = (idxRef.current + 1) % pool.length;
+      setFlick(pool[idxRef.current]);
     }, 60);
     return () => clearInterval(id);
-  }, [state]);
+  }, [state, pool]);
 
   const display = state === "locked" ? letter : state === "spinning" ? flick : "?";
   const isLocked = state === "locked";

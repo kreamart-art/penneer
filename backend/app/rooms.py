@@ -188,6 +188,10 @@ class RoomManager:
         await self.broadcast(room, {"type": "player_left", "player_id": player_id})
         await self.send_state(room)
 
+        # A drop during results may have been the last player the gate waited on.
+        if room.phase == "results":
+            await self._maybe_advance(room)
+
         # Schedule removal after the grace window.
         self.removal_tasks[player_id] = asyncio.create_task(self._remove_after_grace(room.code, player_id))
 
@@ -432,6 +436,7 @@ class RoomManager:
             return
         room.phase = "results"
         room.timer.ends_at = None
+        room.ready_ids = []  # fresh readiness for the "next round" gate
         # Tell clients fill is over so they flush their final answers...
         await self.broadcast(room, {"type": "round_ended"})
         # ...then give them a brief moment to land, and score from pending.
@@ -459,6 +464,12 @@ class RoomManager:
             },
         )
         await self.send_state(room)
+        # Bots are always ready to move on, so the gate only waits on humans.
+        bot_ids = [p.id for p in self.playing_players(room) if p.is_bot]
+        if bot_ids:
+            room.ready_ids = list(dict.fromkeys(room.ready_ids + bot_ids))
+            await self.broadcast(room, {"type": "ready_updated", "ready_ids": list(room.ready_ids)})
+            await self.send_state(room)
 
     async def challenge_answer(self, player_id: str, payload: dict) -> None:
         room = self.room_of_player(player_id)
@@ -494,16 +505,43 @@ class RoomManager:
         )
         await self.send_state(room)
 
+    async def ready_next(self, player_id: str) -> None:
+        """A player taps "klaar voor de volgende ronde". Advance only once every
+        connected playing player has tapped (so nobody misses the results)."""
+        room = self.room_of_player(player_id)
+        if room is None or room.phase != "results":
+            return
+        p = room.get_player(player_id)
+        if p is None or p.is_spectator:
+            return
+        if player_id not in room.ready_ids:
+            room.ready_ids.append(player_id)
+        await self.broadcast(room, {"type": "ready_updated", "ready_ids": list(room.ready_ids)})
+        await self.send_state(room)
+        await self._maybe_advance(room)
+
+    def _all_ready(self, room: Room) -> bool:
+        need = [p.id for p in self.playing_players(room) if p.connected]
+        return bool(need) and all(pid in room.ready_ids for pid in need)
+
+    async def _maybe_advance(self, room: Room) -> None:
+        if room.phase == "results" and self._all_ready(room):
+            await self._advance(room)
+
+    async def _advance(self, room: Room) -> None:
+        if room.round_no >= room.settings.rounds:
+            await self._game_over(room)
+        else:
+            await self._begin_round(room)
+
     async def next_round(self, player_id: str) -> None:
+        """Host/active override: force-advance without waiting for everyone."""
         room = self.room_of_player(player_id)
         if room is None or room.phase != "results":
             return
         if player_id != room.host_id and player_id != room.active_player_id:
             return
-        if room.round_no >= room.settings.rounds:
-            await self._game_over(room)
-            return
-        await self._begin_round(room)
+        await self._advance(room)
 
     async def _game_over(self, room: Room) -> None:
         room.phase = "final"

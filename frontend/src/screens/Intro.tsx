@@ -5,7 +5,7 @@ import { Logo } from "../components/Logo";
 import { Button } from "../components/Button";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
-import { appBackground, colors, font, withAlpha } from "../theme/tokens";
+import { colors, font, withAlpha } from "../theme/tokens";
 
 export function Intro({ onDone }: { onDone: () => void }) {
   const { t } = useT();
@@ -28,8 +28,7 @@ export function Intro({ onDone }: { onDone: () => void }) {
     <div
       onClick={begin}
       style={{
-        minHeight: "100%",
-        background: appBackground,
+        minHeight: "100dvh",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
@@ -74,7 +73,7 @@ export function Intro({ onDone }: { onDone: () => void }) {
       )}
 
       {!started && (
-        <div style={{ position: "absolute", bottom: 28 }}>
+        <div style={{ position: "absolute", bottom: "calc(28px + env(safe-area-inset-bottom))" }}>
           <Button
             variant="ghost"
             onClick={(e) => {

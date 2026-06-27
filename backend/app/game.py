@@ -9,6 +9,9 @@ import random
 import unicodedata
 
 from .models import FULL_LETTER_POOL, LETTER_POOL, PT_FULL, PT_HALF, Answer, Round
+from .wordlists import RAW
+
+MIN_ANSWER_LEN = 2  # a lone letter never counts
 
 
 def strip_diacritics(s: str) -> str:
@@ -82,6 +85,56 @@ def auto_validate(text: str, letter: str) -> bool:
     return bool(text and text.strip()) and starts_with(text, letter)
 
 
+# Normalized lookup set per checkable category (built once at import).
+WORD_SETS: dict[str, set[str]] = {cat: {normalize(w) for w in words} for cat, words in RAW.items()}
+
+# Original words grouped by first letter, so bots can play real list words.
+_BOT_WORDS: dict[str, dict[str, list[str]]] = {}
+for _cat, _words in RAW.items():
+    _by_letter: dict[str, list[str]] = {}
+    for _w in _words:
+        _fl = first_letter(_w)
+        if _fl:
+            _by_letter.setdefault(_fl, []).append(_w)
+    _BOT_WORDS[_cat] = _by_letter
+
+
+def _plural_variants(key: str) -> set[str]:
+    """A few light stems so 'appels' matches 'appel', 'honden' matches 'hond'."""
+    out = {key}
+    if key.endswith("s") and len(key) > 3:
+        out.add(key[:-1])
+    if key.endswith("en") and len(key) > 4:
+        out.add(key[:-2])
+    return out
+
+
+def in_wordlist(text: str, category: str) -> bool:
+    """True if the answer is in the category's list. Open categories (no list)
+    return True (nothing to check against)."""
+    words = WORD_SETS.get(category)
+    if words is None:
+        return True
+    key = normalize(text)
+    if not key:
+        return False
+    return any(v in words for v in _plural_variants(key))
+
+
+def classify(text: str, letter: str, category: str) -> tuple[bool, bool]:
+    """Return (valid, in_list).
+
+    valid drives scoring (counts or not); in_list drives the results display:
+    in a checked category, a valid answer NOT in the list shows an orange "?".
+    Wrong letter, empty, or shorter than MIN_ANSWER_LEN never counts.
+    """
+    t = (text or "").strip()
+    key = normalize(t)
+    if len(key) < MIN_ANSWER_LEN or not starts_with(t, letter):
+        return (False, False)
+    return (True, in_wordlist(t, category))
+
+
 def score_round(rnd: Round, player_ids: list[str], categories: list[str]) -> dict[str, dict[str, int]]:
     """Compute points[player_id][category] for a round.
 
@@ -130,14 +183,18 @@ _BOT_SUFFIXES = ["aan", "el", "o", "ie", "us", "and", "er", "ka"]
 
 
 def bot_answer(letter: str, cat: str, rng: random.Random) -> str:
-    """Generate a plausible, valid-looking answer that starts with the letter.
+    """Generate a plausible answer that starts with the letter.
 
-    Bots sometimes skip a category (empty) so results look human.
+    For checked categories the bot plays a REAL word from the list (so green
+    checks and dubbels happen naturally); otherwise a letter+suffix stub. Bots
+    sometimes skip a category (empty) so results look human.
     """
     if rng.random() < 0.12:
         return ""
-    suffix = rng.choice(_BOT_SUFFIXES)
-    return (letter.upper() + suffix)
+    words = _BOT_WORDS.get(cat, {}).get(letter.upper())
+    if words:
+        return rng.choice(words)
+    return letter.upper() + rng.choice(_BOT_SUFFIXES)
 
 
 def build_answers(
@@ -154,5 +211,6 @@ def build_answers(
         player_raw = raw.get(pid, {})
         for cat in categories:
             text = (player_raw.get(cat) or "").strip()
-            out[pid][cat] = Answer(text=text, valid=auto_validate(text, letter))
+            valid, in_list = classify(text, letter, cat)
+            out[pid][cat] = Answer(text=text, valid=valid, in_list=in_list)
     return out

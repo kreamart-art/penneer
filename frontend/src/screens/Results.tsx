@@ -1,7 +1,7 @@
 // Results — running scoreboard, then a card per player with answers (check /
 // cross / strike, "dubbel" tags) and round points. Tap an answer to challenge.
 import { useEffect, useRef } from "react";
-import { Check, X } from "lucide-react";
+import { Check, HelpCircle, X } from "lucide-react";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { Scoreboard } from "../components/Scoreboard";
@@ -18,8 +18,10 @@ export function Results({ game }: { game: GameApi }) {
   const round = room.round;
   const cats = room.settings.categories;
   const isLast = room.round_no >= room.settings.rounds;
-  const canAdvance = game.isHost || game.isActive;
   const players = room.players.filter((p) => !p.is_spectator);
+  const iAmReady = !!(game.me && room.ready_ids.includes(game.me.id));
+  const readyCount = room.ready_ids.length;
+  const playingCount = players.length;
 
   const played = useRef(false);
   useEffect(() => {
@@ -62,15 +64,22 @@ export function Results({ game }: { game: GameApi }) {
                   const pts = round?.points[p.id]?.[cat] ?? 0;
                   const text = ans?.text ?? "";
                   const valid = !!ans?.valid && !!text;
+                  const inList = ans?.in_list !== false;
+                  // green check = valid + in list; orange ? = valid but not found; red cross = rejected/empty
+                  const mark = !valid ? "cross" : inList ? "check" : "question";
+                  const markColor = mark === "check" ? colors.green : mark === "question" ? colors.orange : colors.red;
                   const dubbel = valid && pts === 5;
                   return (
                     <button
                       key={cat}
                       onClick={() => text && game.challenge(p.id, cat)}
-                      style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 10, background: withAlpha("#000000", 0.18), border: `1px solid ${colors.hairline}`, cursor: text ? "pointer" : "default", textAlign: "left", width: "100%" }}
+                      title={mark === "question" ? "Niet in de lijst, tik om af te keuren" : undefined}
+                      style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 10, background: withAlpha("#000000", 0.18), border: `1px solid ${mark === "question" ? withAlpha(colors.orange, 0.4) : colors.hairline}`, cursor: text ? "pointer" : "default", textAlign: "left", width: "100%" }}
                     >
                       <span style={{ fontFamily: font.ui, fontSize: 11, color: colors.faint, width: 58, flexShrink: 0 }}>{tCat(cat)}</span>
-                      <span style={{ color: valid ? colors.green : colors.red, display: "flex", flexShrink: 0 }}>{valid ? <Check size={16} /> : <X size={16} />}</span>
+                      <span style={{ color: markColor, display: "flex", flexShrink: 0 }}>
+                        {mark === "check" ? <Check size={16} /> : mark === "question" ? <HelpCircle size={16} /> : <X size={16} />}
+                      </span>
                       <span
                         style={{
                           flex: 1,
@@ -100,12 +109,30 @@ export function Results({ game }: { game: GameApi }) {
           );
         })}
 
-        {canAdvance ? (
-          <Button variant={isLast ? "gold" : "primary"} full onClick={game.nextRound}>
-            {isLast ? t("toFinal") : t("nextRound")}
-          </Button>
-        ) : (
+        {game.isSpectator ? (
           <p style={{ textAlign: "center", fontFamily: font.ui, fontSize: 14, color: colors.sub, margin: 0 }}>{t("waitNext")}</p>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <Button
+              variant={iAmReady ? "ghost" : isLast ? "gold" : "primary"}
+              full
+              disabled={iAmReady}
+              onClick={game.readyNext}
+            >
+              {iAmReady ? t("youReady") : isLast ? t("readyForFinal") : t("readyForNext")}
+            </Button>
+            <p style={{ textAlign: "center", fontFamily: font.ui, fontSize: 12.5, color: colors.faint, margin: 0 }}>
+              {t("readyCount", { n: readyCount, total: playingCount })}
+            </p>
+            {game.isHost && readyCount < playingCount && (
+              <button
+                onClick={game.nextRound}
+                style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.sub, fontFamily: font.ui, fontSize: 13, textDecoration: "underline", padding: 4 }}
+              >
+                {t("forceNext")}
+              </button>
+            )}
+          </div>
         )}
       </div>
     </Screen>

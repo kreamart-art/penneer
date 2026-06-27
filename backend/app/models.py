@@ -81,10 +81,11 @@ class Settings:
 @dataclass
 class Answer:
     text: str
-    valid: bool  # server-computed; mutable via challenge
+    valid: bool          # counts for scoring; server-computed, mutable via challenge
+    in_list: bool = True  # found in the category word list (False -> orange "?" on results)
 
     def public(self) -> dict:
-        return {"text": self.text, "valid": self.valid}
+        return {"text": self.text, "valid": self.valid, "in_list": self.in_list}
 
 
 @dataclass

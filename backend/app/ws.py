@@ -65,6 +65,8 @@ async def ws_endpoint(ws: WebSocket) -> None:
                 await manager.challenge_answer(player_id, data)
             elif mtype == "next_round":
                 await manager.next_round(player_id)
+            elif mtype == "ready_next":
+                await manager.ready_next(player_id)
             elif mtype == "play_again":
                 await manager.play_again(player_id)
             elif mtype == "leave_room":
