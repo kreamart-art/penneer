@@ -50,9 +50,12 @@ export function Fill({ game }: { game: GameApi }) {
     if (secs <= 10 && secs > 0) sound.tick();
   };
 
+  // Non-active players get a floating ready button so it's hard to miss.
+  const showFloatingReady = !isSpectator && !game.isActive;
+
   return (
     <Screen top={<TopBar code={room.code} roundNo={room.round_no} totalRounds={room.settings.rounds} connected={game.state.status === "open"} onLeave={game.leaveRoom} />}>
-      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 16, paddingBottom: showFloatingReady ? 104 : 0 }}>
         {/* Letter + timer (or no-timer note) */}
         <Card style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
@@ -147,16 +150,39 @@ export function Fill({ game }: { game: GameApi }) {
             </Button>
           </>
         ) : (
-          <>
-            <Button variant={iAmReady ? "ghost" : "primary"} full onClick={() => game.setReady(!iAmReady)}>
-              {iAmReady ? t("notYet") : t("imReady")}
-            </Button>
-            <p style={{ textAlign: "center", fontFamily: font.ui, fontSize: 13, color: colors.sub, margin: "2px 0 0", lineHeight: 1.5 }}>
-              {iAmReady ? t("youReady") : t("xStopsTime", { name: active?.name ?? "?" })}
-            </p>
-          </>
+          <p style={{ textAlign: "center", fontFamily: font.ui, fontSize: 13, color: colors.sub, margin: "2px 0 0", lineHeight: 1.5 }}>
+            {iAmReady ? t("youReady") : t("xStopsTime", { name: active?.name ?? "?" })}
+          </p>
         )}
       </div>
+
+      {/* Floating ready button (non-active players) so everyone notices it */}
+      {showFloatingReady && (
+        <div
+          style={{
+            position: "fixed",
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 20,
+            paddingBottom: "calc(14px + env(safe-area-inset-bottom))",
+            paddingTop: 26,
+            background: `linear-gradient(0deg, ${colors.bg0} 55%, transparent)`,
+            pointerEvents: "none",
+          }}
+        >
+          <div style={{ maxWidth: 460, margin: "0 auto", padding: "0 18px", pointerEvents: "auto" }}>
+            <Button
+              variant={iAmReady ? "ghost" : "gold"}
+              full
+              onClick={() => game.setReady(!iAmReady)}
+              style={iAmReady ? undefined : { animation: "fill-pulse 1.8s ease-in-out infinite" }}
+            >
+              {iAmReady ? t("notYet") : t("imReady")}
+            </Button>
+          </div>
+        </div>
+      )}
     </Screen>
   );
 }

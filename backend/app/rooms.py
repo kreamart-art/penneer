@@ -7,12 +7,14 @@ broadcasts, and move the per-room timer into a single scheduler keyed by code.
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import os
 import secrets
 import time
 import uuid
 from typing import Any, Optional
 
-from . import game
+from . import ai_referee, game
 from .models import (
     BOT_NAMES,
     CODE_ALPHABET,
@@ -41,6 +43,83 @@ class RoomManager:
         self.removal_tasks: dict[str, asyncio.Task] = {}
         # Players who sent their final answers for the round being scored.
         self.submits: dict[str, set[str]] = {}
+        # Admin (owner) state. Password from env; recovery codes derived from it
+        # so they're stable across restarts without a database.
+        self.admin_password = os.environ.get("PENNEER_ADMIN_PASSWORD", "penneer-admin")
+        self.used_recovery: set[str] = set()
+        self.admin_conns: set[int] = set()  # id(ws) of admin-logged-in connections
+        # AI referee runtime switch (admin-controlled; needs a configured key).
+        self.ai_enabled = ai_referee.default_enabled()
+
+    # ---- admin / AI --------------------------------------------------------
+
+    def _recovery_codes(self) -> list[str]:
+        """8 stable one-time codes derived from the admin password."""
+        codes = []
+        for i in range(8):
+            h = hashlib.sha256(f"{self.admin_password}:penneer:{i}".encode()).hexdigest()
+            codes.append(h[:10].upper())
+        return codes
+
+    def _admin_payload(self, is_admin: bool) -> dict:
+        codes = self._recovery_codes()
+        return {
+            "type": "admin_ok",
+            "is_admin": is_admin,
+            "ai": {**ai_referee.status(), "enabled": self.ai_enabled},
+            "recovery_codes": [{"code": c, "used": c in self.used_recovery} for c in codes],
+        }
+
+    def _is_admin_conn(self, ws: Any) -> bool:
+        # Admin is scoped to the WebSocket connection, so it works before the
+        # user has created/joined a room (the pre-room Settings screen).
+        return ws is not None and id(ws) in self.admin_conns
+
+    def _player_is_admin(self, player_id: str) -> bool:
+        return self._is_admin_conn(self.connections.get(player_id))
+
+    async def admin_login(self, ws: Any, player_id: Optional[str], payload: dict) -> None:
+        secret = (payload.get("secret") or "").strip()
+        ok = False
+        if secret and secret == self.admin_password:
+            ok = True
+        elif secret:
+            up = secret.upper()
+            if up in self._recovery_codes() and up not in self.used_recovery:
+                self.used_recovery.add(up)  # one-time
+                ok = True
+        if ok:
+            self.admin_conns.add(id(ws))
+            try:
+                await ws.send_json(self._admin_payload(True))
+            except Exception:
+                pass
+            room = self.room_of_player(player_id) if player_id else None
+            if room:
+                await self.send_state(room)
+        else:
+            try:
+                await ws.send_json({"type": "error", "message": "Onjuiste admincode."})
+            except Exception:
+                pass
+
+    async def admin_set_ai(self, ws: Any, player_id: Optional[str], payload: dict) -> None:
+        if not self._is_admin_conn(ws):
+            return
+        self.ai_enabled = bool(payload.get("enabled"))
+        try:
+            await ws.send_json(self._admin_payload(True))
+        except Exception:
+            pass
+        room = self.room_of_player(player_id) if player_id else None
+        if room:
+            await self.send_state(room)
+
+    def drop_connection(self, ws: Any) -> None:
+        self.admin_conns.discard(id(ws))
+
+    def _ai_active(self) -> bool:
+        return self.ai_enabled and ai_referee.available()
 
     # ---- code / lookup -----------------------------------------------------
 
@@ -79,7 +158,9 @@ class RoomManager:
                 await self._send(p.id, message)
 
     async def send_state(self, room: Room, player_id: Optional[str] = None) -> None:
-        msg = {"type": "room_state", "room": room.public()}
+        pub = room.public()
+        pub["ai_referee"] = self._ai_active()  # AI scheidsrechter on the "?"
+        msg = {"type": "room_state", "room": pub}
         if player_id is not None:
             await self._send(player_id, msg)
         else:
@@ -467,12 +548,40 @@ class RoomManager:
             await asyncio.sleep(0.1)
         await self._score_and_broadcast(room)
 
+    async def _ai_resolve(self, rnd: Round) -> None:
+        """Send the orange "?" answers (valid but not in any list) to the AI
+        referee; resolve each to a green check (in_list) or red cross (invalid).
+        Undecided stays "?". Deduped so identical answers cost one judgement."""
+        if not self._ai_active() or rnd is None:
+            return
+        index: dict[tuple[str, str], int] = {}
+        items: list[tuple[str, str]] = []
+        for cats in rnd.answers.values():
+            for cat, ans in cats.items():
+                if ans.valid and not ans.in_list and ans.text:
+                    k = (cat, game.normalize(ans.text))
+                    if k not in index:
+                        index[k] = len(items)
+                        items.append((cat, ans.text))
+        if not items:
+            return
+        verdicts = await ai_referee.judge(rnd.letter, items)
+        for cats in rnd.answers.values():
+            for cat, ans in cats.items():
+                if ans.valid and not ans.in_list and ans.text:
+                    v = verdicts[index[(cat, game.normalize(ans.text))]]
+                    if v is True:
+                        ans.in_list = True   # AI confirms -> green check
+                    elif v is False:
+                        ans.valid = False    # AI rejects -> red cross, 0
+
     async def _score_and_broadcast(self, room: Room) -> None:
         rnd = room.current_round
         player_ids = [p.id for p in self.playing_players(room)]
         cats = room.settings.categories
         raw = self.pending.get(room.code, {})
         rnd.answers = game.build_answers(raw, rnd.letter, player_ids, cats)
+        await self._ai_resolve(rnd)  # hybrid: AI scheidsrechter on the "?"
         rnd.points = game.score_round(rnd, player_ids, cats)
         room.scores = game.total_scores(room.history, player_ids)
         await self.broadcast(
@@ -623,7 +732,8 @@ class RoomManager:
 
     async def add_bot(self, player_id: str) -> None:
         room = self.room_of_player(player_id)
-        if room is None or room.host_id != player_id or room.phase != "lobby":
+        # Testbots are an admin (owner) tool.
+        if room is None or not self._player_is_admin(player_id) or room.phase != "lobby":
             return
         if len(self.playing_players(room)) >= room.settings.max_players:
             await self.error(player_id, "De room is vol.")
@@ -642,7 +752,7 @@ class RoomManager:
 
     async def remove_bot(self, player_id: str, payload: dict) -> None:
         room = self.room_of_player(player_id)
-        if room is None or room.host_id != player_id or room.phase != "lobby":
+        if room is None or not self._player_is_admin(player_id) or room.phase != "lobby":
             return
         target = payload.get("bot_id")
         bot = room.get_player(target) if target else None

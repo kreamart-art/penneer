@@ -51,7 +51,20 @@ export interface RoomState {
   timer: { ends_at: number | null; duration: number | null };
   scores: Record<string, number>;
   ready_ids: string[];
+  ai_referee: boolean; // AI scheidsrechter active on the "?" answers
   round: RoundView | null;
+}
+
+export interface AdminAi {
+  available: boolean;
+  provider: string;
+  model: string;
+  enabled: boolean;
+}
+
+export interface RecoveryCode {
+  code: string;
+  used: boolean;
 }
 
 export interface ClientState {
@@ -63,12 +76,17 @@ export interface ClientState {
   // Increments each time the server ends the fill phase, so the Fill screen
   // can flush its final answers exactly once.
   roundEndedToken: number;
+  // Admin (owner) state.
+  isAdmin: boolean;
+  adminAi: AdminAi | null;
+  recoveryCodes: RecoveryCode[];
 }
 
 type Action =
   | { type: "status"; status: ClientState["status"] }
   | { type: "reset" }
   | { type: "clearError" }
+  | { type: "adminLogout" }
   | { type: "msg"; msg: ServerMessage };
 
 // ---- server -> client messages ---------------------------------------------
@@ -88,6 +106,7 @@ type ServerMessage =
   | { type: "results"; round_no: number; answers: RoundView["answers"]; points: RoundView["points"]; scores: Record<string, number> }
   | { type: "results_updated"; points: RoundView["points"]; scores: Record<string, number>; answers: RoundView["answers"] }
   | { type: "game_over"; scores: Record<string, number>; winner_id: string | null }
+  | { type: "admin_ok"; is_admin: boolean; ai: AdminAi; recovery_codes: RecoveryCode[] }
   | { type: "error"; message: string };
 
 const SESSION_KEY = "penneer.session";
@@ -117,6 +136,15 @@ function clearSession() {
   }
 }
 
+const ADMIN_KEY = "penneer.adminSecret";
+function loadAdminSecret(): string | null {
+  try {
+    return localStorage.getItem(ADMIN_KEY);
+  } catch {
+    return null;
+  }
+}
+
 const initialState: ClientState = {
   room: null,
   playerId: null,
@@ -124,6 +152,9 @@ const initialState: ClientState = {
   spinning: false,
   error: null,
   roundEndedToken: 0,
+  isAdmin: false,
+  adminAi: null,
+  recoveryCodes: [],
 };
 
 function reducer(state: ClientState, action: Action): ClientState {
@@ -135,6 +166,9 @@ function reducer(state: ClientState, action: Action): ClientState {
   }
   if (action.type === "clearError") {
     return { ...state, error: null };
+  }
+  if (action.type === "adminLogout") {
+    return { ...state, isAdmin: false, adminAi: null, recoveryCodes: [] };
   }
   const msg = action.msg;
   switch (msg.type) {
@@ -173,6 +207,8 @@ function reducer(state: ClientState, action: Action): ClientState {
     case "results_updated":
     case "game_over":
       return state; // room_state carries the authoritative snapshot
+    case "admin_ok":
+      return { ...state, isAdmin: msg.is_admin, adminAi: msg.ai, recoveryCodes: msg.recovery_codes };
     case "error":
       return { ...state, error: msg.message };
     default:
@@ -210,6 +246,9 @@ export interface GameApi {
   playAgain: () => void;
   addBot: () => void;
   removeBot: (bot_id: string) => void;
+  adminLogin: (secret: string) => void;
+  adminLogout: () => void;
+  adminSetAi: (enabled: boolean) => void;
   leaveRoom: () => void;
 }
 
@@ -250,6 +289,11 @@ export function useGame(): GameApi {
         const sess = loadSession();
         if (sess) {
           ws.send(JSON.stringify({ type: "reconnect", ...sess }));
+        }
+        // Re-establish admin login if a secret is stored on this device.
+        const adminSecret = loadAdminSecret();
+        if (adminSecret) {
+          ws.send(JSON.stringify({ type: "admin_login", secret: adminSecret }));
         }
       };
 
@@ -329,6 +373,23 @@ export function useGame(): GameApi {
     playAgain: () => send({ type: "play_again" }),
     addBot: () => send({ type: "add_bot" }),
     removeBot: (bot_id) => send({ type: "remove_bot", bot_id }),
+    adminLogin: (secret) => {
+      try {
+        localStorage.setItem(ADMIN_KEY, secret);
+      } catch {
+        /* ignore */
+      }
+      send({ type: "admin_login", secret });
+    },
+    adminLogout: () => {
+      try {
+        localStorage.removeItem(ADMIN_KEY);
+      } catch {
+        /* ignore */
+      }
+      dispatch({ type: "adminLogout" });
+    },
+    adminSetAi: (enabled) => send({ type: "admin_set_ai", enabled }),
     leaveRoom: () => {
       send({ type: "leave_room" });
       clearSession();

@@ -164,7 +164,7 @@ export function Lobby({ game }: { game: GameApi }) {
                   {p.is_bot && <Badge text="bot" color={colors.violet} />}
                   {p.is_spectator && <Badge text={t("watching")} color={colors.faint} />}
                   {p.is_host && <Badge text={t("host")} color={colors.gold} />}
-                  {isHost && p.is_bot && (
+                  {game.state.isAdmin && p.is_bot && (
                     <button onClick={() => game.removeBot(p.id)} style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint }}>
                       <X size={16} />
                     </button>
@@ -173,7 +173,7 @@ export function Lobby({ game }: { game: GameApi }) {
               </div>
             ))}
           </div>
-          {isHost && (
+          {game.state.isAdmin && (
             <div style={{ marginTop: 12 }}>
               <Button variant="ghost" onClick={game.addBot}>
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>

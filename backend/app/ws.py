@@ -38,6 +38,14 @@ async def ws_endpoint(ws: WebSocket) -> None:
                     player_id = res[1].id
                 continue
 
+            # --- admin is connection-scoped: works before joining a room ---
+            if mtype == "admin_login":
+                await manager.admin_login(ws, player_id, data)
+                continue
+            if mtype == "admin_set_ai":
+                await manager.admin_set_ai(ws, player_id, data)
+                continue
+
             # --- everything else needs an identity ---
             if player_id is None:
                 await ws.send_json({"type": "error", "message": "Nog niet in een room."})
@@ -78,8 +86,10 @@ async def ws_endpoint(ws: WebSocket) -> None:
                 await ws.send_json({"type": "error", "message": f"Onbekend bericht: {mtype}"})
 
     except WebSocketDisconnect:
+        manager.drop_connection(ws)
         if player_id is not None:
             await manager.disconnect(player_id)
     except Exception:
+        manager.drop_connection(ws)
         if player_id is not None:
             await manager.disconnect(player_id)

@@ -42,6 +42,12 @@ async def main():
     code, host_id = joined["code"], joined["player_id"]
     print(f"[create] room={code}")
 
+    # Testbots are admin-gated now: log in as admin first.
+    await host.send(json.dumps({"type": "admin_login", "secret": "penneer-admin"}))
+    adm = await recv_until(host, "admin_ok")
+    assert adm["is_admin"], "admin login should succeed with default password"
+    print(f"[admin]  logged in, recovery codes: {len(adm['recovery_codes'])}")
+
     # No-timer mode + add two bots.
     await host.send(json.dumps({"type": "update_settings", "round_time": 0, "rounds": 3, "categories": ["Dier", "Land", "Stad"]}))
     await host.send(json.dumps({"type": "add_bot"}))

@@ -58,6 +58,7 @@ export default function App() {
   if (showSettings)
     return (
       <Settings
+        game={game}
         onBack={() => setShowSettings(false)}
         onShowRules={() => {
           setShowSettings(false);

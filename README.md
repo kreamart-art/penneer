@@ -47,6 +47,21 @@ On Coolify: point the app at this repo, build with the Dockerfile, expose port
 8000. Traefik forwards the WebSocket upgrade automatically; the client picks
 `wss://` under HTTPS.
 
+## Configuration (env vars, server-side)
+All optional. The AI referee stays off until a key is set AND an admin enables it.
+
+| Var | Default | Purpose |
+|---|---|---|
+| `PENNEER_ADMIN_PASSWORD` | `penneer-admin` | Admin login (set this in production). Recovery codes derive from it. |
+| `PENNEER_AI_KEY` | (none) | API key / bearer token for the AI referee. No key = AI unavailable. |
+| `PENNEER_AI_PROVIDER` | `anthropic` | `anthropic` (Claude direct) or `nous` (route through a Nous-style chat URL). |
+| `PENNEER_AI_MODEL` | `claude-haiku-4-5` | Model id for the referee. |
+| `PENNEER_AI_URL` | (none) | Chat endpoint URL (required for `nous`; anthropic uses its own). |
+| `PENNEER_AI_ENABLED` | `0` | Start with the referee enabled (admin can also toggle at runtime). |
+
+The AI referee only judges the orange "?" answers (not in the word lists), so token
+cost stays tiny. The key never reaches the client.
+
 ## How a round works (§3)
 1. Reveal: the spelleider presses the buzzer, an alphabet reel spins, they press
    STOP. The server picks the real letter (random, no repeats) and broadcasts it.
