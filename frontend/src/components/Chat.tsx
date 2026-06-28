@@ -9,20 +9,14 @@ import { colors, font, withAlpha } from "../theme/tokens";
 
 export function ChatButton({ game }: { game: GameApi }) {
   const { t } = useT();
-  const [open, setOpen] = useState(false);
-  const [seen, setSeen] = useState(0);
   const chat = game.state.chat;
-  const unread = open ? 0 : Math.max(0, chat.length - seen);
-
-  // While open, keep "seen" pinned to the latest so closing clears the badge.
-  useEffect(() => {
-    if (open) setSeen(chat.length);
-  }, [open, chat.length]);
+  const open = game.state.chatOpen;
+  const unread = open ? 0 : Math.max(0, chat.length - game.state.chatSeen);
 
   return (
     <>
       <button
-        onClick={() => setOpen(true)}
+        onClick={() => game.openChat()}
         aria-label={t("chat")}
         title={t("chat")}
         style={{
@@ -60,7 +54,7 @@ export function ChatButton({ game }: { game: GameApi }) {
           </span>
         )}
       </button>
-      {open && <ChatPanel game={game} onClose={() => setOpen(false)} />}
+      {open && <ChatPanel game={game} onClose={() => game.closeChat()} />}
     </>
   );
 }
@@ -88,6 +82,12 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
     if (!text) return;
     game.sendChat(text);
     setDraft("");
+  }
+
+  // Tap a sender's name to address them: inserts "@Naam " into the composer.
+  function mention(name: string) {
+    setDraft((d) => `${d}${d && !d.endsWith(" ") ? " " : ""}@${name} `);
+    inputRef.current?.focus();
   }
 
   return (
@@ -156,9 +156,19 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
               const mine = m.player_id === myId;
               return (
                 <div key={m.id} style={{ display: "flex", flexDirection: "column", alignItems: mine ? "flex-end" : "flex-start" }}>
-                  <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 700, color: mine ? colors.gold : m.color, padding: "0 4px 2px" }}>
-                    {mine ? t("chatYou") : m.name}
-                  </span>
+                  {mine ? (
+                    <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 700, color: colors.gold, padding: "0 4px 2px" }}>
+                      {t("chatYou")}
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => mention(m.name)}
+                      title={`@${m.name}`}
+                      style={{ background: "transparent", border: "none", cursor: "pointer", fontFamily: font.ui, fontSize: 11, fontWeight: 700, color: m.color, padding: "0 4px 2px", textDecoration: "underline", textUnderlineOffset: 2 }}
+                    >
+                      {m.name}
+                    </button>
+                  )}
                   <div
                     style={{
                       maxWidth: "82%",

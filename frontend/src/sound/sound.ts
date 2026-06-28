@@ -92,6 +92,12 @@ export const sound = {
     if (!guard()) return;
     [523, 659, 784].forEach((f, i) => tone(f, i * 0.08, 0.2, "triangle", 0.16));
   },
+  chat: () => {
+    // Soft two-note blip for an incoming message.
+    if (!guard()) return;
+    tone(740, 0, 0.08, "sine", 0.12);
+    tone(1040, 0.06, 0.12, "sine", 0.11);
+  },
   win: () => {
     if (!guard()) return;
     [523, 659, 784, 1046].forEach((f, i) => tone(f, i * 0.1, 0.3, "triangle", 0.18));

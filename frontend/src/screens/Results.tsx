@@ -1,6 +1,6 @@
 // Results — running scoreboard, then a card per player with answers (check /
 // cross / strike, "dubbel" tags) and round points. Tap an answer to challenge.
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, HelpCircle, X } from "lucide-react";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
@@ -30,6 +30,20 @@ export function Results({ game }: { game: GameApi }) {
       sound.results();
     }
   }, []);
+
+  // Correcting an answer is a two-step, scroll-safe action: a tap selects the
+  // row (only if the finger didn't move — so scrolling never corrects), then an
+  // explicit Afkeuren/Goedkeuren confirms. Prevents accidental flips.
+  const [selected, setSelected] = useState<string | null>(null);
+  const moved = useRef(false);
+  const startPt = useRef({ x: 0, y: 0 });
+  const onRowDown = (e: React.PointerEvent) => {
+    startPt.current = { x: e.clientX, y: e.clientY };
+    moved.current = false;
+  };
+  const onRowMove = (e: React.PointerEvent) => {
+    if (Math.hypot(e.clientX - startPt.current.x, e.clientY - startPt.current.y) > 8) moved.current = true;
+  };
 
   const roundTotal = (pid: string) => cats.reduce((sum, c) => sum + (round?.points[pid]?.[c] ?? 0), 0);
 
@@ -69,39 +83,65 @@ export function Results({ game }: { game: GameApi }) {
                   const mark = !valid ? "cross" : inList ? "check" : "question";
                   const markColor = mark === "check" ? colors.green : mark === "question" ? colors.orange : colors.red;
                   const dubbel = valid && pts === 5;
+                  const rowKey = `${p.id}|${cat}`;
+                  const isSel = selected === rowKey;
                   return (
-                    <button
-                      key={cat}
-                      onClick={() => text && game.challenge(p.id, cat)}
-                      title={mark === "question" ? "Niet in de lijst, tik om af te keuren" : undefined}
-                      style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 10, background: withAlpha("#000000", 0.18), border: `1px solid ${mark === "question" ? withAlpha(colors.orange, 0.4) : colors.hairline}`, cursor: text ? "pointer" : "default", textAlign: "left", width: "100%" }}
-                    >
-                      <span style={{ fontFamily: font.ui, fontSize: 11, color: colors.faint, width: 58, flexShrink: 0 }}>{tCat(cat)}</span>
-                      <span style={{ color: markColor, display: "flex", flexShrink: 0 }}>
-                        {mark === "check" ? <Check size={16} /> : mark === "question" ? <HelpCircle size={16} /> : <X size={16} />}
-                      </span>
-                      <span
-                        style={{
-                          flex: 1,
-                          fontFamily: font.ui,
-                          fontSize: 15,
-                          fontWeight: 500,
-                          color: valid ? colors.ink : colors.faint,
-                          textDecoration: valid ? "none" : "line-through",
-                          whiteSpace: "nowrap",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
+                    <div key={cat} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      <button
+                        onPointerDown={onRowDown}
+                        onPointerMove={onRowMove}
+                        onClick={() => {
+                          if (moved.current || !text) return; // a scroll, not a tap
+                          setSelected(isSel ? null : rowKey);
                         }}
+                        style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 10, background: isSel ? withAlpha(colors.gold, 0.1) : withAlpha("#000000", 0.18), border: `1px solid ${isSel ? withAlpha(colors.gold, 0.6) : mark === "question" ? withAlpha(colors.orange, 0.4) : colors.hairline}`, cursor: text ? "pointer" : "default", textAlign: "left", width: "100%", touchAction: "pan-y" }}
                       >
-                        {text || <span style={{ fontStyle: "italic", opacity: 0.6 }}>{t("empty")}</span>}
-                      </span>
-                      {dubbel && (
-                        <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 700, color: "#2A1B05", background: `linear-gradient(180deg, ${colors.goldHi}, ${colors.gold})`, padding: "2px 8px", borderRadius: 999, flexShrink: 0 }}>
-                          {t("dubbel")}
+                        <span style={{ fontFamily: font.ui, fontSize: 11, color: colors.faint, width: 58, flexShrink: 0 }}>{tCat(cat)}</span>
+                        <span style={{ color: markColor, display: "flex", flexShrink: 0 }}>
+                          {mark === "check" ? <Check size={16} /> : mark === "question" ? <HelpCircle size={16} /> : <X size={16} />}
                         </span>
+                        <span
+                          style={{
+                            flex: 1,
+                            fontFamily: font.ui,
+                            fontSize: 15,
+                            fontWeight: 500,
+                            color: valid ? colors.ink : colors.faint,
+                            textDecoration: valid ? "none" : "line-through",
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                          }}
+                        >
+                          {text || <span style={{ fontStyle: "italic", opacity: 0.6 }}>{t("empty")}</span>}
+                        </span>
+                        {dubbel && (
+                          <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 700, color: "#2A1B05", background: `linear-gradient(180deg, ${colors.goldHi}, ${colors.gold})`, padding: "2px 8px", borderRadius: 999, flexShrink: 0 }}>
+                            {t("dubbel")}
+                          </span>
+                        )}
+                        <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15, color: pts > 0 ? colors.ink : colors.faint, width: 22, textAlign: "right", flexShrink: 0 }}>{pts}</span>
+                      </button>
+                      {isSel && text && (
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 2px 2px" }}>
+                          <button
+                            onClick={() => {
+                              game.challenge(p.id, cat);
+                              setSelected(null);
+                            }}
+                            style={{ flex: 1, fontFamily: font.ui, fontSize: 13, fontWeight: 600, padding: "9px 12px", borderRadius: 10, cursor: "pointer", color: valid ? colors.redHi : colors.green, background: valid ? withAlpha(colors.red, 0.16) : withAlpha(colors.green, 0.16), border: `1px solid ${valid ? withAlpha(colors.red, 0.5) : withAlpha(colors.green, 0.5)}` }}
+                          >
+                            {valid ? t("markWrong") : t("markGood")}
+                          </button>
+                          <button
+                            onClick={() => setSelected(null)}
+                            style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, padding: "9px 14px", borderRadius: 10, cursor: "pointer", color: colors.sub, background: "transparent", border: `1px solid ${colors.hairline}` }}
+                          >
+                            {t("cancelCorrection")}
+                          </button>
+                        </div>
                       )}
-                      <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15, color: pts > 0 ? colors.ink : colors.faint, width: 22, textAlign: "right", flexShrink: 0 }}>{pts}</span>
-                    </button>
+                    </div>
                   );
                 })}
               </div>

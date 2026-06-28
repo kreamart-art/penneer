@@ -1,8 +1,9 @@
 // Pen Neer — top-level flow. Pre-room: intro -> language -> landing/rules.
 // In a room: render the screen for the authoritative phase.
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useGame } from "./net/socket";
 import { useT } from "./i18n/i18n";
+import { sound } from "./sound/sound";
 import { Intro } from "./screens/Intro";
 import { LanguagePage } from "./screens/LanguagePage";
 import { Rules } from "./screens/Rules";
@@ -23,6 +24,31 @@ export default function App() {
   const [introDone, setIntroDone] = useState(() => sessionStorage.getItem(INTRO_KEY) === "1");
   const [showRules, setShowRules] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+
+  // Notify (sound + vibration) on a new chat message from someone else while
+  // the panel is closed. Lives here (mounted for the whole session) so it fires
+  // once per message and survives screen changes. Armed after a short grace so
+  // the join/reconnect history burst doesn't trigger it.
+  const chat = game.state.chat;
+  const prevChatLen = useRef(chat.length);
+  const chatArmed = useRef(false);
+  useEffect(() => {
+    const id = window.setTimeout(() => (chatArmed.current = true), 1500);
+    return () => window.clearTimeout(id);
+  }, []);
+  useEffect(() => {
+    const prev = prevChatLen.current;
+    prevChatLen.current = chat.length;
+    if (!chatArmed.current || chat.length <= prev) return;
+    const last = chat[chat.length - 1];
+    if (!last || last.player_id === game.state.playerId || game.state.chatOpen) return;
+    sound.chat();
+    try {
+      (navigator as Navigator & { vibrate?: (p: number) => boolean }).vibrate?.(60);
+    } catch {
+      /* vibration not supported */
+    }
+  }, [chat, game.state.chatOpen, game.state.playerId]);
 
   // In a room: phase-driven screens (skip the whole pre-room flow).
   if (room && game.me) {

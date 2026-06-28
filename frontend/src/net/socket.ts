@@ -91,6 +91,8 @@ export interface ClientState {
   recoveryCodes: RecoveryCode[];
   // In-room chat (so players can ask what a word means without leaving).
   chat: ChatMessage[];
+  chatSeen: number; // messages considered read (drives the unread badge)
+  chatOpen: boolean; // panel open — kept here so it survives screen changes
 }
 
 type Action =
@@ -98,6 +100,7 @@ type Action =
   | { type: "reset" }
   | { type: "clearError" }
   | { type: "adminLogout" }
+  | { type: "chatOpen"; open: boolean }
   | { type: "msg"; msg: ServerMessage };
 
 // ---- server -> client messages ---------------------------------------------
@@ -169,6 +172,8 @@ const initialState: ClientState = {
   adminAi: null,
   recoveryCodes: [],
   chat: [],
+  chatSeen: 0,
+  chatOpen: false,
 };
 
 function reducer(state: ClientState, action: Action): ClientState {
@@ -183,6 +188,10 @@ function reducer(state: ClientState, action: Action): ClientState {
   }
   if (action.type === "adminLogout") {
     return { ...state, isAdmin: false, adminAi: null, recoveryCodes: [] };
+  }
+  if (action.type === "chatOpen") {
+    // Opening marks everything read.
+    return { ...state, chatOpen: action.open, chatSeen: action.open ? state.chat.length : state.chatSeen };
   }
   const msg = action.msg;
   switch (msg.type) {
@@ -228,7 +237,9 @@ function reducer(state: ClientState, action: Action): ClientState {
     case "chat": {
       // De-dupe by id (a reconnect can briefly overlap history + live).
       if (state.chat.some((m) => m.id === msg.message.id)) return state;
-      return { ...state, chat: [...state.chat, msg.message] };
+      const chat = [...state.chat, msg.message];
+      // Keep the badge clear while the panel is open.
+      return { ...state, chat, chatSeen: state.chatOpen ? chat.length : state.chatSeen };
     }
     case "error":
       return { ...state, error: msg.message };
@@ -271,6 +282,8 @@ export interface GameApi {
   adminLogout: () => void;
   adminSetAi: (enabled: boolean) => void;
   sendChat: (text: string) => void;
+  openChat: () => void;
+  closeChat: () => void;
   leaveRoom: () => void;
 }
 
@@ -416,6 +429,8 @@ export function useGame(): GameApi {
       const t = text.trim().slice(0, 280);
       if (t) send({ type: "chat_send", text: t });
     },
+    openChat: () => dispatch({ type: "chatOpen", open: true }),
+    closeChat: () => dispatch({ type: "chatOpen", open: false }),
     leaveRoom: () => {
       send({ type: "leave_room" });
       clearSession();
