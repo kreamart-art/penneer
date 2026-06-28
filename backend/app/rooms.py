@@ -169,6 +169,40 @@ class RoomManager:
     async def error(self, player_id: str, message: str) -> None:
         await self._send(player_id, {"type": "error", "message": message})
 
+    # ---- chat --------------------------------------------------------------
+
+    async def _send_chat_history(self, room: Room, player_id: str) -> None:
+        await self._send(player_id, {"type": "chat_history", "messages": list(room.chat)})
+
+    async def chat_send(self, player_id: str, payload: dict) -> None:
+        """A player sends a room chat message (so people can ask what a word
+        means without leaving the app). Visible to everyone in the room."""
+        room = self.room_of_player(player_id)
+        if room is None:
+            return
+        p = room.get_player(player_id)
+        if p is None or p.is_bot:
+            return
+        text = payload.get("text")
+        if not isinstance(text, str):
+            return
+        text = text.strip()[:280]
+        if not text:
+            return
+        room.chat_seq += 1
+        msg = {
+            "id": room.chat_seq,
+            "player_id": player_id,
+            "name": p.name,
+            "color": p.color,
+            "text": text,
+            "ts": time.time(),
+        }
+        room.chat.append(msg)
+        if len(room.chat) > 60:
+            room.chat = room.chat[-60:]
+        await self.broadcast(room, {"type": "chat", "message": msg})
+
     # ---- create / join / reconnect ----------------------------------------
 
     async def create_room(self, ws: Any, name: str) -> tuple[Room, Player]:
@@ -217,6 +251,7 @@ class RoomManager:
 
         await self._send(pid, {"type": "joined", "code": code, "player_id": pid})
         await self.send_state(room, pid)
+        await self._send_chat_history(room, pid)
         await self.broadcast(room, {"type": "player_joined", "player": player.public()})
         await self.send_state(room)
         return room, player
@@ -242,6 +277,7 @@ class RoomManager:
         self.connections[player_id] = ws
         await self._send(player_id, {"type": "joined", "code": code, "player_id": player_id})
         await self.send_state(room, player_id)
+        await self._send_chat_history(room, player_id)
         await self.broadcast(room, {"type": "player_joined", "player": player.public()})
         await self.send_state(room)
         return room, player

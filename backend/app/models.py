@@ -130,6 +130,10 @@ class Room:
     history: list[Round] = field(default_factory=list)
     scores: dict[str, int] = field(default_factory=dict)
     ready_ids: list[str] = field(default_factory=list)  # players who tapped "Ik ben klaar"
+    # In-room chat (so players can ask what a word means without leaving). Kept
+    # out of public() — it has its own channel (chat_history on join, chat on send).
+    chat: list[dict] = field(default_factory=list)
+    chat_seq: int = 0
 
     # ---- helpers ----
     def get_player(self, pid: str) -> Optional[Player]:

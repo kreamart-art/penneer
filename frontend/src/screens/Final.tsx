@@ -48,7 +48,7 @@ export function Final({ game }: { game: GameApi }) {
   };
 
   return (
-    <Screen top={<TopBar code={room.code} connected={game.state.status === "open"} onLeave={game.leaveRoom} />}>
+    <Screen top={<TopBar code={room.code} connected={game.state.status === "open"} onLeave={game.leaveRoom} game={game} />}>
       <div style={{ display: "flex", flexDirection: "column", gap: 18, paddingTop: 8 }}>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
           <Logo size={120} />

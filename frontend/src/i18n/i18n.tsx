@@ -42,6 +42,12 @@ const nl: Dict = {
   recoveryHint: "Bewaar deze goed. Elke code logt één keer in als je het wachtwoord kwijt bent.",
   used: "gebruikt",
   aiRefereeBadge: "AI-scheidsrechter aan",
+  // chat
+  chat: "Chat",
+  chatEmpty: "Nog geen berichten. Vraag gerust wat een woord betekent.",
+  chatPlaceholder: "Typ een bericht",
+  chatSend: "Stuur",
+  chatYou: "jij",
   // landing
   tagline:
     "Draai de letter, ren tegen de klok. Jongen, meisje, dier, vrucht, land. Ieder op zijn eigen telefoon.",
@@ -175,6 +181,12 @@ const en: Dict = {
   recoveryHint: "Keep these safe. Each code logs in once if you lose the password.",
   used: "used",
   aiRefereeBadge: "AI referee on",
+  // chat
+  chat: "Chat",
+  chatEmpty: "No messages yet. Feel free to ask what a word means.",
+  chatPlaceholder: "Type a message",
+  chatSend: "Send",
+  chatYou: "you",
   tagline:
     "Spin the letter, race the clock. Boy, girl, animal, fruit, country. Everyone on their own phone.",
   yourName: "Your name",

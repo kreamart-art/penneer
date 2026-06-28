@@ -54,7 +54,7 @@ export function Fill({ game }: { game: GameApi }) {
   const showFloatingReady = !isSpectator && !game.isActive;
 
   return (
-    <Screen top={<TopBar code={room.code} roundNo={room.round_no} totalRounds={room.settings.rounds} connected={game.state.status === "open"} onLeave={game.leaveRoom} />}>
+    <Screen top={<TopBar code={room.code} roundNo={room.round_no} totalRounds={room.settings.rounds} connected={game.state.status === "open"} onLeave={game.leaveRoom} game={game} />}>
       <div style={{ display: "flex", flexDirection: "column", gap: 16, paddingBottom: showFloatingReady ? 104 : 0 }}>
         {/* Letter + timer (or no-timer note) */}
         <Card style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>

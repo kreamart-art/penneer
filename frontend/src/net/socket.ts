@@ -67,6 +67,15 @@ export interface RecoveryCode {
   used: boolean;
 }
 
+export interface ChatMessage {
+  id: number;
+  player_id: string;
+  name: string;
+  color: string;
+  text: string;
+  ts: number;
+}
+
 export interface ClientState {
   room: RoomState | null;
   playerId: string | null;
@@ -80,6 +89,8 @@ export interface ClientState {
   isAdmin: boolean;
   adminAi: AdminAi | null;
   recoveryCodes: RecoveryCode[];
+  // In-room chat (so players can ask what a word means without leaving).
+  chat: ChatMessage[];
 }
 
 type Action =
@@ -107,6 +118,8 @@ type ServerMessage =
   | { type: "results_updated"; points: RoundView["points"]; scores: Record<string, number>; answers: RoundView["answers"] }
   | { type: "game_over"; scores: Record<string, number>; winner_id: string | null }
   | { type: "admin_ok"; is_admin: boolean; ai: AdminAi; recovery_codes: RecoveryCode[] }
+  | { type: "chat"; message: ChatMessage }
+  | { type: "chat_history"; messages: ChatMessage[] }
   | { type: "error"; message: string };
 
 const SESSION_KEY = "penneer.session";
@@ -155,6 +168,7 @@ const initialState: ClientState = {
   isAdmin: false,
   adminAi: null,
   recoveryCodes: [],
+  chat: [],
 };
 
 function reducer(state: ClientState, action: Action): ClientState {
@@ -209,6 +223,13 @@ function reducer(state: ClientState, action: Action): ClientState {
       return state; // room_state carries the authoritative snapshot
     case "admin_ok":
       return { ...state, isAdmin: msg.is_admin, adminAi: msg.ai, recoveryCodes: msg.recovery_codes };
+    case "chat_history":
+      return { ...state, chat: msg.messages };
+    case "chat": {
+      // De-dupe by id (a reconnect can briefly overlap history + live).
+      if (state.chat.some((m) => m.id === msg.message.id)) return state;
+      return { ...state, chat: [...state.chat, msg.message] };
+    }
     case "error":
       return { ...state, error: msg.message };
     default:
@@ -249,6 +270,7 @@ export interface GameApi {
   adminLogin: (secret: string) => void;
   adminLogout: () => void;
   adminSetAi: (enabled: boolean) => void;
+  sendChat: (text: string) => void;
   leaveRoom: () => void;
 }
 
@@ -390,6 +412,10 @@ export function useGame(): GameApi {
       dispatch({ type: "adminLogout" });
     },
     adminSetAi: (enabled) => send({ type: "admin_set_ai", enabled }),
+    sendChat: (text) => {
+      const t = text.trim().slice(0, 280);
+      if (t) send({ type: "chat_send", text: t });
+    },
     leaveRoom: () => {
       send({ type: "leave_room" });
       clearSession();

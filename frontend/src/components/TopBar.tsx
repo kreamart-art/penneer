@@ -1,7 +1,9 @@
-// Compact top bar: wordmark + room code + round indicator + connection dot + exit.
+// Compact top bar: wordmark + room code + round indicator + chat + connection dot + exit.
 import { LogOut } from "lucide-react";
 import { useT } from "../i18n/i18n";
 import { colors, font, withAlpha } from "../theme/tokens";
+import { ChatButton } from "./Chat";
+import type { GameApi } from "../net/socket";
 
 interface Props {
   code?: string;
@@ -9,9 +11,10 @@ interface Props {
   totalRounds?: number;
   connected: boolean;
   onLeave?: () => void;
+  game?: GameApi; // when present, shows the in-room chat button
 }
 
-export function TopBar({ code, roundNo, totalRounds, connected, onLeave }: Props) {
+export function TopBar({ code, roundNo, totalRounds, connected, onLeave, game }: Props) {
   const { t } = useT();
   return (
     <div
@@ -58,6 +61,7 @@ export function TopBar({ code, roundNo, totalRounds, connected, onLeave }: Props
             {code}
           </span>
         )}
+        {game && <ChatButton game={game} />}
         <span
           title={connected ? t("connected") : t("searching")}
           style={{

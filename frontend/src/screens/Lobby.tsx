@@ -94,7 +94,7 @@ export function Lobby({ game }: { game: GameApi }) {
   const canStart = isHost && players.length >= 1;
 
   return (
-    <Screen top={<TopBar code={room.code} connected={game.state.status === "open"} />}>
+    <Screen top={<TopBar code={room.code} connected={game.state.status === "open"} game={game} />}>
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         {/* language + sound (per device) */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
