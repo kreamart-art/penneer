@@ -118,13 +118,16 @@ async def _call_nous(client, prompt: str) -> str:
     headers = {"content-type": "application/json"}
     if _key():
         headers["authorization"] = f"Bearer {_key()}"
+    # Nous's /api/chat needs provider:"claude" to use Claude (else it tries a
+    # local model) and streams PLAIN TEXT back — which carries the JSON we asked
+    # for. httpx collects the full body, so resp.text is the complete answer.
     resp = await client.post(
         url,
         headers=headers,
-        json={"model": model(), "messages": [{"role": "user", "content": prompt}]},
+        json={"provider": "claude", "messages": [{"role": "user", "content": prompt}]},
     )
     resp.raise_for_status()
-    # Nous / chat endpoints vary; try the common shapes, fall back to raw text.
+    # Nous returns text/plain; other chat endpoints may return JSON — try both.
     try:
         data = resp.json()
     except Exception:
