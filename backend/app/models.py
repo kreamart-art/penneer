@@ -29,7 +29,11 @@ CODE_ALPHABET = "ABCDEFGHJKLMNPRSTUVWXYZ"
 ALL_CATEGORIES = ["Jongen", "Meisje", "Dier", "Vrucht", "Land", "Stad", "Beroep", "Ding"]
 DEFAULT_CATEGORIES = ["Jongen", "Meisje", "Dier", "Vrucht", "Land"]
 
-RECONNECT_GRACE = 60.0  # seconds a disconnected player keeps their slot
+RECONNECT_GRACE = 60.0  # (legacy) seconds a disconnected player keeps their slot
+# Players now keep their slot as long as the room lives (so backgrounding the app
+# never drops you). The room itself is only torn down after this long a stretch
+# with nobody connected at all.
+ROOM_EMPTY_GRACE = 1200.0  # 20 minutes
 
 MAX_PLAYERS_CAP = 16     # hard ceiling regardless of room setting
 BOT_NAMES = ["Robbie", "Pixel", "Bitje", "Nova", "Tika", "Zappy", "Mips", "Loek", "Fae", "Otto"]

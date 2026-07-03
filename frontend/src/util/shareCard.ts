@@ -51,6 +51,15 @@ function drawEmblem(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: nu
   ctx.restore();
 }
 
+function loadImage(src: string): Promise<HTMLImageElement | null> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+}
+
 export async function makeShareCard(opts: CardOpts): Promise<Blob | null> {
   const W = 1080;
   const H = 1350;
@@ -80,7 +89,15 @@ export async function makeShareCard(opts: CardOpts): Promise<Blob | null> {
 
   ctx.textAlign = "center";
 
-  drawEmblem(ctx, W / 2, 210, 90);
+  // Brand logo (studio pen-nib coin, same-origin so the canvas stays untainted).
+  // Falls back to the drawn emblem if the image can't load.
+  const logo = await loadImage("/logo.png");
+  if (logo) {
+    const S = 250;
+    ctx.drawImage(logo, W / 2 - S / 2, 210 - S / 2, S, S);
+  } else {
+    drawEmblem(ctx, W / 2, 210, 90);
+  }
 
   // wordmark
   ctx.font = "700 96px 'Space Grotesk'";

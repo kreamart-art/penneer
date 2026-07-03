@@ -48,6 +48,11 @@ const nl: Dict = {
   chatPlaceholder: "Typ een bericht",
   chatSend: "Stuur",
   chatYou: "jij",
+  typingOne: "{name} is aan het typen",
+  typingMany: "{names} zijn aan het typen",
+  roundsCustom: "Zelf",
+  roundsCustomHint: "Kies zelf hoeveel rondes. De host kan het spel eerder stoppen met Einde spel.",
+  endGame: "Einde spel",
   // landing
   tagline:
     "Draai de letter, ren tegen de klok. Jongen, meisje, dier, vrucht, land. Ieder op zijn eigen telefoon.",
@@ -190,6 +195,11 @@ const en: Dict = {
   chatPlaceholder: "Type a message",
   chatSend: "Send",
   chatYou: "you",
+  typingOne: "{name} is typing",
+  typingMany: "{names} are typing",
+  roundsCustom: "Custom",
+  roundsCustomHint: "Pick how many rounds. The host can end the game early with End game.",
+  endGame: "End game",
   tagline:
     "Spin the letter, race the clock. Boy, girl, animal, fruit, country. Everyone on their own phone.",
   yourName: "Your name",

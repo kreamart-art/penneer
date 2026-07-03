@@ -172,6 +172,14 @@ export function Results({ game }: { game: GameApi }) {
                 {t("forceNext")}
               </button>
             )}
+            {game.isHost && !isLast && (
+              <button
+                onClick={game.endGame}
+                style={{ marginTop: 2, background: "transparent", border: `1px solid ${withAlpha(colors.red, 0.4)}`, cursor: "pointer", color: colors.redHi, fontFamily: font.ui, fontSize: 13, fontWeight: 600, borderRadius: 10, padding: "8px 12px" }}
+              >
+                {t("endGame")}
+              </button>
+            )}
           </div>
         )}
       </div>

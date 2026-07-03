@@ -20,7 +20,7 @@ from .models import (
     CODE_ALPHABET,
     MAX_PLAYERS_CAP,
     PLAYER_COLORS,
-    RECONNECT_GRACE,
+    ROOM_EMPTY_GRACE,
     Player,
     Room,
     Round,
@@ -40,7 +40,8 @@ class RoomManager:
         # pending[code][player_id][category] -> text
         self.pending: dict[str, dict[str, dict[str, str]]] = {}
         self.timer_tasks: dict[str, asyncio.Task] = {}
-        self.removal_tasks: dict[str, asyncio.Task] = {}
+        # Per-room teardown timer, armed only when nobody is connected.
+        self.empty_room_tasks: dict[str, asyncio.Task] = {}
         # Players who sent their final answers for the round being scored.
         self.submits: dict[str, set[str]] = {}
         # Admin (owner) state. Password from env; recovery codes derived from it
@@ -203,6 +204,23 @@ class RoomManager:
             room.chat = room.chat[-60:]
         await self.broadcast(room, {"type": "chat", "message": msg})
 
+    async def chat_typing(self, player_id: str, payload: dict) -> None:
+        """Relay a typing signal to everyone else in the room. Best-effort; the
+        client shows it briefly and auto-expires, so no server state is kept."""
+        room = self.room_of_player(player_id)
+        if room is None:
+            return
+        p = room.get_player(player_id)
+        if p is None or p.is_bot:
+            return
+        typing = bool(payload.get("typing"))
+        for other in room.players:
+            if other.connected and other.id != player_id:
+                await self._send(
+                    other.id,
+                    {"type": "chat_typing", "player_id": player_id, "name": p.name, "typing": typing},
+                )
+
     # ---- create / join / reconnect ----------------------------------------
 
     async def create_room(self, ws: Any, name: str) -> tuple[Room, Player]:
@@ -224,6 +242,7 @@ class RoomManager:
         if room is None:
             await ws.send_json({"type": "error", "message": "Deze room bestaat niet."})
             return None
+        self._cancel_room_cleanup(code)  # a new arrival keeps the room alive
 
         spectator = False
         if room.phase != "lobby":
@@ -267,10 +286,8 @@ class RoomManager:
             await ws.send_json({"type": "error", "message": "Je plek in deze room is verlopen."})
             return None
 
-        # Cancel any pending removal.
-        task = self.removal_tasks.pop(player_id, None)
-        if task:
-            task.cancel()
+        # Someone's back — cancel any pending room teardown.
+        self._cancel_room_cleanup(code)
 
         player.connected = True
         player.disconnected_at = None
@@ -295,7 +312,8 @@ class RoomManager:
         player.connected = False
         player.disconnected_at = time.time()
 
-        # Host migration: hand host to the next connected player immediately.
+        # Host migration only if someone else is connected; otherwise the host
+        # keeps the crown and reclaims it on reconnect.
         if room.host_id == player_id:
             self._migrate_host(room)
 
@@ -304,6 +322,8 @@ class RoomManager:
         if room.active_player_id == player_id and room.phase == "reveal":
             await self._auto_lock_letter(room)
 
+        # Keep their slot — they may have just backgrounded the app. Others see
+        # them dimmed; a reconnect restores them. No per-player removal anymore.
         await self.broadcast(room, {"type": "player_left", "player_id": player_id})
         await self.send_state(room)
 
@@ -311,8 +331,10 @@ class RoomManager:
         if room.phase == "results":
             await self._maybe_advance(room)
 
-        # Schedule removal after the grace window.
-        self.removal_tasks[player_id] = asyncio.create_task(self._remove_after_grace(room.code, player_id))
+        # Only tear the room down once nobody is connected, after a long grace,
+        # so a whole group briefly backgrounding the app never loses the room.
+        if not self._has_humans(room):
+            self._schedule_room_cleanup(room.code)
 
     def _migrate_host(self, room: Room) -> None:
         for p in room.players:
@@ -322,33 +344,27 @@ class RoomManager:
                     q.is_host = q.id == p.id
                 return
 
-    async def _remove_after_grace(self, code: str, player_id: str) -> None:
+    def _schedule_room_cleanup(self, code: str) -> None:
+        """Arm room teardown after a long grace with nobody connected."""
+        old = self.empty_room_tasks.pop(code, None)
+        if old:
+            old.cancel()
+        self.empty_room_tasks[code] = asyncio.create_task(self._destroy_room_after_grace(code))
+
+    def _cancel_room_cleanup(self, code: str) -> None:
+        task = self.empty_room_tasks.pop(code, None)
+        if task:
+            task.cancel()
+
+    async def _destroy_room_after_grace(self, code: str) -> None:
         try:
-            await asyncio.sleep(RECONNECT_GRACE)
+            await asyncio.sleep(ROOM_EMPTY_GRACE)
         except asyncio.CancelledError:
             return
         room = self.rooms.get(code)
-        if room is None:
-            return
-        player = room.get_player(player_id)
-        if player is None or player.connected:
-            return
-        # Only remove from the lobby; mid-game we keep them on the scoreboard.
-        if room.phase == "lobby":
-            room.players = [p for p in room.players if p.id != player_id]
-            room.scores.pop(player_id, None)
-            if room.host_id == player_id:
-                self._migrate_host(room)
-            if self._cleanup_if_empty(room):
-                return
-            await self.broadcast(room, {"type": "player_left", "player_id": player_id})
-            await self.send_state(room)
-        else:
-            # Mid-game: if the last human is gone for good, tear the room down so
-            # bot-only rooms don't linger.
-            if self._cleanup_if_empty(room):
-                return
-        self.removal_tasks.pop(player_id, None)
+        if room is not None and not self._has_humans(room):
+            self._destroy_room(code)
+        self.empty_room_tasks.pop(code, None)
 
     def _destroy_room(self, code: str) -> None:
         self.rooms.pop(code, None)
@@ -356,6 +372,9 @@ class RoomManager:
         task = self.timer_tasks.pop(code, None)
         if task:
             task.cancel()
+        empty = self.empty_room_tasks.pop(code, None)
+        if empty:
+            empty.cancel()
 
     # ---- settings / start --------------------------------------------------
 
@@ -366,7 +385,7 @@ class RoomManager:
         s = room.settings
         if "round_time" in payload and payload["round_time"] in (0, 30, 60, 90):
             s.round_time = payload["round_time"]
-        if "rounds" in payload and payload["rounds"] in (3, 5, 7):
+        if "rounds" in payload and isinstance(payload["rounds"], int) and 2 <= payload["rounds"] <= 20:
             s.rounds = payload["rounds"]
         if "categories" in payload and isinstance(payload["categories"], list):
             # Accept known categories and custom strings (from a deelcode pack):
@@ -711,6 +730,14 @@ class RoomManager:
         if player_id != room.host_id and player_id != room.active_player_id:
             return
         await self._advance(room)
+
+    async def end_game(self, player_id: str) -> None:
+        """Host ends the game early (for custom/long games): jump to the final
+        standings from the current scores."""
+        room = self.room_of_player(player_id)
+        if room is None or room.host_id != player_id or room.phase != "results":
+            return
+        await self._game_over(room)
 
     async def _game_over(self, room: Room) -> None:
         room.phase = "final"

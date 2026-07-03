@@ -93,6 +93,7 @@ export interface ClientState {
   chat: ChatMessage[];
   chatSeen: number; // messages considered read (drives the unread badge)
   chatOpen: boolean; // panel open — kept here so it survives screen changes
+  chatTyping: Record<string, { name: string; ts: number }>; // who is typing now
 }
 
 type Action =
@@ -123,6 +124,7 @@ type ServerMessage =
   | { type: "admin_ok"; is_admin: boolean; ai: AdminAi; recovery_codes: RecoveryCode[] }
   | { type: "chat"; message: ChatMessage }
   | { type: "chat_history"; messages: ChatMessage[] }
+  | { type: "chat_typing"; player_id: string; name: string; typing: boolean }
   | { type: "error"; message: string };
 
 const SESSION_KEY = "penneer.session";
@@ -174,6 +176,7 @@ const initialState: ClientState = {
   chat: [],
   chatSeen: 0,
   chatOpen: false,
+  chatTyping: {},
 };
 
 function reducer(state: ClientState, action: Action): ClientState {
@@ -238,8 +241,17 @@ function reducer(state: ClientState, action: Action): ClientState {
       // De-dupe by id (a reconnect can briefly overlap history + live).
       if (state.chat.some((m) => m.id === msg.message.id)) return state;
       const chat = [...state.chat, msg.message];
+      // The sender clearly stopped typing now that a message landed.
+      const chatTyping = { ...state.chatTyping };
+      delete chatTyping[msg.message.player_id];
       // Keep the badge clear while the panel is open.
-      return { ...state, chat, chatSeen: state.chatOpen ? chat.length : state.chatSeen };
+      return { ...state, chat, chatTyping, chatSeen: state.chatOpen ? chat.length : state.chatSeen };
+    }
+    case "chat_typing": {
+      const chatTyping = { ...state.chatTyping };
+      if (msg.typing) chatTyping[msg.player_id] = { name: msg.name, ts: Date.now() };
+      else delete chatTyping[msg.player_id];
+      return { ...state, chatTyping };
     }
     case "error":
       return { ...state, error: msg.message };
@@ -274,6 +286,7 @@ export interface GameApi {
   stopRound: () => void;
   challenge: (player_id: string, cat: string, valid?: boolean) => void;
   nextRound: () => void;
+  endGame: () => void;
   readyNext: () => void;
   playAgain: () => void;
   addBot: () => void;
@@ -282,6 +295,7 @@ export interface GameApi {
   adminLogout: () => void;
   adminSetAi: (enabled: boolean) => void;
   sendChat: (text: string) => void;
+  sendChatTyping: (typing: boolean) => void;
   openChat: () => void;
   closeChat: () => void;
   leaveRoom: () => void;
@@ -404,6 +418,7 @@ export function useGame(): GameApi {
     challenge: (player_id, cat, valid) =>
       send({ type: "challenge_answer", player_id, cat, ...(valid === undefined ? {} : { valid }) }),
     nextRound: () => send({ type: "next_round" }),
+    endGame: () => send({ type: "end_game" }),
     readyNext: () => send({ type: "ready_next" }),
     playAgain: () => send({ type: "play_again" }),
     addBot: () => send({ type: "add_bot" }),
@@ -429,6 +444,7 @@ export function useGame(): GameApi {
       const t = text.trim().slice(0, 280);
       if (t) send({ type: "chat_send", text: t });
     },
+    sendChatTyping: (typing) => send({ type: "chat_typing", typing }),
     openChat: () => dispatch({ type: "chatOpen", open: true }),
     closeChat: () => dispatch({ type: "chatOpen", open: false }),
     leaveRoom: () => {

@@ -79,6 +79,10 @@ async def ws_endpoint(ws: WebSocket) -> None:
                 await manager.ready_next(player_id)
             elif mtype == "chat_send":
                 await manager.chat_send(player_id, data)
+            elif mtype == "chat_typing":
+                await manager.chat_typing(player_id, data)
+            elif mtype == "end_game":
+                await manager.end_game(player_id)
             elif mtype == "play_again":
                 await manager.play_again(player_id)
             elif mtype == "leave_room":

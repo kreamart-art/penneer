@@ -66,6 +66,9 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
   const myId = game.state.playerId;
   const listRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const lastTypingRef = useRef(0);
+  const idleTimerRef = useRef<number | undefined>(undefined);
+  const [, setTick] = useState(0);
 
   // Stick to the bottom as messages arrive, and focus the input on open.
   useEffect(() => {
@@ -75,6 +78,33 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
     const id = window.setTimeout(() => inputRef.current?.focus(), 60);
     return () => window.clearTimeout(id);
   }, []);
+  // Tick every second so stale "typing" entries fade out; on close, make sure
+  // others learn we stopped typing.
+  useEffect(() => {
+    const iv = window.setInterval(() => setTick((n) => n + 1), 1000);
+    return () => {
+      window.clearInterval(iv);
+      window.clearTimeout(idleTimerRef.current);
+      if (lastTypingRef.current) game.sendChatTyping(false);
+    };
+  }, [game]);
+
+  function signalTyping() {
+    const now = Date.now();
+    if (now - lastTypingRef.current > 1500) {
+      game.sendChatTyping(true);
+      lastTypingRef.current = now;
+    }
+    window.clearTimeout(idleTimerRef.current);
+    idleTimerRef.current = window.setTimeout(stopTyping, 2500);
+  }
+  function stopTyping() {
+    window.clearTimeout(idleTimerRef.current);
+    if (lastTypingRef.current) {
+      game.sendChatTyping(false);
+      lastTypingRef.current = 0;
+    }
+  }
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -82,6 +112,7 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
     if (!text) return;
     game.sendChat(text);
     setDraft("");
+    stopTyping();
   }
 
   // Tap a sender's name to address them: inserts "@Naam " into the composer.
@@ -89,6 +120,11 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
     setDraft((d) => `${d}${d && !d.endsWith(" ") ? " " : ""}@${name} `);
     inputRef.current?.focus();
   }
+
+  const now = Date.now();
+  const typers = Object.entries(game.state.chatTyping)
+    .filter(([id, v]) => id !== myId && now - v.ts < 4000)
+    .map(([, v]) => v.name);
 
   return (
     <div
@@ -194,6 +230,14 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
           )}
         </div>
 
+        {/* typing indicator */}
+        {typers.length > 0 && (
+          <div style={{ padding: "0 16px 6px", fontFamily: font.ui, fontSize: 12.5, fontStyle: "italic", color: colors.faint }}>
+            {typers.length === 1 ? t("typingOne", { name: typers[0] }) : t("typingMany", { names: typers.join(", ") })}
+            <span style={{ letterSpacing: 1 }}>…</span>
+          </div>
+        )}
+
         {/* composer */}
         <form
           onSubmit={submit}
@@ -208,7 +252,12 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
           <input
             ref={inputRef}
             value={draft}
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={(e) => {
+              const v = e.target.value;
+              setDraft(v);
+              if (v.trim()) signalTyping();
+              else stopTyping();
+            }}
             placeholder={t("chatPlaceholder")}
             maxLength={280}
             enterKeyHint="send"

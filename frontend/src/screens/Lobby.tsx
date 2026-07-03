@@ -92,6 +92,7 @@ export function Lobby({ game }: { game: GameApi }) {
   const chipKeys = [...ALL_CATEGORY_KEYS, ...customCats];
 
   const canStart = isHost && players.length >= 1;
+  const isCustomRounds = !ROUNDS.includes(settings.rounds);
 
   return (
     <Screen top={<TopBar code={room.code} connected={game.state.status === "open"} game={game} />}>
@@ -198,13 +199,22 @@ export function Lobby({ game }: { game: GameApi }) {
           </div>
           <div>
             <SectionLabel>{t("roundsLabel")}</SectionLabel>
-            <div style={{ display: "flex", gap: 8 }}>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
               {ROUNDS.map((r) => (
                 <Chip key={r} active={settings.rounds === r} disabled={!isHost} onClick={() => game.updateSettings({ rounds: r })}>
                   {r}
                 </Chip>
               ))}
+              <Chip active={isCustomRounds} disabled={!isHost} onClick={() => { if (!isCustomRounds) game.updateSettings({ rounds: 10 }); }}>
+                {t("roundsCustom")}
+              </Chip>
+              {isCustomRounds && (
+                <Stepper value={settings.rounds} min={2} max={20} disabled={!isHost} onChange={(v) => game.updateSettings({ rounds: v })} />
+              )}
             </div>
+            {isCustomRounds && (
+              <p style={{ margin: "8px 0 0", fontFamily: font.ui, fontSize: 12.5, color: colors.faint }}>{t("roundsCustomHint")}</p>
+            )}
           </div>
           <div>
             <SectionLabel>{t("categoriesLabel")}</SectionLabel>
