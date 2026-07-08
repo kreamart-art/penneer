@@ -1,6 +1,7 @@
 // How-to-play screen with simple inline SVG illustrations for each phase.
 import { Button } from "../components/Button";
 import { Emblem } from "../components/Emblem";
+import { MusicToggle } from "../components/MusicToggle";
 import { Screen, Card } from "../components/Layout";
 import { useT } from "../i18n/i18n";
 import { colors, font, withAlpha } from "../theme/tokens";
@@ -56,6 +57,9 @@ export function Rules({ onBack }: { onBack: () => void }) {
   return (
     <Screen>
       <div style={{ display: "flex", flexDirection: "column", gap: 16, paddingTop: 8 }}>
+        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          <MusicToggle />
+        </div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
           <Emblem size={64} />
           <h2 style={{ margin: 0, fontFamily: font.display, fontWeight: 700, fontSize: 26, color: colors.ink }}>

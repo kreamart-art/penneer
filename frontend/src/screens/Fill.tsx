@@ -46,21 +46,21 @@ export function Fill({ game }: { game: GameApi }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  // tick.mp3 is the whole 10-second countdown, so fire it once when 10s remain.
-  const tickStarted = useRef(false);
+  // tick.mp3 is one clean beep; the Timer fires onTick exactly when the shown
+  // number changes, so one beep per second stays in sync with the countdown.
   const onTick = (secs: number) => {
-    if (secs <= 10 && secs > 0 && !tickStarted.current) {
-      tickStarted.current = true;
-      sound.tick();
-    }
+    if (secs <= 10 && secs > 0) sound.tick();
   };
 
-  // Non-active players get a floating ready button so it's hard to miss.
+  // Everyone playing gets a floating bottom button so it's always reachable:
+  // the spelleider a "Pen neer" stop (so a timed round can be stopped without
+  // scrolling past the inputs), others "Ik ben klaar".
   const showFloatingReady = !isSpectator && !game.isActive;
+  const showFloatingStop = !isSpectator && game.isActive;
 
   return (
     <Screen top={<TopBar code={room.code} roundNo={room.round_no} totalRounds={room.settings.rounds} connected={game.state.status === "open"} onLeave={game.leaveRoom} game={game} />}>
-      <div style={{ display: "flex", flexDirection: "column", gap: 16, paddingBottom: showFloatingReady ? 104 : 0 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 16, paddingBottom: showFloatingReady || showFloatingStop ? 104 : 0 }}>
         {/* Letter + timer (or no-timer note) */}
         <Card style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
@@ -142,24 +142,42 @@ export function Fill({ game }: { game: GameApi }) {
           </div>
         )}
 
-        {/* controls */}
+        {/* controls (the action itself is the floating button below) */}
         {isSpectator ? (
           <p style={{ textAlign: "center", fontFamily: font.ui, fontSize: 13.5, color: colors.sub, margin: "4px 0 0" }}>{t("spectatorNote")}</p>
         ) : game.isActive ? (
-          <>
-            {readyCount > 0 && (
-              <p style={{ textAlign: "center", fontFamily: font.ui, fontSize: 12.5, color: colors.faint, margin: 0 }}>{t("readyCount", { n: readyCount, total: playingCount })}</p>
-            )}
-            <Button variant="danger" full onClick={() => { sound.penNeer(); game.stopRound(); }} style={{ marginTop: 2 }}>
-              {t("penNeer")}
-            </Button>
-          </>
+          readyCount > 0 && (
+            <p style={{ textAlign: "center", fontFamily: font.ui, fontSize: 12.5, color: colors.faint, margin: 0 }}>{t("readyCount", { n: readyCount, total: playingCount })}</p>
+          )
         ) : (
           <p style={{ textAlign: "center", fontFamily: font.ui, fontSize: 13, color: colors.sub, margin: "2px 0 0", lineHeight: 1.5 }}>
             {iAmReady ? t("youReady") : t("xStopsTime", { name: active?.name ?? "?" })}
           </p>
         )}
       </div>
+
+      {/* Floating "Pen neer" (spelleider) — always reachable, also with a timer */}
+      {showFloatingStop && (
+        <div
+          style={{
+            position: "fixed",
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 20,
+            paddingBottom: "calc(14px + env(safe-area-inset-bottom))",
+            paddingTop: 26,
+            background: `linear-gradient(0deg, ${colors.bg0} 55%, transparent)`,
+            pointerEvents: "none",
+          }}
+        >
+          <div style={{ maxWidth: 460, margin: "0 auto", padding: "0 18px", pointerEvents: "auto" }}>
+            <Button variant="danger" full onClick={() => { sound.penNeer(); game.stopRound(); }}>
+              {t("penNeer")}
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Floating ready button (non-active players) so everyone notices it */}
       {showFloatingReady && (
