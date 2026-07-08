@@ -8,9 +8,16 @@ from __future__ import annotations
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from .rooms import RoomManager
+from .social import accounts
 
 router = APIRouter()
 manager = RoomManager()
+
+
+def _account_of(ws: WebSocket) -> dict | None:
+    """The account bound to this connection (via account_login), if any."""
+    uid = accounts.user_of(ws)
+    return accounts.db.get_user(uid) if uid else None
 
 
 @router.websocket("/ws")
@@ -22,13 +29,17 @@ async def ws_endpoint(ws: WebSocket) -> None:
             data = await ws.receive_json()
             mtype = data.get("type")
 
+            # --- accounts + social: connection-scoped, works outside rooms ---
+            if await accounts.handle(ws, mtype, data):
+                continue
+
             # --- pre-identity messages ---
             if mtype == "create_room":
-                _, player = await manager.create_room(ws, data.get("name", ""))
+                _, player = await manager.create_room(ws, data.get("name", ""), _account_of(ws))
                 player_id = player.id
                 continue
             if mtype == "join_room":
-                res = await manager.join_room(ws, data.get("code", ""), data.get("name", ""))
+                res = await manager.join_room(ws, data.get("code", ""), data.get("name", ""), _account_of(ws))
                 if res:
                     player_id = res[1].id
                 continue
@@ -85,6 +96,13 @@ async def ws_endpoint(ws: WebSocket) -> None:
                 await manager.end_game(player_id)
             elif mtype == "play_again":
                 await manager.play_again(player_id)
+            elif mtype == "rematch":
+                await manager.rematch(player_id)
+            elif mtype == "invite_send":
+                room = manager.room_of_player(player_id)
+                if room:
+                    kind = "challenge" if data.get("kind") == "challenge" else "invite"
+                    await accounts.invite_send(ws, room.code, data.get("user_id") or "", kind)
             elif mtype == "leave_room":
                 await manager.leave_room(player_id)
                 player_id = None
@@ -93,9 +111,11 @@ async def ws_endpoint(ws: WebSocket) -> None:
 
     except WebSocketDisconnect:
         manager.drop_connection(ws)
+        await accounts.dropped(ws)
         if player_id is not None:
             await manager.disconnect(player_id)
     except Exception:
         manager.drop_connection(ws)
+        await accounts.dropped(ws)
         if player_id is not None:
             await manager.disconnect(player_id)

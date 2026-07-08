@@ -49,6 +49,11 @@ class Player:
     disconnected_at: Optional[float] = None  # wall-clock when they dropped
     is_spectator: bool = False
     is_bot: bool = False
+    # Account link (None for guests). Snapshot of the avatar at join time; the
+    # client renders /api/avatar/{user_id}?v={avatar_ver} when has_avatar.
+    user_id: Optional[str] = None
+    has_avatar: bool = False
+    avatar_ver: int = 0
 
     def public(self) -> dict:
         return {
@@ -59,6 +64,9 @@ class Player:
             "connected": self.connected,
             "is_spectator": self.is_spectator,
             "is_bot": self.is_bot,
+            "user_id": self.user_id,
+            "has_avatar": self.has_avatar,
+            "avatar_ver": self.avatar_ver,
         }
 
 
@@ -70,6 +78,7 @@ class Settings:
     hard_letters: bool = False                 # include Q/X/Y
     max_players: int = 8                        # lobby cap (excludes spectators)
     allow_spectators: bool = True              # admit late joiners as spectators
+    lenient_spelling: bool = False             # soepele spelling (dyslexie): near-miss spellings count
 
     def public(self) -> dict:
         return {
@@ -79,6 +88,7 @@ class Settings:
             "hard_letters": self.hard_letters,
             "max_players": self.max_players,
             "allow_spectators": self.allow_spectators,
+            "lenient_spelling": self.lenient_spelling,
         }
 
 
@@ -87,6 +97,10 @@ class Answer:
     text: str
     valid: bool          # counts for scoring; server-computed, mutable via challenge
     in_list: bool = True  # found in the category word list (False -> orange "?" on results)
+    # Duplicate-detection key. In lenient (soepele spelling) rooms a near-miss
+    # spelling gets the list word it matches ('miloen' -> 'meloen'), so both
+    # score as dubbel. Server-side only, not sent over the wire.
+    canon: str = ""
 
     def public(self) -> dict:
         return {"text": self.text, "valid": self.valid, "in_list": self.in_list}

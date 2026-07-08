@@ -10,10 +10,15 @@ interface Props {
   size?: number;
   crown?: boolean;
   dim?: boolean; // disconnected
+  // Account photo: rendered when set (served by /api/avatar, ?v busts cache).
+  userId?: string | null;
+  hasAvatar?: boolean;
+  avatarVer?: number;
 }
 
-export function Avatar({ name, color, size = 40, crown, dim }: Props) {
+export function Avatar({ name, color, size = 40, crown, dim, userId, hasAvatar, avatarVer }: Props) {
   const initial = (name.trim()[0] || "?").toUpperCase();
+  const photo = !!(userId && hasAvatar);
   return (
     <div style={{ position: "relative", width: size, height: size, flexShrink: 0 }}>
       <div
@@ -23,6 +28,7 @@ export function Avatar({ name, color, size = 40, crown, dim }: Props) {
           borderRadius: size * 0.32,
           display: "grid",
           placeItems: "center",
+          overflow: "hidden",
           background: withAlpha(color, 0.16),
           border: `2px solid ${color}`,
           boxShadow: dim ? "none" : `0 0 16px ${withAlpha(color, 0.4)}`,
@@ -34,7 +40,17 @@ export function Avatar({ name, color, size = 40, crown, dim }: Props) {
           transition: "opacity .2s ease",
         }}
       >
-        {initial}
+        {photo ? (
+          <img
+            src={`/api/avatar/${userId}?v=${avatarVer ?? 0}`}
+            alt={name}
+            width={size}
+            height={size}
+            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+          />
+        ) : (
+          initial
+        )}
       </div>
       {crown && (
         <div

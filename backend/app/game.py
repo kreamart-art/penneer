@@ -121,12 +121,92 @@ def in_wordlist(text: str, category: str) -> bool:
     return any(v in words for v in _plural_variants(key))
 
 
+def _edit_distance_capped(a: str, b: str, maxd: int) -> int:
+    """Levenshtein distance, capped: returns maxd + 1 as soon as it exceeds."""
+    if abs(len(a) - len(b)) > maxd:
+        return maxd + 1
+    if maxd <= 0:
+        return 0 if a == b else 1
+    prev = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        cur = [i]
+        row_min = i
+        for j, cb in enumerate(b, 1):
+            cost = 0 if ca == cb else 1
+            v = min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + cost)
+            cur.append(v)
+            if v < row_min:
+                row_min = v
+        if row_min > maxd:
+            return maxd + 1
+        prev = cur
+    return prev[-1]
+
+
+def _fuzzy_budget(key: str) -> int:
+    """How many letters a spelling may be off, by word length.
+
+    Short words stay exact (too easy to morph one word into another); medium
+    words get 1, long words 2. The FIRST letter is never fuzzed: it is the game.
+    """
+    n = len(key)
+    if n < 4:
+        return 0
+    if n <= 6:
+        return 1
+    return 2
+
+
+def list_canonical(text: str, category: str, lenient: bool = False) -> str | None:
+    """The normalized list word this answer matches, or None.
+
+    Exact (incl. light plural stems) always matches. With lenient on, a spelling
+    that is a near-miss of a list word (bounded edit distance, same first
+    letter) matches too: 'miloen' -> 'meloen'. Deterministic: closest match
+    wins, ties broken alphabetically.
+    """
+    words = WORD_SETS.get(category)
+    if words is None:
+        return None
+    key = normalize(text)
+    if not key:
+        return None
+    # Deterministic order: the word as typed first, then stemmed variants
+    # sorted, so every player's identical answer canonicalizes identically.
+    variants = [key] + sorted(_plural_variants(key) - {key})
+    for v in variants:
+        if v in words:
+            return v
+    if not lenient:
+        return None
+    best: tuple[int, str] | None = None
+    for v in variants:
+        budget = _fuzzy_budget(v)
+        if budget == 0:
+            continue
+        first = v[0]
+        for w in words:
+            if not w or w[0] != first:
+                continue
+            d = _edit_distance_capped(v, w, budget)
+            if d <= budget and (best is None or (d, w) < best):
+                best = (d, w)
+    return best[1] if best else None
+
+
 def classify(text: str, letter: str, category: str) -> tuple[bool, bool]:
     """Return (valid, in_list).
 
     valid drives scoring (counts or not); in_list drives the results display:
     in a checked category, a valid answer NOT in the list shows an orange "?".
     Wrong letter, empty, or shorter than MIN_ANSWER_LEN never counts.
+
+    NB: fuzzy near-misses deliberately do NOT green-check here, even in lenient
+    rooms. Edit distance cannot tell 'Miloen' (means meloen) from 'bier' (a
+    real word that just is not an animal); an audit measured ~10% of common
+    Dutch words wrongly matching a Dier list word. So a near-miss stays "?"
+    and the AI referee (judging phonetically in lenient rooms) decides; the
+    fuzzy match only powers Answer.canon so spelling variants score as dubbel.
     """
     t = (text or "").strip()
     key = normalize(t)
@@ -154,7 +234,9 @@ def score_round(rnd: Round, player_ids: list[str], categories: list[str]) -> dic
             if ans is None or not ans.valid:
                 points[pid][cat] = 0
                 continue
-            key = normalize(ans.text)
+            # canon is set by build_answers; in lenient rooms 'miloen' and
+            # 'meloen' share a canon so they count as dubbel, not two uniques.
+            key = ans.canon or normalize(ans.text)
             if not key:
                 points[pid][cat] = 0
                 continue
@@ -198,12 +280,18 @@ def bot_answer(letter: str, cat: str, rng: random.Random) -> str:
 
 
 def build_answers(
-    raw: dict[str, dict[str, str]], letter: str, player_ids: list[str], categories: list[str]
+    raw: dict[str, dict[str, str]],
+    letter: str,
+    player_ids: list[str],
+    categories: list[str],
+    lenient: bool = False,
 ) -> dict[str, dict[str, Answer]]:
     """Turn raw {player_id: {cat: text}} into validated Answer objects.
 
     Missing entries become empty, invalid Answers so the results screen shows a
-    blank crossed-out slot rather than nothing.
+    blank crossed-out slot rather than nothing. In lenient (soepele spelling)
+    rooms each answer also gets a canonical key so near-miss spellings of the
+    same word score as dubbel.
     """
     out: dict[str, dict[str, Answer]] = {}
     for pid in player_ids:
@@ -212,5 +300,6 @@ def build_answers(
         for cat in categories:
             text = (player_raw.get(cat) or "").strip()
             valid, in_list = classify(text, letter, cat)
-            out[pid][cat] = Answer(text=text, valid=valid, in_list=in_list)
+            canon = (list_canonical(text, cat, lenient=True) if lenient and valid else None) or normalize(text)
+            out[pid][cat] = Answer(text=text, valid=valid, in_list=in_list, canon=canon)
     return out

@@ -1,8 +1,8 @@
 // Lobby — room code, live players (+ bots/spectators), host settings (time incl.
 // no-timer, rounds, categories + deelcode, hard letters, max players, spectators),
 // testbots, and per-device language + sound toggles.
-import { useState } from "react";
-import { Check, Copy, Minus, Plus, Volume2, VolumeX, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Check, Copy, Minus, Plus, Send, UserPlus, Volume2, VolumeX, X } from "lucide-react";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { Chip } from "../components/Chip";
@@ -32,6 +32,56 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
       <span style={{ fontFamily: font.ui, fontSize: 14, color: colors.ink }}>{label}</span>
       {children}
     </div>
+  );
+}
+
+// Invite online friends into this room (accounts only; guests see nothing).
+function InviteFriends({ game }: { game: GameApi }) {
+  const { t } = useT();
+  const account = game.state.account;
+  const room = game.state.room!;
+  const [sent, setSent] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (account) game.refreshFriends();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [!!account]);
+
+  if (!account) return null;
+  const inRoom = new Set(room.players.map((p) => p.user_id).filter(Boolean));
+  const candidates = game.state.friends.filter((f) => f.status === "accepted" && !inRoom.has(f.id));
+  if (candidates.length === 0) return null;
+
+  return (
+    <Card>
+      <div style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+        <UserPlus size={13} /> {t("inviteFriends")}
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {candidates.map((f) => (
+          <div key={f.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ position: "relative" }}>
+              <Avatar name={f.name} color={f.color} size={32} userId={f.id} hasAvatar={f.has_avatar} avatarVer={f.avatar_ver} />
+              <span style={{ position: "absolute", bottom: -2, right: -2, width: 9, height: 9, borderRadius: "50%", background: f.online ? colors.green : colors.faint, border: `2px solid ${colors.bg1}` }} />
+            </div>
+            <span style={{ flex: 1, fontFamily: font.ui, fontWeight: 600, fontSize: 14, color: colors.ink, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
+            {sent[f.id] ? (
+              <span style={{ fontFamily: font.ui, fontSize: 12, color: colors.green }}>{t("inviteSentShort")}</span>
+            ) : (
+              <button
+                onClick={() => {
+                  game.inviteSend(f.id, "invite");
+                  setSent((s) => ({ ...s, [f.id]: true }));
+                }}
+                style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "7px 11px", borderRadius: 9, border: "none", background: colors.gold, color: colors.bg0, fontFamily: font.ui, fontWeight: 700, fontSize: 12, cursor: "pointer" }}
+              >
+                <Send size={12} /> {t("inviteToRoom")}
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+    </Card>
   );
 }
 
@@ -156,7 +206,7 @@ export function Lobby({ game }: { game: GameApi }) {
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {[...players, ...spectators].map((p) => (
               <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <Avatar name={p.name} color={p.color} size={38} crown={p.is_host} dim={!p.connected || p.is_spectator} />
+                <Avatar name={p.name} color={p.color} size={38} crown={p.is_host} dim={!p.connected || p.is_spectator} userId={p.user_id} hasAvatar={p.has_avatar} avatarVer={p.avatar_ver} />
                 <span style={{ fontFamily: font.ui, fontWeight: 600, fontSize: 15, color: colors.ink }}>
                   {p.name}
                   {p.id === game.me?.id && <span style={{ color: colors.faint, fontWeight: 500 }}> · {t("you")}</span>}
@@ -184,6 +234,8 @@ export function Lobby({ game }: { game: GameApi }) {
             </div>
           )}
         </Card>
+
+        <InviteFriends game={game} />
 
         {/* Settings */}
         <Card style={{ display: "flex", flexDirection: "column", gap: 18 }}>
@@ -259,6 +311,14 @@ export function Lobby({ game }: { game: GameApi }) {
             <Row label={t("allowSpectators")}>
               <Toggle on={settings.allow_spectators} disabled={!isHost} onChange={(v) => game.updateSettings({ allow_spectators: v })} />
             </Row>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <Row label={t("lenientSpelling")}>
+                <Toggle on={settings.lenient_spelling} disabled={!isHost} onChange={(v) => game.updateSettings({ lenient_spelling: v })} />
+              </Row>
+              <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12, color: colors.faint, lineHeight: 1.4 }}>
+                {t("lenientSpellingHint")}
+              </p>
+            </div>
             <Row label={t("maxPlayers")}>
               <Stepper
                 value={settings.max_players}

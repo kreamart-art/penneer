@@ -58,7 +58,7 @@ export function Final({ game }: { game: GameApi }) {
           <div style={{ display: "flex", gap: 14, flexWrap: "wrap", justifyContent: "center" }}>
             {winners.map((w) => (
               <div key={w.id} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
-                <Avatar name={w.name} color={w.color} size={66} crown />
+                <Avatar name={w.name} color={w.color} size={66} crown userId={w.user_id} hasAvatar={w.has_avatar} avatarVer={w.avatar_ver} />
                 <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 22, color: colors.ink }}>{w.name}</span>
               </div>
             ))}
@@ -79,9 +79,14 @@ export function Final({ game }: { game: GameApi }) {
         </Button>
 
         {game.isHost ? (
-          <Button variant="gold" full onClick={game.playAgain}>
-            {t("playAgain")}
-          </Button>
+          <>
+            <Button variant="gold" full onClick={game.rematch}>
+              {t("rematchBtn")}
+            </Button>
+            <Button variant="ghost" full onClick={game.playAgain}>
+              {t("playAgain")}
+            </Button>
+          </>
         ) : (
           <p style={{ textAlign: "center", fontFamily: font.ui, fontSize: 14, color: colors.sub, margin: 0 }}>{t("hostRestart")}</p>
         )}

@@ -1,7 +1,8 @@
 // Landing — emblem, wordmark, tagline, name input, create / join, rules link.
 import { useState } from "react";
-import { HelpCircle, Settings as SettingsIcon } from "lucide-react";
+import { HelpCircle, Settings as SettingsIcon, UserRound } from "lucide-react";
 import { Logo } from "../components/Logo";
+import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { Screen, Card } from "../components/Layout";
 import type { GameApi } from "../net/socket";
@@ -25,31 +26,61 @@ export function Landing({
   game,
   onShowRules,
   onShowSettings,
+  onShowHub,
 }: {
   game: GameApi;
   onShowRules: () => void;
   onShowSettings: () => void;
+  onShowHub: () => void;
 }) {
   const { t } = useT();
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [mode, setMode] = useState<"none" | "join">("none");
+  const account = game.state.account;
+  const inboxCount = game.state.inbox.length || account?.inbox_count || 0;
 
-  const canCreate = name.trim().length > 0;
-  const canJoin = name.trim().length > 0 && code.trim().length === 4;
+  // With a profile the server uses the account name; guests type one.
+  const effectiveName = account ? account.name : name.trim();
+  const canCreate = effectiveName.length > 0;
+  const canJoin = effectiveName.length > 0 && code.trim().length === 4;
 
   const create = () => {
     sound.unlock();
-    game.createRoom(name.trim());
+    game.createRoom(effectiveName);
   };
   const join = () => {
     sound.unlock();
-    game.joinRoom(code.trim().toUpperCase(), name.trim());
+    game.joinRoom(code.trim().toUpperCase(), effectiveName);
   };
 
   return (
     <Screen>
-      <div style={{ display: "flex", justifyContent: "flex-end", paddingTop: 4 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 4 }}>
+        <button
+          onClick={onShowHub}
+          aria-label={t("profile")}
+          style={{ position: "relative", display: "flex", alignItems: "center", gap: 8, background: withAlpha("#000000", 0.22), border: `1px solid ${colors.panelBorder}`, borderRadius: 999, cursor: "pointer", padding: "5px 12px 5px 5px" }}
+        >
+          {account ? (
+            <>
+              <Avatar name={account.name} color={account.color} size={26} userId={account.id} hasAvatar={account.has_avatar} avatarVer={account.avatar_ver} />
+              <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: colors.ink, maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{account.name}</span>
+            </>
+          ) : (
+            <>
+              <span style={{ width: 26, height: 26, borderRadius: 8, display: "grid", placeItems: "center", background: withAlpha(colors.gold, 0.14), border: `1px solid ${withAlpha(colors.gold, 0.4)}`, color: colors.gold }}>
+                <UserRound size={15} />
+              </span>
+              <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: colors.sub }}>{t("profile")}</span>
+            </>
+          )}
+          {inboxCount > 0 && (
+            <span style={{ position: "absolute", top: -5, right: -5, minWidth: 17, height: 17, padding: "0 5px", borderRadius: 999, background: colors.gold, color: colors.bg0, fontFamily: font.ui, fontSize: 10.5, fontWeight: 800, lineHeight: "17px", textAlign: "center", boxShadow: `0 0 8px ${withAlpha(colors.gold, 0.6)}` }}>
+              {inboxCount > 9 ? "9+" : inboxCount}
+            </span>
+          )}
+        </button>
         <button
           onClick={onShowSettings}
           aria-label={t("settings")}
@@ -92,7 +123,13 @@ export function Landing({
         </div>
 
         <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <input style={inputStyle} placeholder={t("yourName")} value={name} maxLength={16} onChange={(e) => setName(e.target.value)} />
+          {account ? (
+            <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13.5, color: colors.sub, textAlign: "center" }}>
+              {t("playingAs")} <span style={{ color: colors.gold, fontWeight: 700 }}>{account.name}</span>
+            </p>
+          ) : (
+            <input style={inputStyle} placeholder={t("yourName")} value={name} maxLength={16} onChange={(e) => setName(e.target.value)} />
+          )}
 
           {mode === "none" ? (
             <>

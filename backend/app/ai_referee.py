@@ -57,13 +57,27 @@ def status() -> dict:
     }
 
 
-def _build_prompt(letter: str, items: list[tuple[str, str]]) -> str:
+def _build_prompt(letter: str, items: list[tuple[str, str]], lenient: bool = False) -> str:
     lines = [
         "Je bent scheidsrechter in het woordspel Pen Neer.",
         f"De gevraagde beginletter is '{letter}'.",
         "Beoordeel per item of het antwoord een ECHT bestaand woord in de gevraagde",
         "categorie is (Nederlands of Engels) dat met die letter begint.",
-        "Wees soepel met spelling en meervoud, streng op de categorie.",
+    ]
+    if lenient:
+        lines += [
+            "LET OP: er doen spelers met dyslexie mee. Beoordeel fonetisch en op",
+            "bedoeling: klinkt het antwoord als een bestaand woord in de categorie,",
+            "of is duidelijk welk woord bedoeld is (zoals 'Miloen' voor 'Meloen'),",
+            "keur het dan GOED. Spelfouten zijn nooit een reden om af te keuren;",
+            "alleen de categorie en de beginletter tellen.",
+            "Maar: is het antwoord zelf al een gewoon bestaand woord dat NIET in de",
+            "categorie past (zoals 'bier' bij Dier of 'kerk' bij Vrucht), dan is het",
+            "geen spelfout maar gewoon fout: keur het af.",
+        ]
+    else:
+        lines.append("Wees soepel met spelling en meervoud, streng op de categorie.")
+    lines += [
         'Antwoord ALLEEN met JSON in dit formaat: {"results":[{"i":0,"ok":true}]}',
         "",
         "Items:",
@@ -148,11 +162,11 @@ async def _call_nous(client, prompt: str) -> str:
     return resp.text
 
 
-async def judge(letter: str, items: list[tuple[str, str]]) -> list[bool | None]:
+async def judge(letter: str, items: list[tuple[str, str]], lenient: bool = False) -> list[bool | None]:
     """Return a verdict per item: True (valid), False (invalid), None (undecided).
 
     Never raises — on any failure every verdict is None so callers leave the
-    answers as "?".
+    answers as "?". With lenient on the prompt judges phonetically (dyslexia).
     """
     if not items or not available():
         return [None] * len(items)
@@ -160,7 +174,7 @@ async def judge(letter: str, items: list[tuple[str, str]]) -> list[bool | None]:
         import httpx
     except Exception:
         return [None] * len(items)
-    prompt = _build_prompt(letter, items)
+    prompt = _build_prompt(letter, items, lenient=lenient)
     try:
         async with httpx.AsyncClient(timeout=TIMEOUT_S) as client:
             raw = await (_call_nous(client, prompt) if provider() == "nous" else _call_anthropic(client, prompt))

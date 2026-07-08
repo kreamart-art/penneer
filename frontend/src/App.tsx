@@ -9,6 +9,8 @@ import { LanguagePage } from "./screens/LanguagePage";
 import { Rules } from "./screens/Rules";
 import { Settings } from "./screens/Settings";
 import { Landing } from "./screens/Landing";
+import { Hub } from "./screens/Hub";
+import { BadgeToasts } from "./components/BadgeToasts";
 import { Lobby } from "./screens/Lobby";
 import { Reveal } from "./screens/Reveal";
 import { Fill } from "./screens/Fill";
@@ -24,6 +26,28 @@ export default function App() {
   const [introDone, setIntroDone] = useState(() => sessionStorage.getItem(INTRO_KEY) === "1");
   const [showRules, setShowRules] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showHub, setShowHub] = useState(false);
+  // A challenge creates a room first; once its lobby is up we send the invite.
+  const pendingChallenge = useRef<string | null>(null);
+
+  // An accepted invite from the inbox: join that room with the account name.
+  const joinCode = game.state.joinRoomCode;
+  useEffect(() => {
+    if (!joinCode) return;
+    game.clearJoin();
+    setShowHub(false);
+    game.joinRoom(joinCode, game.state.account?.name ?? "Speler");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [joinCode]);
+
+  // Challenge sequencing: room lobby is live -> send the challenge invite.
+  useEffect(() => {
+    if (room?.phase === "lobby" && game.me && pendingChallenge.current) {
+      game.inviteSend(pendingChallenge.current, "challenge");
+      pendingChallenge.current = null;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [room?.phase, game.me?.id]);
 
   // Notify (sound + vibration) on a new chat message from someone else while
   // the panel is closed. Lives here (mounted for the whole session) so it fires
@@ -52,20 +76,26 @@ export default function App() {
 
   // In a room: phase-driven screens (skip the whole pre-room flow).
   if (room && game.me) {
-    switch (room.phase) {
-      case "lobby":
-        return <Lobby game={game} />;
-      case "reveal":
-        return <Reveal game={game} />;
-      case "fill":
-        return <Fill game={game} />;
-      case "results":
-        return <Results game={game} />;
-      case "final":
-        return <Final game={game} />;
-      default:
-        return <Lobby game={game} />;
-    }
+    const screen = (() => {
+      switch (room.phase) {
+        case "reveal":
+          return <Reveal game={game} />;
+        case "fill":
+          return <Fill game={game} />;
+        case "results":
+          return <Results game={game} />;
+        case "final":
+          return <Final game={game} />;
+        default:
+          return <Lobby game={game} />;
+      }
+    })();
+    return (
+      <>
+        {screen}
+        <BadgeToasts game={game} />
+      </>
+    );
   }
 
   // Pre-room flow.
@@ -81,6 +111,17 @@ export default function App() {
   }
   if (!lang) return <LanguagePage />;
   if (showRules) return <Rules onBack={() => setShowRules(false)} />;
+  if (showHub)
+    return (
+      <Hub
+        game={game}
+        onBack={() => setShowHub(false)}
+        onChallenge={(userId) => {
+          pendingChallenge.current = userId;
+          game.createRoom(game.state.account?.name ?? "Speler");
+        }}
+      />
+    );
   if (showSettings)
     return (
       <Settings
@@ -92,5 +133,5 @@ export default function App() {
         }}
       />
     );
-  return <Landing game={game} onShowRules={() => setShowRules(true)} onShowSettings={() => setShowSettings(true)} />;
+  return <Landing game={game} onShowRules={() => setShowRules(true)} onShowSettings={() => setShowSettings(true)} onShowHub={() => setShowHub(true)} />;
 }

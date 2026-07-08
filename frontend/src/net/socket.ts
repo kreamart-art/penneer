@@ -14,6 +14,75 @@ export interface Player {
   connected: boolean;
   is_spectator: boolean;
   is_bot: boolean;
+  user_id: string | null;
+  has_avatar: boolean;
+  avatar_ver: number;
+}
+
+// ---- accounts + social ------------------------------------------------------
+
+export interface AccountStats {
+  games: number;
+  wins: number;
+  points: number;
+  best: number;
+  uniques: number;
+  dubbels: number;
+  streak: number;
+}
+
+export interface Badge {
+  badge: string;
+  earned_at: number;
+}
+
+export interface Account {
+  id: string;
+  name: string;
+  color: string;
+  has_avatar: boolean;
+  avatar_ver: number;
+  email: string | null;
+  stats: AccountStats;
+  badges: Badge[];
+  inbox_count: number;
+}
+
+export interface PublicUser {
+  id: string;
+  name: string;
+  color: string;
+  has_avatar: boolean;
+  avatar_ver: number;
+  online: boolean;
+}
+
+export interface Friend extends PublicUser {
+  status: "pending" | "accepted";
+  requested_by: string;
+}
+
+export interface InboxItem {
+  type: "invite" | "challenge" | "friend_request";
+  id?: string; // invite id
+  room_code?: string;
+  from_id: string;
+  from_name: string;
+  from_color: string;
+  has_avatar: boolean;
+  avatar_ver: number;
+  created_at: number;
+}
+
+export interface LeaderboardRow extends PublicUser {
+  points: number;
+  games: number;
+  wins: number;
+}
+
+export interface PublicProfile extends PublicUser {
+  stats: AccountStats;
+  badges: Badge[];
 }
 
 export interface Settings {
@@ -23,6 +92,7 @@ export interface Settings {
   hard_letters: boolean;
   max_players: number;
   allow_spectators: boolean;
+  lenient_spelling: boolean; // soepele spelling (dyslexie): near-miss spellings count
 }
 
 export interface AnswerView {
@@ -93,6 +163,18 @@ export interface ClientState {
   chat: ChatMessage[];
   chatSeen: number; // messages considered read (drives the unread badge)
   chatOpen: boolean; // panel open — kept here so it survives screen changes
+  // Account + social state (all null/empty for guests).
+  account: Account | null;
+  friends: Friend[];
+  inbox: InboxItem[];
+  searchResults: PublicUser[];
+  leaderboard: { period: "all" | "week"; rows: LeaderboardRow[] } | null;
+  viewedProfile: PublicProfile | null;
+  loginLinkSent: boolean;
+  // Set when the server accepted an invite: the app auto-joins this room.
+  joinRoomCode: string | null;
+  // Newly earned badges to toast (drained by the UI).
+  badgeToasts: { player_id: string | null; name: string; badge: string }[];
   chatTyping: Record<string, { name: string; ts: number }>; // who is typing now
 }
 
@@ -102,6 +184,10 @@ type Action =
   | { type: "clearError" }
   | { type: "adminLogout" }
   | { type: "chatOpen"; open: boolean }
+  | { type: "accountLogout" }
+  | { type: "clearJoin" }
+  | { type: "drainToasts" }
+  | { type: "clearLoginSent" }
   | { type: "msg"; msg: ServerMessage };
 
 // ---- server -> client messages ---------------------------------------------
@@ -124,6 +210,17 @@ type ServerMessage =
   | { type: "admin_ok"; is_admin: boolean; ai: AdminAi; recovery_codes: RecoveryCode[] }
   | { type: "chat"; message: ChatMessage }
   | { type: "chat_history"; messages: ChatMessage[] }
+  | { type: "account"; account: Account | null; token?: string; deleted?: boolean }
+  | { type: "friends"; friends: Friend[] }
+  | { type: "inbox"; items: InboxItem[] }
+  | { type: "user_search"; users: PublicUser[] }
+  | { type: "profile"; profile: PublicProfile }
+  | { type: "leaderboard"; period: "all" | "week"; rows: LeaderboardRow[] }
+  | { type: "presence"; user_id: string; online: boolean }
+  | { type: "login_link_sent" }
+  | { type: "invite_sent"; to_user: string }
+  | { type: "invite_accepted"; room_code: string }
+  | { type: "badge_earned"; player_id: string | null; name: string; badge: string }
   | { type: "chat_typing"; player_id: string; name: string; typing: boolean }
   | { type: "error"; message: string };
 
@@ -163,6 +260,23 @@ function loadAdminSecret(): string | null {
   }
 }
 
+const ACCOUNT_KEY = "penneer.accountToken";
+function loadAccountToken(): string | null {
+  try {
+    return localStorage.getItem(ACCOUNT_KEY);
+  } catch {
+    return null;
+  }
+}
+export function saveAccountToken(token: string | null) {
+  try {
+    if (token) localStorage.setItem(ACCOUNT_KEY, token);
+    else localStorage.removeItem(ACCOUNT_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
 const initialState: ClientState = {
   room: null,
   playerId: null,
@@ -177,6 +291,15 @@ const initialState: ClientState = {
   chatSeen: 0,
   chatOpen: false,
   chatTyping: {},
+  account: null,
+  friends: [],
+  inbox: [],
+  searchResults: [],
+  leaderboard: null,
+  viewedProfile: null,
+  loginLinkSent: false,
+  joinRoomCode: null,
+  badgeToasts: [],
 };
 
 function reducer(state: ClientState, action: Action): ClientState {
@@ -184,7 +307,17 @@ function reducer(state: ClientState, action: Action): ClientState {
     return { ...state, status: action.status };
   }
   if (action.type === "reset") {
-    return { ...initialState, status: state.status };
+    // Leaving a room must not log the account out: carry the social state.
+    return {
+      ...initialState,
+      status: state.status,
+      account: state.account,
+      friends: state.friends,
+      inbox: state.inbox,
+      isAdmin: state.isAdmin,
+      adminAi: state.adminAi,
+      recoveryCodes: state.recoveryCodes,
+    };
   }
   if (action.type === "clearError") {
     return { ...state, error: null };
@@ -195,6 +328,18 @@ function reducer(state: ClientState, action: Action): ClientState {
   if (action.type === "chatOpen") {
     // Opening marks everything read.
     return { ...state, chatOpen: action.open, chatSeen: action.open ? state.chat.length : state.chatSeen };
+  }
+  if (action.type === "accountLogout") {
+    return { ...state, account: null, friends: [], inbox: [], searchResults: [], viewedProfile: null };
+  }
+  if (action.type === "clearJoin") {
+    return { ...state, joinRoomCode: null };
+  }
+  if (action.type === "drainToasts") {
+    return { ...state, badgeToasts: state.badgeToasts.slice(1) };
+  }
+  if (action.type === "clearLoginSent") {
+    return { ...state, loginLinkSent: false };
   }
   const msg = action.msg;
   switch (msg.type) {
@@ -235,6 +380,36 @@ function reducer(state: ClientState, action: Action): ClientState {
       return state; // room_state carries the authoritative snapshot
     case "admin_ok":
       return { ...state, isAdmin: msg.is_admin, adminAi: msg.ai, recoveryCodes: msg.recovery_codes };
+    case "account": {
+      if (msg.token) saveAccountToken(msg.token);
+      if (msg.deleted) saveAccountToken(null);
+      return { ...state, account: msg.account };
+    }
+    case "friends":
+      return { ...state, friends: msg.friends };
+    case "inbox": {
+      const account = state.account ? { ...state.account, inbox_count: msg.items.length } : null;
+      return { ...state, inbox: msg.items, account };
+    }
+    case "user_search":
+      return { ...state, searchResults: msg.users };
+    case "profile":
+      return { ...state, viewedProfile: msg.profile };
+    case "leaderboard":
+      return { ...state, leaderboard: { period: msg.period, rows: msg.rows } };
+    case "presence":
+      return {
+        ...state,
+        friends: state.friends.map((f) => (f.id === msg.user_id ? { ...f, online: msg.online } : f)),
+      };
+    case "login_link_sent":
+      return { ...state, loginLinkSent: true };
+    case "invite_sent":
+      return state;
+    case "invite_accepted":
+      return { ...state, joinRoomCode: msg.room_code };
+    case "badge_earned":
+      return { ...state, badgeToasts: [...state.badgeToasts, { player_id: msg.player_id, name: msg.name, badge: msg.badge }] };
     case "chat_history":
       return { ...state, chat: msg.messages };
     case "chat": {
@@ -299,6 +474,28 @@ export interface GameApi {
   openChat: () => void;
   closeChat: () => void;
   leaveRoom: () => void;
+  // accounts + social
+  createAccount: (name: string) => void;
+  updateAccount: (patch: { name?: string; color?: string }) => void;
+  deleteAccount: () => void;
+  logoutAccount: () => void;
+  linkEmail: (email: string) => void;
+  requestLogin: (email: string) => void;
+  clearLoginSent: () => void;
+  searchUsers: (query: string) => void;
+  viewProfile: (user_id: string) => void;
+  refreshFriends: () => void;
+  friendRequest: (user_id: string) => void;
+  friendRespond: (user_id: string, accept: boolean) => void;
+  friendRemove: (user_id: string) => void;
+  friendBlock: (user_id: string, unblock?: boolean) => void;
+  refreshInbox: () => void;
+  inviteSend: (user_id: string, kind: "invite" | "challenge") => void;
+  inviteRespond: (invite_id: string, accept: boolean) => void;
+  loadLeaderboard: (period: "all" | "week") => void;
+  rematch: () => void;
+  clearJoin: () => void;
+  drainToasts: () => void;
 }
 
 export function useGame(): GameApi {
@@ -343,6 +540,21 @@ export function useGame(): GameApi {
         const adminSecret = loadAdminSecret();
         if (adminSecret) {
           ws.send(JSON.stringify({ type: "admin_login", secret: adminSecret }));
+        }
+        // Account: redeem a magic-link code from the URL once, else log in
+        // with the stored device token.
+        const params = new URLSearchParams(location.search);
+        const loginCode = params.get("login");
+        if (loginCode) {
+          ws.send(JSON.stringify({ type: "account_redeem", code: loginCode }));
+          params.delete("login");
+          const qs = params.toString();
+          history.replaceState(null, "", location.pathname + (qs ? `?${qs}` : ""));
+        } else {
+          const accountToken = loadAccountToken();
+          if (accountToken) {
+            ws.send(JSON.stringify({ type: "account_login", token: accountToken }));
+          }
         }
       };
 
@@ -452,6 +664,31 @@ export function useGame(): GameApi {
       clearSession();
       dispatch({ type: "reset" });
     },
+    // accounts + social
+    createAccount: (name) => send({ type: "account_create", name }),
+    updateAccount: (patch) => send({ type: "account_update", ...patch }),
+    deleteAccount: () => send({ type: "account_delete" }),
+    logoutAccount: () => {
+      saveAccountToken(null);
+      dispatch({ type: "accountLogout" });
+    },
+    linkEmail: (email) => send({ type: "account_link_email", email }),
+    requestLogin: (email) => send({ type: "account_request_login", email }),
+    clearLoginSent: () => dispatch({ type: "clearLoginSent" }),
+    searchUsers: (query) => send({ type: "user_search", query }),
+    viewProfile: (user_id) => send({ type: "profile_view", user_id }),
+    refreshFriends: () => send({ type: "friends_list" }),
+    friendRequest: (user_id) => send({ type: "friend_request", user_id }),
+    friendRespond: (user_id, accept) => send({ type: "friend_respond", user_id, accept }),
+    friendRemove: (user_id) => send({ type: "friend_remove", user_id }),
+    friendBlock: (user_id, unblock) => send({ type: "friend_block", user_id, unblock: !!unblock }),
+    refreshInbox: () => send({ type: "inbox_get" }),
+    inviteSend: (user_id, kind) => send({ type: "invite_send", user_id, kind }),
+    inviteRespond: (invite_id, accept) => send({ type: "invite_respond", invite_id, accept }),
+    loadLeaderboard: (period) => send({ type: "leaderboard_get", period }),
+    rematch: () => send({ type: "rematch" }),
+    clearJoin: () => dispatch({ type: "clearJoin" }),
+    drainToasts: () => dispatch({ type: "drainToasts" }),
   };
 
   // Expose the pending-answers flush via the api object for the Fill screen.

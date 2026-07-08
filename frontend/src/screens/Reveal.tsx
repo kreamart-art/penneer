@@ -36,7 +36,7 @@ export function Reveal({ game }: { game: GameApi }) {
     <Screen top={<TopBar code={room.code} roundNo={room.round_no} totalRounds={room.settings.rounds} connected={game.state.status === "open"} onLeave={game.leaveRoom} game={game} />}>
       <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 26 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          {active && <Avatar name={active.name} color={active.color} size={40} crown />}
+          {active && <Avatar name={active.name} color={active.color} size={40} crown userId={active.user_id} hasAvatar={active.has_avatar} avatarVer={active.avatar_ver} />}
           <span style={{ fontFamily: font.display, fontWeight: 600, fontSize: 20, color: colors.ink }}>
             {game.isActive ? t("youSpin") : t("xSpinsRound", { name: active?.name ?? "?" })}
           </span>

@@ -223,10 +223,23 @@ class RoomManager:
 
     # ---- create / join / reconnect ----------------------------------------
 
-    async def create_room(self, ws: Any, name: str) -> tuple[Room, Player]:
+    @staticmethod
+    def _apply_account(player: Player, account: Optional[dict]) -> None:
+        """Link a joined player to their account: profile name, color, avatar."""
+        if not account:
+            return
+        player.user_id = account["id"]
+        player.name = account["name"]
+        if account.get("color"):
+            player.color = account["color"]
+        player.has_avatar = bool(account.get("has_avatar"))
+        player.avatar_ver = account.get("avatar_ver", 0)
+
+    async def create_room(self, ws: Any, name: str, account: Optional[dict] = None) -> tuple[Room, Player]:
         code = self._gen_code()
         pid = _new_id()
         player = Player(id=pid, name=name.strip() or "Speler", color=PLAYER_COLORS[0], is_host=True)
+        self._apply_account(player, account)
         room = Room(code=code, host_id=pid, players=[player], settings=Settings())
         room.scores[pid] = 0
         self.rooms[code] = room
@@ -236,11 +249,15 @@ class RoomManager:
         await self.send_state(room, pid)
         return room, player
 
-    async def join_room(self, ws: Any, code: str, name: str) -> Optional[tuple[Room, Player]]:
+    async def join_room(self, ws: Any, code: str, name: str, account: Optional[dict] = None) -> Optional[tuple[Room, Player]]:
         code = (code or "").strip().upper()
         room = self.rooms.get(code)
         if room is None:
             await ws.send_json({"type": "error", "message": "Deze room bestaat niet."})
+            return None
+        # One account can hold one seat per room (a second device reconnects).
+        if account and any(p.user_id == account["id"] for p in room.players):
+            await ws.send_json({"type": "error", "message": "Je zit al in deze room op een ander apparaat."})
             return None
         self._cancel_room_cleanup(code)  # a new arrival keeps the room alive
 
@@ -264,6 +281,7 @@ class RoomManager:
         pid = _new_id()
         color = PLAYER_COLORS[len(room.players) % len(PLAYER_COLORS)]
         player = Player(id=pid, name=name.strip() or "Speler", color=color, is_spectator=spectator)
+        self._apply_account(player, account)
         room.players.append(player)
         room.scores[pid] = 0
         self.connections[pid] = ws
@@ -408,6 +426,8 @@ class RoomManager:
             s.max_players = max(2, min(MAX_PLAYERS_CAP, payload["max_players"]))
         if "allow_spectators" in payload and isinstance(payload["allow_spectators"], bool):
             s.allow_spectators = payload["allow_spectators"]
+        if "lenient_spelling" in payload and isinstance(payload["lenient_spelling"], bool):
+            s.lenient_spelling = payload["lenient_spelling"]
         await self.send_state(room)
 
     def _active_for_round(self, room: Room, round_no: int) -> Optional[str]:
@@ -603,10 +623,11 @@ class RoomManager:
             await asyncio.sleep(0.1)
         await self._score_and_broadcast(room)
 
-    async def _ai_resolve(self, rnd: Round) -> None:
+    async def _ai_resolve(self, rnd: Round, lenient: bool = False) -> None:
         """Send the orange "?" answers (valid but not in any list) to the AI
         referee; resolve each to a green check (in_list) or red cross (invalid).
-        Undecided stays "?". Deduped so identical answers cost one judgement."""
+        Undecided stays "?". Deduped so identical answers cost one judgement.
+        With lenient on the referee judges phonetically (soepele spelling)."""
         if not self._ai_active() or rnd is None:
             return
         index: dict[tuple[str, str], int] = {}
@@ -620,7 +641,7 @@ class RoomManager:
                         items.append((cat, ans.text))
         if not items:
             return
-        verdicts = await ai_referee.judge(rnd.letter, items)
+        verdicts = await ai_referee.judge(rnd.letter, items, lenient=lenient)
         for cats in rnd.answers.values():
             for cat, ans in cats.items():
                 if ans.valid and not ans.in_list and ans.text:
@@ -635,8 +656,9 @@ class RoomManager:
         player_ids = [p.id for p in self.playing_players(room)]
         cats = room.settings.categories
         raw = self.pending.get(room.code, {})
-        rnd.answers = game.build_answers(raw, rnd.letter, player_ids, cats)
-        await self._ai_resolve(rnd)  # hybrid: AI scheidsrechter on the "?"
+        lenient = room.settings.lenient_spelling
+        rnd.answers = game.build_answers(raw, rnd.letter, player_ids, cats, lenient=lenient)
+        await self._ai_resolve(rnd, lenient=lenient)  # hybrid: AI scheidsrechter on the "?"
         rnd.points = game.score_round(rnd, player_ids, cats)
         room.scores = game.total_scores(room.history, player_ids)
         await self.broadcast(
@@ -750,13 +772,25 @@ class RoomManager:
             {"type": "game_over", "scores": dict(room.scores), "winner_id": winner_id},
         )
         await self.send_state(room)
+        # Persist the result for account players + evaluate badges. The social
+        # layer is optional plumbing: never let it break the game flow.
+        try:
+            from .social import accounts
 
-    async def play_again(self, player_id: str) -> None:
-        """Reset back to lobby keeping the same players (host only)."""
-        room = self.room_of_player(player_id)
-        if room is None or room.host_id != player_id or room.phase != "final":
-            return
-        room.phase = "lobby"
+            async def notify(user_id: str, badge: str) -> None:
+                target = next((p for p in room.players if p.user_id == user_id), None)
+                await self.broadcast(room, {
+                    "type": "badge_earned",
+                    "player_id": target.id if target else None,
+                    "name": target.name if target else "",
+                    "badge": badge,
+                })
+
+            await accounts.record_game(room, notify)
+        except Exception:
+            pass
+
+    def _reset_for_new_game(self, room: Room) -> None:
         room.round_no = 0
         room.used_letters = []
         room.history = []
@@ -765,7 +799,30 @@ class RoomManager:
         room.ready_ids = []
         room.scores = {p.id: 0 for p in self.playing_players(room)}
         self.pending[room.code] = {}
+
+    async def play_again(self, player_id: str) -> None:
+        """Reset back to lobby keeping the same players (host only)."""
+        room = self.room_of_player(player_id)
+        if room is None or room.host_id != player_id or room.phase != "final":
+            return
+        room.phase = "lobby"
+        self._reset_for_new_game(room)
         await self.send_state(room)
+
+    async def rematch(self, player_id: str) -> None:
+        """Host restarts instantly from the final screen: same group, same
+        settings, straight into round 1 (counts for stats like any game)."""
+        room = self.room_of_player(player_id)
+        if room is None or room.host_id != player_id or room.phase != "final":
+            return
+        if not self.playing_players(room):
+            return
+        self._reset_for_new_game(room)
+        await self.broadcast(
+            room,
+            {"type": "game_started", "round_no": 1, "active_player_id": self._active_for_round(room, 1)},
+        )
+        await self._begin_round(room)
 
     async def leave_room(self, player_id: str) -> None:
         room = self.room_of_player(player_id)

@@ -101,3 +101,60 @@ def test_pick_letter_excludes_used_and_pool():
     # Q, X, Y never appear
     for _ in range(200):
         assert game.pick_letter([]) not in ("Q", "X", "Y")
+
+
+# ---- soepele spelling (lenient) ---------------------------------------------
+
+
+def test_lenient_near_miss_stays_question_mark_for_the_ai():
+    # 'Miloen' is one letter off 'Meloen'. It counts (valid) but is NOT
+    # green-checked by fuzzy matching alone: the AI referee decides. Only the
+    # canon (dubbel pairing) comes from the fuzzy match.
+    assert game.classify("Miloen", "M", "Vrucht") == (True, False)
+    assert game.list_canonical("Miloen", "Vrucht", lenient=True) == "meloen"
+    assert game.list_canonical("Miloen", "Vrucht", lenient=False) is None
+
+
+def test_fuzzy_never_green_checks_real_words_in_wrong_category():
+    # Audit regression: 'bier' is 1 edit from 'beer' but is NOT an animal.
+    # It must stay an orange "?" so the AI (or the group) can reject it.
+    assert game.classify("bier", "B", "Dier") == (True, False)
+    assert game.classify("kerk", "K", "Vrucht") == (True, False)
+
+
+def test_lenient_never_fixes_the_first_letter_or_wrong_letter():
+    # The round letter stays the game: wrong first letter never counts.
+    assert game.classify("Meloen", "B", "Vrucht") == (False, False)
+    # And fuzzy matching never crosses first letters ('gebra' vs 'zebra').
+    assert game.list_canonical("gebra", "Dier", lenient=True) is None
+
+
+def test_lenient_short_words_stay_exact():
+    # Budget 0 under 4 letters: 'kot' must not morph into 'kat'.
+    assert game.list_canonical("kot", "Dier", lenient=True) is None
+
+
+def test_lenient_canonical_makes_misspelling_dubbel():
+    raw = {"p1": {"Vrucht": "Meloen"}, "p2": {"Vrucht": "Miloen"}}
+    rnd = Round(letter="M")
+    rnd.answers = game.build_answers(raw, "M", ["p1", "p2"], ["Vrucht"], lenient=True)
+    pts = game.score_round(rnd, ["p1", "p2"], ["Vrucht"])
+    assert pts["p1"]["Vrucht"] == PT_HALF
+    assert pts["p2"]["Vrucht"] == PT_HALF
+
+
+def test_strict_mode_unchanged_by_canon():
+    # Same input without lenient: 'Miloen' is its own key, both unique.
+    raw = {"p1": {"Vrucht": "Meloen"}, "p2": {"Vrucht": "Miloen"}}
+    rnd = Round(letter="M")
+    rnd.answers = game.build_answers(raw, "M", ["p1", "p2"], ["Vrucht"])
+    pts = game.score_round(rnd, ["p1", "p2"], ["Vrucht"])
+    assert pts["p1"]["Vrucht"] == PT_FULL
+    assert pts["p2"]["Vrucht"] == PT_FULL
+
+
+def test_edit_distance_capped():
+    assert game._edit_distance_capped("miloen", "meloen", 1) == 1
+    assert game._edit_distance_capped("banaaan", "banaan", 2) == 1
+    assert game._edit_distance_capped("aap", "aap", 0) == 0
+    assert game._edit_distance_capped("kort", "veellanger", 2) == 3  # capped out
