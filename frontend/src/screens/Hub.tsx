@@ -32,6 +32,7 @@ export function Hub({ game, onBack, onChallenge }: { game: GameApi; onBack: () =
 
   useEffect(() => {
     if (!account) return;
+    if (tab === "profile") game.refreshBlocked();
     if (tab === "friends") game.refreshFriends();
     if (tab === "inbox") game.refreshInbox();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -280,6 +281,27 @@ function ProfileTab({ game }: { game: GameApi }) {
               </Button>
             </div>
           </>
+        )}
+      </Card>
+
+      {/* geblokkeerd */}
+      <Card style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint }}>{t("blockedTitle")}</span>
+        {game.state.blocked.length === 0 ? (
+          <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13, color: colors.faint }}>{t("noBlocked")}</p>
+        ) : (
+          game.state.blocked.map((u) => (
+            <div key={u.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <Avatar name={u.name} color={u.color} size={32} userId={u.id} hasAvatar={u.has_avatar} avatarVer={u.avatar_ver} />
+              <span style={{ flex: 1, fontFamily: font.ui, fontWeight: 600, fontSize: 14, color: colors.ink, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.name}</span>
+              <button
+                onClick={() => game.friendBlock(u.id, true)}
+                style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, padding: "7px 11px", borderRadius: 9, cursor: "pointer", color: colors.sub, background: "transparent", border: `1px solid ${colors.hairline}` }}
+              >
+                {t("unblockBtn")}
+              </button>
+            </div>
+          ))
         )}
       </Card>
 

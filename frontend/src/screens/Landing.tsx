@@ -1,11 +1,12 @@
 // Landing — emblem, wordmark, tagline, name input, create / join, rules link.
 import { useState } from "react";
-import { HelpCircle, Settings as SettingsIcon, UserRound } from "lucide-react";
+import { HelpCircle, Settings as SettingsIcon, ShoppingCart, UserRound } from "lucide-react";
 import { Logo } from "../components/Logo";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { NotifyNudge } from "../components/NotifyNudge";
 import { MusicToggle } from "../components/MusicToggle";
+import { ProfilePrompt, profilePromptSeen } from "../components/ProfilePrompt";
 import { Screen, Card } from "../components/Layout";
 import type { GameApi } from "../net/socket";
 import { useT } from "../i18n/i18n";
@@ -29,11 +30,13 @@ export function Landing({
   onShowRules,
   onShowSettings,
   onShowHub,
+  onShowShop,
 }: {
   game: GameApi;
   onShowRules: () => void;
   onShowSettings: () => void;
   onShowHub: () => void;
+  onShowShop: () => void;
 }) {
   const { t } = useT();
   const [name, setName] = useState("");
@@ -41,6 +44,16 @@ export function Landing({
   const [mode, setMode] = useState<"none" | "join">("none");
   const account = game.state.account;
   const inboxCount = game.state.inbox.length || account?.inbox_count || 0;
+
+  // First-visit guests (no account, no stored token) get a prominent prompt to
+  // make a profile. Returning users with a token skip it (avoids a flash).
+  const [showPrompt, setShowPrompt] = useState(() => {
+    try {
+      return !localStorage.getItem("penneer.accountToken") && !profilePromptSeen();
+    } catch {
+      return false;
+    }
+  });
 
   // With a profile the server uses the account name; guests type one.
   const effectiveName = account ? account.name : name.trim();
@@ -87,6 +100,13 @@ export function Landing({
         </button>
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
           <MusicToggle />
+          <button
+            onClick={onShowShop}
+            aria-label={t("shopTitle")}
+            style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.sub, display: "flex", padding: 6 }}
+          >
+            <ShoppingCart size={21} />
+          </button>
           <button
             onClick={onShowSettings}
             aria-label={t("settings")}
@@ -191,6 +211,8 @@ export function Landing({
 
         <NotifyNudge />
       </div>
+
+      {showPrompt && !account && <ProfilePrompt game={game} onClose={() => setShowPrompt(false)} />}
     </Screen>
   );
 }

@@ -61,6 +61,24 @@ const save = (key: string, v: number | string) => {
 
 let ctx: AudioContext | null = null;
 let sfxGain: GainNode | null = null;
+let keepAlive: AudioBufferSourceNode | null = null;
+
+function startKeepAlive() {
+  // A silent looping source keeps the audio graph active, so iOS does not
+  // suspend the context when the background music (HTMLAudio) pauses at game
+  // start — which was silencing all in-game sfx until you returned to the lobby.
+  if (!ctx || keepAlive) return;
+  try {
+    const buf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+    keepAlive = ctx.createBufferSource();
+    keepAlive.buffer = buf;
+    keepAlive.loop = true;
+    keepAlive.connect(ctx.destination);
+    keepAlive.start();
+  } catch {
+    /* ignore */
+  }
+}
 
 function ensureCtx(): AudioContext | null {
   if (typeof window === "undefined") return null;
@@ -71,7 +89,12 @@ function ensureCtx(): AudioContext | null {
     sfxGain = ctx.createGain();
     sfxGain.gain.value = sfxMuted ? 0 : sfxVol;
     sfxGain.connect(ctx.destination);
+    startKeepAlive();
     void decodeAll();
+    // Re-resume whenever the page comes back to the foreground (iOS suspends).
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden && ctx && ctx.state === "suspended") ctx.resume().catch(() => {});
+    });
   }
   if (ctx.state === "suspended") ctx.resume();
   return ctx;
@@ -167,11 +190,18 @@ function sweep(from: number, to: number, start: number, dur: number, type: Oscil
 // Play a named effect: studio sample if decoded, else the synth fallback.
 function sfx(name: string, fallback: () => void) {
   if (sfxMuted || sfxVol <= 0) return;
-  if (!ensureCtx()) return;
-  if (buffers[name]) {
-    playBuffer(name);
+  const c = ensureCtx();
+  if (!c) return;
+  const play = () => {
+    if (buffers[name]) playBuffer(name);
+    else fallback();
+  };
+  // resume() is async: playing while still suspended is silent (the in-game
+  // dropout), so wait for the context to actually run before playing.
+  if (c.state === "suspended") {
+    c.resume().then(play).catch(() => {});
   } else {
-    fallback();
+    play();
   }
 }
 
@@ -337,16 +367,25 @@ export const sound = {
     [523, 659, 784, 1046].forEach((f, i) => tone(f, i * 0.1, 0.3, "triangle", 0.18));
     sweep(300, 900, 0.05, 0.5, "sawtooth", 0.1);
   }),
+  // The intro sting leads into the music track, so it belongs to the MUSIC
+  // channel: muting music silences it too (and it plays even if sfx is muted).
+  // The track itself still only starts on the main page (musicHoldUntil).
   intro: () => {
-    sfx("intro", () => {
+    if (musicMuted || musicVol <= 0) return;
+    if (!ensureCtx() || !ctx) return;
+    if (buffers.intro) {
+      const src = ctx.createBufferSource();
+      const g = ctx.createGain();
+      g.gain.value = musicVol;
+      src.buffer = buffers.intro;
+      src.connect(g).connect(ctx.destination);
+      src.start();
+      musicHoldUntil = nowSec() + Math.max(0, buffers.intro.duration - 0.8);
+    } else {
+      // Studio file not decoded yet (first load): brief synth sting.
       sweep(120, 520, 0, 0.6, "sawtooth", 0.12);
       [392, 523, 659].forEach((f, i) => tone(f, 0.25 + i * 0.08, 0.4, "triangle", 0.14));
-    });
-    // Hold the background beat until the sting is nearly over. If the studio
-    // file isn't decoded yet the synth fallback played, so hold only briefly.
-    if (!sfxMuted && sfxVol > 0) {
-      const dur = buffers.intro ? buffers.intro.duration : 0.9;
-      musicHoldUntil = nowSec() + Math.max(0, dur - 0.8);
+      musicHoldUntil = nowSec() + 0.1;
     }
   },
 

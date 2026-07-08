@@ -167,6 +167,7 @@ export interface ClientState {
   // Account + social state (all null/empty for guests).
   account: Account | null;
   friends: Friend[];
+  blocked: PublicUser[];
   inbox: InboxItem[];
   searchResults: PublicUser[];
   leaderboard: { period: "all" | "week"; rows: LeaderboardRow[] } | null;
@@ -213,6 +214,7 @@ type ServerMessage =
   | { type: "chat_history"; messages: ChatMessage[] }
   | { type: "account"; account: Account | null; token?: string; deleted?: boolean }
   | { type: "friends"; friends: Friend[] }
+  | { type: "blocked"; users: PublicUser[] }
   | { type: "inbox"; items: InboxItem[] }
   | { type: "user_search"; users: PublicUser[] }
   | { type: "profile"; profile: PublicProfile }
@@ -294,6 +296,7 @@ const initialState: ClientState = {
   chatTyping: {},
   account: null,
   friends: [],
+  blocked: [],
   inbox: [],
   searchResults: [],
   leaderboard: null,
@@ -314,6 +317,7 @@ function reducer(state: ClientState, action: Action): ClientState {
       status: state.status,
       account: state.account,
       friends: state.friends,
+      blocked: state.blocked,
       inbox: state.inbox,
       isAdmin: state.isAdmin,
       adminAi: state.adminAi,
@@ -388,6 +392,8 @@ function reducer(state: ClientState, action: Action): ClientState {
     }
     case "friends":
       return { ...state, friends: msg.friends };
+    case "blocked":
+      return { ...state, blocked: msg.users };
     case "inbox": {
       const account = state.account ? { ...state.account, inbox_count: msg.items.length } : null;
       return { ...state, inbox: msg.items, account };
@@ -491,6 +497,7 @@ export interface GameApi {
   friendRespond: (user_id: string, accept: boolean) => void;
   friendRemove: (user_id: string) => void;
   friendBlock: (user_id: string, unblock?: boolean) => void;
+  refreshBlocked: () => void;
   refreshInbox: () => void;
   inviteSend: (user_id: string, kind: "invite" | "challenge") => void;
   inviteRespond: (invite_id: string, accept: boolean) => void;
@@ -685,6 +692,7 @@ export function useGame(): GameApi {
     friendRespond: (user_id, accept) => send({ type: "friend_respond", user_id, accept }),
     friendRemove: (user_id) => send({ type: "friend_remove", user_id }),
     friendBlock: (user_id, unblock) => send({ type: "friend_block", user_id, unblock: !!unblock }),
+    refreshBlocked: () => send({ type: "blocked_list" }),
     refreshInbox: () => send({ type: "inbox_get" }),
     inviteSend: (user_id, kind) => send({ type: "invite_send", user_id, kind }),
     inviteRespond: (invite_id, accept) => send({ type: "invite_respond", invite_id, accept }),

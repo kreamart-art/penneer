@@ -117,6 +117,7 @@ class AccountManager:
             "friend_respond": self.friend_respond,
             "friend_remove": self.friend_remove,
             "friend_block": self.friend_block,
+            "blocked_list": self.blocked_list,
             "inbox_get": self.inbox_get,
             "invite_respond": self.invite_respond,
             "leaderboard_get": self.leaderboard_get,
@@ -295,6 +296,13 @@ class AccountManager:
         else:
             self.db.block(uid, data.get("user_id") or "")
         await self.friends_list(ws, {})
+        await self.blocked_list(ws, {})
+
+    async def blocked_list(self, ws: Any, data: dict) -> None:
+        uid = self.user_of(ws)
+        if not uid:
+            return
+        await self._send(ws, {"type": "blocked", "users": [self._public(u) for u in self.db.blocked_of(uid)]})
 
     async def inbox_get(self, ws: Any, data: dict) -> None:
         uid = self.user_of(ws)

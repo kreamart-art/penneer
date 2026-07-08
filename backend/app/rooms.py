@@ -255,10 +255,29 @@ class RoomManager:
         if room is None:
             await ws.send_json({"type": "error", "message": "Deze room bestaat niet."})
             return None
-        # One account can hold one seat per room (a second device reconnects).
-        if account and any(p.user_id == account["id"] for p in room.players):
-            await ws.send_json({"type": "error", "message": "Je zit al in deze room op een ander apparaat."})
-            return None
+        # One account = one seat per room. If that seat already exists (a dropped
+        # or stuck player, or another device), REJOIN it instead of rejecting, so
+        # a kicked-out player can get back in with the room code.
+        if account:
+            existing = next((p for p in room.players if p.user_id == account["id"]), None)
+            if existing:
+                self._cancel_room_cleanup(code)
+                old_ws = self.connections.get(existing.id)
+                if old_ws is not None and old_ws is not ws:
+                    try:
+                        await old_ws.send_json({"type": "error", "message": "Je bent op een ander apparaat verder gegaan."})
+                    except Exception:
+                        pass
+                self._apply_account(existing, account)  # refresh name/avatar
+                existing.connected = True
+                existing.disconnected_at = None
+                self.connections[existing.id] = ws
+                await self._send(existing.id, {"type": "joined", "code": code, "player_id": existing.id})
+                await self.send_state(room, existing.id)
+                await self._send_chat_history(room, existing.id)
+                await self.broadcast(room, {"type": "player_joined", "player": existing.public()})
+                await self.send_state(room)
+                return room, existing
         self._cancel_room_cleanup(code)  # a new arrival keeps the room alive
 
         spectator = False

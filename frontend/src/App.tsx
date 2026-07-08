@@ -10,8 +10,11 @@ import { Rules } from "./screens/Rules";
 import { Settings } from "./screens/Settings";
 import { Landing } from "./screens/Landing";
 import { Hub } from "./screens/Hub";
+import { Shop } from "./screens/Shop";
 import { BadgeToasts } from "./components/BadgeToasts";
+import { InviteBanner } from "./components/InviteBanner";
 import { localNotify } from "./components/NotifyNudge";
+import type { InboxItem } from "./net/socket";
 import { Lobby } from "./screens/Lobby";
 import { Reveal } from "./screens/Reveal";
 import { Fill } from "./screens/Fill";
@@ -28,6 +31,8 @@ export default function App() {
   const [showRules, setShowRules] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showHub, setShowHub] = useState(false);
+  const [showShop, setShowShop] = useState(false);
+  const [bannerInvite, setBannerInvite] = useState<InboxItem | null>(null);
   // A challenge creates a room first; once its lobby is up we send the invite.
   const pendingChallenge = useRef<string | null>(null);
 
@@ -112,36 +117,26 @@ export default function App() {
           ? `${item.from_name} ${t("challengedYou")}`
           : `${item.from_name} ${t("invitedYouTo")} ${item.room_code}`;
     localNotify("Pen Neer", body);
+    // Room invites and challenges also drop a slide-down banner so you can join
+    // straight away, wherever you are. Friend requests stay in the inbox.
+    if (item.type === "invite" || item.type === "challenge") setBannerInvite(item);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inbox]);
 
-  // In a room: phase-driven screens (skip the whole pre-room flow).
-  if (room && game.me) {
-    const screen = (() => {
-      switch (room.phase) {
-        case "reveal":
-          return <Reveal game={game} />;
-        case "fill":
-          return <Fill game={game} />;
-        case "results":
-          return <Results game={game} />;
-        case "final":
-          return <Final game={game} />;
-        default:
-          return <Lobby game={game} />;
-      }
-    })();
-    return (
-      <>
-        {screen}
-        <BadgeToasts game={game} />
-      </>
-    );
-  }
+  const inRoom = !!(room && game.me);
 
-  // Pre-room flow.
-  if (!introDone) {
-    return (
+  // Pick the current screen (in-room phase, or the pre-room flow).
+  let screen: React.ReactNode;
+  if (inRoom) {
+    switch (room!.phase) {
+      case "reveal": screen = <Reveal game={game} />; break;
+      case "fill": screen = <Fill game={game} />; break;
+      case "results": screen = <Results game={game} />; break;
+      case "final": screen = <Final game={game} />; break;
+      default: screen = <Lobby game={game} />;
+    }
+  } else if (!introDone) {
+    screen = (
       <Intro
         onDone={() => {
           sessionStorage.setItem(INTRO_KEY, "1");
@@ -149,11 +144,14 @@ export default function App() {
         }}
       />
     );
-  }
-  if (!lang) return <LanguagePage />;
-  if (showRules) return <Rules onBack={() => setShowRules(false)} />;
-  if (showHub)
-    return (
+  } else if (!lang) {
+    screen = <LanguagePage />;
+  } else if (showRules) {
+    screen = <Rules onBack={() => setShowRules(false)} />;
+  } else if (showShop) {
+    screen = <Shop game={game} onBack={() => setShowShop(false)} />;
+  } else if (showHub) {
+    screen = (
       <Hub
         game={game}
         onBack={() => setShowHub(false)}
@@ -163,8 +161,8 @@ export default function App() {
         }}
       />
     );
-  if (showSettings)
-    return (
+  } else if (showSettings) {
+    screen = (
       <Settings
         game={game}
         onBack={() => setShowSettings(false)}
@@ -174,5 +172,29 @@ export default function App() {
         }}
       />
     );
-  return <Landing game={game} onShowRules={() => setShowRules(true)} onShowSettings={() => setShowSettings(true)} onShowHub={() => setShowHub(true)} />;
+  } else {
+    screen = <Landing game={game} onShowRules={() => setShowRules(true)} onShowSettings={() => setShowSettings(true)} onShowHub={() => setShowHub(true)} onShowShop={() => setShowShop(true)} />;
+  }
+
+  return (
+    <>
+      {screen}
+      {inRoom && <BadgeToasts game={game} />}
+      {bannerInvite && (
+        <InviteBanner
+          invite={bannerInvite}
+          onAccept={() => {
+            if (bannerInvite.id) game.inviteRespond(bannerInvite.id, true);
+            setBannerInvite(null);
+            setShowHub(false);
+          }}
+          onDecline={() => {
+            if (bannerInvite.id) game.inviteRespond(bannerInvite.id, false);
+            setBannerInvite(null);
+          }}
+          onClose={() => setBannerInvite(null)}
+        />
+      )}
+    </>
+  );
 }

@@ -362,6 +362,19 @@ class Database:
         with self._lock:
             self._exec("DELETE FROM blocks WHERE user_id=? AND blocked_id=?", (user_id, other_id))
 
+    def blocked_of(self, user_id: str) -> list[dict]:
+        """Users this user has blocked."""
+        with self._lock:
+            rows = self._q(
+                """
+                SELECT u.id, u.name, u.color, u.avatar_ver, u.avatar IS NOT NULL AS has_avatar
+                FROM blocks b JOIN users u ON u.id = b.blocked_id
+                WHERE b.user_id=? ORDER BY u.name_lower
+                """,
+                (user_id,),
+            )
+        return [dict(r) for r in rows]
+
     def friends_of(self, user_id: str) -> list[dict]:
         """Accepted friends + pending requests (both directions)."""
         with self._lock:

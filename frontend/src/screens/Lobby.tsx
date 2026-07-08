@@ -153,7 +153,7 @@ export function Lobby({ game }: { game: GameApi }) {
   const isCustomRounds = !ROUNDS.includes(settings.rounds);
 
   return (
-    <Screen top={<TopBar code={room.code} connected={game.state.status === "open"} game={game} />}>
+    <Screen top={<TopBar code={room.code} connected={game.state.status === "open"} onLeave={game.leaveRoom} game={game} />}>
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         {/* language + sound (per device) */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
