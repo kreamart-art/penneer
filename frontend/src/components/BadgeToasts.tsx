@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { Award } from "lucide-react";
 import type { GameApi } from "../net/socket";
 import { useT } from "../i18n/i18n";
+import { sound } from "../sound/sound";
 import { colors, font, withAlpha } from "../theme/tokens";
 
 export function BadgeToasts({ game }: { game: GameApi }) {
@@ -12,6 +13,7 @@ export function BadgeToasts({ game }: { game: GameApi }) {
 
   useEffect(() => {
     if (!toast) return;
+    sound.badge();
     const id = window.setTimeout(() => game.drainToasts(), 3200);
     return () => window.clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -46,8 +46,13 @@ export function Fill({ game }: { game: GameApi }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
+  // tick.mp3 is the whole 10-second countdown, so fire it once when 10s remain.
+  const tickStarted = useRef(false);
   const onTick = (secs: number) => {
-    if (secs <= 10 && secs > 0) sound.tick();
+    if (secs <= 10 && secs > 0 && !tickStarted.current) {
+      tickStarted.current = true;
+      sound.tick();
+    }
   };
 
   // Non-active players get a floating ready button so it's hard to miss.
@@ -145,7 +150,7 @@ export function Fill({ game }: { game: GameApi }) {
             {readyCount > 0 && (
               <p style={{ textAlign: "center", fontFamily: font.ui, fontSize: 12.5, color: colors.faint, margin: 0 }}>{t("readyCount", { n: readyCount, total: playingCount })}</p>
             )}
-            <Button variant="danger" full onClick={game.stopRound} style={{ marginTop: 2 }}>
+            <Button variant="danger" full onClick={() => { sound.penNeer(); game.stopRound(); }} style={{ marginTop: 2 }}>
               {t("penNeer")}
             </Button>
           </>
@@ -175,7 +180,7 @@ export function Fill({ game }: { game: GameApi }) {
             <Button
               variant={iAmReady ? "ghost" : "gold"}
               full
-              onClick={() => game.setReady(!iAmReady)}
+              onClick={() => { if (!iAmReady) sound.ready(); game.setReady(!iAmReady); }}
               style={iAmReady ? undefined : { animation: "fill-pulse 1.8s ease-in-out infinite" }}
             >
               {iAmReady ? t("notYet") : t("imReady")}

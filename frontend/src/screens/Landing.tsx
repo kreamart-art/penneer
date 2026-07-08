@@ -48,10 +48,12 @@ export function Landing({
 
   const create = () => {
     sound.unlock();
+    sound.uiTap();
     game.createRoom(effectiveName);
   };
   const join = () => {
     sound.unlock();
+    sound.uiTap();
     game.joinRoom(code.trim().toUpperCase(), effectiveName);
   };
 

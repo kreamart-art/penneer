@@ -64,7 +64,7 @@ export function Hub({ game, onBack, onChallenge }: { game: GameApi; onBack: () =
           {tabs.map(({ key, label, icon, badge }) => (
             <button
               key={key}
-              onClick={() => setTab(key)}
+              onClick={() => { sound.uiTap(); setTab(key); }}
               style={{
                 flex: 1,
                 display: "flex",

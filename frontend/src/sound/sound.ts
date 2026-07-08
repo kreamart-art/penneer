@@ -85,6 +85,15 @@ const FILES: Record<string, string> = {
   friend: "friend",
   gameStart: "game-start",
   playerJoin: "player-join",
+  intro: "intro",
+  tick: "tick", // the full 10s countdown — played ONCE when 10s remain
+  win: "win",
+  penNeer: "pen-neer",
+  ready: "ready",
+  badge: "badge",
+  invite: "invite",
+  error: "error",
+  uiTap: "ui-tap",
 };
 const buffers: Record<string, AudioBuffer | null | undefined> = {};
 
@@ -162,6 +171,11 @@ function sfx(name: string, fallback: () => void) {
 let musicEl: HTMLAudioElement | null = null;
 let musicWanted = false;
 let gesturePrimed = false;
+let musicHoldUntil = 0; // don't start the beat until the intro sting is done
+
+function nowSec(): number {
+  return (typeof performance !== "undefined" ? performance.now() : 0) / 1000;
+}
 
 function ensureMusicEl(): HTMLAudioElement | null {
   if (typeof window === "undefined") return null;
@@ -180,6 +194,15 @@ function applyMusic() {
   el.volume = muted ? 0 : musicVol;
   const shouldPlay = musicWanted && !muted && musicVol > 0;
   if (shouldPlay) {
+    const wait = musicHoldUntil - nowSec();
+    if (wait > 0.05) {
+      // The intro sting is still playing; hold the beat until it finishes.
+      el.pause();
+      window.setTimeout(() => {
+        if (musicWanted && !muted && musicVol > 0) applyMusic();
+      }, wait * 1000);
+      return;
+    }
     el.play().catch(() => {
       // Autoplay blocked (returning user, no gesture yet): retry on first tap.
       if (!gesturePrimed) {
@@ -281,22 +304,40 @@ export const sound = {
     tone(784, 0.08, 0.13, "triangle", 0.14);
   }),
 
-  // synth-only (no studio file yet)
   spinTick: () => sfx("spinTick", () => tone(880, 0, 0.03, "square", 0.06)),
-  lock: () => sfx("lock", () => {
-    tone(660, 0, 0.12, "triangle", 0.2);
-    tone(990, 0.06, 0.18, "triangle", 0.18);
+  penNeer: () => sfx("penNeer", () => sweep(320, 110, 0, 0.22, "square", 0.22)),
+  ready: () => sfx("ready", () => tone(880, 0, 0.08, "triangle", 0.12)),
+  badge: () => sfx("badge", () => [784, 1046, 1318].forEach((f, i) => tone(f, i * 0.08, 0.24, "triangle", 0.15))),
+  invite: () => sfx("invite", () => {
+    tone(660, 0, 0.12, "triangle", 0.14);
+    tone(880, 0.12, 0.16, "triangle", 0.14);
   }),
+  error: () => sfx("error", () => sweep(220, 110, 0, 0.2, "sawtooth", 0.16)),
+  uiTap: () => sfx("uiTap", () => tone(1000, 0, 0.025, "square", 0.05)),
   tick: () => sfx("tick", () => tone(1200, 0, 0.05, "square", 0.08)),
-  results: () => sfx("results", () => {
-    [523, 659, 784].forEach((f, i) => tone(f, i * 0.08, 0.2, "triangle", 0.16));
-  }),
   win: () => sfx("win", () => {
     [523, 659, 784, 1046].forEach((f, i) => tone(f, i * 0.1, 0.3, "triangle", 0.18));
     sweep(300, 900, 0.05, 0.5, "sawtooth", 0.1);
   }),
-  intro: () => sfx("intro", () => {
-    sweep(120, 520, 0, 0.6, "sawtooth", 0.12);
-    [392, 523, 659].forEach((f, i) => tone(f, 0.25 + i * 0.08, 0.4, "triangle", 0.14));
+  intro: () => {
+    sfx("intro", () => {
+      sweep(120, 520, 0, 0.6, "sawtooth", 0.12);
+      [392, 523, 659].forEach((f, i) => tone(f, 0.25 + i * 0.08, 0.4, "triangle", 0.14));
+    });
+    // Hold the background beat until the sting is nearly over. If the studio
+    // file isn't decoded yet the synth fallback played, so hold only briefly.
+    if (!muted && sfxVol > 0) {
+      const dur = buffers.intro ? buffers.intro.duration : 0.9;
+      musicHoldUntil = nowSec() + Math.max(0, dur - 0.8);
+    }
+  },
+
+  // synth-only (no studio file yet)
+  lock: () => sfx("lock", () => {
+    tone(660, 0, 0.12, "triangle", 0.2);
+    tone(990, 0.06, 0.18, "triangle", 0.18);
+  }),
+  results: () => sfx("results", () => {
+    [523, 659, 784].forEach((f, i) => tone(f, i * 0.08, 0.2, "triangle", 0.16));
   }),
 };

@@ -38,6 +38,12 @@ export default function App() {
     sound.musicActive(introDone && !inGame);
   }, [introDone, inGame]);
 
+  // A short error sound when the server rejects something (name taken, etc.).
+  const errText = game.state.error;
+  useEffect(() => {
+    if (errText) sound.error();
+  }, [errText]);
+
   // An accepted invite from the inbox: join that room with the account name.
   const joinCode = game.state.joinRoomCode;
   useEffect(() => {
@@ -98,7 +104,7 @@ export default function App() {
     if (!inboxArmed.current || inbox.length <= prev) return;
     const item = inbox[0];
     if (!item) return;
-    sound.chat();
+    sound.invite();
     const body =
       item.type === "friend_request"
         ? `${item.from_name} ${t("pendingIn")}`
