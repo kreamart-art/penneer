@@ -7,6 +7,7 @@ import { Button } from "../components/Button";
 import { Screen, Card } from "../components/Layout";
 import type { Friend, GameApi, InboxItem } from "../net/socket";
 import { useT } from "../i18n/i18n";
+import { sound } from "../sound/sound";
 import { colors, font, playerColors, radius, withAlpha } from "../theme/tokens";
 
 const inputStyle: React.CSSProperties = {
@@ -462,7 +463,7 @@ function FriendsTab({ game, onChallenge }: { game: GameApi; onChallenge: (userId
           {pendingIn.map((f) =>
             row(f, (
               <div style={{ display: "flex", gap: 6 }}>
-                {smallBtn(<Check size={14} />, () => game.friendRespond(f.id, true), "gold")}
+                {smallBtn(<Check size={14} />, () => { sound.friend(); game.friendRespond(f.id, true); }, "gold")}
                 {smallBtn(<X size={14} />, () => game.friendRespond(f.id, false))}
               </div>
             ))
@@ -517,7 +518,7 @@ function InboxTab({ game }: { game: GameApi }) {
             </div>
             {item.type === "friend_request" ? (
               <div style={{ display: "flex", gap: 6 }}>
-                <button onClick={() => game.friendRespond(item.from_id, true)} style={{ padding: "7px 12px", borderRadius: 9, border: "none", background: colors.gold, color: colors.bg0, fontFamily: font.ui, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>{t("acceptBtn")}</button>
+                <button onClick={() => { sound.friend(); game.friendRespond(item.from_id, true); }} style={{ padding: "7px 12px", borderRadius: 9, border: "none", background: colors.gold, color: colors.bg0, fontFamily: font.ui, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>{t("acceptBtn")}</button>
                 <button onClick={() => game.friendRespond(item.from_id, false)} style={{ padding: "7px 10px", borderRadius: 9, border: `1px solid ${colors.hairline}`, background: "transparent", color: colors.sub, fontFamily: font.ui, fontSize: 12, cursor: "pointer" }}>{t("declineBtn")}</button>
               </div>
             ) : (

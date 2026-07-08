@@ -1,7 +1,7 @@
 // Lobby — room code, live players (+ bots/spectators), host settings (time incl.
 // no-timer, rounds, categories + deelcode, hard letters, max players, spectators),
 // testbots, and per-device language + sound toggles.
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, Copy, Minus, Plus, Send, UserPlus, Volume2, VolumeX, X } from "lucide-react";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
@@ -92,13 +92,20 @@ export function Lobby({ game }: { game: GameApi }) {
   const isHost = game.isHost;
   const { t, tCat, lang, setLang } = useT();
   const [copied, setCopied] = useState(false);
-  const [soundOn, setSoundOn] = useState(sound.isEnabled());
+  const [muted, setMuted] = useState(sound.isMuted());
   const [deelInput, setDeelInput] = useState("");
   const [deelErr, setDeelErr] = useState("");
   const [shared, setShared] = useState(false);
 
   const players = room.players.filter((p) => !p.is_spectator);
   const spectators = room.players.filter((p) => p.is_spectator);
+
+  // Play a join sound when the room grows (not on your own first render).
+  const prevCount = useRef(room.players.length);
+  useEffect(() => {
+    if (room.players.length > prevCount.current) sound.playerJoin();
+    prevCount.current = room.players.length;
+  }, [room.players.length]);
 
   const copyCode = async () => {
     try {
@@ -174,15 +181,15 @@ export function Lobby({ game }: { game: GameApi }) {
           </div>
           <button
             onClick={() => {
-              const v = !soundOn;
-              sound.setEnabled(v);
-              setSoundOn(v);
-              if (v) sound.lock();
+              const nextMuted = !muted;
+              sound.setMuted(nextMuted);
+              setMuted(nextMuted);
+              if (!nextMuted) sound.playerJoin();
             }}
             title={t("sound")}
-            style={{ background: "transparent", border: "none", cursor: "pointer", color: soundOn ? colors.gold : colors.faint }}
+            style={{ background: "transparent", border: "none", cursor: "pointer", color: muted ? colors.faint : colors.gold }}
           >
-            {soundOn ? <Volume2 size={20} /> : <VolumeX size={20} />}
+            {muted ? <VolumeX size={20} /> : <Volume2 size={20} />}
           </button>
         </div>
 

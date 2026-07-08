@@ -1,7 +1,7 @@
 // Settings + About — reachable from the Landing gear. Language, sound, how-to,
 // install-as-app, and an About card with the version and studio credit.
 import { useEffect, useState } from "react";
-import { ArrowLeft, Download, HelpCircle, ShieldCheck, Volume2, VolumeX } from "lucide-react";
+import { ArrowLeft, Download, HelpCircle, Music, ShieldCheck, Volume2 } from "lucide-react";
 import { Logo } from "../components/Logo";
 import { Button } from "../components/Button";
 import { Toggle } from "../components/Toggle";
@@ -21,9 +21,30 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
+function Fader({ icon, label, value, onChange }: { icon: React.ReactNode; label: string; value: number; onChange: (v: number) => void }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      <span style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: font.ui, fontSize: 15, color: colors.ink, width: 128, flexShrink: 0 }}>
+        {icon} {label}
+      </span>
+      <input
+        type="range"
+        min={0}
+        max={1}
+        step={0.01}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        style={{ flex: 1, accentColor: colors.gold }}
+      />
+      <span style={{ width: 38, textAlign: "right", fontFamily: font.ui, fontSize: 12.5, color: colors.faint }}>{Math.round(value * 100)}%</span>
+    </div>
+  );
+}
+
 export function Settings({ game, onBack, onShowRules }: { game: GameApi; onBack: () => void; onShowRules: () => void }) {
   const { t, lang, setLang } = useT();
-  const [soundOn, setSoundOn] = useState(sound.isEnabled());
+  const [musicVol, setMusicVol] = useState(sound.musicVolume());
+  const [sfxVol, setSfxVol] = useState(sound.sfxVolume());
   const [installable, setInstallable] = useState(canInstall());
   const standalone = isStandalone();
   const [adminCode, setAdminCode] = useState("");
@@ -67,16 +88,25 @@ export function Settings({ game, onBack, onShowRules }: { game: GameApi; onBack:
             </div>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <span style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: font.ui, fontSize: 15, color: colors.ink }}>
-              {soundOn ? <Volume2 size={18} /> : <VolumeX size={18} />} {t("sound")}
-            </span>
-            <Toggle
-              on={soundOn}
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <SectionLabel>{t("audio")}</SectionLabel>
+            <Fader
+              icon={<Music size={17} />}
+              label={t("musicVol")}
+              value={musicVol}
               onChange={(v) => {
-                sound.setEnabled(v);
-                setSoundOn(v);
-                if (v) sound.lock();
+                setMusicVol(v);
+                sound.setMusicVolume(v);
+              }}
+            />
+            <Fader
+              icon={<Volume2 size={17} />}
+              label={t("sfxVol")}
+              value={sfxVol}
+              onChange={(v) => {
+                setSfxVol(v);
+                sound.setSfxVolume(v);
+                if (v > 0) sound.approve();
               }}
             />
           </div>

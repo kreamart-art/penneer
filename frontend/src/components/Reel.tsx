@@ -2,6 +2,7 @@
 // strips, huge gold letter. States: idle (dim "?"), spinning (blurred flicker +
 // gold glow), locked (gold border + outer halo + strong text glow, pop on lock).
 import { useEffect, useMemo, useRef, useState } from "react";
+import { sound } from "../sound/sound";
 import { colors, font, withAlpha } from "../theme/tokens";
 
 const STD_POOL = "ABCDEFGHIJKLMNOPRSTUVWZ".split("");
@@ -34,6 +35,7 @@ export function Reel({ state, letter, exclude = [], hard = false }: Props) {
     const id = setInterval(() => {
       idxRef.current = (idxRef.current + 1) % pool.length;
       setFlick(pool[idxRef.current]);
+      sound.spinTick(); // one click per letter, for as long as the reel runs
     }, 60);
     return () => clearInterval(id);
   }, [state, pool]);

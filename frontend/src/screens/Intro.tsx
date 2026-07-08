@@ -20,6 +20,7 @@ export function Intro({ onDone }: { onDone: () => void }) {
   const begin = () => {
     if (started) return;
     sound.unlock();
+    sound.primeMusic(); // bless bg music for after the intro (iOS gesture)
     sound.intro();
     setStarted(true);
   };
@@ -78,6 +79,7 @@ export function Intro({ onDone }: { onDone: () => void }) {
             variant="ghost"
             onClick={(e) => {
               e.stopPropagation();
+              sound.primeMusic();
               onDone();
             }}
           >

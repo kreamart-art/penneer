@@ -155,6 +155,7 @@ export function Results({ game }: { game: GameApi }) {
                                 <button
                                   key={pl.id}
                                   onClick={() => {
+                                    sound.dubbel();
                                     game.markSame(p.id, cat, pl.id);
                                     setSelected(null);
                                     setPairing(false);
@@ -174,6 +175,8 @@ export function Results({ game }: { game: GameApi }) {
                           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, padding: "0 2px 2px" }}>
                             <button
                               onClick={() => {
+                                if (valid) sound.reject();
+                                else sound.approve();
                                 game.challenge(p.id, cat);
                                 setSelected(null);
                               }}

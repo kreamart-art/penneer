@@ -20,13 +20,17 @@ export function Reveal({ game }: { game: GameApi }) {
   const locked = letter.length > 0;
   const reelState = locked ? "locked" : spinning ? "spinning" : "idle";
 
-  // Sound: buzz when the reel starts, ding when it locks.
-  const wasSpinning = useRef(false);
-  const wasLocked = useRef(false);
+  // A round-1 reveal means the game (or a rematch) just kicked off.
+  const startPlayed = useRef(false);
   useEffect(() => {
-    if (spinning && !wasSpinning.current) sound.buzz();
-    wasSpinning.current = spinning;
-  }, [spinning]);
+    if (room.round_no === 1 && !startPlayed.current) {
+      startPlayed.current = true;
+      sound.gameStart();
+    }
+  }, [room.round_no]);
+
+  // Sound: the reel itself ticks per letter (Reel.tsx); we just ding on lock.
+  const wasLocked = useRef(false);
   useEffect(() => {
     if (locked && !wasLocked.current) sound.lock();
     wasLocked.current = locked;

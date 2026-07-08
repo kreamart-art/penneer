@@ -31,6 +31,13 @@ export default function App() {
   // A challenge creates a room first; once its lobby is up we send the invite.
   const pendingChallenge = useRef<string | null>(null);
 
+  // Background music: on after the intro, off once a game is running (reveal
+  // onward). So it plays on landing / language / hub / settings / lobby.
+  const inGame = !!(room && game.me && room.phase !== "lobby");
+  useEffect(() => {
+    sound.musicActive(introDone && !inGame);
+  }, [introDone, inGame]);
+
   // An accepted invite from the inbox: join that room with the account name.
   const joinCode = game.state.joinRoomCode;
   useEffect(() => {
