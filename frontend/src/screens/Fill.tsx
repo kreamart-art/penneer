@@ -52,11 +52,11 @@ export function Fill({ game }: { game: GameApi }) {
     if (secs <= 10 && secs > 0) sound.tick();
   };
 
-  // Everyone playing gets a floating bottom button so it's always reachable:
-  // the spelleider a "Pen neer" stop (so a timed round can be stopped without
-  // scrolling past the inputs), others "Ik ben klaar".
-  const showFloatingReady = !isSpectator && !game.isActive;
-  const showFloatingStop = !isSpectator && game.isActive;
+  // Floating bottom button: with a timer the TIMER ends the round, so there is
+  // no stop button — only "Geen tijd" gives the spelleider the "Pen neer" stop.
+  // Everyone else (and the spelleider in timed mode) gets "Ik ben klaar".
+  const showFloatingStop = !isSpectator && game.isActive && noTimer;
+  const showFloatingReady = !isSpectator && !showFloatingStop;
 
   return (
     <Screen top={<TopBar code={room.code} roundNo={room.round_no} totalRounds={room.settings.rounds} connected={game.state.status === "open"} onLeave={game.leaveRoom} game={game} />}>
@@ -75,12 +75,8 @@ export function Fill({ game }: { game: GameApi }) {
               </span>
             </div>
           ) : (
-            <>
-              <Timer endsAt={room.timer.ends_at} duration={room.timer.duration} onTick={onTick} />
-              <span style={{ fontFamily: font.ui, fontSize: 13, color: colors.sub, marginTop: 2 }}>
-                {game.isActive ? t("youKeepTime") : t("xKeepsTime", { name: active?.name ?? "?" })}
-              </span>
-            </>
+            // Timed mode: the countdown speaks for itself, nobody keeps time.
+            <Timer endsAt={room.timer.ends_at} duration={room.timer.duration} onTick={onTick} />
           )}
         </Card>
 
@@ -145,13 +141,13 @@ export function Fill({ game }: { game: GameApi }) {
         {/* controls (the action itself is the floating button below) */}
         {isSpectator ? (
           <p style={{ textAlign: "center", fontFamily: font.ui, fontSize: 13.5, color: colors.sub, margin: "4px 0 0" }}>{t("spectatorNote")}</p>
-        ) : game.isActive ? (
+        ) : game.isActive && noTimer ? (
           readyCount > 0 && (
             <p style={{ textAlign: "center", fontFamily: font.ui, fontSize: 12.5, color: colors.faint, margin: 0 }}>{t("readyCount", { n: readyCount, total: playingCount })}</p>
           )
         ) : (
           <p style={{ textAlign: "center", fontFamily: font.ui, fontSize: 13, color: colors.sub, margin: "2px 0 0", lineHeight: 1.5 }}>
-            {iAmReady ? t("youReady") : t("xStopsTime", { name: active?.name ?? "?" })}
+            {iAmReady ? t("youReady") : noTimer ? t("xStopsTime", { name: active?.name ?? "?" }) : t("fillFast")}
           </p>
         )}
       </div>

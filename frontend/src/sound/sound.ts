@@ -210,6 +210,7 @@ function sfx(name: string, fallback: () => void) {
 let musicEl: HTMLAudioElement | null = null;
 let musicWanted = false;
 let gesturePrimed = false;
+let priming = false; // the element is playing silence.mp3 inside the gesture
 let musicHoldUntil = 0; // don't start the beat until the intro sting is done
 
 function nowSec(): number {
@@ -228,6 +229,7 @@ function ensureMusicEl(): HTMLAudioElement | null {
 }
 
 function applyMusic() {
+  if (priming) return; // silence.mp3 is in the element; primeMusic re-calls us
   const el = ensureMusicEl();
   if (!el) return;
   el.volume = musicMuted ? 0 : musicVol;
@@ -304,22 +306,29 @@ export const sound = {
   },
 
   // Bless the music element within a user gesture (the intro tap) so the loop
-  // can start programmatically right after, even on iOS.
+  // can start programmatically later, even on iOS. Plays an actually-silent
+  // FILE (silence.mp3): iOS ignores muted/volume on audio elements, so priming
+  // with the real track leaked audibly into the intro. A silent file cannot.
   primeMusic: () => {
     const el = ensureMusicEl();
     if (!el) return;
-    el.muted = true;
-    el.play()
-      .then(() => {
+    priming = true;
+    try {
+      el.src = "/music/silence.mp3";
+      el.loop = false;
+      const done = () => {
         el.pause();
-        el.currentTime = 0;
-        el.muted = false;
+        el.src = "/music/daftneo.mp3";
+        el.loop = true;
+        el.load();
         el.volume = musicMuted ? 0 : musicVol;
+        priming = false;
         if (musicWanted) applyMusic();
-      })
-      .catch(() => {
-        el.muted = false;
-      });
+      };
+      el.play().then(done).catch(done);
+    } catch {
+      priming = false;
+    }
   },
 
   // Background music on/off (App drives this from the current screen/phase).
