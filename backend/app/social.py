@@ -197,6 +197,10 @@ class AccountManager:
         if not key:
             print(f"[penneer] magic link voor {email}: {link}", flush=True)
             return
+        # Sender: needs a Resend-verified domain. Set PENNEER_MAIL_FROM to
+        # "onboarding@resend.dev" to test immediately without verifying a domain
+        # (that test sender only delivers to your own Resend account email).
+        mail_from = os.environ.get("PENNEER_MAIL_FROM", "Pen Neer <penneer@artnomad.nl>")
         try:
             import httpx
 
@@ -205,7 +209,7 @@ class AccountManager:
                     "https://api.resend.com/emails",
                     headers={"Authorization": f"Bearer {key}"},
                     json={
-                        "from": "Pen Neer <penneer@artnomad.nl>",
+                        "from": mail_from,
                         "to": [email],
                         "subject": "Inloggen bij Pen Neer",
                         "text": "Log in op dit apparaat met deze link (15 minuten geldig):\n\n"
