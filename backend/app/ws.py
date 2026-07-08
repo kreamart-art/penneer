@@ -84,6 +84,8 @@ async def ws_endpoint(ws: WebSocket) -> None:
                 await manager.remove_bot(player_id, data)
             elif mtype == "challenge_answer":
                 await manager.challenge_answer(player_id, data)
+            elif mtype == "mark_same":
+                await manager.mark_same(player_id, data)
             elif mtype == "next_round":
                 await manager.next_round(player_id)
             elif mtype == "ready_next":

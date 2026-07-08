@@ -99,11 +99,12 @@ class Answer:
     in_list: bool = True  # found in the category word list (False -> orange "?" on results)
     # Duplicate-detection key. In lenient (soepele spelling) rooms a near-miss
     # spelling gets the list word it matches ('miloen' -> 'meloen'), so both
-    # score as dubbel. Server-side only, not sent over the wire.
+    # score as dubbel. Players can also pair it by hand on the results screen
+    # ('manja' = 'mango'), so it goes over the wire for the pairing UI.
     canon: str = ""
 
     def public(self) -> dict:
-        return {"text": self.text, "valid": self.valid, "in_list": self.in_list}
+        return {"text": self.text, "valid": self.valid, "in_list": self.in_list, "canon": self.canon}
 
 
 @dataclass

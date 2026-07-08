@@ -1,7 +1,7 @@
 // Hub — profile, friends, inbox and leaderboard in one tabbed screen.
 // Reached from the Landing. A profile is optional: guests see the create form.
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Award, Bell, Camera, Check, Swords, Trash2, Trophy, UserPlus, Users, X } from "lucide-react";
+import { ArrowLeft, Award, Bell, Camera, Check, Swords, Trash2, Trophy, UserPlus, Users, X, ZoomIn, ZoomOut } from "lucide-react";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { Screen, Card } from "../components/Layout";
@@ -110,15 +110,14 @@ function ProfileTab({ game }: { game: GameApi }) {
   const [email, setEmail] = useState("");
   const [loginEmail, setLoginEmail] = useState("");
   const [busy, setBusy] = useState(false);
+  const [editFile, setEditFile] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => setName(account?.name ?? ""), [account?.name]);
 
-  async function uploadPhoto(file: File) {
+  async function uploadBlob(blob: Blob) {
     setBusy(true);
     try {
-      const blob = await squareJpeg(file, 256);
-      if (!blob) return;
       const token = localStorage.getItem("penneer.accountToken");
       await fetch("/api/avatar", {
         method: "POST",
@@ -201,7 +200,16 @@ function ProfileTab({ game }: { game: GameApi }) {
           </div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => e.target.files?.[0] && uploadPhoto(e.target.files[0])} />
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            style={{ display: "none" }}
+            onChange={(e) => {
+              if (e.target.files?.[0]) setEditFile(e.target.files[0]);
+              e.target.value = ""; // same file re-selectable
+            }}
+          />
           <Button variant="ghost" full onClick={() => fileRef.current?.click()} disabled={busy}>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
               <Camera size={15} /> {busy ? t("photoBusy") : t("uploadPhoto")}
@@ -212,6 +220,16 @@ function ProfileTab({ game }: { game: GameApi }) {
           )}
         </div>
       </Card>
+
+      {editFile && (
+        <AvatarEditor
+          file={editFile}
+          onDone={(blob) => {
+            setEditFile(null);
+            if (blob) uploadBlob(blob);
+          }}
+        />
+      )}
 
       {/* stats */}
       <Card>
@@ -274,31 +292,105 @@ function ProfileTab({ game }: { game: GameApi }) {
   );
 }
 
-// Crop-center + resize a picked image to a square JPEG blob.
-async function squareJpeg(file: File, size: number): Promise<Blob | null> {
-  const url = URL.createObjectURL(file);
-  try {
-    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const i = new Image();
-      i.onload = () => resolve(i);
-      i.onerror = reject;
-      i.src = url;
-    });
-    const side = Math.min(img.naturalWidth, img.naturalHeight);
-    const sx = (img.naturalWidth - side) / 2;
-    const sy = (img.naturalHeight - side) / 2;
-    const canvas = document.createElement("canvas");
-    canvas.width = size;
-    canvas.height = size;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return null;
-    ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size);
-    return await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.85));
-  } catch {
-    return null;
-  } finally {
-    URL.revokeObjectURL(url);
+// Crop editor: square viewport, pinch-free zoom slider + drag to position.
+// Renders the visible square to a 256px JPEG.
+function AvatarEditor({ file, onDone }: { file: File; onDone: (blob: Blob | null) => void }) {
+  const { t } = useT();
+  const V = 260; // viewport size in css px
+  const [url] = useState(() => URL.createObjectURL(file));
+  const [img, setImg] = useState<HTMLImageElement | null>(null);
+  const [zoom, setZoom] = useState(1);
+  const [off, setOff] = useState({ x: 0, y: 0 });
+  const drag = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null);
+
+  useEffect(() => {
+    const i = new Image();
+    i.onload = () => setImg(i);
+    i.onerror = () => onDone(null);
+    i.src = url;
+    return () => URL.revokeObjectURL(url);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [url]);
+
+  const base = img ? V / Math.min(img.naturalWidth, img.naturalHeight) : 1;
+  const scale = base * zoom;
+  const w = img ? img.naturalWidth * scale : V;
+  const h = img ? img.naturalHeight * scale : V;
+  const clamp = (x: number, y: number) => ({
+    x: Math.min(0, Math.max(V - w, x)),
+    y: Math.min(0, Math.max(V - h, y)),
+  });
+  const pos = clamp(off.x, off.y);
+
+  // Keep the viewport center anchored while zooming.
+  function changeZoom(z: number) {
+    if (!img) return;
+    const oldScale = scale;
+    const newScale = base * z;
+    const cx = (V / 2 - pos.x) / oldScale;
+    const cy = (V / 2 - pos.y) / oldScale;
+    setZoom(z);
+    setOff({ x: V / 2 - cx * newScale, y: V / 2 - cy * newScale });
   }
+
+  function save() {
+    if (!img) return onDone(null);
+    const canvas = document.createElement("canvas");
+    canvas.width = 256;
+    canvas.height = 256;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return onDone(null);
+    ctx.drawImage(img, -pos.x / scale, -pos.y / scale, V / scale, V / scale, 0, 0, 256, 256);
+    canvas.toBlob((b) => onDone(b), "image/jpeg", 0.85);
+  }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(6,3,18,.7)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)", display: "grid", placeItems: "center", padding: 20 }}>
+      <div style={{ borderRadius: 20, background: "linear-gradient(180deg, #241738, #180F30)", border: `1px solid ${colors.panelBorder}`, boxShadow: "0 24px 70px rgba(0,0,0,.55)", padding: 18, display: "flex", flexDirection: "column", gap: 14, alignItems: "center" }}>
+        <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink }}>{t("avatarEditTitle")}</span>
+        <div
+          onPointerDown={(e) => {
+            (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+            drag.current = { x: e.clientX, y: e.clientY, ox: pos.x, oy: pos.y };
+          }}
+          onPointerMove={(e) => {
+            if (!drag.current) return;
+            setOff(clamp(drag.current.ox + (e.clientX - drag.current.x), drag.current.oy + (e.clientY - drag.current.y)));
+          }}
+          onPointerUp={() => (drag.current = null)}
+          onPointerCancel={() => (drag.current = null)}
+          style={{ position: "relative", width: V, height: V, borderRadius: 24, overflow: "hidden", border: `2px solid ${withAlpha(colors.gold, 0.55)}`, cursor: "grab", touchAction: "none", background: "#000" }}
+        >
+          {img && (
+            <img
+              src={url}
+              alt=""
+              draggable={false}
+              style={{ position: "absolute", left: pos.x, top: pos.y, width: w, height: h, maxWidth: "none", userSelect: "none", pointerEvents: "none" }}
+            />
+          )}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, width: V }}>
+          <ZoomOut size={16} color={colors.faint} />
+          <input
+            type="range"
+            min={1}
+            max={3}
+            step={0.01}
+            value={zoom}
+            onChange={(e) => changeZoom(Number(e.target.value))}
+            style={{ flex: 1, accentColor: colors.gold }}
+          />
+          <ZoomIn size={16} color={colors.faint} />
+        </div>
+        <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12, color: colors.faint }}>{t("dragHint")}</p>
+        <div style={{ display: "flex", gap: 8, width: V }}>
+          <Button variant="gold" full onClick={save}>{t("save")}</Button>
+          <Button variant="ghost" onClick={() => onDone(null)}>{t("cancelCorrection")}</Button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ---- Vrienden -----------------------------------------------------------------

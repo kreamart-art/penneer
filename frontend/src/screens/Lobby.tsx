@@ -6,6 +6,7 @@ import { Check, Copy, Minus, Plus, Send, UserPlus, Volume2, VolumeX, X } from "l
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { Chip } from "../components/Chip";
+import { InfoDot } from "../components/InfoDot";
 import { Toggle } from "../components/Toggle";
 import { Screen, Card } from "../components/Layout";
 import { TopBar } from "../components/TopBar";
@@ -311,13 +312,12 @@ export function Lobby({ game }: { game: GameApi }) {
             <Row label={t("allowSpectators")}>
               <Toggle on={settings.allow_spectators} disabled={!isHost} onChange={(v) => game.updateSettings({ allow_spectators: v })} />
             </Row>
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <Row label={t("lenientSpelling")}>
-                <Toggle on={settings.lenient_spelling} disabled={!isHost} onChange={(v) => game.updateSettings({ lenient_spelling: v })} />
-              </Row>
-              <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12, color: colors.faint, lineHeight: 1.4 }}>
-                {t("lenientSpellingHint")}
-              </p>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontFamily: font.ui, fontSize: 14, color: colors.ink }}>
+                {t("lenientSpelling")}
+                <InfoDot title={t("lenientSpelling")} text={t("lenientSpellingHint")} />
+              </span>
+              <Toggle on={settings.lenient_spelling} disabled={!isHost} onChange={(v) => game.updateSettings({ lenient_spelling: v })} />
             </div>
             <Row label={t("maxPlayers")}>
               <Stepper

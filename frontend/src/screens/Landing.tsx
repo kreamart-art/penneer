@@ -4,6 +4,7 @@ import { HelpCircle, Settings as SettingsIcon, UserRound } from "lucide-react";
 import { Logo } from "../components/Logo";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
+import { NotifyNudge } from "../components/NotifyNudge";
 import { Screen, Card } from "../components/Layout";
 import type { GameApi } from "../net/socket";
 import { useT } from "../i18n/i18n";
@@ -181,6 +182,8 @@ export function Landing({
           <HelpCircle size={16} />
           {t("howItWorks")}
         </button>
+
+        <NotifyNudge />
       </div>
     </Screen>
   );

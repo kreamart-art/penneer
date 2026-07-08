@@ -35,6 +35,8 @@ export function Results({ game }: { game: GameApi }) {
   // row (only if the finger didn't move — so scrolling never corrects), then an
   // explicit Afkeuren/Goedkeuren confirms. Prevents accidental flips.
   const [selected, setSelected] = useState<string | null>(null);
+  // Second step of "Zelfde woord als...": pick the partner word.
+  const [pairing, setPairing] = useState(false);
   const moved = useRef(false);
   const startPt = useRef({ x: 0, y: 0 });
   const onRowDown = (e: React.PointerEvent) => {
@@ -46,6 +48,11 @@ export function Results({ game }: { game: GameApi }) {
   };
 
   const roundTotal = (pid: string) => cats.reduce((sum, c) => sum + (round?.points[pid]?.[c] ?? 0), 0);
+
+  // Mirror of the server's normalize(): detects a manually paired answer
+  // (canon differs from the word itself).
+  const norm = (s: string) =>
+    s.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
 
   return (
     <Screen top={<TopBar code={room.code} roundNo={room.round_no} totalRounds={room.settings.rounds} connected={game.state.status === "open"} onLeave={game.leaveRoom} game={game} />}>
@@ -93,6 +100,7 @@ export function Results({ game }: { game: GameApi }) {
                         onClick={() => {
                           if (moved.current || !text) return; // a scroll, not a tap
                           setSelected(isSel ? null : rowKey);
+                          setPairing(false);
                         }}
                         style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 10, background: isSel ? withAlpha(colors.gold, 0.1) : withAlpha("#000000", 0.18), border: `1px solid ${isSel ? withAlpha(colors.gold, 0.6) : mark === "question" ? withAlpha(colors.orange, 0.4) : colors.hairline}`, cursor: text ? "pointer" : "default", textAlign: "left", width: "100%", touchAction: "pan-y" }}
                       >
@@ -122,25 +130,80 @@ export function Results({ game }: { game: GameApi }) {
                         )}
                         <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15, color: pts > 0 ? colors.ink : colors.faint, width: 22, textAlign: "right", flexShrink: 0 }}>{pts}</span>
                       </button>
-                      {isSel && text && (
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 2px 2px" }}>
-                          <button
-                            onClick={() => {
-                              game.challenge(p.id, cat);
-                              setSelected(null);
-                            }}
-                            style={{ flex: 1, fontFamily: font.ui, fontSize: 13, fontWeight: 600, padding: "9px 12px", borderRadius: 10, cursor: "pointer", color: valid ? colors.redHi : colors.green, background: valid ? withAlpha(colors.red, 0.16) : withAlpha(colors.green, 0.16), border: `1px solid ${valid ? withAlpha(colors.red, 0.5) : withAlpha(colors.green, 0.5)}` }}
-                          >
-                            {valid ? t("markWrong") : t("markGood")}
-                          </button>
-                          <button
-                            onClick={() => setSelected(null)}
-                            style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, padding: "9px 14px", borderRadius: 10, cursor: "pointer", color: colors.sub, background: "transparent", border: `1px solid ${colors.hairline}` }}
-                          >
-                            {t("cancelCorrection")}
-                          </button>
-                        </div>
-                      )}
+                      {isSel && text && (() => {
+                        // Partner candidates: other players' valid words in
+                        // this category, deduped by canon.
+                        const seen = new Set<string>();
+                        const candidates = players
+                          .filter((pl) => pl.id !== p.id)
+                          .map((pl) => ({ pl, a: round?.answers[pl.id]?.[cat] }))
+                          .filter((x) => x.a && x.a.valid && x.a.text)
+                          .filter((x) => {
+                            const k = x.a!.canon || norm(x.a!.text);
+                            if (seen.has(k)) return false;
+                            seen.add(k);
+                            return true;
+                          })
+                          .slice(0, 6);
+                        const isPaired = !!ans?.canon && ans.canon !== norm(text);
+                        const btn: React.CSSProperties = { fontFamily: font.ui, fontSize: 13, fontWeight: 600, padding: "9px 12px", borderRadius: 10, cursor: "pointer" };
+                        if (pairing) {
+                          return (
+                            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, padding: "0 2px 2px" }}>
+                              <span style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint }}>{t("pickSame")}</span>
+                              {candidates.map(({ pl, a }) => (
+                                <button
+                                  key={pl.id}
+                                  onClick={() => {
+                                    game.markSame(p.id, cat, pl.id);
+                                    setSelected(null);
+                                    setPairing(false);
+                                  }}
+                                  style={{ ...btn, color: colors.gold, background: withAlpha(colors.gold, 0.14), border: `1px solid ${withAlpha(colors.gold, 0.5)}` }}
+                                >
+                                  {a!.text} <span style={{ color: colors.faint, fontWeight: 500 }}>({pl.name})</span>
+                                </button>
+                              ))}
+                              <button onClick={() => setPairing(false)} style={{ ...btn, fontWeight: 500, color: colors.sub, background: "transparent", border: `1px solid ${colors.hairline}` }}>
+                                {t("cancelCorrection")}
+                              </button>
+                            </div>
+                          );
+                        }
+                        return (
+                          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, padding: "0 2px 2px" }}>
+                            <button
+                              onClick={() => {
+                                game.challenge(p.id, cat);
+                                setSelected(null);
+                              }}
+                              style={{ ...btn, flex: 1, color: valid ? colors.redHi : colors.green, background: valid ? withAlpha(colors.red, 0.16) : withAlpha(colors.green, 0.16), border: `1px solid ${valid ? withAlpha(colors.red, 0.5) : withAlpha(colors.green, 0.5)}` }}
+                            >
+                              {valid ? t("markWrong") : t("markGood")}
+                            </button>
+                            {isPaired ? (
+                              <button
+                                onClick={() => {
+                                  game.markSame(p.id, cat, null);
+                                  setSelected(null);
+                                }}
+                                style={{ ...btn, color: colors.gold, background: withAlpha(colors.gold, 0.12), border: `1px solid ${withAlpha(colors.gold, 0.45)}` }}
+                              >
+                                {t("notSame")}
+                              </button>
+                            ) : (
+                              candidates.length > 0 && (
+                                <button onClick={() => setPairing(true)} style={{ ...btn, color: colors.gold, background: withAlpha(colors.gold, 0.12), border: `1px solid ${withAlpha(colors.gold, 0.45)}` }}>
+                                  {t("sameAs")}
+                                </button>
+                              )
+                            )}
+                            <button onClick={() => setSelected(null)} style={{ ...btn, fontWeight: 500, color: colors.sub, background: "transparent", border: `1px solid ${colors.hairline}` }}>
+                              {t("cancelCorrection")}
+                            </button>
+                          </div>
+                        );
+                      })()}
                     </div>
                   );
                 })}

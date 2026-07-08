@@ -99,6 +99,7 @@ export interface AnswerView {
   text: string;
   valid: boolean;
   in_list: boolean; // false -> orange "?" (counts, but not found in the category list)
+  canon: string; // duplicate-detection key; differs from the own word when paired
 }
 
 export interface RoundView {
@@ -460,6 +461,7 @@ export interface GameApi {
   setReady: (ready: boolean) => void;
   stopRound: () => void;
   challenge: (player_id: string, cat: string, valid?: boolean) => void;
+  markSame: (player_id: string, cat: string, as_player_id: string | null) => void;
   nextRound: () => void;
   endGame: () => void;
   readyNext: () => void;
@@ -629,6 +631,7 @@ export function useGame(): GameApi {
     },
     challenge: (player_id, cat, valid) =>
       send({ type: "challenge_answer", player_id, cat, ...(valid === undefined ? {} : { valid }) }),
+    markSame: (player_id, cat, as_player_id) => send({ type: "mark_same", player_id, cat, as_player_id }),
     nextRound: () => send({ type: "next_round" }),
     endGame: () => send({ type: "end_game" }),
     readyNext: () => send({ type: "ready_next" }),

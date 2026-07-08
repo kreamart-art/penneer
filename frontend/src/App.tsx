@@ -11,6 +11,7 @@ import { Settings } from "./screens/Settings";
 import { Landing } from "./screens/Landing";
 import { Hub } from "./screens/Hub";
 import { BadgeToasts } from "./components/BadgeToasts";
+import { localNotify } from "./components/NotifyNudge";
 import { Lobby } from "./screens/Lobby";
 import { Reveal } from "./screens/Reveal";
 import { Fill } from "./screens/Fill";
@@ -21,7 +22,7 @@ const INTRO_KEY = "penneer.introSeen";
 
 export default function App() {
   const game = useGame();
-  const { lang } = useT();
+  const { lang, t } = useT();
   const room = game.state.room;
   const [introDone, setIntroDone] = useState(() => sessionStorage.getItem(INTRO_KEY) === "1");
   const [showRules, setShowRules] = useState(false);
@@ -72,7 +73,34 @@ export default function App() {
     } catch {
       /* vibration not supported */
     }
+    localNotify("Pen Neer", `${last.name}: ${last.text}`);
   }, [chat, game.state.chatOpen, game.state.playerId]);
+
+  // Local notification for new inbox items (invite, challenge, friend request)
+  // while the tab is hidden. Same armed-grace trick as the chat notify.
+  const inbox = game.state.inbox;
+  const prevInboxLen = useRef(inbox.length);
+  const inboxArmed = useRef(false);
+  useEffect(() => {
+    const id = window.setTimeout(() => (inboxArmed.current = true), 2000);
+    return () => window.clearTimeout(id);
+  }, []);
+  useEffect(() => {
+    const prev = prevInboxLen.current;
+    prevInboxLen.current = inbox.length;
+    if (!inboxArmed.current || inbox.length <= prev) return;
+    const item = inbox[0];
+    if (!item) return;
+    sound.chat();
+    const body =
+      item.type === "friend_request"
+        ? `${item.from_name} ${t("pendingIn")}`
+        : item.type === "challenge"
+          ? `${item.from_name} ${t("challengedYou")}`
+          : `${item.from_name} ${t("invitedYouTo")} ${item.room_code}`;
+    localNotify("Pen Neer", body);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inbox]);
 
   // In a room: phase-driven screens (skip the whole pre-room flow).
   if (room && game.me) {

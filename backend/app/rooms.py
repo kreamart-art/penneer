@@ -715,6 +715,47 @@ class RoomManager:
         )
         await self.send_state(room)
 
+    async def mark_same(self, player_id: str, payload: dict) -> None:
+        """Pair an answer with another player's word in the same category, so
+        both score as dubbel ('manja' = 'mango'). as_player_id None unpairs.
+        Pairing implies the word counts (approves it)."""
+        room = self.room_of_player(player_id)
+        if room is None or room.phase != "results":
+            return
+        rnd = room.current_round
+        if rnd is None:
+            return
+        target = payload.get("player_id")
+        cat = payload.get("cat")
+        ans = rnd.answers.get(target, {}).get(cat)
+        if ans is None or not ans.text:
+            return
+        as_pid = payload.get("as_player_id")
+        if as_pid:
+            other = rnd.answers.get(as_pid, {}).get(cat)
+            if other is None or not other.valid or not other.text or as_pid == target:
+                return
+            # Take the partner's canon so chains collapse to one bucket.
+            ans.canon = other.canon or game.normalize(other.text)
+            ans.valid = True
+        else:
+            ans.canon = game.normalize(ans.text)  # unpair: back to its own word
+        player_ids = [p.id for p in self.playing_players(room)]
+        rnd.points = game.score_round(rnd, player_ids, room.settings.categories)
+        room.scores = game.total_scores(room.history, player_ids)
+        await self.broadcast(
+            room,
+            {
+                "type": "results_updated",
+                "points": {pid: dict(c) for pid, c in rnd.points.items()},
+                "scores": dict(room.scores),
+                "answers": {
+                    pid: {c2: a.public() for c2, a in c.items()} for pid, c in rnd.answers.items()
+                },
+            },
+        )
+        await self.send_state(room)
+
     async def ready_next(self, player_id: str) -> None:
         """A player taps "klaar voor de volgende ronde". Advance only once every
         connected playing player has tapped (so nobody misses the results)."""
