@@ -21,12 +21,37 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Fader({ icon, label, value, onChange }: { icon: React.ReactNode; label: string; value: number; onChange: (v: number) => void }) {
+function Fader({
+  icon,
+  label,
+  value,
+  muted,
+  onChange,
+  onToggleMute,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: number;
+  muted: boolean;
+  onChange: (v: number) => void;
+  onToggleMute: () => void;
+}) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-      <span style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: font.ui, fontSize: 15, color: colors.ink, width: 128, flexShrink: 0 }}>
-        {icon} {label}
-      </span>
+      {/* the icon is the channel's mute toggle */}
+      <button
+        onClick={onToggleMute}
+        aria-label={muted ? `${label} aan` : `${label} uit`}
+        style={{ display: "flex", alignItems: "center", gap: 8, width: 120, flexShrink: 0, background: "transparent", border: "none", cursor: "pointer", padding: 0, textAlign: "left" }}
+      >
+        <span style={{ position: "relative", display: "flex", color: muted ? colors.faint : colors.gold }}>
+          {icon}
+          {muted && (
+            <span style={{ position: "absolute", left: "50%", top: "50%", width: 22, height: 2, background: colors.faint, borderRadius: 2, transform: "translate(-50%,-50%) rotate(-45deg)", boxShadow: `0 0 0 1.5px ${withAlpha(colors.bg1, 0.9)}` }} />
+          )}
+        </span>
+        <span style={{ fontFamily: font.ui, fontSize: 15, color: muted ? colors.faint : colors.ink }}>{label}</span>
+      </button>
       <input
         type="range"
         min={0}
@@ -34,9 +59,11 @@ function Fader({ icon, label, value, onChange }: { icon: React.ReactNode; label:
         step={0.01}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        style={{ flex: 1, accentColor: colors.gold }}
+        style={{ flex: 1, accentColor: colors.gold, opacity: muted ? 0.4 : 1 }}
       />
-      <span style={{ width: 38, textAlign: "right", fontFamily: font.ui, fontSize: 12.5, color: colors.faint }}>{Math.round(value * 100)}%</span>
+      <span style={{ width: 34, textAlign: "right", fontFamily: font.ui, fontSize: 12.5, color: colors.faint }}>
+        {muted ? "uit" : `${Math.round(value * 100)}%`}
+      </span>
     </div>
   );
 }
@@ -45,6 +72,8 @@ export function Settings({ game, onBack, onShowRules }: { game: GameApi; onBack:
   const { t, lang, setLang } = useT();
   const [musicVol, setMusicVol] = useState(sound.musicVolume());
   const [sfxVol, setSfxVol] = useState(sound.sfxVolume());
+  const [musicMuted, setMusicMuted] = useState(sound.isMusicMuted());
+  const [sfxMuted, setSfxMuted] = useState(sound.isSfxMuted());
   const [installable, setInstallable] = useState(canInstall());
   const standalone = isStandalone();
   const [adminCode, setAdminCode] = useState("");
@@ -94,18 +123,31 @@ export function Settings({ game, onBack, onShowRules }: { game: GameApi; onBack:
               icon={<Music size={17} />}
               label={t("musicVol")}
               value={musicVol}
+              muted={musicMuted}
+              onToggleMute={() => {
+                sound.toggleMusicMuted();
+                setMusicMuted(sound.isMusicMuted());
+              }}
               onChange={(v) => {
                 setMusicVol(v);
-                sound.setMusicVolume(v);
+                sound.setMusicVolume(v); // >0 also clears the music mute
+                setMusicMuted(sound.isMusicMuted());
               }}
             />
             <Fader
               icon={<Volume2 size={17} />}
               label={t("sfxVol")}
               value={sfxVol}
+              muted={sfxMuted}
+              onToggleMute={() => {
+                sound.toggleSfxMuted();
+                setSfxMuted(sound.isSfxMuted());
+                if (!sound.isSfxMuted()) sound.approve();
+              }}
               onChange={(v) => {
                 setSfxVol(v);
                 sound.setSfxVolume(v);
+                setSfxMuted(sound.isSfxMuted());
                 if (v > 0) sound.approve();
               }}
             />

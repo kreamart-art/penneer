@@ -2,11 +2,12 @@
 // no-timer, rounds, categories + deelcode, hard letters, max players, spectators),
 // testbots, and per-device language + sound toggles.
 import { useEffect, useRef, useState } from "react";
-import { Check, Copy, Minus, Plus, Send, UserPlus, Volume2, VolumeX, X } from "lucide-react";
+import { Check, Copy, Minus, Plus, Send, UserPlus, X } from "lucide-react";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { Chip } from "../components/Chip";
 import { InfoDot } from "../components/InfoDot";
+import { MusicToggle } from "../components/MusicToggle";
 import { Toggle } from "../components/Toggle";
 import { Screen, Card } from "../components/Layout";
 import { TopBar } from "../components/TopBar";
@@ -92,7 +93,6 @@ export function Lobby({ game }: { game: GameApi }) {
   const isHost = game.isHost;
   const { t, tCat, lang, setLang } = useT();
   const [copied, setCopied] = useState(false);
-  const [muted, setMuted] = useState(sound.isMuted());
   const [deelInput, setDeelInput] = useState("");
   const [deelErr, setDeelErr] = useState("");
   const [shared, setShared] = useState(false);
@@ -179,18 +179,7 @@ export function Lobby({ game }: { game: GameApi }) {
               </button>
             ))}
           </div>
-          <button
-            onClick={() => {
-              const nextMuted = !muted;
-              sound.setMuted(nextMuted);
-              setMuted(nextMuted);
-              if (!nextMuted) sound.playerJoin();
-            }}
-            title={t("sound")}
-            style={{ background: "transparent", border: "none", cursor: "pointer", color: muted ? colors.faint : colors.gold }}
-          >
-            {muted ? <VolumeX size={20} /> : <Volume2 size={20} />}
-          </button>
+          <MusicToggle />
         </div>
 
         {/* Room code */}

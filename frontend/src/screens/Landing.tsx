@@ -5,6 +5,7 @@ import { Logo } from "../components/Logo";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { NotifyNudge } from "../components/NotifyNudge";
+import { MusicToggle } from "../components/MusicToggle";
 import { Screen, Card } from "../components/Layout";
 import type { GameApi } from "../net/socket";
 import { useT } from "../i18n/i18n";
@@ -84,13 +85,16 @@ export function Landing({
             </span>
           )}
         </button>
-        <button
-          onClick={onShowSettings}
-          aria-label={t("settings")}
-          style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.sub, display: "flex", padding: 6 }}
-        >
-          <SettingsIcon size={22} />
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <MusicToggle />
+          <button
+            onClick={onShowSettings}
+            aria-label={t("settings")}
+            style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.sub, display: "flex", padding: 6 }}
+          >
+            <SettingsIcon size={22} />
+          </button>
+        </div>
       </div>
       <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 22 }}>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>

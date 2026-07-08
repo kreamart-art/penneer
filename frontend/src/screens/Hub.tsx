@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, Award, Bell, Camera, Check, Swords, Trash2, Trophy, UserPlus, Users, X, ZoomIn, ZoomOut } from "lucide-react";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
+import { MusicToggle } from "../components/MusicToggle";
 import { Screen, Card } from "../components/Layout";
 import type { Friend, GameApi, InboxItem } from "../net/socket";
 import { useT } from "../i18n/i18n";
@@ -55,6 +56,9 @@ export function Hub({ game, onBack, onChallenge }: { game: GameApi; onBack: () =
             <ArrowLeft size={20} />
           </button>
           <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>{t("profile")}</span>
+          <div style={{ marginLeft: "auto" }}>
+            <MusicToggle />
+          </div>
         </div>
       }
     >

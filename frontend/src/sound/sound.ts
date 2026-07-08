@@ -1,14 +1,17 @@
-// Pen Neer — audio. Two channels with independent volume (persisted):
+// Pen Neer — audio. Two channels with independent volume + mute (persisted):
 //   - sfx   : short effects. Plays the studio mp3 in /public/sfx when present,
 //             otherwise a synthesized Web Audio fallback so nothing is silent.
 //   - music : the KREAM background beat (looped HTMLAudio), heard after the
 //             intro until a game starts.
-// A master mute (the speaker icon) silences both without losing the volumes.
+// Each channel has its own mute so you can kill the music everywhere while the
+// effects (intro sting, results/win jingle) keep playing.
 
 const K_SFX = "penneer.vol.sfx";
 const K_MUSIC = "penneer.vol.music";
-const K_MUTE = "penneer.muted";
-const K_LEGACY = "penneer.sound"; // old single on/off flag
+const K_MUSIC_MUTE = "penneer.mute.music";
+const K_SFX_MUTE = "penneer.mute.sfx";
+const K_LEGACY_MUTE = "penneer.muted"; // old single master-mute flag
+const K_LEGACY = "penneer.sound"; // oldest single on/off flag
 
 function loadVol(key: string, def: number): number {
   try {
@@ -21,7 +24,16 @@ function loadVol(key: string, def: number): number {
   }
 }
 
-// Migrate the old boolean: if the user had muted, keep sfx off by default.
+function loadBool(key: string, def: boolean): boolean {
+  try {
+    const v = localStorage.getItem(key);
+    return v === null ? def : v === "1";
+  } catch {
+    return def;
+  }
+}
+
+// Migrate the oldest boolean: if the user had all sound off, keep sfx off.
 const legacyOff = (() => {
   try {
     return localStorage.getItem(K_LEGACY) === "0";
@@ -29,16 +41,13 @@ const legacyOff = (() => {
     return false;
   }
 })();
+// Migrate the v1.8 master mute into both channel mutes.
+const legacyMasterMuted = loadBool(K_LEGACY_MUTE, false);
 
 let sfxVol = loadVol(K_SFX, legacyOff ? 0 : 0.8);
 let musicVol = loadVol(K_MUSIC, legacyOff ? 0 : 0.5);
-let muted = (() => {
-  try {
-    return localStorage.getItem(K_MUTE) === "1";
-  } catch {
-    return false;
-  }
-})();
+let musicMuted = loadBool(K_MUSIC_MUTE, legacyMasterMuted);
+let sfxMuted = loadBool(K_SFX_MUTE, legacyMasterMuted);
 
 const save = (key: string, v: number | string) => {
   try {
@@ -60,7 +69,7 @@ function ensureCtx(): AudioContext | null {
     if (!AC) return null;
     ctx = new AC();
     sfxGain = ctx.createGain();
-    sfxGain.gain.value = muted ? 0 : sfxVol;
+    sfxGain.gain.value = sfxMuted ? 0 : sfxVol;
     sfxGain.connect(ctx.destination);
     void decodeAll();
   }
@@ -69,7 +78,7 @@ function ensureCtx(): AudioContext | null {
 }
 
 function applySfxGain() {
-  if (sfxGain) sfxGain.gain.value = muted ? 0 : sfxVol;
+  if (sfxGain) sfxGain.gain.value = sfxMuted ? 0 : sfxVol;
 }
 
 // Decoded studio samples, keyed by effect name. undefined = not tried,
@@ -157,7 +166,7 @@ function sweep(from: number, to: number, start: number, dur: number, type: Oscil
 
 // Play a named effect: studio sample if decoded, else the synth fallback.
 function sfx(name: string, fallback: () => void) {
-  if (muted || sfxVol <= 0) return;
+  if (sfxMuted || sfxVol <= 0) return;
   if (!ensureCtx()) return;
   if (buffers[name]) {
     playBuffer(name);
@@ -184,22 +193,22 @@ function ensureMusicEl(): HTMLAudioElement | null {
     musicEl.loop = true;
     musicEl.preload = "auto";
   }
-  musicEl.volume = muted ? 0 : musicVol;
+  musicEl.volume = musicMuted ? 0 : musicVol;
   return musicEl;
 }
 
 function applyMusic() {
   const el = ensureMusicEl();
   if (!el) return;
-  el.volume = muted ? 0 : musicVol;
-  const shouldPlay = musicWanted && !muted && musicVol > 0;
+  el.volume = musicMuted ? 0 : musicVol;
+  const shouldPlay = musicWanted && !musicMuted && musicVol > 0;
   if (shouldPlay) {
     const wait = musicHoldUntil - nowSec();
     if (wait > 0.05) {
       // The intro sting is still playing; hold the beat until it finishes.
       el.pause();
       window.setTimeout(() => {
-        if (musicWanted && !muted && musicVol > 0) applyMusic();
+        if (musicWanted && !musicMuted && musicVol > 0) applyMusic();
       }, wait * 1000);
       return;
     }
@@ -209,7 +218,7 @@ function applyMusic() {
         gesturePrimed = true;
         const retry = () => {
           window.removeEventListener("pointerdown", retry);
-          if (musicWanted && !muted && musicVol > 0) el.play().catch(() => {});
+          if (musicWanted && !musicMuted && musicVol > 0) el.play().catch(() => {});
         };
         window.addEventListener("pointerdown", retry, { once: true });
       }
@@ -224,29 +233,38 @@ function applyMusic() {
 export const sound = {
   sfxVolume: () => sfxVol,
   musicVolume: () => musicVol,
-  isMuted: () => muted,
+  isMusicMuted: () => musicMuted,
+  isSfxMuted: () => sfxMuted,
 
   setSfxVolume(v: number) {
     sfxVol = Math.min(1, Math.max(0, v));
     save(K_SFX, sfxVol);
-    if (sfxVol > 0 && muted) this.setMuted(false);
+    if (sfxVol > 0 && sfxMuted) this.setSfxMuted(false);
     ensureCtx();
     applySfxGain();
   },
   setMusicVolume(v: number) {
     musicVol = Math.min(1, Math.max(0, v));
     save(K_MUSIC, musicVol);
-    if (musicVol > 0 && muted) this.setMuted(false);
+    if (musicVol > 0 && musicMuted) this.setMusicMuted(false);
     applyMusic();
   },
-  setMuted(v: boolean) {
-    muted = v;
-    save(K_MUTE, v ? "1" : "0");
+  setMusicMuted(v: boolean) {
+    musicMuted = v;
+    save(K_MUSIC_MUTE, v ? "1" : "0");
+    applyMusic();
+  },
+  toggleMusicMuted() {
+    this.setMusicMuted(!musicMuted);
+  },
+  setSfxMuted(v: boolean) {
+    sfxMuted = v;
+    save(K_SFX_MUTE, v ? "1" : "0");
+    ensureCtx();
     applySfxGain();
-    applyMusic();
   },
-  toggleMuted() {
-    this.setMuted(!muted);
+  toggleSfxMuted() {
+    this.setSfxMuted(!sfxMuted);
   },
 
   // Call inside a user gesture (intro tap, create/join) to unlock audio on iOS.
@@ -266,7 +284,7 @@ export const sound = {
         el.pause();
         el.currentTime = 0;
         el.muted = false;
-        el.volume = muted ? 0 : musicVol;
+        el.volume = musicMuted ? 0 : musicVol;
         if (musicWanted) applyMusic();
       })
       .catch(() => {
@@ -326,7 +344,7 @@ export const sound = {
     });
     // Hold the background beat until the sting is nearly over. If the studio
     // file isn't decoded yet the synth fallback played, so hold only briefly.
-    if (!muted && sfxVol > 0) {
+    if (!sfxMuted && sfxVol > 0) {
       const dur = buffers.intro ? buffers.intro.duration : 0.9;
       musicHoldUntil = nowSec() + Math.max(0, dur - 0.8);
     }
