@@ -17,11 +17,14 @@ export function Intro({ onDone }: { onDone: () => void }) {
     return () => clearTimeout(id);
   }, [started, onDone]);
 
+  // The tap unlocks audio (iOS), blesses the music element and plays a short
+  // arcade EFFECT. The musical sting + track start on the main page, so no
+  // background music is heard during the intro.
   const begin = () => {
     if (started) return;
     sound.unlock();
-    sound.primeMusic(); // bless bg music for after the intro (iOS gesture)
-    sound.intro();
+    sound.primeMusic();
+    sound.introFx();
     setStarted(true);
   };
 

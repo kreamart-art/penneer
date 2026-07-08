@@ -38,8 +38,17 @@ export default function App() {
 
   // Background music: on after the intro, off once a game is running (reveal
   // onward). So it plays on landing / language / hub / settings / lobby.
+  // The intro STING fires exactly when the main page appears (not during the
+  // intro screen), and only when the user actually walked through the intro
+  // this session — a plain reload goes straight to the looping track.
   const inGame = !!(room && game.me && room.phase !== "lobby");
+  const introAtMount = useRef(introDone);
+  const stungRef = useRef(false);
   useEffect(() => {
+    if (introDone && !introAtMount.current && !stungRef.current) {
+      stungRef.current = true;
+      sound.intro(); // sting now; the track follows when it ends (hold)
+    }
     sound.musicActive(introDone && !inGame);
   }, [introDone, inGame]);
 

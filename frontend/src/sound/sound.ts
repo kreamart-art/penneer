@@ -367,9 +367,16 @@ export const sound = {
     [523, 659, 784, 1046].forEach((f, i) => tone(f, i * 0.1, 0.3, "triangle", 0.18));
     sweep(300, 900, 0.05, 0.5, "sawtooth", 0.1);
   }),
-  // The intro sting leads into the music track, so it belongs to the MUSIC
-  // channel: muting music silences it too (and it plays even if sfx is muted).
-  // The track itself still only starts on the main page (musicHoldUntil).
+  // Short arcade effect on the intro tap (SFX channel — this is an effect,
+  // not music, so it may play while the music is muted).
+  introFx: () => sfx("introFx", () => {
+    sweep(120, 520, 0, 0.6, "sawtooth", 0.12);
+    [392, 523, 659].forEach((f, i) => tone(f, 0.25 + i * 0.08, 0.4, "triangle", 0.14));
+  }),
+
+  // The musical intro sting (intro.mp3) leads into the track, so it belongs to
+  // the MUSIC channel and only plays when the MAIN PAGE appears — never during
+  // the intro screen. The track follows when the sting ends (musicHoldUntil).
   intro: () => {
     if (musicMuted || musicVol <= 0) return;
     if (!ensureCtx() || !ctx) return;

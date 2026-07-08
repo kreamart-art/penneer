@@ -1,7 +1,7 @@
 // Hub — profile, friends, inbox and leaderboard in one tabbed screen.
 // Reached from the Landing. A profile is optional: guests see the create form.
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Award, Bell, Camera, Check, Swords, Trash2, Trophy, UserPlus, Users, X, ZoomIn, ZoomOut } from "lucide-react";
+import { ArrowLeft, Award, Bell, Camera, Check, MoreVertical, Settings as SettingsIcon, Swords, Trash2, Trophy, UserPlus, Users, X, ZoomIn, ZoomOut } from "lucide-react";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { MusicToggle } from "../components/MusicToggle";
@@ -117,9 +117,14 @@ function ProfileTab({ game }: { game: GameApi }) {
   const [loginEmail, setLoginEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [editFile, setEditFile] = useState<File | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => setName(account?.name ?? ""), [account?.name]);
+  useEffect(() => {
+    if (settingsOpen && account) game.refreshBlocked();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settingsOpen]);
 
   async function uploadBlob(blob: Blob) {
     setBusy(true);
@@ -168,6 +173,10 @@ function ProfileTab({ game }: { game: GameApi }) {
         </Card>
       </>
     );
+  }
+
+  if (settingsOpen) {
+    return <ProfileSettings game={game} email={email} setEmail={setEmail} onBack={() => setSettingsOpen(false)} />;
   }
 
   const stats = account.stats;
@@ -263,6 +272,40 @@ function ProfileTab({ game }: { game: GameApi }) {
           ))
         )}
       </Card>
+
+      {/* profielinstellingen (e-mail, blokkades, beheer in een eigen scherm) */}
+      <Button variant="ghost" full onClick={() => setSettingsOpen(true)}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+          <SettingsIcon size={16} /> {t("profileSettings")}
+        </span>
+      </Button>
+    </>
+  );
+}
+
+// Profile settings: email linking, blocked players and account management,
+// grouped in one sub-screen behind the "Profielinstellingen" button.
+function ProfileSettings({
+  game,
+  email,
+  setEmail,
+  onBack,
+}: {
+  game: GameApi;
+  email: string;
+  setEmail: (v: string) => void;
+  onBack: () => void;
+}) {
+  const { t } = useT();
+  const account = game.state.account!;
+  return (
+    <>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <button onClick={onBack} aria-label={t("back")} style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 2 }}>
+          <ArrowLeft size={18} />
+        </button>
+        <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink }}>{t("profileSettings")}</span>
+      </div>
 
       {/* e-mail koppelen */}
       <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -427,6 +470,8 @@ function FriendsTab({ game, onChallenge }: { game: GameApi; onChallenge: (userId
   const account = game.state.account;
   const [query, setQuery] = useState("");
   const [sent, setSent] = useState<Record<string, boolean>>({});
+  const [menuFor, setMenuFor] = useState<string | null>(null);
+  const [viewing, setViewing] = useState<string | null>(null);
 
   useEffect(() => {
     const id = window.setTimeout(() => {
@@ -447,13 +492,24 @@ function FriendsTab({ game, onChallenge }: { game: GameApi; onChallenge: (userId
   const friendIds = new Set(friends.map((f) => f.id));
   const results = game.state.searchResults.filter((u) => !friendIds.has(u.id));
 
-  const row = (u: Friend | (typeof results)[number], right: React.ReactNode) => (
+  // Tap a friend's avatar or name to open their score card.
+  const openProfile = (id: string) => {
+    game.viewProfile(id);
+    setViewing(id);
+  };
+
+  const row = (u: Friend | (typeof results)[number], right: React.ReactNode, clickable = false) => (
     <div key={u.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0" }}>
-      <div style={{ position: "relative" }}>
-        <Avatar name={u.name} color={u.color} size={36} userId={u.id} hasAvatar={u.has_avatar} avatarVer={u.avatar_ver} />
-        <span style={{ position: "absolute", bottom: -2, right: -2, width: 10, height: 10, borderRadius: "50%", background: u.online ? colors.green : colors.faint, border: `2px solid ${colors.bg1}` }} />
-      </div>
-      <span style={{ flex: 1, fontFamily: font.ui, fontWeight: 600, fontSize: 14.5, color: colors.ink, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.name}</span>
+      <button
+        onClick={clickable ? () => openProfile(u.id) : undefined}
+        style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0, background: "transparent", border: "none", padding: 0, cursor: clickable ? "pointer" : "default", textAlign: "left" }}
+      >
+        <div style={{ position: "relative", flexShrink: 0 }}>
+          <Avatar name={u.name} color={u.color} size={36} userId={u.id} hasAvatar={u.has_avatar} avatarVer={u.avatar_ver} />
+          <span style={{ position: "absolute", bottom: -2, right: -2, width: 10, height: 10, borderRadius: "50%", background: u.online ? colors.green : colors.faint, border: `2px solid ${colors.bg1}` }} />
+        </div>
+        <span style={{ flex: 1, fontFamily: font.ui, fontWeight: 600, fontSize: 14.5, color: colors.ink, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.name}</span>
+      </button>
       {right}
     </div>
   );
@@ -502,20 +558,101 @@ function FriendsTab({ game, onChallenge }: { game: GameApi; onChallenge: (userId
           <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13, color: colors.faint, lineHeight: 1.5 }}>{t("noFriends")}</p>
         ) : (
           <>
-            {accepted.map((f) =>
-              row(f, (
-                <div style={{ display: "flex", gap: 6 }}>
-                  {smallBtn(<><Swords size={13} /> {t("challengeBtn")}</>, () => onChallenge(f.id), "gold")}
-                  {smallBtn(<Trash2 size={13} />, () => game.friendRemove(f.id))}
-                  {smallBtn(t("blockUser"), () => game.friendBlock(f.id), "red")}
-                </div>
-              ))
-            )}
+            {accepted.map((f) => (
+              <div key={f.id} style={{ display: "flex", flexDirection: "column" }}>
+                {row(f, (
+                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    {smallBtn(<><Swords size={13} /> {t("challengeBtn")}</>, () => onChallenge(f.id), "gold")}
+                    <button
+                      onClick={() => setMenuFor(menuFor === f.id ? null : f.id)}
+                      aria-label={t("friendOptions")}
+                      style={{ width: 32, height: 32, display: "grid", placeItems: "center", borderRadius: 9, border: `1px solid ${menuFor === f.id ? withAlpha(colors.gold, 0.5) : colors.hairline}`, background: menuFor === f.id ? withAlpha(colors.gold, 0.1) : "transparent", color: colors.sub, cursor: "pointer" }}
+                    >
+                      <MoreVertical size={15} />
+                    </button>
+                  </div>
+                ), true)}
+                {menuFor === f.id && (
+                  <div style={{ display: "flex", gap: 8, padding: "0 0 8px", justifyContent: "flex-end" }}>
+                    {smallBtn(<><Trash2 size={13} /> {t("removeFriend")}</>, () => { game.friendRemove(f.id); setMenuFor(null); })}
+                    {smallBtn(t("blockUser"), () => { game.friendBlock(f.id); setMenuFor(null); }, "red")}
+                  </div>
+                )}
+              </div>
+            ))}
             {pendingOut.map((f) => row(f, <span style={{ fontFamily: font.ui, fontSize: 12, color: colors.faint }}>{t("pendingOut")}</span>))}
           </>
         )}
       </Card>
+
+      {viewing && <ProfileViewModal game={game} userId={viewing} onClose={() => setViewing(null)} />}
     </>
+  );
+}
+
+// Score card of another player: stats + achievements in a small overlay.
+function ProfileViewModal({ game, userId, onClose }: { game: GameApi; userId: string; onClose: () => void }) {
+  const { t } = useT();
+  const p = game.state.viewedProfile;
+  const loaded = p && p.id === userId;
+  const statRows: [string, number][] = loaded
+    ? [
+        [t("statGames"), p.stats.games],
+        [t("statWins"), p.stats.wins],
+        [t("statPoints"), p.stats.points],
+        [t("statBest"), p.stats.best],
+        [t("statUniques"), p.stats.uniques],
+        [t("statStreak"), p.stats.streak],
+      ]
+    : [];
+  return (
+    <div
+      onClick={onClose}
+      style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(6,3,18,.65)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)", display: "grid", placeItems: "center", padding: 20 }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{ width: "100%", maxWidth: 380, maxHeight: "82vh", overflowY: "auto", borderRadius: 22, background: "linear-gradient(180deg, #241738, #160D30)", border: `1px solid ${withAlpha(colors.gold, 0.35)}`, boxShadow: "0 24px 70px rgba(0,0,0,.6)", padding: "20px 18px", display: "flex", flexDirection: "column", gap: 14 }}
+      >
+        {!loaded ? (
+          <p style={{ margin: 0, textAlign: "center", fontFamily: font.ui, fontSize: 14, color: colors.faint }}>...</p>
+        ) : (
+          <>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <Avatar name={p.name} color={p.color} size={54} userId={p.id} hasAvatar={p.has_avatar} avatarVer={p.avatar_ver} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 19, color: colors.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</div>
+                <div style={{ fontFamily: font.ui, fontSize: 12, color: p.online ? colors.green : colors.faint }}>{p.online ? "online" : "offline"}</div>
+              </div>
+              <button onClick={onClose} aria-label={t("back")} style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 2 }}>
+                <X size={20} />
+              </button>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+              {statRows.map(([label, value]) => (
+                <div key={label} style={{ textAlign: "center", padding: "8px 4px", borderRadius: 12, background: withAlpha("#000000", 0.22) }}>
+                  <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 20, color: colors.gold }}>{value}</div>
+                  <div style={{ fontFamily: font.ui, fontSize: 11, color: colors.faint }}>{label}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint }}>{t("badgesTitle")}</span>
+              {p.badges.length === 0 ? (
+                <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13, color: colors.faint }}>{t("noBadges")}</p>
+              ) : (
+                p.badges.map((b) => (
+                  <div key={b.badge} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 10, background: withAlpha(colors.gold, 0.08), border: `1px solid ${withAlpha(colors.gold, 0.25)}` }}>
+                    <Award size={16} color={colors.gold} />
+                    <span style={{ fontFamily: font.ui, fontSize: 13.5, color: colors.ink }}>{t(`badge_${b.badge}`)}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
   );
 }
 
