@@ -149,6 +149,9 @@ class Room:
     history: list[Round] = field(default_factory=list)
     scores: dict[str, int] = field(default_factory=dict)
     ready_ids: list[str] = field(default_factory=list)  # players who tapped "Ik ben klaar"
+    # Players who left mid-round and came back: they sit out the CURRENT round
+    # (cannot fill in, score no points) and rejoin play next round.
+    sat_out: list[str] = field(default_factory=list)
     # In-room chat (so players can ask what a word means without leaving). Kept
     # out of public() — it has its own channel (chat_history on join, chat on send).
     chat: list[dict] = field(default_factory=list)
@@ -183,6 +186,7 @@ class Room:
             "timer": self.timer.public(),
             "scores": dict(self.scores),
             "ready_ids": list(self.ready_ids),
+            "sat_out": list(self.sat_out),
             # The current round (answers + points) so reconnecting clients
             # can rebuild reveal/results screens.
             "round": self.current_round.public() if self.current_round else None,

@@ -33,8 +33,55 @@ export default function App() {
   const [showHub, setShowHub] = useState(false);
   const [showShop, setShowShop] = useState(false);
   const [bannerInvite, setBannerInvite] = useState<InboxItem | null>(null);
+  const [paypalFlash, setPaypalFlash] = useState<"ok" | "cancel" | "fail" | "pending" | null>(null);
   // A challenge creates a room first; once its lobby is up we send the invite.
   const pendingChallenge = useRef<string | null>(null);
+
+  // PayPal return: the buyer comes back to /?paypal=return&token=<order_id>.
+  // Capture the order (server verifies + unlocks), then refresh the account so
+  // the AI shows as active. Runs once on mount; the URL is cleaned either way.
+  const paypalHandled = useRef(false);
+  useEffect(() => {
+    if (paypalHandled.current) return;
+    const params = new URLSearchParams(location.search);
+    const flow = params.get("paypal");
+    if (!flow) return;
+    paypalHandled.current = true;
+    const orderId = params.get("token");
+    const clean = () => {
+      params.delete("paypal");
+      params.delete("token");
+      params.delete("PayerID");
+      const qs = params.toString();
+      history.replaceState(null, "", location.pathname + (qs ? `?${qs}` : ""));
+    };
+    if (flow === "return" && orderId) {
+      setShowShop(true);
+      const token = localStorage.getItem("penneer.accountToken") || "";
+      fetch("/api/shop/paypal/capture", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ order_id: orderId }),
+      })
+        .then((r) => r.json().then((d) => ({ ok: r.ok, d })))
+        .then(({ ok, d }) => {
+          if (ok && d.ok) {
+            setPaypalFlash("ok");
+            game.send({ type: "account_get" }); // pull the now-unlocked account
+          } else if (d && d.error === "pending") {
+            setPaypalFlash("pending"); // eCheck/on-hold: paid but not settled yet
+          } else {
+            setPaypalFlash("fail");
+          }
+        })
+        .catch(() => setPaypalFlash("fail"));
+    } else if (flow === "cancel") {
+      setShowShop(true);
+      setPaypalFlash("cancel");
+    }
+    clean();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Background music: on after the intro, off once a game is running (reveal
   // onward). So it plays on landing / language / hub / settings / lobby.
@@ -132,6 +179,13 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inbox]);
 
+  // Auto-dismiss the PayPal flash after a few seconds.
+  useEffect(() => {
+    if (!paypalFlash) return;
+    const id = window.setTimeout(() => setPaypalFlash(null), 5000);
+    return () => window.clearTimeout(id);
+  }, [paypalFlash]);
+
   const inRoom = !!(room && game.me);
 
   // Pick the current screen (in-room phase, or the pre-room flow).
@@ -189,6 +243,31 @@ export default function App() {
     <>
       {screen}
       {inRoom && <BadgeToasts game={game} />}
+      {paypalFlash && (
+        <div
+          onClick={() => setPaypalFlash(null)}
+          style={{
+            position: "fixed",
+            top: "calc(14px + env(safe-area-inset-top))",
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 90,
+            maxWidth: 340,
+            width: "calc(100% - 28px)",
+            padding: "12px 16px",
+            borderRadius: 14,
+            textAlign: "center",
+            fontFamily: "var(--font-ui, inherit)",
+            fontSize: 13.5,
+            color: paypalFlash === "ok" ? "#0B2C1A" : "#fff",
+            background: paypalFlash === "ok" ? "#36E0AE" : paypalFlash === "fail" ? "#B23A48" : "#3A2E5C",
+            boxShadow: "0 14px 40px rgba(0,0,0,.45)",
+            cursor: "pointer",
+          }}
+        >
+          {paypalFlash === "ok" ? t("paypalOk") : paypalFlash === "cancel" ? t("paypalCancel") : paypalFlash === "pending" ? t("paypalPending") : t("paypalFail")}
+        </div>
+      )}
       {bannerInvite && (
         <InviteBanner
           invite={bannerInvite}

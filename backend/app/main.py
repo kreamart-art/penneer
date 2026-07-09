@@ -10,9 +10,10 @@ from pathlib import Path
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from . import paypal
 from .db import AVATAR_MAX_BYTES, get_db
 from .ws import router as ws_router
 
@@ -74,6 +75,83 @@ async def get_avatar(user_id: str) -> Response:
     data, mime = found
     # The client busts the cache with ?v=<avatar_ver>, so cache hard.
     return Response(content=data, media_type=mime, headers={"Cache-Control": "public, max-age=31536000, immutable"})
+
+
+# ---- shop: PayPal checkout for the AI-referee unlock ------------------------
+
+@app.get("/api/shop/status")
+async def shop_status() -> JSONResponse:
+    """What the shop UI needs to render: whether PayPal is live + the price."""
+    return JSONResponse(paypal.status())
+
+
+@app.post("/api/shop/paypal/create")
+async def shop_paypal_create(request: Request) -> JSONResponse:
+    """Start a PayPal order for the authenticated account. The buyer's id is
+    baked into the order server-side, so capture can only unlock the payer."""
+    uid = get_db().auth(_bearer(request))
+    if uid is None:
+        return JSONResponse({"error": "auth"}, status_code=401)
+    if not paypal.configured():
+        return JSONResponse({"error": "unavailable"}, status_code=503)
+    order = await paypal.create_order(uid)
+    if not order:
+        return JSONResponse({"error": "paypal"}, status_code=502)
+    return JSONResponse(order)
+
+
+@app.post("/api/shop/paypal/capture")
+async def shop_paypal_capture(request: Request) -> JSONResponse:
+    """Capture an approved order and unlock AI for the payer, exactly once.
+
+    Trust boundary: we never take the price or the account from the client. We
+    capture with PayPal, require status COMPLETED, verify the amount/currency
+    match our configured price, and unlock the account baked into the order's
+    custom_id at create time."""
+    db = get_db()
+    uid = db.auth(_bearer(request))
+    if uid is None:
+        return JSONResponse({"error": "auth"}, status_code=401)
+    body = await request.json()
+    order_id = (body or {}).get("order_id") or ""
+    if not isinstance(order_id, str) or not order_id.strip():
+        return JSONResponse({"error": "order"}, status_code=400)
+    order_id = order_id.strip()
+
+    # Idempotent: a re-open of the return URL just re-confirms the unlock.
+    if db.purchase_code(order_id):
+        return JSONResponse({"ok": True, "already": True})
+
+    result = await paypal.capture_order(order_id)
+    if result is None:
+        return JSONResponse({"error": "paypal"}, status_code=502)
+    # A 422 (already captured) came back without a COMPLETED capture body; read
+    # the order to reconcile before deciding.
+    if result.get("status") != "COMPLETED":
+        result = await paypal.get_order(order_id) or result
+    if result.get("status") != "COMPLETED":
+        # PENDING = an eCheck/on-hold capture: money may still bounce, so no
+        # unlock yet. The UI tells the buyer it is being processed.
+        if result.get("status") == "PENDING":
+            return JSONResponse({"error": "pending"}, status_code=402)
+        return JSONResponse({"error": "not_completed"}, status_code=402)
+
+    # Amount + currency must match what we sell — never trust the returned order
+    # blindly (defense against a tampered/foreign order id).
+    if (result.get("amount") != paypal.price()) or (result.get("currency") != paypal.currency()):
+        return JSONResponse({"error": "amount"}, status_code=402)
+
+    # The payer is whoever the order was created for (custom_id). Fall back to
+    # the authenticated caller only if PayPal dropped custom_id.
+    buyer = result.get("custom_id") or uid
+    if not db.get_user(buyer):
+        buyer = uid
+
+    code = db.fulfil_purchase(order_id, buyer, paypal.price(), paypal.currency())
+    if code is None:
+        # Lost a race; the winning request already fulfilled it.
+        return JSONResponse({"ok": True, "already": True})
+    return JSONResponse({"ok": True})
 
 
 # Serve the built SPA when present (Docker copies it to ./static).

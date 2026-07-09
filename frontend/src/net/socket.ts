@@ -43,6 +43,7 @@ export interface Account {
   has_avatar: boolean;
   avatar_ver: number;
   email: string | null;
+  ai_unlocked: boolean; // bought the AI referee for this account
   stats: AccountStats;
   badges: Badge[];
   inbox_count: number;
@@ -122,6 +123,7 @@ export interface RoomState {
   timer: { ends_at: number | null; duration: number | null };
   scores: Record<string, number>;
   ready_ids: string[];
+  sat_out: string[]; // left mid-round: sit out the current round, back next round
   ai_referee: boolean; // AI scheidsrechter active on the "?" answers
   round: RoundView | null;
 }
@@ -136,6 +138,18 @@ export interface AdminAi {
 export interface RecoveryCode {
   code: string;
   used: boolean;
+}
+
+export interface AiCodeInfo {
+  total: number;
+  redeemed: number;
+  open: number;
+  new: string[]; // freshly generated codes, shown once
+}
+
+export interface ShopResult {
+  ok: boolean;
+  reason: string; // ok | already | used | invalid | auth
 }
 
 export interface ChatMessage {
@@ -160,6 +174,9 @@ export interface ClientState {
   isAdmin: boolean;
   adminAi: AdminAi | null;
   recoveryCodes: RecoveryCode[];
+  aiCodes: AiCodeInfo | null; // shop unlock-code stats + freshly generated codes
+  // Shop: result of the last code redeem (null until one happens).
+  shopResult: ShopResult | null;
   // In-room chat (so players can ask what a word means without leaving).
   chat: ChatMessage[];
   chatSeen: number; // messages considered read (drives the unread badge)
@@ -190,6 +207,7 @@ type Action =
   | { type: "clearJoin" }
   | { type: "drainToasts" }
   | { type: "clearLoginSent" }
+  | { type: "clearShopResult" }
   | { type: "msg"; msg: ServerMessage };
 
 // ---- server -> client messages ---------------------------------------------
@@ -209,7 +227,8 @@ type ServerMessage =
   | { type: "results"; round_no: number; answers: RoundView["answers"]; points: RoundView["points"]; scores: Record<string, number> }
   | { type: "results_updated"; points: RoundView["points"]; scores: Record<string, number>; answers: RoundView["answers"] }
   | { type: "game_over"; scores: Record<string, number>; winner_id: string | null }
-  | { type: "admin_ok"; is_admin: boolean; ai: AdminAi; recovery_codes: RecoveryCode[] }
+  | { type: "admin_ok"; is_admin: boolean; ai: AdminAi; recovery_codes: RecoveryCode[]; ai_codes: AiCodeInfo }
+  | { type: "shop_result"; ok: boolean; reason: string }
   | { type: "chat"; message: ChatMessage }
   | { type: "chat_history"; messages: ChatMessage[] }
   | { type: "account"; account: Account | null; token?: string; deleted?: boolean }
@@ -290,6 +309,8 @@ const initialState: ClientState = {
   isAdmin: false,
   adminAi: null,
   recoveryCodes: [],
+  aiCodes: null,
+  shopResult: null,
   chat: [],
   chatSeen: 0,
   chatOpen: false,
@@ -322,13 +343,17 @@ function reducer(state: ClientState, action: Action): ClientState {
       isAdmin: state.isAdmin,
       adminAi: state.adminAi,
       recoveryCodes: state.recoveryCodes,
+      aiCodes: state.aiCodes,
     };
   }
   if (action.type === "clearError") {
     return { ...state, error: null };
   }
   if (action.type === "adminLogout") {
-    return { ...state, isAdmin: false, adminAi: null, recoveryCodes: [] };
+    return { ...state, isAdmin: false, adminAi: null, recoveryCodes: [], aiCodes: null };
+  }
+  if (action.type === "clearShopResult") {
+    return { ...state, shopResult: null };
   }
   if (action.type === "chatOpen") {
     // Opening marks everything read.
@@ -384,7 +409,9 @@ function reducer(state: ClientState, action: Action): ClientState {
     case "game_over":
       return state; // room_state carries the authoritative snapshot
     case "admin_ok":
-      return { ...state, isAdmin: msg.is_admin, adminAi: msg.ai, recoveryCodes: msg.recovery_codes };
+      return { ...state, isAdmin: msg.is_admin, adminAi: msg.ai, recoveryCodes: msg.recovery_codes, aiCodes: msg.ai_codes };
+    case "shop_result":
+      return { ...state, shopResult: { ok: msg.ok, reason: msg.reason } };
     case "account": {
       if (msg.token) saveAccountToken(msg.token);
       if (msg.deleted) saveAccountToken(null);
@@ -477,6 +504,9 @@ export interface GameApi {
   adminLogin: (secret: string) => void;
   adminLogout: () => void;
   adminSetAi: (enabled: boolean) => void;
+  adminGenAiCodes: (count: number) => void;
+  redeemAiCode: (code: string) => void;
+  clearShopResult: () => void;
   sendChat: (text: string) => void;
   sendChatTyping: (typing: boolean) => void;
   openChat: () => void;
@@ -662,6 +692,12 @@ export function useGame(): GameApi {
       dispatch({ type: "adminLogout" });
     },
     adminSetAi: (enabled) => send({ type: "admin_set_ai", enabled }),
+    adminGenAiCodes: (count) => send({ type: "admin_gen_ai_codes", count }),
+    redeemAiCode: (code) => {
+      const c = code.trim();
+      if (c) send({ type: "shop_redeem", code: c });
+    },
+    clearShopResult: () => dispatch({ type: "clearShopResult" }),
     sendChat: (text) => {
       const t = text.trim().slice(0, 280);
       if (t) send({ type: "chat_send", text: t });

@@ -15,6 +15,7 @@ import uuid
 from typing import Any, Optional
 
 from . import ai_referee, game
+from .db import get_db
 from .models import (
     BOT_NAMES,
     CODE_ALPHABET,
@@ -62,13 +63,16 @@ class RoomManager:
             codes.append(h[:10].upper())
         return codes
 
-    def _admin_payload(self, is_admin: bool) -> dict:
+    def _admin_payload(self, is_admin: bool, ai_codes: Optional[list[str]] = None) -> dict:
         codes = self._recovery_codes()
         return {
             "type": "admin_ok",
             "is_admin": is_admin,
             "ai": {**ai_referee.status(), "enabled": self.ai_enabled},
             "recovery_codes": [{"code": c, "used": c in self.used_recovery} for c in codes],
+            # Shop unlock codes: aggregate stats always; the plain codes only when
+            # freshly generated (they are never recoverable after this reply).
+            "ai_codes": {**get_db().ai_code_stats(), "new": ai_codes or []},
         }
 
     def _is_admin_conn(self, ws: Any) -> bool:
@@ -116,11 +120,38 @@ class RoomManager:
         if room:
             await self.send_state(room)
 
+    async def admin_gen_ai_codes(self, ws: Any, player_id: Optional[str], payload: dict) -> None:
+        """Owner mints one-time shop codes that unlock the AI for ONE account
+        each (never admin). Handed out or sold manually; PayPal mints its own."""
+        if not self._is_admin_conn(ws):
+            return
+        try:
+            count = int(payload.get("count") or 1)
+        except (TypeError, ValueError):
+            count = 1
+        count = max(1, min(count, 20))
+        codes = [get_db().create_ai_code("admin") for _ in range(count)]
+        try:
+            await ws.send_json(self._admin_payload(True, ai_codes=codes))
+        except Exception:
+            pass
+
     def drop_connection(self, ws: Any) -> None:
         self.admin_conns.discard(id(ws))
 
-    def _ai_active(self) -> bool:
-        return self.ai_enabled and ai_referee.available()
+    def _host_ai_unlocked(self, room: Optional[Room]) -> bool:
+        """True when the room's host bought the AI unlock for their account."""
+        if room is None:
+            return False
+        host = room.get_player(room.host_id)
+        uid = getattr(host, "user_id", None) if host else None
+        return bool(uid and get_db().is_ai_unlocked(uid))
+
+    def _ai_active(self, room: Optional[Room] = None) -> bool:
+        # Available AND (owner flipped it on globally OR this room's host paid).
+        if not ai_referee.available():
+            return False
+        return self.ai_enabled or self._host_ai_unlocked(room)
 
     # ---- code / lookup -----------------------------------------------------
 
@@ -160,7 +191,7 @@ class RoomManager:
 
     async def send_state(self, room: Room, player_id: Optional[str] = None) -> None:
         pub = room.public()
-        pub["ai_referee"] = self._ai_active()  # AI scheidsrechter on the "?"
+        pub["ai_referee"] = self._ai_active(room)  # AI scheidsrechter on the "?"
         msg = {"type": "room_state", "room": pub}
         if player_id is not None:
             await self._send(player_id, msg)
@@ -374,8 +405,14 @@ class RoomManager:
             self._schedule_room_cleanup(room.code)
 
     def _migrate_host(self, room: Room) -> None:
+        # Only a connected HUMAN PLAYER can hold the crown: a bot can't drive
+        # host controls (the room would stall) and a spectator isn't playing.
+        # Both also have no paid account, which would silently drop a paying
+        # host's AI referee. If no candidate exists, keep the current host: a
+        # disconnected human host keeps the seat (grace) and re-takes control
+        # on reconnect.
         for p in room.players:
-            if p.connected and p.id != room.host_id:
+            if p.connected and p.id != room.host_id and not p.is_bot and not p.is_spectator:
                 room.host_id = p.id
                 for q in room.players:
                     q.is_host = q.id == p.id
@@ -488,6 +525,7 @@ class RoomManager:
         room.timer.ends_at = None
         room.timer.duration = None
         room.ready_ids = []
+        room.sat_out = []  # everyone who sat the previous round out is back in
         room.history.append(Round())
         self.pending[room.code] = {}
         self.submits[room.code] = set()
@@ -575,6 +613,8 @@ class RoomManager:
         room = self.room_of_player(player_id)
         if room is None or room.phase != "fill":
             return
+        if player_id in room.sat_out:
+            return  # left mid-round: sitting this one out
         answers = payload.get("answers") or {}
         if not isinstance(answers, dict):
             return
@@ -590,6 +630,8 @@ class RoomManager:
         room = self.room_of_player(player_id)
         if room is None or room.phase not in ("fill", "results"):
             return
+        if player_id in room.sat_out:
+            return  # left mid-round: nothing of theirs may be scored
         answers = payload.get("answers") or {}
         if isinstance(answers, dict):
             bucket = self.pending.setdefault(room.code, {}).setdefault(player_id, {})
@@ -605,7 +647,7 @@ class RoomManager:
         if room is None or room.phase != "fill":
             return
         player = room.get_player(player_id)
-        if player is None or player.is_spectator:
+        if player is None or player.is_spectator or player_id in room.sat_out:
             return
         ready = bool(payload.get("ready", True))
         if ready and player_id not in room.ready_ids:
@@ -635,19 +677,19 @@ class RoomManager:
         await self.broadcast(room, {"type": "round_ended"})
         # ...then wait until everyone's final submit lands (early-exit), so the
         # last keystrokes are never lost to a fixed-delay race.
-        expected = {p.id for p in self.playing_players(room) if p.connected and not p.is_bot}
+        expected = {p.id for p in self.playing_players(room) if p.connected and not p.is_bot and p.id not in room.sat_out}
         for _ in range(25):  # up to ~2.5s
             if expected.issubset(self.submits.get(room.code, set())):
                 break
             await asyncio.sleep(0.1)
         await self._score_and_broadcast(room)
 
-    async def _ai_resolve(self, rnd: Round, lenient: bool = False) -> None:
+    async def _ai_resolve(self, room: Room, rnd: Round, lenient: bool = False) -> None:
         """Send the orange "?" answers (valid but not in any list) to the AI
         referee; resolve each to a green check (in_list) or red cross (invalid).
         Undecided stays "?". Deduped so identical answers cost one judgement.
         With lenient on the referee judges phonetically (soepele spelling)."""
-        if not self._ai_active() or rnd is None:
+        if not self._ai_active(room) or rnd is None:
             return
         index: dict[tuple[str, str], int] = {}
         items: list[tuple[str, str]] = []
@@ -677,7 +719,7 @@ class RoomManager:
         raw = self.pending.get(room.code, {})
         lenient = room.settings.lenient_spelling
         rnd.answers = game.build_answers(raw, rnd.letter, player_ids, cats, lenient=lenient)
-        await self._ai_resolve(rnd, lenient=lenient)  # hybrid: AI scheidsrechter on the "?"
+        await self._ai_resolve(room, rnd, lenient=lenient)  # hybrid: AI scheidsrechter on the "?"
         rnd.points = game.score_round(rnd, player_ids, cats)
         room.scores = game.total_scores(room.history, player_ids)
         await self.broadcast(
@@ -857,6 +899,7 @@ class RoomManager:
         room.active_player_id = None
         room.timer.ends_at = None
         room.ready_ids = []
+        room.sat_out = []
         room.scores = {p.id: 0 for p in self.playing_players(room)}
         self.pending[room.code] = {}
 
@@ -887,6 +930,22 @@ class RoomManager:
     async def leave_room(self, player_id: str) -> None:
         room = self.room_of_player(player_id)
         if room is None:
+            return
+        player = room.get_player(player_id)
+        # Leaving DURING a game is a soft-leave: the seat (and scores) stay so
+        # the player can come back with the room code. House rule: walk out
+        # during a round and you sit that exact round out — you're back in the
+        # game from the next round. (Backgrounding/app crashes are handled by
+        # disconnect() and never count as walking out.)
+        if player is not None and not player.is_spectator and room.phase in ("reveal", "fill", "results"):
+            if room.phase in ("reveal", "fill") and player_id not in room.sat_out:
+                room.sat_out.append(player_id)
+                # Their part of this round is over; drop them from the ready list
+                # and their pending answers so nothing half-typed gets scored.
+                if player_id in room.ready_ids:
+                    room.ready_ids.remove(player_id)
+                self.pending.get(room.code, {}).pop(player_id, None)
+            await self.disconnect(player_id)
             return
         room.players = [p for p in room.players if p.id != player_id]
         room.scores.pop(player_id, None)

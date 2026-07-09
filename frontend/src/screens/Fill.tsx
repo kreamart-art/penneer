@@ -22,6 +22,8 @@ export function Fill({ game }: { game: GameApi }) {
   const others = room.players.filter((p) => p.id !== game.me?.id && !p.is_spectator);
   const noTimer = (room.timer.duration ?? room.settings.round_time) === 0;
   const isSpectator = game.isSpectator;
+  // Left the room mid-round and came back: sit this exact round out.
+  const satOut = !!(game.me && (room.sat_out ?? []).includes(game.me.id));
   const playingCount = room.players.filter((p) => !p.is_spectator).length;
   const readyCount = room.ready_ids.length;
   const iAmReady = !!(game.me && room.ready_ids.includes(game.me.id));
@@ -55,8 +57,8 @@ export function Fill({ game }: { game: GameApi }) {
   // Floating bottom button: with a timer the TIMER ends the round, so there is
   // no stop button — only "Geen tijd" gives the spelleider the "Pen neer" stop.
   // Everyone else (and the spelleider in timed mode) gets "Ik ben klaar".
-  const showFloatingStop = !isSpectator && game.isActive && noTimer;
-  const showFloatingReady = !isSpectator && !showFloatingStop;
+  const showFloatingStop = !isSpectator && !satOut && game.isActive && noTimer;
+  const showFloatingReady = !isSpectator && !satOut && !showFloatingStop;
 
   return (
     <Screen top={<TopBar code={room.code} roundNo={room.round_no} totalRounds={room.settings.rounds} connected={game.state.status === "open"} onLeave={game.leaveRoom} game={game} />}>
@@ -100,8 +102,16 @@ export function Fill({ game }: { game: GameApi }) {
           </div>
         )}
 
+        {/* sat out: left mid-round, back in from the next round */}
+        {satOut && (
+          <Card style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: 6 }}>
+            <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink }}>{t("satOutTitle")}</span>
+            <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13.5, color: colors.sub, lineHeight: 1.55 }}>{t("satOutBody")}</p>
+          </Card>
+        )}
+
         {/* inputs (players only) */}
-        {!isSpectator && (
+        {!isSpectator && !satOut && (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {cats.map((cat, i) => (
               <div key={cat}>
@@ -139,7 +149,7 @@ export function Fill({ game }: { game: GameApi }) {
         )}
 
         {/* controls (the action itself is the floating button below) */}
-        {isSpectator ? (
+        {satOut ? null : isSpectator ? (
           <p style={{ textAlign: "center", fontFamily: font.ui, fontSize: 13.5, color: colors.sub, margin: "4px 0 0" }}>{t("spectatorNote")}</p>
         ) : game.isActive && noTimer ? (
           readyCount > 0 && (

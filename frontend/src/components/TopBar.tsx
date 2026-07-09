@@ -16,6 +16,9 @@ interface Props {
 
 export function TopBar({ code, roundNo, totalRounds, connected, onLeave, game }: Props) {
   const { t } = useT();
+  // Leaving mid-round has a consequence (sit that round out) — say so.
+  const midRound = game?.state.room?.phase === "reveal" || game?.state.room?.phase === "fill";
+  const confirmText = midRound && !game?.isSpectator ? t("leaveConfirmRound") : t("leaveConfirm");
   return (
     <div
       style={{
@@ -75,7 +78,7 @@ export function TopBar({ code, roundNo, totalRounds, connected, onLeave, game }:
         {onLeave && (
           <button
             onClick={() => {
-              if (window.confirm(t("leaveConfirm"))) onLeave();
+              if (window.confirm(confirmText)) onLeave();
             }}
             aria-label={t("leaveRoom")}
             title={t("leaveRoom")}

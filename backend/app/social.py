@@ -91,6 +91,7 @@ class AccountManager:
             "account": {
                 **self._public(user),
                 "email": user.get("email"),
+                "ai_unlocked": bool(user.get("ai_unlocked")),
                 "stats": self.db.stats_of(user_id),
                 "badges": self.db.badges_of(user_id),
                 "inbox_count": len(self.db.inbox(user_id)),
@@ -110,6 +111,7 @@ class AccountManager:
             "account_link_email": self.account_link_email,
             "account_request_login": self.account_request_login,
             "account_redeem": self.account_redeem,
+            "shop_redeem": self.shop_redeem,
             "user_search": self.user_search,
             "profile_view": self.profile_view,
             "friends_list": self.friends_list,
@@ -229,6 +231,19 @@ class AccountManager:
         payload = await self._account_payload(ws, res["user_id"])
         payload["token"] = res["token"]
         await self._send(ws, payload)
+
+    async def shop_redeem(self, ws: Any, data: dict) -> None:
+        """Redeem a shop unlock code for the logged-in account (AI only, never
+        admin). Sends a shop_result and, on success, the refreshed account."""
+        uid = self.user_of(ws)
+        if not uid:
+            await self._send(ws, {"type": "shop_result", "ok": False, "reason": "auth"})
+            return
+        result = self.db.redeem_ai_code(uid, data.get("code") or "")
+        ok = result in ("ok", "already")
+        await self._send(ws, {"type": "shop_result", "ok": ok, "reason": result})
+        if ok:
+            await self._send(ws, await self._account_payload(ws, uid))
 
     async def user_search(self, ws: Any, data: dict) -> None:
         uid = self.user_of(ws)
