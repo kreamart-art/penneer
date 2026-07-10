@@ -486,18 +486,38 @@ class RoomManager:
             s.lenient_spelling = payload["lenient_spelling"]
         await self.send_state(room)
 
-    def _active_for_round(self, room: Room, round_no: int) -> Optional[str]:
-        """Rotate the spelleider among playing players; skip disconnected ones."""
-        players = self.playing_players(room)
-        if not players:
-            return None
-        n = len(players)
-        start = (round_no - 1) % n
-        for offset in range(n):
-            cand = players[(start + offset) % n]
-            if cand.connected:
-                return cand.id
-        return players[start].id  # all disconnected; pick anyway
+    def _init_turn_order(self, room: Room) -> None:
+        """Freeze the spelleider rotation at game start, in seat order."""
+        room.turn_order = [p.id for p in self.playing_players(room)]
+        room.turn_ptr = 0
+
+    def _next_active(self, room: Room, peek: bool = False) -> Optional[str]:
+        """Next spelleider. The pointer walks a FIXED game-start order and only
+        advances past the player who actually gets the turn, so a dropped
+        player is skipped for now but slots right back into the cycle when
+        they return — nobody ends up with two or three turns in a row just
+        because someone else went offline (the old round_no % len(players)
+        arithmetic did exactly that whenever the list or connectivity shifted).
+        peek=True answers "who is next" without consuming the turn."""
+        order = [pid for pid in room.turn_order if room.get_player(pid) is not None]
+        if not order:
+            order = [p.id for p in self.playing_players(room)]
+            if not order:
+                return None
+        n = len(order)
+        ptr = room.turn_ptr % n
+        for step in range(n):
+            cand_id = order[(ptr + step) % n]
+            cand = room.get_player(cand_id)
+            if cand and cand.connected and not cand.is_spectator:
+                if not peek:
+                    room.turn_ptr = (ptr + step + 1) % n
+                return cand_id
+        # Nobody connected: hand it to the pointer's slot and move on.
+        cand_id = order[ptr]
+        if not peek:
+            room.turn_ptr = (ptr + 1) % n
+        return cand_id
 
     async def start_game(self, player_id: str) -> None:
         room = self.room_of_player(player_id)
@@ -510,9 +530,10 @@ class RoomManager:
         room.used_letters = []
         room.history = []
         room.scores = {p.id: 0 for p in self.playing_players(room)}
+        self._init_turn_order(room)
         await self.broadcast(
             room,
-            {"type": "game_started", "round_no": 1, "active_player_id": self._active_for_round(room, 1)},
+            {"type": "game_started", "round_no": 1, "active_player_id": self._next_active(room, peek=True)},
         )
         await self._begin_round(room)
 
@@ -521,7 +542,7 @@ class RoomManager:
     async def _begin_round(self, room: Room) -> None:
         room.round_no += 1
         room.phase = "reveal"
-        room.active_player_id = self._active_for_round(room, room.round_no)
+        room.active_player_id = self._next_active(room)
         room.timer.ends_at = None
         room.timer.duration = None
         room.ready_ids = []
@@ -900,6 +921,8 @@ class RoomManager:
         room.timer.ends_at = None
         room.ready_ids = []
         room.sat_out = []
+        room.turn_order = []
+        room.turn_ptr = 0
         room.scores = {p.id: 0 for p in self.playing_players(room)}
         self.pending[room.code] = {}
 
@@ -921,9 +944,10 @@ class RoomManager:
         if not self.playing_players(room):
             return
         self._reset_for_new_game(room)
+        self._init_turn_order(room)
         await self.broadcast(
             room,
-            {"type": "game_started", "round_no": 1, "active_player_id": self._active_for_round(room, 1)},
+            {"type": "game_started", "round_no": 1, "active_player_id": self._next_active(room, peek=True)},
         )
         await self._begin_round(room)
 

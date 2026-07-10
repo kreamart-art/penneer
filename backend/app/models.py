@@ -152,6 +152,11 @@ class Room:
     # Players who left mid-round and came back: they sit out the CURRENT round
     # (cannot fill in, score no points) and rejoin play next round.
     sat_out: list[str] = field(default_factory=list)
+    # Spelleider rotation: fixed at game start; the pointer only advances past a
+    # player when they actually GOT a turn (or were offline for it), so nobody
+    # gets extra turns when someone else drops out.
+    turn_order: list[str] = field(default_factory=list)
+    turn_ptr: int = 0
     # In-room chat (so players can ask what a word means without leaving). Kept
     # out of public() — it has its own channel (chat_history on join, chat on send).
     chat: list[dict] = field(default_factory=list)
