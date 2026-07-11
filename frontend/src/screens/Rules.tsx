@@ -82,12 +82,20 @@ export function RulesContent() {
         </Card>
       ))}
 
-      {/* House rules: leaving mid-round + coming back */}
+      {/* House rules: everything beyond the basics (lookup, corrections, chat,
+          lenient spelling, leaving mid-round, coming back). */}
       <Card style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink }}>
           {t("rulesExtraTitle")}
         </div>
-        {[t("rulesLeaveRule"), t("rulesRejoinRule")].map((line) => (
+        {[
+          t("rulesCorrectRule"),
+          t("rulesLookupRule"),
+          t("rulesChatRule"),
+          t("rulesSpellingRule"),
+          t("rulesLeaveRule"),
+          t("rulesRejoinRule"),
+        ].map((line) => (
           <div key={line} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
             <span style={{ flexShrink: 0, marginTop: 7, width: 6, height: 6, borderRadius: "50%", background: colors.gold }} />
             <span style={{ fontFamily: font.ui, fontSize: 13.5, color: colors.sub, lineHeight: 1.5 }}>{line}</span>
