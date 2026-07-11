@@ -45,7 +45,9 @@ function StepArt({ kind }: { kind: "rooms" | "spin" | "fill" | "score" }) {
   );
 }
 
-export function Rules({ onBack }: { onBack: () => void }) {
+// The rules list itself, shared between the how-to screen and the pre-game
+// rules gate (everyone confirms these before the host can start).
+export function RulesContent() {
   const { t } = useT();
   const steps: { kind: "rooms" | "spin" | "fill" | "score"; title: string; body: string }[] = [
     { kind: "rooms", title: t("rulesStep1Title"), body: t("rulesStep1Body") },
@@ -53,7 +55,51 @@ export function Rules({ onBack }: { onBack: () => void }) {
     { kind: "fill", title: t("rulesStep3Title"), body: t("rulesStep3Body") },
     { kind: "score", title: t("rulesStep4Title"), body: t("rulesStep4Body") },
   ];
+  return (
+    <>
+      {steps.map((s, i) => (
+        <Card key={i} style={{ display: "flex", gap: 14, alignItems: "center" }}>
+          <div
+            style={{
+              flexShrink: 0,
+              width: 64,
+              height: 64,
+              borderRadius: 14,
+              display: "grid",
+              placeItems: "center",
+              background: withAlpha("#000000", 0.2),
+              border: `1px solid ${colors.hairline}`,
+            }}
+          >
+            <StepArt kind={s.kind} />
+          </div>
+          <div>
+            <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink, marginBottom: 2 }}>
+              {s.title}
+            </div>
+            <div style={{ fontFamily: font.ui, fontSize: 13.5, color: colors.sub, lineHeight: 1.45 }}>{s.body}</div>
+          </div>
+        </Card>
+      ))}
 
+      {/* House rules: leaving mid-round + coming back */}
+      <Card style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink }}>
+          {t("rulesExtraTitle")}
+        </div>
+        {[t("rulesLeaveRule"), t("rulesRejoinRule")].map((line) => (
+          <div key={line} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+            <span style={{ flexShrink: 0, marginTop: 7, width: 6, height: 6, borderRadius: "50%", background: colors.gold }} />
+            <span style={{ fontFamily: font.ui, fontSize: 13.5, color: colors.sub, lineHeight: 1.5 }}>{line}</span>
+          </div>
+        ))}
+      </Card>
+    </>
+  );
+}
+
+export function Rules({ onBack }: { onBack: () => void }) {
+  const { t } = useT();
   return (
     <Screen>
       <div style={{ display: "flex", flexDirection: "column", gap: 16, paddingTop: 8 }}>
@@ -70,43 +116,7 @@ export function Rules({ onBack }: { onBack: () => void }) {
           </p>
         </div>
 
-        {steps.map((s, i) => (
-          <Card key={i} style={{ display: "flex", gap: 14, alignItems: "center" }}>
-            <div
-              style={{
-                flexShrink: 0,
-                width: 64,
-                height: 64,
-                borderRadius: 14,
-                display: "grid",
-                placeItems: "center",
-                background: withAlpha("#000000", 0.2),
-                border: `1px solid ${colors.hairline}`,
-              }}
-            >
-              <StepArt kind={s.kind} />
-            </div>
-            <div>
-              <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink, marginBottom: 2 }}>
-                {s.title}
-              </div>
-              <div style={{ fontFamily: font.ui, fontSize: 13.5, color: colors.sub, lineHeight: 1.45 }}>{s.body}</div>
-            </div>
-          </Card>
-        ))}
-
-        {/* House rules: leaving mid-round + coming back */}
-        <Card style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink }}>
-            {t("rulesExtraTitle")}
-          </div>
-          {[t("rulesLeaveRule"), t("rulesRejoinRule")].map((line) => (
-            <div key={line} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-              <span style={{ flexShrink: 0, marginTop: 7, width: 6, height: 6, borderRadius: "50%", background: colors.gold }} />
-              <span style={{ fontFamily: font.ui, fontSize: 13.5, color: colors.sub, lineHeight: 1.5 }}>{line}</span>
-            </div>
-          ))}
-        </Card>
+        <RulesContent />
 
         <Button variant="gold" full onClick={onBack}>
           {t("gotIt")}

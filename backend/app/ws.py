@@ -79,6 +79,8 @@ async def ws_endpoint(ws: WebSocket) -> None:
                 await manager.submit_answers(player_id, data)
             elif mtype == "set_ready":
                 await manager.set_ready(player_id, data)
+            elif mtype == "rules_cancel":
+                await manager.rules_cancel(player_id)
             elif mtype == "stop_round":
                 await manager.stop_round(player_id)
             elif mtype == "add_bot":

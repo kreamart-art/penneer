@@ -312,7 +312,7 @@ class RoomManager:
         self._cancel_room_cleanup(code)  # a new arrival keeps the room alive
 
         spectator = False
-        if room.phase != "lobby":
+        if room.phase not in ("lobby", "rules"):
             # Game in progress: admit as spectator if allowed, else reject.
             if room.settings.allow_spectators:
                 spectator = True
@@ -320,7 +320,8 @@ class RoomManager:
                 await ws.send_json({"type": "error", "message": "Het spel is al bezig."})
                 return None
         else:
-            # Lobby is full of players (spectators don't count toward the cap).
+            # Pre-game (lobby or the rules gate): join as a player unless full
+            # (spectators don't count toward the cap).
             if len(self.playing_players(room)) >= room.settings.max_players:
                 if room.settings.allow_spectators:
                     spectator = True
@@ -520,15 +521,39 @@ class RoomManager:
         return cand_id
 
     async def start_game(self, player_id: str) -> None:
+        """Two-step start (Kingsen-style): from the lobby the host first opens
+        the RULES gate — everyone must tap "klaar" — and only then does a second
+        host start actually begin round 1."""
         room = self.room_of_player(player_id)
-        if room is None or room.host_id != player_id or room.phase != "lobby":
+        if room is None or room.host_id != player_id:
             return
         # Need at least one player who actually plays.
         if not self.playing_players(room):
             return
+        if room.phase == "lobby":
+            room.phase = "rules"
+            # Bots have read the rules by definition.
+            room.ready_ids = [p.id for p in self.playing_players(room) if p.is_bot]
+            await self.send_state(room)
+            return
+        if room.phase != "rules" or not self._all_ready(room):
+            return
+        await self._really_start(room)
+
+    async def rules_cancel(self, player_id: str) -> None:
+        """Host backs out of the rules gate to the lobby (change settings etc.)."""
+        room = self.room_of_player(player_id)
+        if room is None or room.host_id != player_id or room.phase != "rules":
+            return
+        room.phase = "lobby"
+        room.ready_ids = []
+        await self.send_state(room)
+
+    async def _really_start(self, room: Room) -> None:
         room.round_no = 0
         room.used_letters = []
         room.history = []
+        room.ready_ids = []
         room.scores = {p.id: 0 for p in self.playing_players(room)}
         self._init_turn_order(room)
         await self.broadcast(
@@ -662,10 +687,11 @@ class RoomManager:
         self.submits.setdefault(room.code, set()).add(player_id)
 
     async def set_ready(self, player_id: str, payload: dict) -> None:
-        """Mark a player ready ("Ik ben klaar"). Informational only: the
-        spelleider still decides when the round actually ends."""
+        """Mark a player ready ("Ik ben klaar"). In the fill phase it is
+        informational (the spelleider decides); in the rules gate it is what
+        unlocks the host's start button."""
         room = self.room_of_player(player_id)
-        if room is None or room.phase != "fill":
+        if room is None or room.phase not in ("fill", "rules"):
             return
         player = room.get_player(player_id)
         if player is None or player.is_spectator or player_id in room.sat_out:
@@ -944,12 +970,8 @@ class RoomManager:
         if not self.playing_players(room):
             return
         self._reset_for_new_game(room)
-        self._init_turn_order(room)
-        await self.broadcast(
-            room,
-            {"type": "game_started", "round_no": 1, "active_player_id": self._next_active(room, peek=True)},
-        )
-        await self._begin_round(room)
+        # Same group just finished a game: skip the rules gate, straight in.
+        await self._really_start(room)
 
     async def leave_room(self, player_id: str) -> None:
         room = self.room_of_player(player_id)

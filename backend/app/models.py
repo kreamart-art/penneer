@@ -141,7 +141,7 @@ class Room:
     host_id: str
     players: list[Player] = field(default_factory=list)
     settings: Settings = field(default_factory=Settings)
-    phase: str = "lobby"  # lobby | reveal | fill | results | final
+    phase: str = "lobby"  # lobby | rules | reveal | fill | results | final
     round_no: int = 0
     used_letters: list[str] = field(default_factory=list)
     active_player_id: Optional[str] = None

@@ -1,7 +1,7 @@
 // Results — running scoreboard, then a card per player with answers (check /
 // cross / strike, "dubbel" tags) and round points. Tap an answer to challenge.
 import { useEffect, useRef, useState } from "react";
-import { Check, HelpCircle, X } from "lucide-react";
+import { Check, HelpCircle, Search, X } from "lucide-react";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { Scoreboard } from "../components/Scoreboard";
@@ -183,6 +183,16 @@ export function Results({ game }: { game: GameApi }) {
                               style={{ ...btn, flex: 1, color: valid ? colors.redHi : colors.green, background: valid ? withAlpha(colors.red, 0.16) : withAlpha(colors.green, 0.16), border: `1px solid ${valid ? withAlpha(colors.red, 0.5) : withAlpha(colors.green, 0.5)}` }}
                             >
                               {valid ? t("markWrong") : t("markGood")}
+                            </button>
+                            {/* Look it up: results-only by design — during a
+                                round there is no lookup affordance anywhere. */}
+                            <button
+                              onClick={() => {
+                                window.open(`https://www.google.com/search?q=${encodeURIComponent(`${text} ${tCat(cat)}`)}`, "_blank", "noopener");
+                              }}
+                              style={{ ...btn, display: "inline-flex", alignItems: "center", gap: 6, color: colors.sub, background: "transparent", border: `1px solid ${colors.hairline}` }}
+                            >
+                              <Search size={13} /> {t("lookUp")}
                             </button>
                             {isPaired ? (
                               <button

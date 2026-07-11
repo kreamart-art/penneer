@@ -16,6 +16,7 @@ import { InviteBanner } from "./components/InviteBanner";
 import { localNotify } from "./components/NotifyNudge";
 import type { InboxItem } from "./net/socket";
 import { Lobby } from "./screens/Lobby";
+import { RulesGate } from "./screens/RulesGate";
 import { Reveal } from "./screens/Reveal";
 import { Fill } from "./screens/Fill";
 import { Results } from "./screens/Results";
@@ -88,7 +89,8 @@ export default function App() {
   // The intro STING fires exactly when the main page appears (not during the
   // intro screen), and only when the user actually walked through the intro
   // this session — a plain reload goes straight to the looping track.
-  const inGame = !!(room && game.me && room.phase !== "lobby");
+  // The rules gate is still pre-game: music keeps playing there, like the lobby.
+  const inGame = !!(room && game.me && room.phase !== "lobby" && room.phase !== "rules");
   const introAtMount = useRef(introDone);
   const stungRef = useRef(false);
   useEffect(() => {
@@ -192,6 +194,7 @@ export default function App() {
   let screen: React.ReactNode;
   if (inRoom) {
     switch (room!.phase) {
+      case "rules": screen = <RulesGate game={game} />; break;
       case "reveal": screen = <Reveal game={game} />; break;
       case "fill": screen = <Fill game={game} />; break;
       case "results": screen = <Results game={game} />; break;

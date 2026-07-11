@@ -109,7 +109,7 @@ export interface RoundView {
   points: Record<string, Record<string, number>>;
 }
 
-export type Phase = "lobby" | "reveal" | "fill" | "results" | "final";
+export type Phase = "lobby" | "rules" | "reveal" | "fill" | "results" | "final";
 
 export interface RoomState {
   code: string;
@@ -492,6 +492,7 @@ export interface GameApi {
   updateAnswers: (answers: Record<string, string>) => void;
   submitAnswers: (answers: Record<string, string>) => void;
   setReady: (ready: boolean) => void;
+  rulesCancel: () => void;
   stopRound: () => void;
   challenge: (player_id: string, cat: string, valid?: boolean) => void;
   markSame: (player_id: string, cat: string, as_player_id: string | null) => void;
@@ -661,6 +662,7 @@ export function useGame(): GameApi {
       send({ type: "submit_answers", answers });
     },
     setReady: (ready) => send({ type: "set_ready", ready }),
+    rulesCancel: () => send({ type: "rules_cancel" }),
     stopRound: () => {
       // Submit the complete final answers, then stop.
       if (pendingAnswersRef.current) send({ type: "submit_answers", answers: pendingAnswersRef.current });
