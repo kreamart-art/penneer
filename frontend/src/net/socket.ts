@@ -36,6 +36,31 @@ export interface Badge {
   earned_at: number;
 }
 
+export interface LevelInfo {
+  level: number;
+  xp: number;
+  level_start: number;
+  next_level: number;
+  rank: string; // rank key, localized client-side (rank_<key>)
+}
+
+export interface DmMessage {
+  id: string;
+  from_user: string;
+  to_user: string;
+  text: string;
+  created_at: number;
+}
+
+export interface DmThreadSummary {
+  partner: string;
+  last_text: string;
+  last_from_me: boolean;
+  last_at: number;
+  unread: number;
+  user: PublicUser;
+}
+
 export interface Account {
   id: string;
   name: string;
@@ -45,8 +70,10 @@ export interface Account {
   email: string | null;
   ai_unlocked: boolean; // bought the AI referee for this account
   stats: AccountStats;
+  level: LevelInfo;
   badges: Badge[];
   inbox_count: number;
+  dm_unread: number;
 }
 
 export interface PublicUser {
@@ -83,7 +110,9 @@ export interface LeaderboardRow extends PublicUser {
 
 export interface PublicProfile extends PublicUser {
   stats: AccountStats;
+  level: LevelInfo;
   badges: Badge[];
+  is_friend: boolean;
 }
 
 export interface Settings {
@@ -189,6 +218,10 @@ export interface ClientState {
   searchResults: PublicUser[];
   leaderboard: { period: "all" | "week"; rows: LeaderboardRow[] } | null;
   viewedProfile: PublicProfile | null;
+  // Direct messages (profile-to-profile): thread list + the open conversation.
+  dmThreads: DmThreadSummary[];
+  dmOpenWith: string | null; // partner user_id of the open thread
+  dmMessages: DmMessage[];
   loginLinkSent: boolean;
   // Set when the server accepted an invite: the app auto-joins this room.
   joinRoomCode: string | null;
@@ -208,6 +241,7 @@ type Action =
   | { type: "drainToasts" }
   | { type: "clearLoginSent" }
   | { type: "clearShopResult" }
+  | { type: "dmClose" }
   | { type: "msg"; msg: ServerMessage };
 
 // ---- server -> client messages ---------------------------------------------
@@ -237,6 +271,9 @@ type ServerMessage =
   | { type: "inbox"; items: InboxItem[] }
   | { type: "user_search"; users: PublicUser[] }
   | { type: "profile"; profile: PublicProfile }
+  | { type: "dm"; message: DmMessage }
+  | { type: "dm_thread"; user_id: string; messages: DmMessage[] }
+  | { type: "dm_threads"; threads: DmThreadSummary[] }
   | { type: "leaderboard"; period: "all" | "week"; rows: LeaderboardRow[] }
   | { type: "presence"; user_id: string; online: boolean }
   | { type: "login_link_sent" }
@@ -322,6 +359,9 @@ const initialState: ClientState = {
   searchResults: [],
   leaderboard: null,
   viewedProfile: null,
+  dmThreads: [],
+  dmOpenWith: null,
+  dmMessages: [],
   loginLinkSent: false,
   joinRoomCode: null,
   badgeToasts: [],
@@ -354,6 +394,9 @@ function reducer(state: ClientState, action: Action): ClientState {
   }
   if (action.type === "clearShopResult") {
     return { ...state, shopResult: null };
+  }
+  if (action.type === "dmClose") {
+    return { ...state, dmOpenWith: null, dmMessages: [] };
   }
   if (action.type === "chatOpen") {
     // Opening marks everything read.
@@ -429,6 +472,37 @@ function reducer(state: ClientState, action: Action): ClientState {
       return { ...state, searchResults: msg.users };
     case "profile":
       return { ...state, viewedProfile: msg.profile };
+    case "dm": {
+      const m = msg.message;
+      const me = state.account?.id;
+      const partner = m.from_user === me ? m.to_user : m.from_user;
+      const openMatches = state.dmOpenWith === partner;
+      const dmMessages = openMatches && !state.dmMessages.some((x) => x.id === m.id)
+        ? [...state.dmMessages, m]
+        : state.dmMessages;
+      // Keep the thread list roughly current without a round-trip.
+      const incoming = m.from_user !== me;
+      let found = false;
+      const dmThreads = state.dmThreads.map((t) => {
+        if (t.partner !== partner) return t;
+        found = true;
+        return {
+          ...t,
+          last_text: m.text,
+          last_from_me: !incoming,
+          last_at: m.created_at,
+          unread: incoming && !openMatches ? t.unread + 1 : openMatches ? 0 : t.unread,
+        };
+      });
+      const account = state.account && incoming && !openMatches
+        ? { ...state.account, dm_unread: state.account.dm_unread + 1 }
+        : state.account;
+      return { ...state, dmMessages, dmThreads: found ? dmThreads : state.dmThreads, account };
+    }
+    case "dm_thread":
+      return { ...state, dmOpenWith: msg.user_id, dmMessages: msg.messages };
+    case "dm_threads":
+      return { ...state, dmThreads: msg.threads };
     case "leaderboard":
       return { ...state, leaderboard: { period: msg.period, rows: msg.rows } };
     case "presence":
@@ -523,6 +597,10 @@ export interface GameApi {
   clearLoginSent: () => void;
   searchUsers: (query: string) => void;
   viewProfile: (user_id: string) => void;
+  dmSend: (user_id: string, text: string) => void;
+  dmOpen: (user_id: string) => void;
+  dmClose: () => void;
+  dmRefreshThreads: () => void;
   refreshFriends: () => void;
   friendRequest: (user_id: string) => void;
   friendRespond: (user_id: string, accept: boolean) => void;
@@ -725,6 +803,13 @@ export function useGame(): GameApi {
     clearLoginSent: () => dispatch({ type: "clearLoginSent" }),
     searchUsers: (query) => send({ type: "user_search", query }),
     viewProfile: (user_id) => send({ type: "profile_view", user_id }),
+    dmSend: (user_id, text) => {
+      const t = text.trim().slice(0, 500);
+      if (t) send({ type: "dm_send", user_id, text: t });
+    },
+    dmOpen: (user_id) => send({ type: "dm_thread", user_id }),
+    dmClose: () => dispatch({ type: "dmClose" }),
+    dmRefreshThreads: () => send({ type: "dm_threads" }),
     refreshFriends: () => send({ type: "friends_list" }),
     friendRequest: (user_id) => send({ type: "friend_request", user_id }),
     friendRespond: (user_id, accept) => send({ type: "friend_respond", user_id, accept }),

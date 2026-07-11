@@ -225,6 +225,9 @@ function ensureMusicEl(): HTMLAudioElement | null {
     musicEl.preload = "auto";
   }
   musicEl.volume = musicMuted ? 0 : musicVol;
+  // Belt and braces: a muted channel also mutes the ELEMENT, so even a stray
+  // play() that slips past the pause logic stays silent.
+  musicEl.muted = musicMuted;
   return musicEl;
 }
 
@@ -233,6 +236,7 @@ function applyMusic() {
   const el = ensureMusicEl();
   if (!el) return;
   el.volume = musicMuted ? 0 : musicVol;
+  el.muted = musicMuted;
   const shouldPlay = musicWanted && !musicMuted && musicVol > 0;
   if (shouldPlay) {
     const wait = musicHoldUntil - nowSec();
@@ -322,6 +326,7 @@ export const sound = {
         el.loop = true;
         el.load();
         el.volume = musicMuted ? 0 : musicVol;
+        el.muted = musicMuted;
         priming = false;
         if (musicWanted) applyMusic();
       };

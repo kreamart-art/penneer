@@ -14,6 +14,7 @@ import { Shop } from "./screens/Shop";
 import { BadgeToasts } from "./components/BadgeToasts";
 import { InviteBanner } from "./components/InviteBanner";
 import { localNotify } from "./components/NotifyNudge";
+import { ensurePushSubscription } from "./pwa/push";
 import type { InboxItem } from "./net/socket";
 import { Lobby } from "./screens/Lobby";
 import { RulesGate } from "./screens/RulesGate";
@@ -100,6 +101,13 @@ export default function App() {
     }
     sound.musicActive(introDone && !inGame);
   }, [introDone, inGame]);
+
+  // Logged in with notification permission already granted: (re)register the
+  // push subscription so invites/challenges/DMs arrive with the app closed.
+  const accountId = game.state.account?.id ?? null;
+  useEffect(() => {
+    if (accountId) void ensurePushSubscription();
+  }, [accountId]);
 
   // A short error sound when the server rejects something (name taken, etc.).
   const errText = game.state.error;

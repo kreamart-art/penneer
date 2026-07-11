@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import paypal
+from . import paypal, push
 from .db import AVATAR_MAX_BYTES, get_db
 from .ws import router as ws_router
 
@@ -75,6 +75,43 @@ async def get_avatar(user_id: str) -> Response:
     data, mime = found
     # The client busts the cache with ?v=<avatar_ver>, so cache hard.
     return Response(content=data, media_type=mime, headers={"Cache-Control": "public, max-age=31536000, immutable"})
+
+
+# ---- web push (real notifications while the app is closed) ------------------
+
+@app.get("/api/push/key")
+async def push_key() -> JSONResponse:
+    """The VAPID public key the browser needs to subscribe."""
+    if not push.available():
+        return JSONResponse({"enabled": False})
+    return JSONResponse({"enabled": True, "key": push.public_key()})
+
+
+@app.post("/api/push/subscribe")
+async def push_subscribe(request: Request) -> Response:
+    db = get_db()
+    uid = db.auth(_bearer(request))
+    if uid is None:
+        return Response(status_code=401)
+    body = await request.json()
+    endpoint = (body or {}).get("endpoint") or ""
+    keys_ = (body or {}).get("keys") or {}
+    if not db.push_subscribe(uid, endpoint, keys_.get("p256dh") or "", keys_.get("auth") or ""):
+        return Response(status_code=400)
+    return Response(status_code=204)
+
+
+@app.post("/api/push/unsubscribe")
+async def push_unsubscribe(request: Request) -> Response:
+    db = get_db()
+    uid = db.auth(_bearer(request))
+    if uid is None:
+        return Response(status_code=401)
+    body = await request.json()
+    endpoint = (body or {}).get("endpoint") or ""
+    if endpoint:
+        db.push_unsubscribe(endpoint)
+    return Response(status_code=204)
 
 
 # ---- shop: PayPal checkout for the AI-referee unlock ------------------------

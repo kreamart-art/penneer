@@ -37,3 +37,39 @@ self.addEventListener("fetch", (e) => {
       })
   );
 });
+
+// ---- Web Push: real notifications while the app is closed -------------------
+self.addEventListener("push", (e) => {
+  let data = { title: "Pen Neer", body: "", tag: "penneer", url: "/" };
+  try {
+    data = { ...data, ...e.data.json() };
+  } catch {
+    if (e.data) data.body = e.data.text();
+  }
+  e.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      tag: data.tag,
+      icon: "/icon-192.png",
+      badge: "/icon-192.png",
+      data: { url: data.url },
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+  const url = (e.notification.data && e.notification.data.url) || "/";
+  e.waitUntil(
+    (async () => {
+      const list = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      for (const client of list) {
+        if ("focus" in client) {
+          await client.focus();
+          return;
+        }
+      }
+      await self.clients.openWindow(url);
+    })()
+  );
+});

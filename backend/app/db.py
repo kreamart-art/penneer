@@ -123,10 +123,37 @@ CREATE TABLE IF NOT EXISTS purchases (
     email TEXT,
     created_at REAL NOT NULL
 );
+-- Web-push subscriptions: one row per browser/device endpoint. The endpoint is
+-- the identity; a user can have several (phone + laptop).
+CREATE TABLE IF NOT EXISTS push_subs (
+    endpoint TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    p256dh TEXT NOT NULL,
+    auth TEXT NOT NULL,
+    created_at REAL NOT NULL
+);
+-- Direct messages between FRIENDS (profile-to-profile, outside any room).
+CREATE TABLE IF NOT EXISTS dms (
+    id TEXT PRIMARY KEY,
+    from_user TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    to_user TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    text TEXT NOT NULL,
+    created_at REAL NOT NULL,
+    read INTEGER NOT NULL DEFAULT 0
+);
+-- Tiny key-value store for server config that must survive restarts without
+-- env changes (e.g. auto-generated VAPID keys on the persistent volume).
+CREATE TABLE IF NOT EXISTS meta (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
 CREATE INDEX IF NOT EXISTS idx_game_players_user ON game_players(user_id);
 CREATE INDEX IF NOT EXISTS idx_games_finished ON games(finished_at);
 CREATE INDEX IF NOT EXISTS idx_invites_to ON invites(to_user, status);
 CREATE INDEX IF NOT EXISTS idx_ai_codes_open ON ai_codes(redeemed_by);
+CREATE INDEX IF NOT EXISTS idx_push_user ON push_subs(user_id);
+CREATE INDEX IF NOT EXISTS idx_dms_to ON dms(to_user, read);
+CREATE INDEX IF NOT EXISTS idx_dms_pair ON dms(from_user, to_user, created_at);
 """
 
 
@@ -581,6 +608,113 @@ class Database:
                 (user_id,),
             )
         return [dict(r) for r in rows]
+
+    # ---- meta (key-value, e.g. auto-generated VAPID keys) --------------------
+
+    def meta_get(self, key: str) -> Optional[str]:
+        with self._lock:
+            rows = self._q("SELECT value FROM meta WHERE key=?", (key,))
+        return rows[0]["value"] if rows else None
+
+    def meta_set(self, key: str, value: str) -> None:
+        with self._lock:
+            self._exec("INSERT OR REPLACE INTO meta (key, value) VALUES (?,?)", (key, value))
+
+    # ---- web-push subscriptions ----------------------------------------------
+
+    def push_subscribe(self, user_id: str, endpoint: str, p256dh: str, auth: str) -> bool:
+        if not (user_id and endpoint and p256dh and auth):
+            return False
+        with self._lock:
+            self._exec(
+                "INSERT OR REPLACE INTO push_subs (endpoint, user_id, p256dh, auth, created_at) VALUES (?,?,?,?,?)",
+                (endpoint, user_id, p256dh, auth, time.time()),
+            )
+        return True
+
+    def push_unsubscribe(self, endpoint: str) -> None:
+        with self._lock:
+            self._exec("DELETE FROM push_subs WHERE endpoint=?", (endpoint,))
+
+    def push_subs_of(self, user_id: str) -> list[dict]:
+        with self._lock:
+            rows = self._q("SELECT endpoint, p256dh, auth FROM push_subs WHERE user_id=?", (user_id,))
+        return [dict(r) for r in rows]
+
+    # ---- direct messages (friends only; gate checked by the caller) ----------
+
+    DM_MAX_LEN = 500
+
+    def dm_send(self, from_user: str, to_user: str, text: str) -> Optional[dict]:
+        text = (text or "").strip()[: self.DM_MAX_LEN]
+        if not text or from_user == to_user:
+            return None
+        mid = _new_id()
+        now = time.time()
+        with self._lock:
+            self._exec(
+                "INSERT INTO dms (id, from_user, to_user, text, created_at) VALUES (?,?,?,?,?)",
+                (mid, from_user, to_user, text, now),
+            )
+        return {"id": mid, "from_user": from_user, "to_user": to_user, "text": text, "created_at": now}
+
+    def dm_thread(self, user_id: str, other_id: str, limit: int = 60) -> list[dict]:
+        """Conversation between two users, oldest first. Marks the incoming
+        half as read."""
+        with self._lock:
+            rows = self._q(
+                "SELECT id, from_user, to_user, text, created_at FROM dms "
+                "WHERE (from_user=? AND to_user=?) OR (from_user=? AND to_user=?) "
+                "ORDER BY created_at DESC LIMIT ?",
+                (user_id, other_id, other_id, user_id, limit),
+            )
+            self._exec("UPDATE dms SET read=1 WHERE from_user=? AND to_user=? AND read=0", (other_id, user_id))
+        return [dict(r) for r in reversed(rows)]
+
+    def dm_threads(self, user_id: str) -> list[dict]:
+        """One row per conversation partner: partner id, last message, unread
+        count. Newest conversation first."""
+        with self._lock:
+            rows = self._q(
+                """
+                SELECT CASE WHEN from_user=? THEN to_user ELSE from_user END AS partner,
+                       MAX(created_at) AS last_at
+                FROM dms WHERE from_user=? OR to_user=?
+                GROUP BY partner ORDER BY last_at DESC LIMIT 30
+                """,
+                (user_id, user_id, user_id),
+            )
+            out = []
+            for r in rows:
+                last = self._q(
+                    "SELECT from_user, text, created_at FROM dms "
+                    "WHERE (from_user=? AND to_user=?) OR (from_user=? AND to_user=?) "
+                    "ORDER BY created_at DESC LIMIT 1",
+                    (user_id, r["partner"], r["partner"], user_id),
+                )[0]
+                unread = self._q(
+                    "SELECT COUNT(*) AS n FROM dms WHERE from_user=? AND to_user=? AND read=0",
+                    (r["partner"], user_id),
+                )[0]["n"]
+                out.append({
+                    "partner": r["partner"],
+                    "last_text": last["text"],
+                    "last_from_me": last["from_user"] == user_id,
+                    "last_at": last["created_at"],
+                    "unread": unread,
+                })
+        return out
+
+    def dm_unread_total(self, user_id: str) -> int:
+        with self._lock:
+            rows = self._q("SELECT COUNT(*) AS n FROM dms WHERE to_user=? AND read=0", (user_id,))
+        return rows[0]["n"]
+
+    def is_friend(self, u1: str, u2: str) -> bool:
+        a, b = self._pair(u1, u2)
+        with self._lock:
+            rows = self._q("SELECT 1 FROM friends WHERE a=? AND b=? AND status='accepted'", (a, b))
+        return bool(rows)
 
     # ---- shop: AI-referee unlock codes --------------------------------------
 

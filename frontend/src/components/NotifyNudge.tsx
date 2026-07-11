@@ -4,6 +4,7 @@
 import { useState } from "react";
 import { Bell } from "lucide-react";
 import { useT } from "../i18n/i18n";
+import { ensurePushSubscription } from "../pwa/push";
 import { colors, font, radius, withAlpha } from "../theme/tokens";
 
 const ASKED_KEY = "penneer.notifAsked";
@@ -50,7 +51,12 @@ export function NotifyNudge() {
       <div style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
         <button
           onClick={() => {
-            Notification.requestPermission().finally(done);
+            Notification.requestPermission()
+              .then((perm) => {
+                // Granted: also register for REAL push (works with the app closed).
+                if (perm === "granted") void ensurePushSubscription();
+              })
+              .finally(done);
           }}
           style={{ padding: "8px 12px", borderRadius: 10, border: "none", cursor: "pointer", background: colors.gold, color: colors.bg0, fontFamily: font.ui, fontWeight: 700, fontSize: 12 }}
         >

@@ -16,11 +16,34 @@ import os
 import time
 from typing import Any, Optional
 
+from . import push
 from .db import get_db
 from .models import PLAYER_COLORS
 
 BASE_URL = os.environ.get("PENNEER_BASE_URL", "https://penneer.artnomad.nl")
 WEEK = 7 * 24 * 3600
+
+# Level curve: xp is earned from points, wins and games; level n starts at
+# 50*n*(n-1) xp (L2=100, L3=300, L4=600, ...). Ranks are named tiers by level;
+# the client localizes the rank key.
+RANKS = [(20, "legende"), (16, "categoriekoning"), (12, "lettermeester"),
+         (9, "woordsmid"), (6, "woordjager"), (4, "pennenlikker"),
+         (2, "krabbelaar"), (1, "beginneling")]
+
+
+def _xp_of(stats: dict) -> int:
+    return int(stats.get("points", 0) + 40 * stats.get("wins", 0) + 15 * stats.get("games", 0))
+
+
+def _level_of(stats: dict) -> dict:
+    xp = _xp_of(stats)
+    level = 1
+    while 50 * level * (level + 1) <= xp and level < 99:
+        level += 1
+    start = 50 * (level - 1) * level
+    nxt = 50 * level * (level + 1)
+    rank = next(key for minlvl, key in RANKS if level >= minlvl)
+    return {"level": level, "xp": xp, "level_start": start, "next_level": nxt, "rank": rank}
 
 # Badge catalog: key -> (check function name). Copy lives in the frontend i18n.
 BADGE_KEYS = [
@@ -86,15 +109,18 @@ class AccountManager:
         user = self.db.get_user(user_id)
         if user is None:
             return {"type": "account", "account": None}
+        stats = self.db.stats_of(user_id)
         return {
             "type": "account",
             "account": {
                 **self._public(user),
                 "email": user.get("email"),
                 "ai_unlocked": bool(user.get("ai_unlocked")),
-                "stats": self.db.stats_of(user_id),
+                "stats": stats,
+                "level": _level_of(stats),
                 "badges": self.db.badges_of(user_id),
                 "inbox_count": len(self.db.inbox(user_id)),
+                "dm_unread": self.db.dm_unread_total(user_id),
             },
         }
 
@@ -114,6 +140,9 @@ class AccountManager:
             "shop_redeem": self.shop_redeem,
             "user_search": self.user_search,
             "profile_view": self.profile_view,
+            "dm_send": self.dm_send,
+            "dm_thread": self.dm_thread,
+            "dm_threads": self.dm_threads,
             "friends_list": self.friends_list,
             "friend_request": self.friend_request,
             "friend_respond": self.friend_respond,
@@ -257,14 +286,65 @@ class AccountManager:
         if target is None:
             await self._send(ws, {"type": "error", "message": "Deze speler bestaat niet meer."})
             return
+        stats = self.db.stats_of(target["id"])
+        viewer = self.user_of(ws)
         await self._send(ws, {
             "type": "profile",
             "profile": {
                 **self._public(target),
-                "stats": self.db.stats_of(target["id"]),
+                "stats": stats,
+                "level": _level_of(stats),
                 "badges": self.db.badges_of(target["id"]),
+                "is_friend": bool(viewer and self.db.is_friend(viewer, target["id"])),
             },
         })
+
+    # ---- direct messages (profile-to-profile, outside any room) --------------
+
+    async def dm_send(self, ws: Any, data: dict) -> None:
+        uid = self.user_of(ws)
+        to = data.get("user_id") or ""
+        if not uid:
+            return
+        # Friends only, and blocks win from either side.
+        if not self.db.is_friend(uid, to) or self.db.is_blocked(uid, to):
+            await self._send(ws, {"type": "error", "message": "Je kunt alleen vrienden een bericht sturen."})
+            return
+        msg = self.db.dm_send(uid, to, data.get("text") or "")
+        if msg is None:
+            return
+        payload = {"type": "dm", "message": msg}
+        await self._push(uid, payload)
+        await self._push(to, payload)
+        # Real push when the recipient has no live connection (app closed).
+        if not self.online(to):
+            sender = self.db.get_user(uid)
+            asyncio.create_task(push.notify(
+                to, "Pen Neer",
+                f"{sender['name'] if sender else 'Iemand'}: {msg['text'][:120]}",
+                tag=f"dm-{uid}",
+            ))
+
+    async def dm_thread(self, ws: Any, data: dict) -> None:
+        uid = self.user_of(ws)
+        other = data.get("user_id") or ""
+        if not uid or not other:
+            return
+        messages = self.db.dm_thread(uid, other)
+        await self._send(ws, {"type": "dm_thread", "user_id": other, "messages": messages})
+
+    async def dm_threads(self, ws: Any, data: dict) -> None:
+        uid = self.user_of(ws)
+        if not uid:
+            return
+        threads = self.db.dm_threads(uid)
+        # Decorate with the partner's public profile so the list can render.
+        out = []
+        for t in threads:
+            u = self.db.get_user(t["partner"])
+            if u:
+                out.append({**t, "user": self._public(u)})
+        await self._send(ws, {"type": "dm_threads", "threads": out})
 
     async def friends_list(self, ws: Any, data: dict) -> None:
         uid = self.user_of(ws)
@@ -284,6 +364,13 @@ class AccountManager:
         await self.friends_list(ws, {})
         if result in ("sent", "accepted"):
             await self._push_inbox(data["user_id"])
+            if result == "sent" and not self.online(data["user_id"]):
+                me = self.db.get_user(uid)
+                asyncio.create_task(push.notify(
+                    data["user_id"], "Pen Neer",
+                    f"{me['name'] if me else 'Iemand'} wil je vriend worden",
+                    tag="friend",
+                ))
 
     async def friend_respond(self, ws: Any, data: dict) -> None:
         uid = self.user_of(ws)
@@ -334,6 +421,14 @@ class AccountManager:
         inv = self.db.create_invite(uid, to_user, room_code, kind)
         if inv:
             await self._push_inbox(to_user)
+            if not self.online(to_user):
+                me = self.db.get_user(uid)
+                naam = me["name"] if me else "Iemand"
+                body = (
+                    f"{naam} daagt je uit voor een potje" if kind == "challenge"
+                    else f"{naam} nodigt je uit voor room {room_code}"
+                )
+                asyncio.create_task(push.notify(to_user, "Pen Neer", body, tag="invite"))
         await self._send(ws, {"type": "invite_sent", "to_user": to_user})
 
     async def invite_respond(self, ws: Any, data: dict) -> None:

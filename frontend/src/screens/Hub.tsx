@@ -1,12 +1,12 @@
 // Hub — profile, friends, inbox and leaderboard in one tabbed screen.
 // Reached from the Landing. A profile is optional: guests see the create form.
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Award, Bell, Camera, Check, MoreVertical, Settings as SettingsIcon, Swords, Trash2, Trophy, UserPlus, Users, X, ZoomIn, ZoomOut } from "lucide-react";
+import { ArrowLeft, Award, Bell, Camera, Check, MessageCircle, MoreVertical, Settings as SettingsIcon, Star, Swords, Trash2, Trophy, UserPlus, Users, X, ZoomIn, ZoomOut } from "lucide-react";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { MusicToggle } from "../components/MusicToggle";
 import { Screen, Card } from "../components/Layout";
-import type { Friend, GameApi, InboxItem } from "../net/socket";
+import type { AccountStats, Friend, GameApi, InboxItem, LevelInfo } from "../net/socket";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { colors, font, playerColors, radius, withAlpha } from "../theme/tokens";
@@ -45,7 +45,7 @@ export function Hub({ game, onBack, onChallenge }: { game: GameApi; onBack: () =
   const tabs: { key: Tab; label: string; icon: React.ReactNode; badge?: number }[] = [
     { key: "profile", label: t("profile"), icon: <Award size={15} /> },
     { key: "friends", label: t("friendsTab"), icon: <Users size={15} /> },
-    { key: "inbox", label: t("inboxTab"), icon: <Bell size={15} />, badge: game.state.inbox.length || account?.inbox_count || 0 },
+    { key: "inbox", label: t("inboxTab"), icon: <Bell size={15} />, badge: (game.state.inbox.length || account?.inbox_count || 0) + (account?.dm_unread || 0) },
     { key: "leaderboard", label: t("leaderboardTab"), icon: <Trophy size={15} /> },
   ];
 
@@ -103,7 +103,153 @@ export function Hub({ game, onBack, onChallenge }: { game: GameApi; onBack: () =
         {tab === "inbox" && <InboxTab game={game} />}
         {tab === "leaderboard" && <LeaderboardTab game={game} />}
       </div>
+
+      {/* Open DM conversation (profile-to-profile, outside any room). */}
+      {game.state.dmOpenWith && <DmThreadOverlay game={game} />}
     </Screen>
+  );
+}
+
+// ---- Level / rang -------------------------------------------------------------
+
+// 8 Ball Pool-style level strip: level chip + rank title + xp progress bar.
+function LevelBar({ level, compact }: { level: LevelInfo; compact?: boolean }) {
+  const { t } = useT();
+  const span = Math.max(1, level.next_level - level.level_start);
+  const frac = Math.min(1, Math.max(0, (level.xp - level.level_start) / span));
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      <div style={{ position: "relative", width: compact ? 40 : 48, height: compact ? 40 : 48, flexShrink: 0 }}>
+        <Star size={compact ? 40 : 48} color={colors.gold} fill={withAlpha(colors.gold, 0.25)} strokeWidth={1.4} />
+        <span style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", fontFamily: font.display, fontWeight: 700, fontSize: compact ? 15 : 18, color: colors.ink, paddingTop: 2 }}>
+          {level.level}
+        </span>
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 5 }}>
+          <span style={{ fontFamily: font.ui, fontWeight: 700, fontSize: compact ? 12.5 : 13.5, color: colors.gold }}>{t(`rank_${level.rank}`)}</span>
+          <span style={{ fontFamily: font.ui, fontSize: 11, color: colors.faint }}>
+            {level.xp - level.level_start}/{span} XP
+          </span>
+        </div>
+        <div style={{ height: compact ? 8 : 10, borderRadius: 999, background: withAlpha("#000000", 0.35), border: `1px solid ${colors.hairline}`, overflow: "hidden" }}>
+          <div style={{ width: `${Math.round(frac * 100)}%`, height: "100%", borderRadius: 999, background: `linear-gradient(90deg, ${colors.gold}, ${colors.goldHi})`, boxShadow: `0 0 10px ${withAlpha(colors.gold, 0.6)}`, transition: "width .4s ease" }} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function statGrid(t: (k: string) => string, stats: AccountStats): [string, string | number][] {
+  const winPct = stats.games > 0 ? `${Math.round((stats.wins / stats.games) * 100)}%` : "0%";
+  return [
+    [t("statGames"), stats.games],
+    [t("statWins"), stats.wins],
+    [t("statWinPct"), winPct],
+    [t("statPoints"), stats.points],
+    [t("statBest"), stats.best],
+    [t("statUniques"), stats.uniques],
+    [t("statDubbels"), stats.dubbels],
+    [t("statStreak"), stats.streak],
+  ];
+}
+
+function StatGrid({ stats }: { stats: AccountStats }) {
+  const { t } = useT();
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8 }}>
+      {statGrid(t, stats).map(([label, value]) => (
+        <div key={label} style={{ textAlign: "center", padding: "8px 2px", borderRadius: 12, background: withAlpha("#000000", 0.18) }}>
+          <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.gold }}>{value}</div>
+          <div style={{ fontFamily: font.ui, fontSize: 10.5, color: colors.faint }}>{label}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ---- DM-gesprek ----------------------------------------------------------------
+
+function DmThreadOverlay({ game }: { game: GameApi }) {
+  const { t } = useT();
+  const partnerId = game.state.dmOpenWith!;
+  const messages = game.state.dmMessages;
+  const me = game.state.account?.id;
+  const [text, setText] = useState("");
+  const listRef = useRef<HTMLDivElement | null>(null);
+  // Partner identity: from threads, friends, or the viewed profile.
+  const partner =
+    game.state.dmThreads.find((th) => th.partner === partnerId)?.user ??
+    game.state.friends.find((f) => f.id === partnerId) ??
+    (game.state.viewedProfile?.id === partnerId ? game.state.viewedProfile : null);
+
+  useEffect(() => {
+    // Opening marks the thread read server-side; sync badge + thread list.
+    game.dmRefreshThreads();
+    game.send({ type: "account_get" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [partnerId]);
+
+  useEffect(() => {
+    listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
+  }, [messages.length]);
+
+  const sendNow = () => {
+    if (!text.trim()) return;
+    game.dmSend(partnerId, text);
+    setText("");
+  };
+
+  const fmt = (ts: number) => {
+    const d = new Date(ts * 1000);
+    return `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 85, background: "rgba(6,3,18,.7)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+      <div style={{ width: "100%", maxWidth: 430, height: "78dvh", display: "flex", flexDirection: "column", borderRadius: "22px 22px 0 0", background: "linear-gradient(180deg, #241738, #160D30)", border: `1px solid ${withAlpha(colors.gold, 0.3)}`, borderBottom: "none", boxShadow: "0 -18px 60px rgba(0,0,0,.55)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", borderBottom: `1px solid ${colors.hairline}` }}>
+          {partner ? (
+            <Avatar name={partner.name} color={partner.color} size={34} userId={partner.id} hasAvatar={partner.has_avatar} avatarVer={partner.avatar_ver} />
+          ) : null}
+          <span style={{ flex: 1, fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {partner?.name ?? "..."}
+          </span>
+          <button onClick={game.dmClose} aria-label={t("back")} style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 4 }}>
+            <X size={20} />
+          </button>
+        </div>
+
+        <div ref={listRef} style={{ flex: 1, overflowY: "auto", padding: "14px 14px 6px", display: "flex", flexDirection: "column", gap: 8 }}>
+          {messages.length === 0 && (
+            <p style={{ textAlign: "center", fontFamily: font.ui, fontSize: 13, color: colors.faint, marginTop: 20 }}>{t("dmNoMessages")}</p>
+          )}
+          {messages.map((m) => {
+            const mine = m.from_user === me;
+            return (
+              <div key={m.id} style={{ alignSelf: mine ? "flex-end" : "flex-start", maxWidth: "78%" }}>
+                <div style={{ padding: "9px 12px", borderRadius: mine ? "14px 14px 4px 14px" : "14px 14px 14px 4px", background: mine ? withAlpha(colors.gold, 0.18) : withAlpha("#000000", 0.3), border: `1px solid ${mine ? withAlpha(colors.gold, 0.4) : colors.hairline}`, fontFamily: font.ui, fontSize: 14, color: colors.ink, lineHeight: 1.45, wordBreak: "break-word" }}>
+                  {m.text}
+                </div>
+                <div style={{ fontFamily: font.ui, fontSize: 10, color: colors.faint, marginTop: 2, textAlign: mine ? "right" : "left" }}>{fmt(m.created_at)}</div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div style={{ display: "flex", gap: 8, padding: "10px 14px calc(12px + env(safe-area-inset-bottom))" }}>
+          <input
+            value={text}
+            maxLength={500}
+            placeholder={t("chatPlaceholder")}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") sendNow(); }}
+            style={{ flex: 1, minWidth: 0, fontFamily: font.ui, fontSize: 15, color: colors.ink, background: withAlpha("#000000", 0.3), border: `1.5px solid ${colors.panelBorder}`, borderRadius: 12, padding: "11px 13px" }}
+          />
+          <Button variant="gold" disabled={!text.trim()} onClick={sendNow}>{t("chatSend")}</Button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -179,16 +325,6 @@ function ProfileTab({ game }: { game: GameApi }) {
     return <ProfileSettings game={game} email={email} setEmail={setEmail} onBack={() => setSettingsOpen(false)} />;
   }
 
-  const stats = account.stats;
-  const statRows: [string, number][] = [
-    [t("statGames"), stats.games],
-    [t("statWins"), stats.wins],
-    [t("statPoints"), stats.points],
-    [t("statBest"), stats.best],
-    [t("statUniques"), stats.uniques],
-    [t("statStreak"), stats.streak],
-  ];
-
   return (
     <>
       {/* identiteit */}
@@ -246,16 +382,10 @@ function ProfileTab({ game }: { game: GameApi }) {
         />
       )}
 
-      {/* stats */}
-      <Card>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
-          {statRows.map(([label, value]) => (
-            <div key={label} style={{ textAlign: "center", padding: "8px 4px", borderRadius: 12, background: withAlpha("#000000", 0.18) }}>
-              <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 20, color: colors.gold }}>{value}</div>
-              <div style={{ fontFamily: font.ui, fontSize: 11, color: colors.faint }}>{label}</div>
-            </div>
-          ))}
-        </div>
+      {/* level + rang + stats */}
+      <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <LevelBar level={account.level} />
+        <StatGrid stats={account.stats} />
       </Card>
 
       {/* prestaties */}
@@ -595,16 +725,6 @@ function ProfileViewModal({ game, userId, onClose }: { game: GameApi; userId: st
   const { t } = useT();
   const p = game.state.viewedProfile;
   const loaded = p && p.id === userId;
-  const statRows: [string, number][] = loaded
-    ? [
-        [t("statGames"), p.stats.games],
-        [t("statWins"), p.stats.wins],
-        [t("statPoints"), p.stats.points],
-        [t("statBest"), p.stats.best],
-        [t("statUniques"), p.stats.uniques],
-        [t("statStreak"), p.stats.streak],
-      ]
-    : [];
   return (
     <div
       onClick={onClose}
@@ -628,14 +748,22 @@ function ProfileViewModal({ game, userId, onClose }: { game: GameApi; userId: st
                 <X size={20} />
               </button>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
-              {statRows.map(([label, value]) => (
-                <div key={label} style={{ textAlign: "center", padding: "8px 4px", borderRadius: 12, background: withAlpha("#000000", 0.22) }}>
-                  <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 20, color: colors.gold }}>{value}</div>
-                  <div style={{ fontFamily: font.ui, fontSize: 11, color: colors.faint }}>{label}</div>
-                </div>
-              ))}
-            </div>
+            <LevelBar level={p.level} compact />
+            <StatGrid stats={p.stats} />
+            {p.is_friend && (
+              <Button
+                variant="gold"
+                full
+                onClick={() => {
+                  game.dmOpen(p.id);
+                  onClose();
+                }}
+              >
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                  <MessageCircle size={16} /> {t("sendMessage")}
+                </span>
+              </Button>
+            )}
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint }}>{t("badgesTitle")}</span>
               {p.badges.length === 0 ? (
@@ -661,11 +789,47 @@ function ProfileViewModal({ game, userId, onClose }: { game: GameApi; userId: st
 function InboxTab({ game }: { game: GameApi }) {
   const { t } = useT();
   const account = game.state.account;
+  const threads = game.state.dmThreads;
+
+  // Load the DM thread list alongside the invites.
+  useEffect(() => {
+    if (account) game.dmRefreshThreads();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [!!account]);
+
   if (!account) {
     return <Card><p style={{ margin: 0, fontFamily: font.ui, fontSize: 13.5, color: colors.sub }}>{t("profileNeeded")}</p></Card>;
   }
   const items = game.state.inbox;
   return (
+    <>
+    {threads.length > 0 && (
+      <Card style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint, marginBottom: 4 }}>
+          {t("dmTitle")}
+        </span>
+        {threads.map((th) => (
+          <button
+            key={th.partner}
+            onClick={() => game.dmOpen(th.partner)}
+            style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 4px", background: "transparent", border: "none", cursor: "pointer", textAlign: "left", width: "100%" }}
+          >
+            <Avatar name={th.user.name} color={th.user.color} size={36} userId={th.user.id} hasAvatar={th.user.has_avatar} avatarVer={th.user.avatar_ver} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontFamily: font.ui, fontWeight: 600, fontSize: 14, color: colors.ink }}>{th.user.name}</div>
+              <div style={{ fontFamily: font.ui, fontSize: 12.5, color: th.unread > 0 ? colors.ink : colors.faint, fontWeight: th.unread > 0 ? 600 : 400, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {th.last_from_me ? `${t("chatYou")}: ` : ""}{th.last_text}
+              </div>
+            </div>
+            {th.unread > 0 && (
+              <span style={{ minWidth: 18, height: 18, padding: "0 5px", borderRadius: 999, background: colors.gold, color: colors.bg0, fontFamily: font.ui, fontSize: 11, fontWeight: 800, lineHeight: "18px", textAlign: "center", flexShrink: 0 }}>
+                {th.unread > 9 ? "9+" : th.unread}
+              </span>
+            )}
+          </button>
+        ))}
+      </Card>
+    )}
     <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       {items.length === 0 ? (
         <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13, color: colors.faint, lineHeight: 1.5 }}>{t("inboxEmpty")}</p>
@@ -694,6 +858,7 @@ function InboxTab({ game }: { game: GameApi }) {
         ))
       )}
     </Card>
+    </>
   );
 }
 
