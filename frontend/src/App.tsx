@@ -107,6 +107,28 @@ export default function App() {
     if (errText) sound.error();
   }, [errText]);
 
+  // Round over = one unmissable moment for EVERYONE (not just whoever pressed
+  // stop): the Pen neer buzzer, a vibration and a full-screen splash. Keyed on
+  // the server's round_ended broadcast, so a timer expiry triggers it too. The
+  // splash lives here (not in Fill) so it survives the switch to the results
+  // screen instead of flashing away when scoring is fast.
+  const endToken = game.state.roundEndedToken;
+  const prevEndToken = useRef(endToken);
+  const [penSplash, setPenSplash] = useState(false);
+  useEffect(() => {
+    if (endToken === prevEndToken.current) return;
+    prevEndToken.current = endToken;
+    sound.penNeer();
+    try {
+      (navigator as Navigator & { vibrate?: (p: number | number[]) => boolean }).vibrate?.([130, 70, 130]);
+    } catch {
+      /* vibration not supported */
+    }
+    setPenSplash(true);
+    const id = window.setTimeout(() => setPenSplash(false), 1700);
+    return () => window.clearTimeout(id);
+  }, [endToken]);
+
   // An accepted invite from the inbox: join that room with the account name.
   const joinCode = game.state.joinRoomCode;
   useEffect(() => {
@@ -245,6 +267,30 @@ export default function App() {
   return (
     <>
       {screen}
+      {penSplash && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 95,
+            display: "grid",
+            placeItems: "center",
+            background: "rgba(6,3,18,.55)",
+            backdropFilter: "blur(3px)",
+            WebkitBackdropFilter: "blur(3px)",
+            pointerEvents: "none",
+          }}
+        >
+          <div style={{ textAlign: "center", animation: "pen-splash 1.7s ease forwards" }}>
+            <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 44, letterSpacing: 1.5, color: "#FFC23D", textShadow: "0 0 34px rgba(255,194,61,.55)" }}>
+              {t("penDownSplash")}
+            </div>
+            <div style={{ marginTop: 6, fontFamily: "Inter, sans-serif", fontSize: 15, color: "#CFC6E8" }}>
+              {t("penDownSub")}
+            </div>
+          </div>
+        </div>
+      )}
       {inRoom && <BadgeToasts game={game} />}
       {paypalFlash && (
         <div

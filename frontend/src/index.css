@@ -100,3 +100,12 @@ input:focus {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Round-over splash: snaps in, holds, fades — the visual half of the buzzer. */
+@keyframes pen-splash {
+  0% { opacity: 0; transform: scale(0.7); }
+  12% { opacity: 1; transform: scale(1.04); }
+  20% { transform: scale(1); }
+  78% { opacity: 1; }
+  100% { opacity: 0; transform: scale(1); }
+}

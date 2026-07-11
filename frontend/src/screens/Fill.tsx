@@ -48,6 +48,11 @@ export function Fill({ game }: { game: GameApi }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
+  // The round ended while this fill was on screen (the token moved during THIS
+  // mount): freeze the inputs so typing past the buzzer visibly does nothing.
+  const mountToken = useRef(token);
+  const roundOver = token > mountToken.current;
+
   // tick.mp3 is one clean beep; the Timer fires onTick exactly when the shown
   // number changes, so one beep per second stays in sync with the countdown.
   const onTick = (secs: number) => {
@@ -57,8 +62,8 @@ export function Fill({ game }: { game: GameApi }) {
   // Floating bottom button: with a timer the TIMER ends the round, so there is
   // no stop button — only "Geen tijd" gives the spelleider the "Pen neer" stop.
   // Everyone else (and the spelleider in timed mode) gets "Ik ben klaar".
-  const showFloatingStop = !isSpectator && !satOut && game.isActive && noTimer;
-  const showFloatingReady = !isSpectator && !satOut && !showFloatingStop;
+  const showFloatingStop = !isSpectator && !satOut && !roundOver && game.isActive && noTimer;
+  const showFloatingReady = !isSpectator && !satOut && !roundOver && !showFloatingStop;
 
   return (
     <Screen top={<TopBar code={room.code} roundNo={room.round_no} totalRounds={room.settings.rounds} connected={game.state.status === "open"} onLeave={game.leaveRoom} game={game} />}>
@@ -121,7 +126,10 @@ export function Fill({ game }: { game: GameApi }) {
                     inputs.current[i] = el;
                   }}
                   value={answers[cat] ?? ""}
-                  onChange={(e) => change(cat, e.target.value)}
+                  readOnly={roundOver}
+                  onChange={(e) => {
+                    if (!roundOver) change(cat, e.target.value);
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") inputs.current[i + 1]?.focus();
                   }}
@@ -178,7 +186,9 @@ export function Fill({ game }: { game: GameApi }) {
           }}
         >
           <div style={{ maxWidth: 460, margin: "0 auto", padding: "0 18px", pointerEvents: "auto" }}>
-            <Button variant="danger" full onClick={() => { sound.penNeer(); game.stopRound(); }}>
+            {/* No local click sound: the buzzer plays for EVERYONE (presser
+                included) off the server's round_ended broadcast, in App. */}
+            <Button variant="danger" full onClick={() => game.stopRound()}>
               {t("penNeer")}
             </Button>
           </div>
