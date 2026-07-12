@@ -388,8 +388,57 @@ function ProfileTab({ game }: { game: GameApi }) {
     return <ProfileSettings game={game} email={email} setEmail={setEmail} onBack={() => setSettingsOpen(false)} />;
   }
 
+  const shareCard = async () => {
+    setSharing(true);
+    try {
+      const lvl = account.level;
+      const winPct = account.stats.games > 0 ? `${Math.round((account.stats.wins / account.stats.games) * 100)}%` : "0%";
+      const blob = await makeProfileCard({
+        name: account.name,
+        color: account.color,
+        avatarUrl: account.has_avatar ? `/api/avatar/${account.id}?v=${account.avatar_ver}` : null,
+        ringColor: RANK_RING[lvl.rank] ?? null,
+        rankTitle: t(`rank_${lvl.rank}`),
+        levelText: t("profileCardLevel", { n: lvl.level }),
+        stats: [
+          [t("statGames"), String(account.stats.games)],
+          [t("statWins"), String(account.stats.wins)],
+          [t("statWinPct"), winPct],
+          [t("statPoints"), String(account.stats.points)],
+        ],
+        badgesLine: t("profileCardBadges", { n: account.badges.length }),
+        footer: t("footer"),
+      });
+      if (blob) await shareOrDownload(blob, "penneer-profiel.png");
+    } finally {
+      setSharing(false);
+    }
+  };
+
+  const iconBtn: React.CSSProperties = {
+    background: "transparent",
+    border: `1px solid ${colors.hairline}`,
+    borderRadius: 10,
+    width: 36,
+    height: 36,
+    display: "grid",
+    placeItems: "center",
+    cursor: "pointer",
+    color: colors.sub,
+  };
+
   return (
     <>
+      {/* acties rechtsboven: delen + profielinstellingen als icoontjes */}
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 6, margin: "-6px 0 -8px" }}>
+        <button onClick={shareCard} disabled={sharing} aria-label={t("shareProfile")} title={t("shareProfile")} style={{ ...iconBtn, opacity: sharing ? 0.5 : 1 }}>
+          <Share2 size={17} />
+        </button>
+        <button onClick={() => setSettingsOpen(true)} aria-label={t("profileSettings")} title={t("profileSettings")} style={iconBtn}>
+          <SettingsIcon size={17} />
+        </button>
+      </div>
+
       {/* identiteit */}
       <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
@@ -480,43 +529,6 @@ function ProfileTab({ game }: { game: GameApi }) {
         <StatGrid stats={account.stats} />
       </Card>
 
-      {/* deel je profiel als kaartje */}
-      <Button
-        variant="primary"
-        full
-        disabled={sharing}
-        onClick={async () => {
-          setSharing(true);
-          try {
-            const lvl = account.level;
-            const winPct = account.stats.games > 0 ? `${Math.round((account.stats.wins / account.stats.games) * 100)}%` : "0%";
-            const blob = await makeProfileCard({
-              name: account.name,
-              color: account.color,
-              avatarUrl: account.has_avatar ? `/api/avatar/${account.id}?v=${account.avatar_ver}` : null,
-              ringColor: RANK_RING[lvl.rank] ?? null,
-              rankTitle: t(`rank_${lvl.rank}`),
-              levelText: t("profileCardLevel", { n: lvl.level }),
-              stats: [
-                [t("statGames"), String(account.stats.games)],
-                [t("statWins"), String(account.stats.wins)],
-                [t("statWinPct"), winPct],
-                [t("statPoints"), String(account.stats.points)],
-              ],
-              badgesLine: t("profileCardBadges", { n: account.badges.length }),
-              footer: t("footer"),
-            });
-            if (blob) await shareOrDownload(blob, "penneer-profiel.png");
-          } finally {
-            setSharing(false);
-          }
-        }}
-      >
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-          <Share2 size={16} /> {t("shareProfile")}
-        </span>
-      </Button>
-
       {/* laatste potjes */}
       <HistoryCard game={game} meId={account.id} />
 
@@ -535,12 +547,6 @@ function ProfileTab({ game }: { game: GameApi }) {
         )}
       </Card>
 
-      {/* profielinstellingen (e-mail, blokkades, beheer in een eigen scherm) */}
-      <Button variant="ghost" full onClick={() => setSettingsOpen(true)}>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-          <SettingsIcon size={16} /> {t("profileSettings")}
-        </span>
-      </Button>
     </>
   );
 }
@@ -876,6 +882,19 @@ function ProfileViewModal({ game, userId, onClose }: { game: GameApi; userId: st
                 <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 19, color: colors.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</div>
                 <div style={{ fontFamily: font.ui, fontSize: 12, color: p.online ? colors.green : colors.faint }}>{p.online ? "online" : "offline"}</div>
               </div>
+              {p.is_friend && (
+                <button
+                  onClick={() => {
+                    game.dmOpen(p.id);
+                    onClose();
+                  }}
+                  aria-label={t("sendMessage")}
+                  title={t("sendMessage")}
+                  style={{ background: withAlpha(colors.gold, 0.14), border: `1px solid ${withAlpha(colors.gold, 0.45)}`, borderRadius: 10, width: 36, height: 36, display: "grid", placeItems: "center", cursor: "pointer", color: colors.gold, flexShrink: 0 }}
+                >
+                  <MessageCircle size={17} />
+                </button>
+              )}
               <button onClick={onClose} aria-label={t("back")} style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 2 }}>
                 <X size={20} />
               </button>
@@ -898,20 +917,6 @@ function ProfileViewModal({ game, userId, onClose }: { game: GameApi; userId: st
                   {t("h2hGames", { n: p.h2h.games })}
                 </span>
               </div>
-            )}
-            {p.is_friend && (
-              <Button
-                variant="gold"
-                full
-                onClick={() => {
-                  game.dmOpen(p.id);
-                  onClose();
-                }}
-              >
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                  <MessageCircle size={16} /> {t("sendMessage")}
-                </span>
-              </Button>
             )}
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint }}>{t("badgesTitle")}</span>

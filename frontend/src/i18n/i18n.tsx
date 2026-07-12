@@ -322,7 +322,7 @@ const nl: Dict = {
   rulesChatRule: "Weet iemand niet wat een woord betekent? Vraag het in de chat rechtsboven, zonder de app te verlaten.",
   rulesSpellingRule: "Staat soepele spelling aan, dan tellen spelfouten niet: Miloen is gewoon Meloen. Fijn voor wie moeite heeft met spelling.",
   rulesLeaveRule: "Ga je uit de room terwijl een ronde bezig is? Dan doe je die ronde niet meer mee. Vanaf de volgende ronde vul je gewoon weer in.",
-  rulesRejoinRule: "Eruit geklapt of per ongeluk weggegaan? Kom terug met de roomcode. Met een profiel krijg je je plek en punten terug.",
+  rulesRejoinRule: "Eruit gezet of per ongeluk weggegaan? Kom terug met de roomcode. Met een profiel krijg je je plek en punten terug.",
   gotIt: "Snap ik",
 };
 
