@@ -165,6 +165,34 @@ def _new_id() -> str:
     return secrets.token_hex(12)
 
 
+# ---- preset avatars ---------------------------------------------------------
+# 18 illustrated avatars (JPEG, gradient background baked in) shipped with the
+# server. Picking one — or the default assigned at signup — stores its bytes as
+# the account's avatar photo, so display works everywhere with zero extra
+# plumbing. The frontend mirrors the same files under /avatars for the picker.
+import pathlib as _pathlib
+
+_AVATAR_DIR = _pathlib.Path(__file__).parent / "avatars"
+PRESET_IDS = [f"av{i:02d}" for i in range(1, 19)]
+_preset_cache: dict[str, Optional[bytes]] = {}
+
+
+def preset_bytes(preset_id: str) -> Optional[bytes]:
+    if preset_id not in PRESET_IDS:
+        return None
+    if preset_id not in _preset_cache:
+        try:
+            _preset_cache[preset_id] = (_AVATAR_DIR / f"{preset_id}.jpg").read_bytes()
+        except Exception:
+            _preset_cache[preset_id] = None
+    return _preset_cache[preset_id]
+
+
+def default_preset_for(user_id: str) -> str:
+    """Stable, evenly-spread default preset for a user (no RNG, restart-safe)."""
+    return PRESET_IDS[int(_hash(user_id), 16) % len(PRESET_IDS)]
+
+
 class Database:
     def __init__(self, path: str = DB_PATH) -> None:
         self._lock = threading.Lock()
@@ -184,6 +212,9 @@ class Database:
         cols = {r["name"] for r in self._conn.execute("PRAGMA table_info(users)").fetchall()}
         if "ai_unlocked" not in cols:
             self._conn.execute("ALTER TABLE users ADD COLUMN ai_unlocked INTEGER NOT NULL DEFAULT 0")
+            self._conn.commit()
+        if "avatar_preset" not in cols:
+            self._conn.execute("ALTER TABLE users ADD COLUMN avatar_preset TEXT")
             self._conn.commit()
 
     def _exec(self, sql: str, args: tuple = ()) -> sqlite3.Cursor:
@@ -224,6 +255,14 @@ class Database:
                 "INSERT INTO tokens (token_hash, user_id, created_at, last_seen) VALUES (?,?,?,?)",
                 (_hash(token), uid, now, now),
             )
+            # Everyone starts with a default illustrated avatar (changeable).
+            pid = default_preset_for(uid)
+            data = preset_bytes(pid)
+            if data:
+                self._exec(
+                    "UPDATE users SET avatar=?, avatar_mime='image/jpeg', avatar_preset=? WHERE id=?",
+                    (data, pid, uid),
+                )
         return {"user_id": uid, "token": token, "name": name}
 
     def auth(self, token: str) -> Optional[str]:
@@ -241,7 +280,7 @@ class Database:
         with self._lock:
             rows = self._q(
                 "SELECT id, name, email, color, avatar_ver, avatar IS NOT NULL AS has_avatar, "
-                "ai_unlocked, created_at "
+                "avatar_preset, ai_unlocked, created_at "
                 "FROM users WHERE id=?",
                 (user_id,),
             )
@@ -288,16 +327,46 @@ class Database:
         if not data or len(data) > AVATAR_MAX_BYTES or mime not in ("image/jpeg", "image/png", "image/webp"):
             return False
         with self._lock:
+            # A custom photo clears the preset marker (no longer a preset choice).
             self._exec(
-                "UPDATE users SET avatar=?, avatar_mime=?, avatar_ver=avatar_ver+1 WHERE id=?",
+                "UPDATE users SET avatar=?, avatar_mime=?, avatar_preset=NULL, avatar_ver=avatar_ver+1 WHERE id=?",
                 (data, mime, user_id),
             )
         return True
 
+    def set_avatar_preset(self, user_id: str, preset_id: str) -> bool:
+        """Store a built-in preset avatar as this account's photo."""
+        data = preset_bytes(preset_id)
+        if not data:
+            return False
+        with self._lock:
+            self._exec(
+                "UPDATE users SET avatar=?, avatar_mime='image/jpeg', avatar_preset=?, avatar_ver=avatar_ver+1 WHERE id=?",
+                (data, preset_id, user_id),
+            )
+        return True
+
+    def ensure_avatar(self, user_id: str) -> Optional[str]:
+        """Backfill: give an account without any avatar its default preset.
+        Returns the assigned preset id, or None if it already had one."""
+        with self._lock:
+            rows = self._q("SELECT avatar IS NOT NULL AS has FROM users WHERE id=?", (user_id,))
+            if not rows or rows[0]["has"]:
+                return None
+            pid = default_preset_for(user_id)
+            data = preset_bytes(pid)
+            if not data:
+                return None
+            self._exec(
+                "UPDATE users SET avatar=?, avatar_mime='image/jpeg', avatar_preset=?, avatar_ver=avatar_ver+1 WHERE id=?",
+                (data, pid, user_id),
+            )
+        return pid
+
     def clear_avatar(self, user_id: str) -> None:
         with self._lock:
             self._exec(
-                "UPDATE users SET avatar=NULL, avatar_mime=NULL, avatar_ver=avatar_ver+1 WHERE id=?",
+                "UPDATE users SET avatar=NULL, avatar_mime=NULL, avatar_preset=NULL, avatar_ver=avatar_ver+1 WHERE id=?",
                 (user_id,),
             )
 

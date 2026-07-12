@@ -70,6 +70,7 @@ export interface Account {
   has_avatar: boolean;
   avatar_ver: number;
   email: string | null;
+  avatar_preset: string | null; // chosen preset id (null = custom photo)
   ai_unlocked: boolean; // bought the AI referee for this account
   stats: AccountStats;
   level: LevelInfo;

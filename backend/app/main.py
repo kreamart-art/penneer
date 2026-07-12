@@ -67,6 +67,20 @@ async def delete_avatar(request: Request) -> Response:
     return Response(status_code=204)
 
 
+@app.post("/api/avatar/preset")
+async def set_avatar_preset(request: Request) -> Response:
+    """Pick a built-in illustrated avatar (av01..av18)."""
+    db = get_db()
+    uid = db.auth(_bearer(request))
+    if uid is None:
+        return Response(status_code=401)
+    body = await request.json()
+    preset_id = (body or {}).get("id") or ""
+    if not db.set_avatar_preset(uid, preset_id):
+        return Response("Onbekende avatar.", status_code=400)
+    return Response(status_code=204)
+
+
 @app.get("/api/avatar/{user_id}")
 async def get_avatar(user_id: str) -> Response:
     found = get_db().get_avatar(user_id)

@@ -117,6 +117,7 @@ class AccountManager:
             "account": {
                 **self._public(user),
                 "email": user.get("email"),
+                "avatar_preset": user.get("avatar_preset"),
                 "ai_unlocked": bool(user.get("ai_unlocked")),
                 "stats": stats,
                 "level": _level_of(stats),
@@ -179,6 +180,7 @@ class AccountManager:
         if uid is None:
             await self._send(ws, {"type": "account", "account": None})
             return
+        self.db.ensure_avatar(uid)  # backfill a default avatar for old accounts
         self.bind(ws, uid)
         await self._send(ws, await self._account_payload(ws, uid))
         await self._notify_friends_presence(uid)
@@ -259,6 +261,7 @@ class AccountManager:
         if res is None:
             await self._send(ws, {"type": "error", "message": "Deze inloglink is verlopen of al gebruikt."})
             return
+        self.db.ensure_avatar(res["user_id"])
         self.bind(ws, res["user_id"])
         payload = await self._account_payload(ws, res["user_id"])
         payload["token"] = res["token"]

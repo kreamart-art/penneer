@@ -26,6 +26,9 @@ const inputStyle: React.CSSProperties = {
 
 type Tab = "profile" | "friends" | "inbox" | "leaderboard";
 
+// Built-in illustrated avatars, mirrored server-side (backend/app/avatars).
+const AVATAR_PRESETS = Array.from({ length: 18 }, (_, i) => `av${String(i + 1).padStart(2, "0")}`);
+
 export function Hub({ game, onBack, onChallenge }: { game: GameApi; onBack: () => void; onChallenge: (userId: string) => void }) {
   const { t } = useT();
   const [tab, setTab] = useState<Tab>("profile");
@@ -350,10 +353,19 @@ function ProfileTab({ game }: { game: GameApi }) {
     }
   }
 
-  async function removePhoto() {
-    const token = localStorage.getItem("penneer.accountToken");
-    await fetch("/api/avatar", { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
-    game.send({ type: "account_get" });
+  async function pickPreset(id: string) {
+    setBusy(true);
+    try {
+      const token = localStorage.getItem("penneer.accountToken");
+      await fetch("/api/avatar/preset", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      game.send({ type: "account_get" }); // refresh avatar_ver + avatar_preset
+    } finally {
+      setBusy(false);
+    }
   }
 
   if (!account) {
@@ -507,9 +519,36 @@ function ProfileTab({ game }: { game: GameApi }) {
               <Camera size={15} /> {busy ? t("photoBusy") : t("uploadPhoto")}
             </span>
           </Button>
-          {account.has_avatar && (
-            <Button variant="ghost" onClick={removePhoto}>{t("removePhoto")}</Button>
-          )}
+        </div>
+
+        {/* Preset avatars — pick one instead of uploading a photo. */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.4, color: colors.faint }}>{t("chooseAvatar")}</span>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 8 }}>
+            {AVATAR_PRESETS.map((id) => {
+              const active = account.avatar_preset === id;
+              return (
+                <button
+                  key={id}
+                  onClick={() => pickPreset(id)}
+                  disabled={busy}
+                  aria-label={id}
+                  style={{
+                    padding: 0,
+                    border: `2px solid ${active ? colors.gold : "transparent"}`,
+                    borderRadius: 12,
+                    overflow: "hidden",
+                    cursor: "pointer",
+                    aspectRatio: "1 / 1",
+                    background: "transparent",
+                    boxShadow: active ? `0 0 10px ${withAlpha(colors.gold, 0.55)}` : "none",
+                  }}
+                >
+                  <img src={`/avatars/${id}.jpg`} alt={id} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                </button>
+              );
+            })}
+          </div>
         </div>
       </Card>
 
