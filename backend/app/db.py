@@ -592,6 +592,61 @@ class Database:
             )
         return [dict(r) for r in rows]
 
+    def history_of(self, user_id: str, limit: int = 10) -> list[dict]:
+        """The user's most recent games, newest first, each with their own
+        score/place and the co-players (name/color/avatar + score)."""
+        with self._lock:
+            games = self._q(
+                """
+                SELECT g.id, g.finished_at, g.rounds, gp.score, gp.is_winner
+                FROM game_players gp JOIN games g ON g.id = gp.game_id
+                WHERE gp.user_id = ? ORDER BY g.finished_at DESC LIMIT ?
+                """,
+                (user_id, limit),
+            )
+            out = []
+            for g in games:
+                rows = self._q(
+                    """
+                    SELECT gp.user_id, gp.score, u.name, u.color, u.avatar_ver,
+                           u.avatar IS NOT NULL AS has_avatar
+                    FROM game_players gp JOIN users u ON u.id = gp.user_id
+                    WHERE gp.game_id = ? ORDER BY gp.score DESC
+                    """,
+                    (g["id"],),
+                )
+                players = [dict(r) for r in rows]
+                place = next((i + 1 for i, r in enumerate(players) if r["user_id"] == user_id), 0)
+                out.append({
+                    "finished_at": g["finished_at"],
+                    "rounds": g["rounds"],
+                    "score": g["score"],
+                    "is_winner": bool(g["is_winner"]),
+                    "place": place,
+                    "player_count": len(players),
+                    "players": players,
+                })
+        return out
+
+    def head_to_head(self, u1: str, u2: str) -> dict:
+        """Shared games between two users: how often they played together and
+        who won how many of those games."""
+        with self._lock:
+            rows = self._q(
+                """
+                SELECT a.is_winner AS w1, b.is_winner AS w2
+                FROM game_players a
+                JOIN game_players b ON b.game_id = a.game_id AND b.user_id = ?
+                WHERE a.user_id = ?
+                """,
+                (u2, u1),
+            )
+        return {
+            "games": len(rows),
+            "my_wins": sum(1 for r in rows if r["w1"]),
+            "their_wins": sum(1 for r in rows if r["w2"]),
+        }
+
     def grant_badge(self, user_id: str, badge: str) -> bool:
         """True if newly earned."""
         with self._lock:

@@ -109,6 +109,14 @@ export default function App() {
     if (accountId) void ensurePushSubscription();
   }, [accountId]);
 
+  // A game just finished: pull fresh account stats/level so the profile is
+  // current without a reload.
+  const phase = room?.phase;
+  useEffect(() => {
+    if (phase === "final" && accountId) game.send({ type: "account_get" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, accountId]);
+
   // A short error sound when the server rejects something (name taken, etc.).
   const errText = game.state.error;
   useEffect(() => {

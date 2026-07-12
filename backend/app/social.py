@@ -140,6 +140,7 @@ class AccountManager:
             "shop_redeem": self.shop_redeem,
             "user_search": self.user_search,
             "profile_view": self.profile_view,
+            "history_get": self.history_get,
             "dm_send": self.dm_send,
             "dm_thread": self.dm_thread,
             "dm_threads": self.dm_threads,
@@ -288,6 +289,12 @@ class AccountManager:
             return
         stats = self.db.stats_of(target["id"])
         viewer = self.user_of(ws)
+        # Head-to-head: the viewer against this profile (games played together).
+        h2h = None
+        if viewer and viewer != target["id"]:
+            h = self.db.head_to_head(viewer, target["id"])
+            if h["games"] > 0:
+                h2h = h
         await self._send(ws, {
             "type": "profile",
             "profile": {
@@ -296,8 +303,16 @@ class AccountManager:
                 "level": _level_of(stats),
                 "badges": self.db.badges_of(target["id"]),
                 "is_friend": bool(viewer and self.db.is_friend(viewer, target["id"])),
+                "h2h": h2h,
             },
         })
+
+    async def history_get(self, ws: Any, data: dict) -> None:
+        """The logged-in player's own recent games ("Laatste potjes")."""
+        uid = self.user_of(ws)
+        if not uid:
+            return
+        await self._send(ws, {"type": "history", "games": self.db.history_of(uid)})
 
     # ---- direct messages (profile-to-profile, outside any room) --------------
 

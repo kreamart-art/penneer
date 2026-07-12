@@ -168,6 +168,65 @@ function StatGrid({ stats }: { stats: AccountStats }) {
   );
 }
 
+// ---- Laatste potjes -------------------------------------------------------------
+
+function HistoryCard({ game, meId }: { game: GameApi; meId: string }) {
+  const { t } = useT();
+  const games = game.state.history;
+
+  useEffect(() => {
+    game.historyGet();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [meId]);
+
+  const fmtDate = (ts: number) => {
+    const d = new Date(ts * 1000);
+    const today = new Date();
+    const sameDay = d.toDateString() === today.toDateString();
+    if (sameDay) return t("historyToday");
+    const yesterday = new Date(today.getTime() - 86400000);
+    if (d.toDateString() === yesterday.toDateString()) return t("historyYesterday");
+    return `${d.getDate()}-${d.getMonth() + 1}`;
+  };
+
+  return (
+    <Card style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint }}>
+        {t("historyTitle")}
+      </span>
+      {games.length === 0 ? (
+        <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13, color: colors.faint }}>{t("noHistory")}</p>
+      ) : (
+        games.map((g, i) => (
+          <div key={`${g.finished_at}-${i}`} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 10px", borderRadius: 10, background: withAlpha("#000000", 0.18), border: `1px solid ${g.is_winner ? withAlpha(colors.gold, 0.35) : colors.hairline}` }}>
+            <span style={{ width: 34, textAlign: "center", flexShrink: 0, fontFamily: font.display, fontWeight: 700, fontSize: 14, color: g.is_winner ? colors.gold : colors.sub }}>
+              {t("placeN", { p: g.place })}
+            </span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                {g.players.slice(0, 6).map((pl) => (
+                  <span key={pl.user_id} style={{ opacity: pl.user_id === meId ? 1 : 0.85 }}>
+                    <Avatar name={pl.name} color={pl.color} size={20} userId={pl.user_id} hasAvatar={pl.has_avatar} avatarVer={pl.avatar_ver} />
+                  </span>
+                ))}
+                {g.player_count > 6 && (
+                  <span style={{ fontFamily: font.ui, fontSize: 11, color: colors.faint }}>+{g.player_count - 6}</span>
+                )}
+              </div>
+              <div style={{ fontFamily: font.ui, fontSize: 11, color: colors.faint, marginTop: 3 }}>
+                {fmtDate(g.finished_at)} · {g.rounds === 1 ? t("historyRound1") : t("historyRounds", { n: g.rounds })}
+              </div>
+            </div>
+            <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, color: g.is_winner ? colors.gold : colors.ink, flexShrink: 0 }}>
+              {g.score}
+            </span>
+          </div>
+        ))
+      )}
+    </Card>
+  );
+}
+
 // ---- DM-gesprek ----------------------------------------------------------------
 
 function DmThreadOverlay({ game }: { game: GameApi }) {
@@ -349,34 +408,35 @@ function ProfileTab({ game }: { game: GameApi }) {
                   style={{ width: 22, height: 22, borderRadius: 7, background: c, border: account.color === c ? `2px solid ${colors.ink}` : "2px solid transparent", cursor: "pointer" }}
                 />
               ))}
-              {/* Free choice: a rainbow wheel that opens the system color picker,
-                  for anyone who wants a color nobody else has (e.g. red). */}
-              <input
-                ref={colorInputRef}
-                type="color"
-                value={/^#[0-9A-Fa-f]{6}$/.test(account.color) ? account.color : "#FFC23D"}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  if (colorDebounce.current) window.clearTimeout(colorDebounce.current);
-                  colorDebounce.current = window.setTimeout(() => game.updateAccount({ color: v }), 350);
-                }}
-                aria-label={t("customColor")}
-                style={{ position: "absolute", width: 1, height: 1, opacity: 0, pointerEvents: "none" }}
-              />
-              <button
-                onClick={() => colorInputRef.current?.click()}
-                aria-label={t("customColor")}
+              {/* Free choice: the REAL color input sits invisibly on top of the
+                  rainbow wheel, so the tap lands on the picker itself. (A
+                  scripted .click() on a hidden input is ignored on iOS.) */}
+              <div
                 title={t("customColor")}
                 style={{
+                  position: "relative",
                   width: 22,
                   height: 22,
+                  flexShrink: 0,
                   borderRadius: "50%",
-                  cursor: "pointer",
                   background: "conic-gradient(#ff3b30, #ff9500, #ffd60a, #34c759, #32ade6, #5856d6, #ff2d92, #ff3b30)",
                   border: !playerColors.includes(account.color) ? `2px solid ${colors.ink}` : "2px solid transparent",
                   boxShadow: !playerColors.includes(account.color) ? `0 0 8px ${withAlpha(account.color, 0.7)}` : "none",
                 }}
-              />
+              >
+                <input
+                  ref={colorInputRef}
+                  type="color"
+                  value={/^#[0-9A-Fa-f]{6}$/.test(account.color) ? account.color : "#FFC23D"}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (colorDebounce.current) window.clearTimeout(colorDebounce.current);
+                    colorDebounce.current = window.setTimeout(() => game.updateAccount({ color: v }), 350);
+                  }}
+                  aria-label={t("customColor")}
+                  style={{ position: "absolute", inset: -4, width: "calc(100% + 8px)", height: "calc(100% + 8px)", opacity: 0, cursor: "pointer", border: "none", padding: 0 }}
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -417,6 +477,9 @@ function ProfileTab({ game }: { game: GameApi }) {
         <LevelBar level={account.level} />
         <StatGrid stats={account.stats} />
       </Card>
+
+      {/* laatste potjes */}
+      <HistoryCard game={game} meId={account.id} />
 
       {/* prestaties */}
       <Card style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -780,6 +843,23 @@ function ProfileViewModal({ game, userId, onClose }: { game: GameApi; userId: st
             </div>
             <LevelBar level={p.level} compact />
             <StatGrid stats={p.stats} />
+            {p.h2h && p.h2h.games > 0 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "10px 12px", borderRadius: 12, background: withAlpha(colors.violet, 0.12), border: `1px solid ${withAlpha(colors.violet, 0.35)}` }}>
+                <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint }}>
+                  {t("h2hTitle")}
+                </span>
+                <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: 12 }}>
+                  <span style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.sub }}>{t("you")}</span>
+                  <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 24, color: p.h2h.my_wins >= p.h2h.their_wins ? colors.gold : colors.ink }}>{p.h2h.my_wins}</span>
+                  <span style={{ fontFamily: font.ui, fontSize: 14, color: colors.faint }}>·</span>
+                  <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 24, color: p.h2h.their_wins >= p.h2h.my_wins ? colors.gold : colors.ink }}>{p.h2h.their_wins}</span>
+                  <span style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.sub, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 90 }}>{p.name}</span>
+                </div>
+                <span style={{ textAlign: "center", fontFamily: font.ui, fontSize: 11.5, color: colors.faint }}>
+                  {t("h2hGames", { n: p.h2h.games })}
+                </span>
+              </div>
+            )}
             {p.is_friend && (
               <Button
                 variant="gold"

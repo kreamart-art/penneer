@@ -113,6 +113,27 @@ export interface PublicProfile extends PublicUser {
   level: LevelInfo;
   badges: Badge[];
   is_friend: boolean;
+  // Viewer vs this profile: shared games + wins on both sides (null if none).
+  h2h: { games: number; my_wins: number; their_wins: number } | null;
+}
+
+export interface HistoryPlayer {
+  user_id: string;
+  score: number;
+  name: string;
+  color: string;
+  avatar_ver: number;
+  has_avatar: boolean;
+}
+
+export interface HistoryGame {
+  finished_at: number;
+  rounds: number;
+  score: number;
+  is_winner: boolean;
+  place: number;
+  player_count: number;
+  players: HistoryPlayer[];
 }
 
 export interface Settings {
@@ -218,6 +239,7 @@ export interface ClientState {
   searchResults: PublicUser[];
   leaderboard: { period: "all" | "week"; rows: LeaderboardRow[] } | null;
   viewedProfile: PublicProfile | null;
+  history: HistoryGame[];
   // Direct messages (profile-to-profile): thread list + the open conversation.
   dmThreads: DmThreadSummary[];
   dmOpenWith: string | null; // partner user_id of the open thread
@@ -271,6 +293,7 @@ type ServerMessage =
   | { type: "inbox"; items: InboxItem[] }
   | { type: "user_search"; users: PublicUser[] }
   | { type: "profile"; profile: PublicProfile }
+  | { type: "history"; games: HistoryGame[] }
   | { type: "dm"; message: DmMessage }
   | { type: "dm_thread"; user_id: string; messages: DmMessage[] }
   | { type: "dm_threads"; threads: DmThreadSummary[] }
@@ -359,6 +382,7 @@ const initialState: ClientState = {
   searchResults: [],
   leaderboard: null,
   viewedProfile: null,
+  history: [],
   dmThreads: [],
   dmOpenWith: null,
   dmMessages: [],
@@ -472,6 +496,8 @@ function reducer(state: ClientState, action: Action): ClientState {
       return { ...state, searchResults: msg.users };
     case "profile":
       return { ...state, viewedProfile: msg.profile };
+    case "history":
+      return { ...state, history: msg.games };
     case "dm": {
       const m = msg.message;
       const me = state.account?.id;
@@ -597,6 +623,7 @@ export interface GameApi {
   clearLoginSent: () => void;
   searchUsers: (query: string) => void;
   viewProfile: (user_id: string) => void;
+  historyGet: () => void;
   dmSend: (user_id: string, text: string) => void;
   dmOpen: (user_id: string) => void;
   dmClose: () => void;
@@ -803,6 +830,7 @@ export function useGame(): GameApi {
     clearLoginSent: () => dispatch({ type: "clearLoginSent" }),
     searchUsers: (query) => send({ type: "user_search", query }),
     viewProfile: (user_id) => send({ type: "profile_view", user_id }),
+    historyGet: () => send({ type: "history_get" }),
     dmSend: (user_id, text) => {
       const t = text.trim().slice(0, 500);
       if (t) send({ type: "dm_send", user_id, text: t });
