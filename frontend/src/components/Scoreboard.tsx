@@ -55,7 +55,7 @@ export function Scoreboard({ players, scores, meId }: Props) {
             >
               {i + 1}
             </span>
-            <Avatar name={p.name} color={p.color} size={34} crown={leader} dim={!p.connected} userId={p.user_id} hasAvatar={p.has_avatar} avatarVer={p.avatar_ver} />
+            <Avatar name={p.name} color={p.color} size={34} crown={leader} dim={!p.connected} userId={p.user_id} hasAvatar={p.has_avatar} avatarVer={p.avatar_ver} rank={p.rank} />
             <span
               style={{
                 flex: 1,

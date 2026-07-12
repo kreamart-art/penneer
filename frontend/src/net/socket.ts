@@ -17,6 +17,8 @@ export interface Player {
   user_id: string | null;
   has_avatar: boolean;
   avatar_ver: number;
+  level: number; // 0 for guests
+  rank: string | null; // rank key for the avatar ring + title
 }
 
 // ---- accounts + social ------------------------------------------------------

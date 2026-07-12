@@ -41,7 +41,7 @@ export function RulesGate({ game }: { game: GameApi }) {
             const ready = room.ready_ids.includes(p.id);
             return (
               <div key={p.id} style={{ position: "relative" }}>
-                <Avatar name={p.name} color={p.color} size={32} dim={!p.connected} userId={p.user_id} hasAvatar={p.has_avatar} avatarVer={p.avatar_ver} />
+                <Avatar name={p.name} color={p.color} size={32} dim={!p.connected} userId={p.user_id} hasAvatar={p.has_avatar} avatarVer={p.avatar_ver} rank={p.rank} />
                 {ready && (
                   <span style={{ position: "absolute", bottom: -3, right: -3, background: colors.green, borderRadius: "50%", width: 14, height: 14, display: "grid", placeItems: "center", boxShadow: `0 0 6px ${colors.green}` }}>
                     <Check size={10} color={colors.bg0} strokeWidth={3} />

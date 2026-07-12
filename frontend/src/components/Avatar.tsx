@@ -4,6 +4,18 @@
 import { Crown } from "lucide-react";
 import { colors, font, withAlpha } from "../theme/tokens";
 
+// Rank ring colors per tier (badge of honor around the avatar, 8BP-style).
+// Beginneling has no ring; every rank above it gets its own metal/color.
+export const RANK_RING: Record<string, string> = {
+  krabbelaar: "#C08A50",       // brons
+  pennenlikker: "#B9C4D0",     // zilver
+  woordjager: "#36E0AE",       // groen
+  woordsmid: "#7C5CFF",        // violet
+  lettermeester: "#32ADE6",    // blauw
+  categoriekoning: "#FFC23D",  // goud
+  legende: "#FF5A3C",          // vuurrood
+};
+
 interface Props {
   name: string;
   color: string;
@@ -14,11 +26,13 @@ interface Props {
   userId?: string | null;
   hasAvatar?: boolean;
   avatarVer?: number;
+  rank?: string | null; // rank key -> colored ring (see RANK_RING)
 }
 
-export function Avatar({ name, color, size = 40, crown, dim, userId, hasAvatar, avatarVer }: Props) {
+export function Avatar({ name, color, size = 40, crown, dim, userId, hasAvatar, avatarVer, rank }: Props) {
   const initial = (name.trim()[0] || "?").toUpperCase();
   const photo = !!(userId && hasAvatar);
+  const ring = rank ? RANK_RING[rank] : undefined;
   return (
     <div style={{ position: "relative", width: size, height: size, flexShrink: 0 }}>
       <div
@@ -31,7 +45,11 @@ export function Avatar({ name, color, size = 40, crown, dim, userId, hasAvatar, 
           overflow: "hidden",
           background: withAlpha(color, 0.16),
           border: `2px solid ${color}`,
-          boxShadow: dim ? "none" : `0 0 16px ${withAlpha(color, 0.4)}`,
+          boxShadow: dim
+            ? "none"
+            : ring
+              ? `0 0 0 2px ${ring}, 0 0 14px ${withAlpha(ring, 0.55)}`
+              : `0 0 16px ${withAlpha(color, 0.4)}`,
           opacity: dim ? 0.4 : 1,
           fontFamily: font.display,
           fontWeight: 700,

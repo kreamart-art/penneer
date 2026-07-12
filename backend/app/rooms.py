@@ -16,6 +16,7 @@ from typing import Any, Optional
 
 from . import ai_referee, game
 from .db import get_db
+from .social import _level_of
 from .models import (
     BOT_NAMES,
     CODE_ALPHABET,
@@ -265,6 +266,10 @@ class RoomManager:
             player.color = account["color"]
         player.has_avatar = bool(account.get("has_avatar"))
         player.avatar_ver = account.get("avatar_ver", 0)
+        # Rank ring + title in the room, from the account's current level.
+        lvl = _level_of(get_db().stats_of(account["id"]))
+        player.level = lvl["level"]
+        player.rank = lvl["rank"]
 
     async def create_room(self, ws: Any, name: str, account: Optional[dict] = None) -> tuple[Room, Player]:
         code = self._gen_code()

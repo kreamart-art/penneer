@@ -47,8 +47,9 @@ def _level_of(stats: dict) -> dict:
 
 # Badge catalog: key -> (check function name). Copy lives in the frontend i18n.
 BADGE_KEYS = [
-    "eerste_game", "eerste_winst", "tien_games", "vijf_winsten",
-    "hattrick", "woordenaar", "perfecte_ronde",
+    "eerste_game", "eerste_winst", "tien_games", "vijfentwintig_games",
+    "vijf_winsten", "tien_winsten", "hattrick", "woordenaar",
+    "perfecte_ronde", "comeback", "durfal", "eerste_vriend", "eerste_bericht",
 ]
 
 
@@ -328,6 +329,9 @@ class AccountManager:
         msg = self.db.dm_send(uid, to, data.get("text") or "")
         if msg is None:
             return
+        # Social badge: your very first message.
+        if self.db.grant_badge(uid, "eerste_bericht"):
+            await self._push_account(uid)
         payload = {"type": "dm", "message": msg}
         await self._push(uid, payload)
         await self._push(to, payload)
@@ -391,11 +395,16 @@ class AccountManager:
         uid = self.user_of(ws)
         if not uid:
             return
-        self.db.friend_respond(uid, data.get("user_id") or "", bool(data.get("accept")))
+        other = data.get("user_id") or ""
+        self.db.friend_respond(uid, other, bool(data.get("accept")))
         await self.friends_list(ws, {})
         await self._push_inbox(uid)
         if data.get("accept"):
-            await self._push_inbox(data["user_id"])
+            await self._push_inbox(other)
+            # Social badge: your very first friend, on both sides.
+            for user in (uid, other):
+                if self.db.is_friend(uid, other) and self.db.grant_badge(user, "eerste_vriend"):
+                    await self._push_account(user)
 
     async def friend_remove(self, ws: Any, data: dict) -> None:
         uid = self.user_of(ws)
@@ -471,6 +480,11 @@ class AccountManager:
         items = self.db.inbox(user_id)
         await self._push(user_id, {"type": "inbox", "items": items})
 
+    async def _push_account(self, user_id: str) -> None:
+        """Send the fresh account payload to every live connection of a user
+        (e.g. after an out-of-game badge grant)."""
+        await self._push(user_id, await self._account_payload(None, user_id))
+
     async def _notify_friends_presence(self, user_id: str) -> None:
         """Tell online friends this user's presence changed."""
         for f in self.db.friends_of(user_id):
@@ -493,6 +507,20 @@ class AccountManager:
         if not scores:
             return
         top = max(scores.values())
+
+        # Halfway standings across ALL playing players (guests included), for
+        # the comeback badge: last at the half, winner at the end.
+        playing_ids = [p.id for p in room.players if not p.is_spectator]
+        halfway_last: set[str] = set()
+        if room.round_no >= 2 and len(playing_ids) >= 2:
+            half = room.round_no // 2
+            totals = {pid: 0 for pid in playing_ids}
+            for rnd in history[:half]:
+                for pid in playing_ids:
+                    totals[pid] += sum(rnd.points.get(pid, {}).values())
+            low = min(totals.values())
+            halfway_last = {pid for pid, v in totals.items() if v == low}
+
         players = []
         for p in room.players:
             uid = getattr(p, "user_id", None)
@@ -507,10 +535,12 @@ class AccountManager:
                 dubbels += sum(1 for v in vals if v == 5)
                 if vals and all(v == 10 for v in vals):
                     perfect = True
+            is_winner = scores.get(p.id, 0) == top
             players.append({
                 "user_id": uid, "score": scores.get(p.id, 0),
-                "is_winner": scores.get(p.id, 0) == top,
+                "is_winner": is_winner,
                 "uniques": uniques, "dubbels": dubbels, "_perfect": perfect,
+                "_comeback": is_winner and p.id in halfway_last,
             })
         if not players:
             return
@@ -524,9 +554,13 @@ class AccountManager:
             maybe("eerste_game", stats["games"] >= 1)
             maybe("eerste_winst", stats["wins"] >= 1)
             maybe("tien_games", stats["games"] >= 10)
+            maybe("vijfentwintig_games", stats["games"] >= 25)
             maybe("vijf_winsten", stats["wins"] >= 5)
+            maybe("tien_winsten", stats["wins"] >= 10)
             maybe("hattrick", stats["streak"] >= 3)
             maybe("woordenaar", stats["uniques"] >= 50)
+            maybe("comeback", p["_comeback"])
+            maybe("durfal", p["is_winner"] and room.settings.hard_letters)
             maybe("perfecte_ronde", p["_perfect"])
             for badge in earned:
                 await notify(p["user_id"], badge)

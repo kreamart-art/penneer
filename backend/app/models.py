@@ -52,6 +52,9 @@ class Player:
     # Account link (None for guests). Snapshot of the avatar at join time; the
     # client renders /api/avatar/{user_id}?v={avatar_ver} when has_avatar.
     user_id: Optional[str] = None
+    # Rank ring + title (from the account's level at join time); guests have none.
+    level: int = 0
+    rank: Optional[str] = None
     has_avatar: bool = False
     avatar_ver: int = 0
 
@@ -65,6 +68,8 @@ class Player:
             "is_spectator": self.is_spectator,
             "is_bot": self.is_bot,
             "user_id": self.user_id,
+            "level": self.level,
+            "rank": self.rank,
             "has_avatar": self.has_avatar,
             "avatar_ver": self.avatar_ver,
         }
