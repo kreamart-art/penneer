@@ -50,6 +50,7 @@ BADGE_KEYS = [
     "eerste_game", "eerste_winst", "tien_games", "vijfentwintig_games",
     "vijf_winsten", "tien_winsten", "hattrick", "woordenaar",
     "perfecte_ronde", "comeback", "durfal", "eerste_vriend", "eerste_bericht",
+    "seizoenswinnaar",
 ]
 
 
@@ -465,12 +466,50 @@ class AccountManager:
             # The client joins the room itself with its own name/avatar.
             await self._send(ws, {"type": "invite_accepted", "room_code": room})
 
+    @staticmethod
+    def _month_start(dt: "datetime.datetime") -> float:
+        import datetime
+
+        return datetime.datetime(dt.year, dt.month, 1).timestamp()
+
+    async def _maybe_award_season(self) -> None:
+        """Season prize, awarded lazily: the first leaderboard request in a new
+        month crowns last month's number 1 with the seizoenswinnaar badge. The
+        meta key makes this exactly-once, restart-safe."""
+        import datetime
+
+        now = datetime.datetime.now()
+        prev_last_day = datetime.datetime(now.year, now.month, 1) - datetime.timedelta(days=1)
+        key = f"season_awarded_{prev_last_day.year}-{prev_last_day.month:02d}"
+        if self.db.meta_get(key) is not None:
+            return
+        prev_start = self._month_start(prev_last_day)
+        cur_start = self._month_start(now)
+        rows = self.db.leaderboard(since=prev_start, until=cur_start, limit=1)
+        if rows:
+            winner = rows[0]["id"]
+            self.db.meta_set(key, winner)
+            if self.db.grant_badge(winner, "seizoenswinnaar"):
+                await self._push_account(winner)
+        else:
+            self.db.meta_set(key, "none")
+
     async def leaderboard_get(self, ws: Any, data: dict) -> None:
-        since = time.time() - WEEK if data.get("period") == "week" else 0.0
-        rows = self.db.leaderboard(since=since)
+        await self._maybe_award_season()
+        import datetime
+
+        period = data.get("period")
+        if period == "week":
+            since, until = time.time() - WEEK, None
+        elif period == "month":
+            since, until = self._month_start(datetime.datetime.now()), None
+        else:
+            period = "all"
+            since, until = 0.0, None
+        rows = self.db.leaderboard(since=since, until=until)
         await self._send(ws, {
             "type": "leaderboard",
-            "period": "week" if data.get("period") == "week" else "all",
+            "period": period,
             "rows": [{**self._public(r), "points": r["points"], "games": r["games"], "wins": r["wins"]} for r in rows],
         })
 

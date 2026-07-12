@@ -239,7 +239,7 @@ export interface ClientState {
   blocked: PublicUser[];
   inbox: InboxItem[];
   searchResults: PublicUser[];
-  leaderboard: { period: "all" | "week"; rows: LeaderboardRow[] } | null;
+  leaderboard: { period: "all" | "week" | "month"; rows: LeaderboardRow[] } | null;
   viewedProfile: PublicProfile | null;
   history: HistoryGame[];
   // Direct messages (profile-to-profile): thread list + the open conversation.
@@ -299,7 +299,7 @@ type ServerMessage =
   | { type: "dm"; message: DmMessage }
   | { type: "dm_thread"; user_id: string; messages: DmMessage[] }
   | { type: "dm_threads"; threads: DmThreadSummary[] }
-  | { type: "leaderboard"; period: "all" | "week"; rows: LeaderboardRow[] }
+  | { type: "leaderboard"; period: "all" | "week" | "month"; rows: LeaderboardRow[] }
   | { type: "presence"; user_id: string; online: boolean }
   | { type: "login_link_sent" }
   | { type: "invite_sent"; to_user: string }
@@ -639,7 +639,7 @@ export interface GameApi {
   refreshInbox: () => void;
   inviteSend: (user_id: string, kind: "invite" | "challenge") => void;
   inviteRespond: (invite_id: string, accept: boolean) => void;
-  loadLeaderboard: (period: "all" | "week") => void;
+  loadLeaderboard: (period: "all" | "week" | "month") => void;
   rematch: () => void;
   clearJoin: () => void;
   drainToasts: () => void;

@@ -575,7 +575,7 @@ class Database:
         out["streak"] = streak
         return out
 
-    def leaderboard(self, since: float = 0.0, limit: int = 25) -> list[dict]:
+    def leaderboard(self, since: float = 0.0, until: Optional[float] = None, limit: int = 25) -> list[dict]:
         with self._lock:
             rows = self._q(
                 """
@@ -585,10 +585,10 @@ class Database:
                 FROM game_players gp
                 JOIN games g ON g.id=gp.game_id
                 JOIN users u ON u.id=gp.user_id
-                WHERE g.finished_at >= ?
+                WHERE g.finished_at >= ? AND g.finished_at < ?
                 GROUP BY u.id ORDER BY points DESC, wins DESC LIMIT ?
                 """,
-                (since, limit),
+                (since, until if until is not None else float("inf"), limit),
             )
         return [dict(r) for r in rows]
 

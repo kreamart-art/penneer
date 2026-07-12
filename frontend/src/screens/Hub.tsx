@@ -1,14 +1,15 @@
 // Hub — profile, friends, inbox and leaderboard in one tabbed screen.
 // Reached from the Landing. A profile is optional: guests see the create form.
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Award, Bell, Camera, Check, MessageCircle, MoreVertical, Settings as SettingsIcon, Star, Swords, Trash2, Trophy, UserPlus, Users, X, ZoomIn, ZoomOut } from "lucide-react";
-import { Avatar } from "../components/Avatar";
+import { ArrowLeft, Award, Bell, Camera, Check, MessageCircle, MoreVertical, Settings as SettingsIcon, Share2, Star, Swords, Trash2, Trophy, UserPlus, Users, X, ZoomIn, ZoomOut } from "lucide-react";
+import { Avatar, RANK_RING } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { MusicToggle } from "../components/MusicToggle";
 import { Screen, Card } from "../components/Layout";
 import type { AccountStats, Friend, GameApi, InboxItem, LevelInfo } from "../net/socket";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
+import { makeProfileCard, shareOrDownload } from "../util/shareCard";
 import { colors, font, playerColors, radius, withAlpha } from "../theme/tokens";
 
 const inputStyle: React.CSSProperties = {
@@ -326,6 +327,7 @@ function ProfileTab({ game }: { game: GameApi }) {
   const fileRef = useRef<HTMLInputElement | null>(null);
   const colorInputRef = useRef<HTMLInputElement | null>(null);
   const colorDebounce = useRef<number | undefined>(undefined);
+  const [sharing, setSharing] = useState(false);
 
   useEffect(() => setName(account?.name ?? ""), [account?.name]);
   useEffect(() => {
@@ -477,6 +479,43 @@ function ProfileTab({ game }: { game: GameApi }) {
         <LevelBar level={account.level} />
         <StatGrid stats={account.stats} />
       </Card>
+
+      {/* deel je profiel als kaartje */}
+      <Button
+        variant="primary"
+        full
+        disabled={sharing}
+        onClick={async () => {
+          setSharing(true);
+          try {
+            const lvl = account.level;
+            const winPct = account.stats.games > 0 ? `${Math.round((account.stats.wins / account.stats.games) * 100)}%` : "0%";
+            const blob = await makeProfileCard({
+              name: account.name,
+              color: account.color,
+              avatarUrl: account.has_avatar ? `/api/avatar/${account.id}?v=${account.avatar_ver}` : null,
+              ringColor: RANK_RING[lvl.rank] ?? null,
+              rankTitle: t(`rank_${lvl.rank}`),
+              levelText: t("profileCardLevel", { n: lvl.level }),
+              stats: [
+                [t("statGames"), String(account.stats.games)],
+                [t("statWins"), String(account.stats.wins)],
+                [t("statWinPct"), winPct],
+                [t("statPoints"), String(account.stats.points)],
+              ],
+              badgesLine: t("profileCardBadges", { n: account.badges.length }),
+              footer: t("footer"),
+            });
+            if (blob) await shareOrDownload(blob, "penneer-profiel.png");
+          } finally {
+            setSharing(false);
+          }
+        }}
+      >
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+          <Share2 size={16} /> {t("shareProfile")}
+        </span>
+      </Button>
 
       {/* laatste potjes */}
       <HistoryCard game={game} meId={account.id} />
@@ -981,7 +1020,7 @@ function LeaderboardTab({ game }: { game: GameApi }) {
   return (
     <>
       <div style={{ display: "flex", gap: 6 }}>
-        {(["week", "all"] as const).map((p) => (
+        {(["week", "month", "all"] as const).map((p) => (
           <button
             key={p}
             onClick={() => game.loadLeaderboard(p)}
@@ -992,7 +1031,7 @@ function LeaderboardTab({ game }: { game: GameApi }) {
               color: period === p ? colors.ink : colors.sub, fontFamily: font.ui, fontSize: 12.5, fontWeight: 600,
             }}
           >
-            {p === "week" ? t("thisWeek") : t("allTime")}
+            {p === "week" ? t("thisWeek") : p === "month" ? t("seasonChip") : t("allTime")}
           </button>
         ))}
       </div>

@@ -176,6 +176,139 @@ export async function makeShareCard(opts: CardOpts): Promise<Blob | null> {
   return new Promise((resolve) => canvas.toBlob((b) => resolve(b), "image/png"));
 }
 
+interface ProfileCardOpts {
+  name: string;
+  color: string;
+  avatarUrl: string | null; // same-origin photo, or null for the initial tile
+  ringColor: string | null; // rank ring color (null for beginneling)
+  rankTitle: string; // localized rank name
+  levelText: string; // "Level 7"
+  stats: [string, string][]; // four [label, value] blocks
+  badgesLine: string; // "7 prestaties"
+  footer: string;
+}
+
+// Render a shareable PROFILE card (visitekaartje van je rang + stats).
+export async function makeProfileCard(opts: ProfileCardOpts): Promise<Blob | null> {
+  const W = 1080;
+  const H = 1350;
+  const canvas = document.createElement("canvas");
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+
+  try {
+    await Promise.all([
+      document.fonts.load("700 120px 'Space Grotesk'"),
+      document.fonts.load("600 36px Inter"),
+    ]);
+  } catch {
+    /* fall back to default fonts */
+  }
+
+  // background
+  const grad = ctx.createRadialGradient(W / 2, -H * 0.08, 100, W / 2, H * 0.5, H);
+  grad.addColorStop(0, colors.glow);
+  grad.addColorStop(0.42, colors.bg1);
+  grad.addColorStop(1, colors.bg0);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.textAlign = "center";
+
+  // brand
+  const logo = await loadImage("/logo.png");
+  if (logo) {
+    const S = 170;
+    ctx.drawImage(logo, W / 2 - S / 2, 140 - S / 2, S, S);
+  } else {
+    drawEmblem(ctx, W / 2, 140, 62);
+  }
+  ctx.font = "700 64px 'Space Grotesk'";
+  ctx.fillStyle = colors.ink;
+  ctx.shadowColor = colors.violet;
+  ctx.shadowBlur = 30;
+  ctx.fillText("PEN NEER", W / 2, 290);
+  ctx.shadowBlur = 0;
+
+  // avatar (photo or initial tile), with the rank ring color as border
+  const A = 260;
+  const ax = W / 2 - A / 2;
+  const ay = 350;
+  const border = opts.ringColor ?? opts.color;
+  ctx.save();
+  roundRect(ctx, ax, ay, A, A, A * 0.32);
+  ctx.clip();
+  const photo = opts.avatarUrl ? await loadImage(opts.avatarUrl) : null;
+  if (photo) {
+    ctx.drawImage(photo, ax, ay, A, A);
+  } else {
+    ctx.fillStyle = "rgba(255,255,255,0.06)";
+    ctx.fillRect(ax, ay, A, A);
+    ctx.font = "700 130px 'Space Grotesk'";
+    ctx.fillStyle = opts.color;
+    ctx.fillText((opts.name.trim()[0] || "?").toUpperCase(), W / 2, ay + A / 2 + 46);
+  }
+  ctx.restore();
+  ctx.strokeStyle = border;
+  ctx.lineWidth = 10;
+  ctx.shadowColor = border;
+  ctx.shadowBlur = 34;
+  roundRect(ctx, ax, ay, A, A, A * 0.32);
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // name + rank + level
+  ctx.font = "700 76px 'Space Grotesk'";
+  ctx.fillStyle = colors.ink;
+  const name = opts.name.length > 14 ? opts.name.slice(0, 13) + "…" : opts.name;
+  ctx.fillText(name, W / 2, 710);
+
+  ctx.font = "700 44px 'Space Grotesk'";
+  ctx.fillStyle = opts.ringColor ?? colors.gold;
+  ctx.shadowColor = opts.ringColor ?? colors.gold;
+  ctx.shadowBlur = 22;
+  ctx.fillText(opts.rankTitle, W / 2, 775);
+  ctx.shadowBlur = 0;
+
+  ctx.font = "700 34px 'Space Grotesk'";
+  const pill = opts.levelText;
+  const pw = ctx.measureText(pill).width + 70;
+  ctx.fillStyle = colors.gold;
+  roundRect(ctx, W / 2 - pw / 2, 800, pw, 60, 30);
+  ctx.fill();
+  ctx.fillStyle = "#2A1B05";
+  ctx.fillText(pill, W / 2, 842);
+
+  // 2x2 stat blocks
+  const bw = (W - 240 - 24) / 2;
+  const bh = 130;
+  opts.stats.slice(0, 4).forEach(([label, value], i) => {
+    const bx = 120 + (i % 2) * (bw + 24);
+    const by = 920 + Math.floor(i / 2) * (bh + 24);
+    ctx.fillStyle = "rgba(255,255,255,0.05)";
+    roundRect(ctx, bx, by, bw, bh, 20);
+    ctx.fill();
+    ctx.font = "700 52px 'Space Grotesk'";
+    ctx.fillStyle = colors.gold;
+    ctx.fillText(value, bx + bw / 2, by + 66);
+    ctx.font = "600 26px Inter";
+    ctx.fillStyle = colors.faint;
+    ctx.fillText(label.toUpperCase(), bx + bw / 2, by + 106);
+  });
+
+  // badges line + footer
+  ctx.font = "600 30px Inter";
+  ctx.fillStyle = colors.sub;
+  ctx.fillText(opts.badgesLine, W / 2, 1250);
+  ctx.font = "500 26px Inter";
+  ctx.fillStyle = colors.faint;
+  ctx.fillText(opts.footer, W / 2, H - 40);
+
+  return new Promise((resolve) => canvas.toBlob((b) => resolve(b), "image/png"));
+}
+
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
