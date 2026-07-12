@@ -265,6 +265,8 @@ function ProfileTab({ game }: { game: GameApi }) {
   const [editFile, setEditFile] = useState<File | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
+  const colorInputRef = useRef<HTMLInputElement | null>(null);
+  const colorDebounce = useRef<number | undefined>(undefined);
 
   useEffect(() => setName(account?.name ?? ""), [account?.name]);
   useEffect(() => {
@@ -338,7 +340,7 @@ function ProfileTab({ game }: { game: GameApi }) {
                 <Button variant="primary" onClick={() => game.updateAccount({ name })}>{t("save")}</Button>
               )}
             </div>
-            <div style={{ display: "flex", gap: 6 }}>
+            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
               {playerColors.map((c) => (
                 <button
                   key={c}
@@ -347,6 +349,34 @@ function ProfileTab({ game }: { game: GameApi }) {
                   style={{ width: 22, height: 22, borderRadius: 7, background: c, border: account.color === c ? `2px solid ${colors.ink}` : "2px solid transparent", cursor: "pointer" }}
                 />
               ))}
+              {/* Free choice: a rainbow wheel that opens the system color picker,
+                  for anyone who wants a color nobody else has (e.g. red). */}
+              <input
+                ref={colorInputRef}
+                type="color"
+                value={/^#[0-9A-Fa-f]{6}$/.test(account.color) ? account.color : "#FFC23D"}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (colorDebounce.current) window.clearTimeout(colorDebounce.current);
+                  colorDebounce.current = window.setTimeout(() => game.updateAccount({ color: v }), 350);
+                }}
+                aria-label={t("customColor")}
+                style={{ position: "absolute", width: 1, height: 1, opacity: 0, pointerEvents: "none" }}
+              />
+              <button
+                onClick={() => colorInputRef.current?.click()}
+                aria-label={t("customColor")}
+                title={t("customColor")}
+                style={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: "50%",
+                  cursor: "pointer",
+                  background: "conic-gradient(#ff3b30, #ff9500, #ffd60a, #34c759, #32ade6, #5856d6, #ff2d92, #ff3b30)",
+                  border: !playerColors.includes(account.color) ? `2px solid ${colors.ink}` : "2px solid transparent",
+                  boxShadow: !playerColors.includes(account.color) ? `0 0 8px ${withAlpha(account.color, 0.7)}` : "none",
+                }}
+              />
             </div>
           </div>
         </div>
