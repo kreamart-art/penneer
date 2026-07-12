@@ -216,6 +216,23 @@ class Database:
         if "avatar_preset" not in cols:
             self._conn.execute("ALTER TABLE users ADD COLUMN avatar_preset TEXT")
             self._conn.commit()
+        # Preset artwork changed (v2 = uniform sizing/margins): refresh the
+        # stored bytes of every account that uses a preset, exactly once.
+        PRESET_ART_VERSION = "2"
+        row = self._conn.execute("SELECT value FROM meta WHERE key='preset_art_version'").fetchone()
+        if (row["value"] if row else None) != PRESET_ART_VERSION:
+            for pid in PRESET_IDS:
+                data = preset_bytes(pid)
+                if data:
+                    self._conn.execute(
+                        "UPDATE users SET avatar=?, avatar_mime='image/jpeg', avatar_ver=avatar_ver+1 WHERE avatar_preset=?",
+                        (data, pid),
+                    )
+            self._conn.execute(
+                "INSERT OR REPLACE INTO meta (key, value) VALUES ('preset_art_version', ?)",
+                (PRESET_ART_VERSION,),
+            )
+            self._conn.commit()
 
     def _exec(self, sql: str, args: tuple = ()) -> sqlite3.Cursor:
         cur = self._conn.execute(sql, args)

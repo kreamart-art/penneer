@@ -1,7 +1,7 @@
 // Hub — profile, friends, inbox and leaderboard in one tabbed screen.
 // Reached from the Landing. A profile is optional: guests see the create form.
-import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Award, Bell, Camera, Check, MessageCircle, MoreVertical, Settings as SettingsIcon, Share2, Star, Swords, Trash2, Trophy, UserPlus, Users, X, ZoomIn, ZoomOut } from "lucide-react";
+import { Fragment, useEffect, useRef, useState } from "react";
+import { ArrowLeft, Award, Bell, Camera, Check, MessageCircle, MoreVertical, Settings as SettingsIcon, Share2, Smile, Star, Swords, Trash2, Trophy, UserPlus, Users, X, ZoomIn, ZoomOut } from "lucide-react";
 import { Avatar, RANK_RING } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { MusicToggle } from "../components/MusicToggle";
@@ -327,6 +327,7 @@ function ProfileTab({ game }: { game: GameApi }) {
   const [busy, setBusy] = useState(false);
   const [editFile, setEditFile] = useState<File | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const colorInputRef = useRef<HTMLInputElement | null>(null);
   const colorDebounce = useRef<number | undefined>(undefined);
@@ -370,7 +371,7 @@ function ProfileTab({ game }: { game: GameApi }) {
 
   if (!account) {
     return (
-      <>
+      <Fragment key="guest">
         <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink }}>{t("makeProfile")}</span>
           <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13, color: colors.sub, lineHeight: 1.5 }}>{t("makeProfileHint")}</p>
@@ -392,12 +393,26 @@ function ProfileTab({ game }: { game: GameApi }) {
             </div>
           )}
         </Card>
-      </>
+      </Fragment>
     );
   }
 
   if (settingsOpen) {
     return <ProfileSettings game={game} email={email} setEmail={setEmail} onBack={() => setSettingsOpen(false)} />;
+  }
+
+  if (avatarPickerOpen) {
+    return (
+      <AvatarPickerScreen
+        current={account.avatar_preset}
+        busy={busy}
+        onBack={() => setAvatarPickerOpen(false)}
+        onPick={async (id) => {
+          await pickPreset(id);
+          setAvatarPickerOpen(false);
+        }}
+      />
+    );
   }
 
   const shareCard = async () => {
@@ -440,7 +455,7 @@ function ProfileTab({ game }: { game: GameApi }) {
   };
 
   return (
-    <>
+    <Fragment key="mine">
       {/* acties rechtsboven: delen + profielinstellingen als icoontjes */}
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 6, margin: "-6px 0 -8px" }}>
         <button onClick={shareCard} disabled={sharing} aria-label={t("shareProfile")} title={t("shareProfile")} style={{ ...iconBtn, opacity: sharing ? 0.5 : 1 }}>
@@ -521,35 +536,12 @@ function ProfileTab({ game }: { game: GameApi }) {
           </Button>
         </div>
 
-        {/* Preset avatars — pick one instead of uploading a photo. */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.4, color: colors.faint }}>{t("chooseAvatar")}</span>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 8 }}>
-            {AVATAR_PRESETS.map((id) => {
-              const active = account.avatar_preset === id;
-              return (
-                <button
-                  key={id}
-                  onClick={() => pickPreset(id)}
-                  disabled={busy}
-                  aria-label={id}
-                  style={{
-                    padding: 0,
-                    border: `2px solid ${active ? colors.gold : "transparent"}`,
-                    borderRadius: 12,
-                    overflow: "hidden",
-                    cursor: "pointer",
-                    aspectRatio: "1 / 1",
-                    background: "transparent",
-                    boxShadow: active ? `0 0 10px ${withAlpha(colors.gold, 0.55)}` : "none",
-                  }}
-                >
-                  <img src={`/avatars/${id}.jpg`} alt={id} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        {/* Preset avatars live on their own page (keeps the profile short). */}
+        <Button variant="ghost" full onClick={() => setAvatarPickerOpen(true)}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <Smile size={15} /> {t("chooseAvatar")}
+          </span>
+        </Button>
       </Card>
 
       {editFile && (
@@ -586,6 +578,59 @@ function ProfileTab({ game }: { game: GameApi }) {
         )}
       </Card>
 
+    </Fragment>
+  );
+}
+
+// Avatar picker — its own page so the profile tab stays short.
+function AvatarPickerScreen({
+  current,
+  busy,
+  onBack,
+  onPick,
+}: {
+  current: string | null;
+  busy: boolean;
+  onBack: () => void;
+  onPick: (id: string) => void;
+}) {
+  const { t } = useT();
+  return (
+    <>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <button onClick={onBack} aria-label={t("back")} style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 2 }}>
+          <ArrowLeft size={18} />
+        </button>
+        <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink }}>{t("chooseAvatarTitle")}</span>
+      </div>
+      <Card>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+          {AVATAR_PRESETS.map((id) => {
+            const active = current === id;
+            return (
+              <button
+                key={id}
+                onClick={() => onPick(id)}
+                disabled={busy}
+                aria-label={id}
+                style={{
+                  padding: 0,
+                  border: `2px solid ${active ? colors.gold : "transparent"}`,
+                  borderRadius: 16,
+                  overflow: "hidden",
+                  cursor: "pointer",
+                  aspectRatio: "1 / 1",
+                  background: "transparent",
+                  opacity: busy ? 0.6 : 1,
+                  boxShadow: active ? `0 0 12px ${withAlpha(colors.gold, 0.55)}` : "none",
+                }}
+              >
+                <img src={`/avatars/${id}.jpg`} alt={id} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+              </button>
+            );
+          })}
+        </div>
+      </Card>
     </>
   );
 }
