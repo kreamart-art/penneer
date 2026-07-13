@@ -1,7 +1,7 @@
 // Pen Neer service worker — minimal, just enough to make the app installable and
 // give a cached shell. Network-first so deploys show up immediately; never
 // touches the WebSocket or cross-origin (fonts) requests.
-const CACHE = "penneer-v1";
+const CACHE = "penneer-v2";
 
 self.addEventListener("install", () => {
   self.skipWaiting();

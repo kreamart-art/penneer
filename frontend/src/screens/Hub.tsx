@@ -28,6 +28,9 @@ type Tab = "profile" | "friends" | "inbox" | "leaderboard";
 
 // Built-in illustrated avatars, mirrored server-side (backend/app/avatars).
 const AVATAR_PRESETS = Array.from({ length: 18 }, (_, i) => `av${String(i + 1).padStart(2, "0")}`);
+// Bump whenever the preset artwork changes (matches db.PRESET_ART_VERSION) so the
+// picker's static images cache-bust instead of serving the stale ones.
+const AVATAR_ART_VERSION = 5;
 
 export function Hub({ game, onBack, onChallenge }: { game: GameApi; onBack: () => void; onChallenge: (userId: string) => void }) {
   const { t } = useT();
@@ -625,7 +628,7 @@ function AvatarPickerScreen({
                   boxShadow: active ? `0 0 12px ${withAlpha(colors.gold, 0.55)}` : "none",
                 }}
               >
-                <img src={`/avatars/${id}.jpg`} alt={id} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                <img src={`/avatars/${id}.jpg?v=${AVATAR_ART_VERSION}`} alt={id} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
               </button>
             );
           })}
