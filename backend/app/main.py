@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import paypal, push
+from . import game, paypal, push
 from .db import AVATAR_MAX_BYTES, get_db
 from .ws import router as ws_router
 
@@ -89,6 +89,59 @@ async def get_avatar(user_id: str) -> Response:
     data, mime = found
     # The client busts the cache with ?v=<avatar_ver>, so cache hard.
     return Response(content=data, media_type=mime, headers={"Cache-Control": "public, max-age=31536000, immutable"})
+
+
+# ---- training (solo practice to learn more words) ---------------------------
+# Stateless and account-free: the client picks categories + a running set of
+# used letters, the server picks a fresh random letter (so everyone gets a
+# different sequence), then judges answers and reveals the words you missed
+# straight from the curated lists (which stay server-side).
+
+TRAIN_REVEAL_CAP = 12
+
+
+@app.get("/api/train/categories")
+async def train_categories() -> JSONResponse:
+    """Which categories can be trained (the ones with a curated word list)."""
+    return JSONResponse({"categories": game.TRAINABLE_CATEGORIES})
+
+
+@app.post("/api/train/round")
+async def train_round(request: Request) -> JSONResponse:
+    body = await request.json()
+    used = [str(x).strip().upper()[:1] for x in (body or {}).get("used") or []]
+    hard = bool((body or {}).get("hard"))
+    letter = game.pick_letter(used, hard)
+    return JSONResponse({"letter": letter})
+
+
+@app.post("/api/train/check")
+async def train_check(request: Request) -> JSONResponse:
+    body = await request.json()
+    letter = (str((body or {}).get("letter") or "").strip() or "?")[:1]
+    cats = [c for c in ((body or {}).get("categories") or []) if c in game.TRAINABLE_CATEGORIES]
+    answers = (body or {}).get("answers") or {}
+    out = {}
+    learned = 0  # words revealed that the player did not know
+    correct = 0  # answers that were in the list
+    for cat in cats:
+        word = str(answers.get(cat) or "").strip()
+        valid, in_list = game.classify(word, letter, cat)
+        canon = game.list_canonical(word, cat) if in_list else None
+        all_words = game.list_words_for_letter(cat, letter)
+        missed = [w for w in all_words if game.normalize(w) != canon]
+        if in_list:
+            correct += 1
+        learned += len(missed)
+        out[cat] = {
+            "your": word,
+            "valid": valid,
+            "in_list": in_list,
+            "missed": missed[:TRAIN_REVEAL_CAP],
+            "missed_total": len(missed),
+            "list_total": len(all_words),
+        }
+    return JSONResponse({"letter": letter, "categories": out, "correct": correct, "learned": learned})
 
 
 # ---- web push (real notifications while the app is closed) ------------------

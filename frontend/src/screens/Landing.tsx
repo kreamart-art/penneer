@@ -1,6 +1,6 @@
 // Landing — emblem, wordmark, tagline, name input, create / join, rules link.
 import { useState } from "react";
-import { HelpCircle, Settings as SettingsIcon, ShoppingCart, UserRound } from "lucide-react";
+import { GraduationCap, HelpCircle, Settings as SettingsIcon, ShoppingCart, UserRound } from "lucide-react";
 import { Logo } from "../components/Logo";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
@@ -31,12 +31,14 @@ export function Landing({
   onShowSettings,
   onShowHub,
   onShowShop,
+  onShowTraining,
 }: {
   game: GameApi;
   onShowRules: () => void;
   onShowSettings: () => void;
   onShowHub: () => void;
   onShowShop: () => void;
+  onShowTraining: () => void;
 }) {
   const { t } = useT();
   const [name, setName] = useState("");
@@ -166,6 +168,12 @@ export function Landing({
               <Button variant="ghost" full onClick={() => setMode("join")}>
                 {t("joinCta")}
               </Button>
+              <button
+                onClick={onShowTraining}
+                style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, background: "transparent", border: "none", cursor: "pointer", color: colors.gold, fontFamily: font.ui, fontSize: 13.5, fontWeight: 600, padding: "4px 0 0" }}
+              >
+                <GraduationCap size={16} /> {t("trainCta")}
+              </button>
             </>
           ) : (
             <>

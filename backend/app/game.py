@@ -194,6 +194,34 @@ def list_canonical(text: str, category: str, lenient: bool = False) -> str | Non
     return best[1] if best else None
 
 
+# Categories that have a curated list, so they can be TRAINED (the reveal shows
+# the words you missed). Open categories (Jongen/Meisje/Ding) are excluded.
+TRAINABLE_CATEGORIES = list(RAW.keys())
+
+
+def list_words_for_letter(category: str, letter: str) -> list[str]:
+    """Display words (as written in the list) in this category that start with
+    the letter, deduped by normalized form and alphabetized. Powers the
+    training reveal ("words you did not name yet")."""
+    words = RAW.get(category)
+    if not words:
+        return []
+    seen: set[str] = set()
+    out: list[str] = []
+    # Sorted so the base form (shorter) is met before its plural, then collapse
+    # plural variants the same way scoring does (vijg == vijgen), so the reveal
+    # never shows the same word twice. NL/EN variants stay (both are teachable).
+    for w in sorted(words, key=normalize):
+        if not starts_with(w, letter):
+            continue
+        variants = _plural_variants(normalize(w))
+        if seen & variants:
+            continue
+        seen |= variants
+        out.append(w)
+    return out
+
+
 def classify(text: str, letter: str, category: str) -> tuple[bool, bool]:
     """Return (valid, in_list).
 
