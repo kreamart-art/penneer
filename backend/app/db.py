@@ -216,11 +216,13 @@ class Database:
         if "avatar_preset" not in cols:
             self._conn.execute("ALTER TABLE users ADD COLUMN avatar_preset TEXT")
             self._conn.commit()
-        # Preset artwork changed (v5 = contain-fit with a uniform 12% top gap,
-        # bottom-anchored: consistent height, never cut, and the source-cut
-        # figures (pirate/cat/alien) get headroom so they no longer look
-        # clipped): refresh every account's preset bytes, once per version.
-        PRESET_ART_VERSION = "5"
+        # Preset artwork changed (v6 = width-fill: every subject spans the same
+        # ~86% of the frame width so they all look the same size and actually
+        # fill it, with guaranteed top headroom (no head/hat ever cut) and tall
+        # portraits letting their torso run off the bottom like a real profile
+        # photo; v5 contain-fit left narrow figures floating small): refresh
+        # every account's preset bytes, once per version.
+        PRESET_ART_VERSION = "6"
         row = self._conn.execute("SELECT value FROM meta WHERE key='preset_art_version'").fetchone()
         if (row["value"] if row else None) != PRESET_ART_VERSION:
             for pid in PRESET_IDS:
