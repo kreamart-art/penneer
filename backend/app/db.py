@@ -216,10 +216,10 @@ class Database:
         if "avatar_preset" not in cols:
             self._conn.execute("ALTER TABLE users ADD COLUMN avatar_preset TEXT")
             self._conn.commit()
-        # Preset artwork changed (v3 = full source cell 1:1, artist proportions
-        # preserved): refresh the stored bytes of every account that uses a
-        # preset, exactly once per art version.
-        PRESET_ART_VERSION = "3"
+        # Preset artwork changed (v4 = figure cropped, height-normalized and
+        # bottom-anchored so they all sit on the bottom edge, fill the tile and
+        # never get cut): refresh every account's preset bytes, once per version.
+        PRESET_ART_VERSION = "4"
         row = self._conn.execute("SELECT value FROM meta WHERE key='preset_art_version'").fetchone()
         if (row["value"] if row else None) != PRESET_ART_VERSION:
             for pid in PRESET_IDS:
