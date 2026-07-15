@@ -30,7 +30,7 @@ type Tab = "profile" | "friends" | "inbox" | "leaderboard";
 const AVATAR_PRESETS = Array.from({ length: 18 }, (_, i) => `av${String(i + 1).padStart(2, "0")}`);
 // Bump whenever the preset artwork changes (matches db.PRESET_ART_VERSION) so the
 // picker's static images cache-bust instead of serving the stale ones.
-const AVATAR_ART_VERSION = 8;
+const AVATAR_ART_VERSION = 9;
 
 export function Hub({ game, onBack, onChallenge }: { game: GameApi; onBack: () => void; onChallenge: (userId: string) => void }) {
   const { t } = useT();

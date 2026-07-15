@@ -235,14 +235,13 @@ class Database:
         if "avatar_preset" not in cols:
             self._conn.execute("ALTER TABLE users ADD COLUMN avatar_preset TEXT")
             self._conn.commit()
-        # Preset artwork changed (v8 = body-width fill: scale so the subject's BODY
-        # (85th-percentile row width, so a raised hand like av06's doesn't shrink
-        # the head) fills the frame, floored at 82% of the bbox so wide shoulders
-        # stay wide, plus the v7 top headroom + 14% bottom-crop cap. Every figure
-        # now reads the same size; v7 sized av06 off his outstretched hand and
-        # made his head too small): refresh every account's preset bytes, once
-        # per version.
-        PRESET_ART_VERSION = "8"
+        # Preset artwork changed (v9 = the v8 body-width algorithm plus hand-tuned
+        # per-avatar overrides, from per-avatar user feedback: av02 less zoom so
+        # her shoulders are back, av06/13/14 nudged down, av15 down + recentered,
+        # av16 pirate smaller with hat headroom, av17 cat a touch smaller, av18
+        # alien smaller and fully in frame): refresh every account's preset
+        # bytes, once per version.
+        PRESET_ART_VERSION = "9"
         row = self._conn.execute("SELECT value FROM meta WHERE key='preset_art_version'").fetchone()
         if (row["value"] if row else None) != PRESET_ART_VERSION:
             for pid in PRESET_IDS:
