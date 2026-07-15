@@ -1,6 +1,6 @@
 // Landing — emblem, wordmark, tagline, name input, create / join, rules link.
 import { useState } from "react";
-import { GraduationCap, HelpCircle, Settings as SettingsIcon, ShoppingCart, UserRound } from "lucide-react";
+import { CalendarDays, GraduationCap, HelpCircle, Settings as SettingsIcon, ShoppingCart, UserRound } from "lucide-react";
 import { Logo } from "../components/Logo";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
@@ -32,6 +32,7 @@ export function Landing({
   onShowHub,
   onShowShop,
   onShowTraining,
+  onShowDaily,
 }: {
   game: GameApi;
   onShowRules: () => void;
@@ -39,6 +40,7 @@ export function Landing({
   onShowHub: () => void;
   onShowShop: () => void;
   onShowTraining: () => void;
+  onShowDaily: () => void;
 }) {
   const { t } = useT();
   const [name, setName] = useState("");
@@ -169,8 +171,14 @@ export function Landing({
                 {t("joinCta")}
               </Button>
               <button
-                onClick={onShowTraining}
+                onClick={onShowDaily}
                 style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, background: "transparent", border: "none", cursor: "pointer", color: colors.gold, fontFamily: font.ui, fontSize: 13.5, fontWeight: 600, padding: "4px 0 0" }}
+              >
+                <CalendarDays size={16} /> {t("dailyCta")}
+              </button>
+              <button
+                onClick={onShowTraining}
+                style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, background: "transparent", border: "none", cursor: "pointer", color: colors.gold, fontFamily: font.ui, fontSize: 13.5, fontWeight: 600, padding: "2px 0 0" }}
               >
                 <GraduationCap size={16} /> {t("trainCta")}
               </button>

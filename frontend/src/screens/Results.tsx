@@ -54,6 +54,41 @@ export function Results({ game }: { game: GameApi }) {
   const norm = (s: string) =>
     s.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
 
+  // One highlight line per category: the story of the round ("iedereen had
+  // ZEBRA", "alleen Karim had iets"). Recomputed on corrections; the entrance
+  // animation itself only plays when the results first appear (mount).
+  const highlights = cats.map((cat) => {
+    const entries = players
+      .map((p) => ({ p, a: round?.answers[p.id]?.[cat] }))
+      .filter((x) => x.a && x.a.valid && x.a.text);
+    if (players.length < 2) return null;
+    if (entries.length === 0) return { cat, text: t("revealNobody"), tone: "faint" as const };
+    const groups = new Map<string, { word: string; names: string[] }>();
+    for (const { p, a } of entries) {
+      const k = a!.canon || norm(a!.text);
+      const g = groups.get(k) || { word: a!.text, names: [] };
+      g.names.push(p.name);
+      groups.set(k, g);
+    }
+    if (groups.size === 1 && entries.length === players.length) {
+      const g = [...groups.values()][0];
+      return { cat, text: t("revealAllSame", { word: g.word.toUpperCase() }), tone: "gold" as const };
+    }
+    if (entries.length === 1) {
+      const only = entries[0];
+      return { cat, text: t("revealOnlyOne", { name: only.p.name, word: only.a!.text.toUpperCase() }), tone: "gold" as const };
+    }
+    const biggest = [...groups.values()].sort((x, y) => y.names.length - x.names.length)[0];
+    if (biggest.names.length >= 2) {
+      return { cat, text: t("revealNSame", { n: biggest.names.length, word: biggest.word.toUpperCase() }), tone: "ink" as const };
+    }
+    return { cat, text: t("revealAllUnique", { n: groups.size }), tone: "faint" as const };
+  }).filter((h): h is { cat: string; text: string; tone: "gold" | "ink" | "faint" } => h !== null);
+
+  // Stagger plan: highlight lines first (one per beat), then the player cards.
+  const lineDelay = (i: number) => 0.25 + i * 0.4;
+  const cardDelay = (i: number) => 0.25 + highlights.length * 0.4 + 0.15 + i * 0.15;
+
   return (
     <Screen top={<TopBar code={room.code} roundNo={room.round_no} totalRounds={room.settings.rounds} connected={game.state.status === "open"} onLeave={game.leaveRoom} game={game} />}>
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -64,12 +99,28 @@ export function Results({ game }: { game: GameApi }) {
           <Scoreboard players={room.players} scores={room.scores} meId={game.me?.id ?? null} />
         </Card>
 
+        {highlights.length > 0 && (
+          <Card style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint }}>
+              {t("revealHighlights")}
+            </div>
+            {highlights.map((h, i) => (
+              <div key={h.cat} className="reveal-rise" style={{ animationDelay: `${lineDelay(i)}s`, display: "flex", alignItems: "baseline", gap: 10 }}>
+                <span style={{ fontFamily: font.ui, fontSize: 11, color: colors.faint, width: 58, flexShrink: 0 }}>{tCat(h.cat)}</span>
+                <span style={{ fontFamily: font.ui, fontSize: 13.5, fontWeight: 600, color: h.tone === "gold" ? colors.gold : h.tone === "ink" ? colors.ink : colors.faint }}>
+                  {h.text}
+                </span>
+              </div>
+            ))}
+          </Card>
+        )}
+
         <p style={{ fontFamily: font.ui, fontSize: 13, color: colors.sub, textAlign: "center", margin: 0, lineHeight: 1.5 }}>{t("resultsHint")}</p>
 
-        {players.map((p) => {
+        {players.map((p, pi) => {
           const answers = round?.answers[p.id] ?? {};
           return (
-            <Card key={p.id} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <Card key={p.id} className="reveal-rise" style={{ animationDelay: `${cardDelay(pi)}s`, display: "flex", flexDirection: "column", gap: 12 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <Avatar name={p.name} color={p.color} size={34} dim={!p.connected} userId={p.user_id} hasAvatar={p.has_avatar} avatarVer={p.avatar_ver} rank={p.rank} />
                 <span style={{ fontFamily: font.ui, fontWeight: 600, fontSize: 15, color: colors.ink, flex: 1 }}>

@@ -12,6 +12,7 @@ import { Landing } from "./screens/Landing";
 import { Hub } from "./screens/Hub";
 import { Shop } from "./screens/Shop";
 import { Training } from "./screens/Training";
+import { Daily } from "./screens/Daily";
 import { BadgeToasts } from "./components/BadgeToasts";
 import { InviteBanner } from "./components/InviteBanner";
 import { localNotify } from "./components/NotifyNudge";
@@ -36,6 +37,7 @@ export default function App() {
   const [showHub, setShowHub] = useState(false);
   const [showShop, setShowShop] = useState(false);
   const [showTraining, setShowTraining] = useState(false);
+  const [showDaily, setShowDaily] = useState(false);
   const [bannerInvite, setBannerInvite] = useState<InboxItem | null>(null);
   const [paypalFlash, setPaypalFlash] = useState<"ok" | "cancel" | "fail" | "pending" | null>(null);
   // A challenge creates a room first; once its lobby is up we send the invite.
@@ -254,6 +256,17 @@ export default function App() {
     screen = <LanguagePage />;
   } else if (showRules) {
     screen = <Rules onBack={() => setShowRules(false)} />;
+  } else if (showDaily) {
+    screen = (
+      <Daily
+        game={game}
+        onBack={() => setShowDaily(false)}
+        onProfile={() => {
+          setShowDaily(false);
+          setShowHub(true);
+        }}
+      />
+    );
   } else if (showTraining) {
     screen = <Training onBack={() => setShowTraining(false)} />;
   } else if (showShop) {
@@ -281,7 +294,7 @@ export default function App() {
       />
     );
   } else {
-    screen = <Landing game={game} onShowRules={() => setShowRules(true)} onShowSettings={() => setShowSettings(true)} onShowHub={() => setShowHub(true)} onShowShop={() => setShowShop(true)} onShowTraining={() => setShowTraining(true)} />;
+    screen = <Landing game={game} onShowRules={() => setShowRules(true)} onShowSettings={() => setShowSettings(true)} onShowHub={() => setShowHub(true)} onShowShop={() => setShowShop(true)} onShowTraining={() => setShowTraining(true)} onShowDaily={() => setShowDaily(true)} />;
   }
 
   return (

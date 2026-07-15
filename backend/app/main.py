@@ -5,7 +5,9 @@ static files. CORS is open in dev so Vite (5173) can reach the API.
 """
 from __future__ import annotations
 
+import json
 import os
+import time
 from pathlib import Path
 
 from fastapi import FastAPI, Request, Response
@@ -13,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import game, paypal, push
+from . import daily, game, paypal, push
 from .db import AVATAR_MAX_BYTES, get_db
 from .ws import router as ws_router
 
@@ -142,6 +144,128 @@ async def train_check(request: Request) -> JSONResponse:
             "list_total": len(all_words),
         }
     return JSONResponse({"letter": letter, "categories": out, "correct": correct, "learned": learned})
+
+
+# ---- dagronde (daily round: same letter for everyone, ranked) ---------------
+# Unlike Oefenen, the daily is deliberately identical for every player, since a
+# ranking only means something when everyone faced the same letter. Accounts
+# land on the day board (one attempt, 60s window anchored at their FIRST
+# start); guests play the same round unranked and get a profile nudge.
+
+
+def _daily_streak(db, uid: str, day: str) -> int:
+    """Consecutive played days ending at `day`."""
+    days = set(db.daily_days_of(uid))
+    streak = 0
+    d = day
+    while d in days:
+        streak += 1
+        d = daily.previous_day(d)
+    return streak
+
+
+def _daily_result_payload(db, uid: str | None, day: str, score: int, breakdown: dict,
+                          ranked: bool, time_ms: int) -> dict:
+    rank, total = db.daily_rank(uid, day) if uid else (0, db.daily_players_count(day))
+    return {
+        "day": day,
+        "letter": daily.letter_for(day),
+        "score": score,
+        "categories": breakdown,
+        "ranked": ranked,
+        "rank": rank,
+        "total": total,
+        "streak": _daily_streak(db, uid, day) if uid else 0,
+        "time_ms": time_ms,
+        "board": db.daily_board(day, 10),
+        "seconds_left": daily.seconds_to_next_day(),
+    }
+
+
+@app.get("/api/daily/info")
+async def daily_info(request: Request) -> JSONResponse:
+    """Landing/intro state: the day, how many played, whether YOU played."""
+    db = get_db()
+    day = daily.today()
+    uid = db.auth(_bearer(request))
+    return JSONResponse({
+        "day": day,
+        "seconds_left": daily.seconds_to_next_day(),
+        "players": db.daily_players_count(day),
+        "played": bool(uid and db.daily_entry(uid, day)),
+        "streak": _daily_streak(db, uid, day) if uid else 0,
+    })
+
+
+@app.post("/api/daily/start")
+async def daily_start(request: Request) -> JSONResponse:
+    """Hand out today's letter. For accounts this anchors the submit window at
+    the FIRST start of the day, so closing and reopening never resets it."""
+    db = get_db()
+    day = daily.today()
+    uid = db.auth(_bearer(request))
+    if uid and db.daily_entry(uid, day):
+        return JSONResponse({"day": day, "played": True, "seconds_left": daily.seconds_to_next_day()})
+    if uid:
+        db.daily_start(uid, day, time.time())
+    return JSONResponse({
+        "day": day,
+        "letter": daily.letter_for(day),
+        "categories": daily.categories_for(day),
+        "duration": daily.DURATION_S,
+        "played": False,
+    })
+
+
+@app.post("/api/daily/submit")
+async def daily_submit(request: Request) -> JSONResponse:
+    db = get_db()
+    body = await request.json()
+    day = daily.today()
+    uid = db.auth(_bearer(request))
+    now = time.time()
+
+    entry = db.daily_entry(uid, day) if uid else None
+    if entry is not None:
+        # Already on the board: return the STORED result, never re-judge new
+        # words into a second attempt.
+        try:
+            stored = json.loads(entry["words"])
+        except Exception:
+            stored = {}
+        _, breakdown = daily.score_answers(day, stored)
+        return JSONResponse({**_daily_result_payload(db, uid, day, int(entry["score"]), breakdown, True, int(entry["time_ms"])), "already": True})
+
+    answers = {str(k)[:24]: str(v)[:40] for k, v in ((body or {}).get("answers") or {}).items()}
+    score, breakdown = daily.score_answers(day, answers)
+    ranked = False
+    time_ms = 0
+    if uid:
+        started = db.daily_start(uid, day, now)
+        elapsed = now - started
+        # Note: someone who starts seconds before midnight submits into the new
+        # day and scores against its letter; rare enough to keep the code flat.
+        if elapsed <= daily.DURATION_S + daily.GRACE_S:
+            time_ms = int(min(max(elapsed, 1.0), daily.DURATION_S) * 1000)
+            ranked = db.daily_submit(uid, day, score, time_ms, json.dumps(answers)[:4000], now)
+    return JSONResponse({**_daily_result_payload(db, uid, day, score, breakdown, ranked, time_ms), "already": False})
+
+
+@app.get("/api/daily/result")
+async def daily_result(request: Request) -> JSONResponse:
+    """Re-open today's stored result (accounts; guests keep a local copy)."""
+    db = get_db()
+    day = daily.today()
+    uid = db.auth(_bearer(request))
+    entry = db.daily_entry(uid, day) if uid else None
+    if not uid or entry is None:
+        return JSONResponse({"error": "not_played"}, status_code=404)
+    try:
+        stored = json.loads(entry["words"])
+    except Exception:
+        stored = {}
+    _, breakdown = daily.score_answers(day, stored)
+    return JSONResponse(_daily_result_payload(db, uid, day, int(entry["score"]), breakdown, True, int(entry["time_ms"])))
 
 
 # ---- web push (real notifications while the app is closed) ------------------

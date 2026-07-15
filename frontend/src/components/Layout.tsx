@@ -34,8 +34,8 @@ export function Screen({ children, top }: { children: React.ReactNode; top?: Rea
   );
 }
 
-export function Card({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
-  return <div style={{ ...panelStyle, padding: 18, ...style }}>{children}</div>;
+export function Card({ children, style, className }: { children: React.ReactNode; style?: React.CSSProperties; className?: string }) {
+  return <div className={className} style={{ ...panelStyle, padding: 18, ...style }}>{children}</div>;
 }
 
 export function Footer() {

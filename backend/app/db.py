@@ -147,6 +147,25 @@ CREATE TABLE IF NOT EXISTS meta (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
 );
+-- Dagronde: first start per account per day (anchors the 60s submit window;
+-- restarting the screen never resets it, so peeking costs your own clock).
+CREATE TABLE IF NOT EXISTS daily_starts (
+    day TEXT NOT NULL,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    started_at REAL NOT NULL,
+    PRIMARY KEY (day, user_id)
+);
+-- Dagronde: one ranked entry per account per day. words = the submitted
+-- answers as JSON, kept so the player can re-open their result later.
+CREATE TABLE IF NOT EXISTS daily_scores (
+    day TEXT NOT NULL,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    score INTEGER NOT NULL,
+    time_ms INTEGER NOT NULL,
+    words TEXT NOT NULL,
+    created_at REAL NOT NULL,
+    PRIMARY KEY (day, user_id)
+);
 CREATE INDEX IF NOT EXISTS idx_game_players_user ON game_players(user_id);
 CREATE INDEX IF NOT EXISTS idx_games_finished ON games(finished_at);
 CREATE INDEX IF NOT EXISTS idx_invites_to ON invites(to_user, status);
@@ -682,6 +701,78 @@ class Database:
                 (since, until if until is not None else float("inf"), limit),
             )
         return [dict(r) for r in rows]
+
+    # ---- dagronde ------------------------------------------------------------
+
+    def daily_start(self, user_id: str, day: str, now: float) -> float:
+        """Record the FIRST start of the day; later calls return that anchor."""
+        with self._lock:
+            row = self._q("SELECT started_at FROM daily_starts WHERE day=? AND user_id=?", (day, user_id))
+            if row:
+                return float(row[0]["started_at"])
+            self._exec("INSERT INTO daily_starts (day, user_id, started_at) VALUES (?,?,?)", (day, user_id, now))
+            return now
+
+    def daily_submit(self, user_id: str, day: str, score: int, time_ms: int, words_json: str, now: float) -> bool:
+        """Store the day's entry. False if this account already played today."""
+        with self._lock:
+            try:
+                self._exec(
+                    "INSERT INTO daily_scores (day, user_id, score, time_ms, words, created_at) VALUES (?,?,?,?,?,?)",
+                    (day, user_id, score, time_ms, words_json, now),
+                )
+                return True
+            except sqlite3.IntegrityError:
+                return False
+
+    def daily_entry(self, user_id: str, day: str) -> Optional[dict]:
+        with self._lock:
+            rows = self._q("SELECT score, time_ms, words, created_at FROM daily_scores WHERE day=? AND user_id=?", (day, user_id))
+        return dict(rows[0]) if rows else None
+
+    def daily_board(self, day: str, limit: int = 25) -> list[dict]:
+        with self._lock:
+            rows = self._q(
+                """
+                SELECT u.id, u.name, u.color, u.avatar_ver, u.avatar IS NOT NULL AS has_avatar,
+                       ds.score, ds.time_ms
+                FROM daily_scores ds JOIN users u ON u.id = ds.user_id
+                WHERE ds.day = ?
+                ORDER BY ds.score DESC, ds.time_ms ASC, ds.created_at ASC
+                LIMIT ?
+                """,
+                (day, limit),
+            )
+        return [dict(r) for r in rows]
+
+    def daily_rank(self, user_id: str, day: str) -> tuple[int, int]:
+        """(rank, total players) for the day; rank 0 when not on the board."""
+        with self._lock:
+            total = self._q("SELECT COUNT(*) AS n FROM daily_scores WHERE day=?", (day,))[0]["n"]
+            mine = self._q("SELECT score, time_ms, created_at FROM daily_scores WHERE day=? AND user_id=?", (day, user_id))
+            if not mine:
+                return 0, int(total)
+            m = mine[0]
+            better = self._q(
+                """
+                SELECT COUNT(*) AS n FROM daily_scores WHERE day=? AND (
+                    score > ? OR (score = ? AND time_ms < ?) OR
+                    (score = ? AND time_ms = ? AND created_at < ?)
+                )
+                """,
+                (day, m["score"], m["score"], m["time_ms"], m["score"], m["time_ms"], m["created_at"]),
+            )[0]["n"]
+        return int(better) + 1, int(total)
+
+    def daily_days_of(self, user_id: str, limit: int = 400) -> list[str]:
+        """The days this account played, newest first (streak computation)."""
+        with self._lock:
+            rows = self._q("SELECT day FROM daily_scores WHERE user_id=? ORDER BY day DESC LIMIT ?", (user_id, limit))
+        return [r["day"] for r in rows]
+
+    def daily_players_count(self, day: str) -> int:
+        with self._lock:
+            return int(self._q("SELECT COUNT(*) AS n FROM daily_scores WHERE day=?", (day,))[0]["n"])
 
     def history_of(self, user_id: str, limit: int = 10) -> list[dict]:
         """The user's most recent games, newest first, each with their own

@@ -109,3 +109,19 @@ input:focus {
   78% { opacity: 1; }
   100% { opacity: 0; transform: scale(1); }
 }
+
+/* Results reveal: cards and highlight lines rise in one by one, once, when a
+   round's results first appear. Corrections re-render but never re-animate
+   (the elements stay mounted). */
+@keyframes reveal-rise {
+  0% { opacity: 0; transform: translateY(14px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.reveal-rise {
+  animation: reveal-rise 0.5s ease both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal-rise {
+    animation: none;
+  }
+}

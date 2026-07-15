@@ -309,6 +309,112 @@ export async function makeProfileCard(opts: ProfileCardOpts): Promise<Blob | nul
   return new Promise((resolve) => canvas.toBlob((b) => resolve(b), "image/png"));
 }
 
+interface DailyCardOpts {
+  dayLabel: string; // "DAGRONDE · 13 JULI"
+  letter: string;
+  scoreText: string; // "40 punten"
+  rankText: string; // "#3 van 41 vandaag" (empty when unranked)
+  streakText: string; // "2 dagen op rij" (empty when none)
+  footer: string;
+}
+
+// Render a shareable DAGRONDE card: the day's letter huge, your score, rank.
+export async function makeDailyCard(opts: DailyCardOpts): Promise<Blob | null> {
+  const W = 1080;
+  const H = 1350;
+  const canvas = document.createElement("canvas");
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+
+  try {
+    await Promise.all([
+      document.fonts.load("700 120px 'Space Grotesk'"),
+      document.fonts.load("600 36px Inter"),
+    ]);
+  } catch {
+    /* fall back to default fonts */
+  }
+
+  const grad = ctx.createRadialGradient(W / 2, -H * 0.08, 100, W / 2, H * 0.5, H);
+  grad.addColorStop(0, colors.glow);
+  grad.addColorStop(0.42, colors.bg1);
+  grad.addColorStop(1, colors.bg0);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.textAlign = "center";
+
+  const logo = await loadImage("/logo.png");
+  if (logo) {
+    const S = 170;
+    ctx.drawImage(logo, W / 2 - S / 2, 140 - S / 2, S, S);
+  } else {
+    drawEmblem(ctx, W / 2, 140, 62);
+  }
+  ctx.font = "700 64px 'Space Grotesk'";
+  ctx.fillStyle = colors.ink;
+  ctx.shadowColor = colors.violet;
+  ctx.shadowBlur = 30;
+  ctx.fillText("PEN NEER", W / 2, 290);
+  ctx.shadowBlur = 0;
+
+  ctx.font = "600 34px Inter";
+  ctx.fillStyle = colors.faint;
+  ctx.fillText(opts.dayLabel.toUpperCase(), W / 2, 360);
+
+  // the day's letter, huge, in a glowing tile
+  const T = 340;
+  const tx = W / 2 - T / 2;
+  const ty = 420;
+  ctx.fillStyle = "rgba(255,255,255,0.05)";
+  roundRect(ctx, tx, ty, T, T, 56);
+  ctx.fill();
+  ctx.strokeStyle = colors.gold;
+  ctx.lineWidth = 8;
+  ctx.shadowColor = colors.gold;
+  ctx.shadowBlur = 44;
+  roundRect(ctx, tx, ty, T, T, 56);
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+  ctx.font = "700 230px 'Space Grotesk'";
+  ctx.fillStyle = colors.gold;
+  ctx.shadowColor = colors.gold;
+  ctx.shadowBlur = 40;
+  ctx.fillText(opts.letter.toUpperCase(), W / 2, ty + T / 2 + 82);
+  ctx.shadowBlur = 0;
+
+  // score pill
+  ctx.font = "700 46px 'Space Grotesk'";
+  const pw = ctx.measureText(opts.scoreText).width + 90;
+  ctx.fillStyle = colors.gold;
+  roundRect(ctx, W / 2 - pw / 2, 830, pw, 84, 42);
+  ctx.fill();
+  ctx.fillStyle = "#2A1B05";
+  ctx.fillText(opts.scoreText, W / 2, 887);
+
+  // rank + streak
+  let y = 990;
+  if (opts.rankText) {
+    ctx.font = "700 46px 'Space Grotesk'";
+    ctx.fillStyle = colors.ink;
+    ctx.fillText(opts.rankText, W / 2, y);
+    y += 70;
+  }
+  if (opts.streakText) {
+    ctx.font = "600 36px Inter";
+    ctx.fillStyle = colors.orange;
+    ctx.fillText(opts.streakText, W / 2, y);
+  }
+
+  ctx.font = "500 26px Inter";
+  ctx.fillStyle = colors.faint;
+  ctx.fillText(opts.footer, W / 2, H - 50);
+
+  return new Promise((resolve) => canvas.toBlob((b) => resolve(b), "image/png"));
+}
+
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
