@@ -1,7 +1,7 @@
 // Settings + About — reachable from the Landing gear. Language, sound, how-to,
 // install-as-app, and an About card with the version and studio credit.
 import { useEffect, useState } from "react";
-import { ArrowLeft, Download, HelpCircle, Music, ShieldCheck, Volume2 } from "lucide-react";
+import { ArrowLeft, Download, HelpCircle, Music, Share, ShieldCheck, Volume2 } from "lucide-react";
 import { Logo } from "../components/Logo";
 import { Button } from "../components/Button";
 import { Toggle } from "../components/Toggle";
@@ -9,7 +9,7 @@ import { Screen, Card } from "../components/Layout";
 import type { GameApi } from "../net/socket";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
-import { canInstall, isStandalone, onInstallChange, promptInstall } from "../pwa/install";
+import { canInstall, isIos, isIosInAppBrowser, isStandalone, onInstallChange, promptInstall } from "../pwa/install";
 import { APP_VERSION } from "../version";
 import { colors, font, withAlpha } from "../theme/tokens";
 
@@ -76,6 +76,8 @@ export function Settings({ game, onBack, onShowRules }: { game: GameApi; onBack:
   const [sfxMuted, setSfxMuted] = useState(sound.isSfxMuted());
   const [installable, setInstallable] = useState(canInstall());
   const standalone = isStandalone();
+  const ios = isIos();
+  const iosInApp = isIosInAppBrowser();
   const [adminCode, setAdminCode] = useState("");
   const { isAdmin, adminAi, recoveryCodes, aiCodes } = game.state;
 
@@ -160,7 +162,57 @@ export function Settings({ game, onBack, onShowRules }: { game: GameApi; onBack:
           </span>
         </Button>
 
-        {!standalone && (
+        {/* iOS has no beforeinstallprompt (Apple ships no install API in WebKit, and
+            every iOS browser is WebKit), so the button can never fire there. Show the
+            manual Share > Zet op beginscherm steps instead of a dead disabled button. */}
+        {!standalone && ios && (
+          <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Download size={18} color={colors.gold} />
+              <span style={{ fontFamily: font.ui, fontSize: 14.5, fontWeight: 700, color: colors.ink }}>{t("installIosTitle")}</span>
+            </div>
+            {iosInApp ? (
+              <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13, lineHeight: 1.55, color: colors.sub }}>{t("installIosSafari")}</p>
+            ) : (
+              <>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {[
+                    { n: 1, text: t("installIosStep1"), icon: true },
+                    { n: 2, text: t("installIosStep2"), icon: false },
+                    { n: 3, text: t("installIosStep3"), icon: false },
+                  ].map((s) => (
+                    <div key={s.n} style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                      <span
+                        style={{
+                          flexShrink: 0,
+                          width: 20,
+                          height: 20,
+                          borderRadius: 999,
+                          display: "grid",
+                          placeItems: "center",
+                          background: withAlpha(colors.gold, 0.16),
+                          border: `1px solid ${withAlpha(colors.gold, 0.4)}`,
+                          color: colors.gold,
+                          fontFamily: font.ui,
+                          fontSize: 11,
+                          fontWeight: 800,
+                        }}
+                      >
+                        {s.n}
+                      </span>
+                      <span style={{ fontFamily: font.ui, fontSize: 13, lineHeight: 1.45, color: colors.sub, display: "inline-flex", alignItems: "center", gap: 6 }}>
+                        {s.text}
+                        {s.icon && <Share size={15} color={colors.ink} />}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12, lineHeight: 1.5, color: colors.faint }}>{t("installIosWhy")}</p>
+              </>
+            )}
+          </Card>
+        )}
+        {!standalone && !ios && (
           <div>
             <Button variant="primary" full disabled={!installable} onClick={() => promptInstall()}>
               <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>

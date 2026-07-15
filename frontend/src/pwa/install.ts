@@ -22,6 +22,21 @@ export function canInstall(): boolean {
   return deferred !== null && !isStandalone();
 }
 
+/** iPhone/iPad. iPadOS 13+ reports itself as desktop Safari, hence the touch check. */
+export function isIos(): boolean {
+  const ua = navigator.userAgent;
+  const nav = navigator as Navigator & { maxTouchPoints?: number };
+  return /iPad|iPhone|iPod/.test(ua) || (nav.platform === "MacIntel" && (nav.maxTouchPoints ?? 0) > 1);
+}
+
+/**
+ * An in-app webview (link opened from Instagram, Facebook, Snapchat...). These
+ * have no "Zet op beginscherm" at all, so the user must reopen in Safari first.
+ */
+export function isIosInAppBrowser(): boolean {
+  return isIos() && /FBAN|FBAV|Instagram|Snapchat|Line|Twitter|Pinterest/i.test(navigator.userAgent);
+}
+
 export function onInstallChange(cb: () => void): () => void {
   listeners.add(cb);
   return () => listeners.delete(cb);
