@@ -150,7 +150,10 @@ export function Landing({
         <div className="reveal-rise" style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: 18, padding: "6px 0" }}>
           {/* Hero light: breathing radial glow + slow rays + rising dust, all
               behind the logo/title (zIndex layering, transform-only motion). */}
-          <div aria-hidden style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", zIndex: 0 }}>
+          {/* overflow hidden: the glow/rays discs are wider than small phones;
+              their visible falloff ends well inside the box, but the transparent
+              overhang would otherwise make the page scroll sideways. */}
+          <div aria-hidden style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", zIndex: 0, overflow: "hidden" }}>
             <div
               className="breath-glow"
               style={{

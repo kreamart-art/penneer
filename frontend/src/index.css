@@ -24,6 +24,16 @@ body {
   overscroll-behavior: none;
 }
 
+/* The app is a single column; sideways scrolling is never intended. Decorative
+   layers (hero glow/rays) may be wider than small phones, so clip the x-axis
+   at the root. `clip` avoids creating a scroll container; `hidden` is the
+   fallback for older WebKit. */
+html,
+body {
+  overflow-x: hidden;
+  overflow-x: clip;
+}
+
 /* Fixed full-screen background layer so the gradient fills the whole device,
    including behind the iOS status bar and the home-indicator safe areas
    (with viewport-fit=cover). No abrupt edge at the top. */
