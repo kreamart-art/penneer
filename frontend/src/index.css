@@ -35,6 +35,23 @@ body::before {
   background: radial-gradient(120% 80% at 50% -8%, #41216f 0%, #1a1140 42%, #0e0922 100%);
 }
 
+/* Premium finish on top of the gradient (still behind all content): soft ink
+   clouds in the corners, a whisper of paper grain, and a gentle vignette.
+   Static layers only, so this costs nothing per frame. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(60% 44% at -8% 106%, rgba(122, 103, 255, 0.11), transparent 70%),
+    radial-gradient(55% 40% at 108% 102%, rgba(255, 86, 74, 0.06), transparent 70%),
+    radial-gradient(50% 36% at 106% -6%, rgba(255, 194, 61, 0.05), transparent 70%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
+    radial-gradient(120% 90% at 50% 40%, transparent 58%, rgba(6, 3, 18, 0.4) 100%);
+}
+
 /* Inputs reset to the arcade look. */
 input {
   font-family: "Inter", system-ui, sans-serif;
@@ -120,8 +137,124 @@ input:focus {
 .reveal-rise {
   animation: reveal-rise 0.5s ease both;
 }
+
+/* ---- AAA polish layer (landing + chrome) --------------------------------- */
+
+/* Touchable: springy press with overshoot on release. Transform/opacity only. */
+.pressable {
+  transition:
+    transform 0.24s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.24s ease,
+    filter 0.2s ease;
+  will-change: transform;
+}
+.pressable:active {
+  transform: scale(0.97);
+  filter: brightness(1.07);
+}
+.glowhover:hover {
+  filter: drop-shadow(0 0 9px rgba(255, 194, 61, 0.4));
+}
+
+/* Gloss sweep across the gold hero tile, every few seconds. */
+@keyframes tile-shimmer {
+  0% { transform: translateX(-140%) skewX(-18deg); }
+  16% { transform: translateX(150%) skewX(-18deg); }
+  100% { transform: translateX(150%) skewX(-18deg); }
+}
+.shimmer-bar {
+  position: absolute;
+  top: -8%;
+  bottom: -8%;
+  left: 0;
+  width: 46%;
+  background: linear-gradient(105deg, transparent 8%, rgba(255, 255, 255, 0.45) 50%, transparent 92%);
+  animation: tile-shimmer 5.6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Occasional sparkle on gold UI. */
+@keyframes twinkle {
+  0%, 86%, 100% { opacity: 0; transform: scale(0.4) rotate(0deg); }
+  91% { opacity: 0.95; transform: scale(1) rotate(24deg); }
+  96% { opacity: 0; transform: scale(0.5) rotate(40deg); }
+}
+.twinkle {
+  animation: twinkle 6.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Two-layer background parallax: opposing, very slow drifts. */
+@keyframes drift-a {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(14px, -18px, 0); }
+}
+@keyframes drift-b {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(-16px, 12px, 0); }
+}
+.drift-a {
+  animation: drift-a 26s ease-in-out infinite alternate;
+}
+.drift-b {
+  animation: drift-b 34s ease-in-out infinite alternate;
+}
+
+/* Tiny glowing dust rising near the hero. */
+@keyframes rise-fade {
+  0% { opacity: 0; transform: translateY(10px); }
+  22% { opacity: 0.75; }
+  100% { opacity: 0; transform: translateY(-52px); }
+}
+.hero-particle {
+  position: absolute;
+  border-radius: 999px;
+  pointer-events: none;
+  animation: rise-fade 7s ease-out infinite;
+}
+
+/* Soft light rays behind the title, rotating imperceptibly slowly. */
+@keyframes ray-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.hero-rays {
+  animation: ray-spin 90s linear infinite;
+  pointer-events: none;
+}
+
+/* Breathing glow behind the hero. */
+@keyframes breath-glow {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+.breath-glow {
+  animation: breath-glow 6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Subtle animated glow around the profile chip's avatar. */
+@keyframes avatar-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 194, 61, 0), 0 4px 14px rgba(0, 0, 0, 0.4); }
+  50% { box-shadow: 0 0 14px 1px rgba(255, 194, 61, 0.35), 0 4px 14px rgba(0, 0, 0, 0.4); }
+}
+.avatar-glow {
+  animation: avatar-glow 4.5s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .reveal-rise {
+  .reveal-rise,
+  .shimmer-bar,
+  .twinkle,
+  .drift-a,
+  .drift-b,
+  .hero-particle,
+  .hero-rays,
+  .breath-glow,
+  .avatar-glow {
     animation: none;
+  }
+  .pressable {
+    transition: none;
   }
 }

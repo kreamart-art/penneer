@@ -204,8 +204,7 @@ const nl: Dict = {
   roundsCustomHint: "Kies zelf hoeveel rondes. De host kan het spel eerder stoppen met Einde spel.",
   endGame: "Einde spel",
   // landing
-  tagline:
-    "Draai de letter, ren tegen de klok. Jongen, meisje, dier, vrucht, land. Ieder op zijn eigen telefoon.",
+  tagline: "Draai de letter. Vind woorden. Win.",
   yourName: "Jouw naam",
   createRoom: "Maak een room",
   joinCta: "Doe mee met code",
@@ -565,8 +564,7 @@ const en: Dict = {
   roundsCustom: "Custom",
   roundsCustomHint: "Pick how many rounds. The host can end the game early with End game.",
   endGame: "End game",
-  tagline:
-    "Spin the letter, race the clock. Boy, girl, animal, fruit, country. Everyone on their own phone.",
+  tagline: "Spin the letter. Find words. Win.",
   yourName: "Your name",
   createRoom: "Create a room",
   joinCta: "Join with a code",
