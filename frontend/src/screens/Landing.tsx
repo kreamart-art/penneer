@@ -150,32 +150,9 @@ export function Landing({
         <div className="reveal-rise" style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: 18, padding: "6px 0" }}>
           {/* Hero light: breathing radial glow + slow rays + rising dust, all
               behind the logo/title (zIndex layering, transform-only motion). */}
-          {/* overflow hidden: the glow/rays discs are wider than small phones;
-              their visible falloff ends well inside the box, but the transparent
-              overhang would otherwise make the page scroll sideways. */}
+          {/* overflow hidden keeps the dust inside the hero box (and any wide
+              decor from ever widening the page). */}
           <div aria-hidden style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", zIndex: 0, overflow: "hidden" }}>
-            <div
-              className="breath-glow"
-              style={{
-                position: "absolute",
-                width: 380,
-                height: 380,
-                borderRadius: "50%",
-                background: `radial-gradient(circle, ${withAlpha(colors.gold, 0.14)} 0%, ${withAlpha(colors.violet, 0.13)} 38%, transparent 68%)`,
-              }}
-            />
-            <div
-              className="hero-rays"
-              style={{
-                position: "absolute",
-                width: 320,
-                height: 320,
-                borderRadius: "50%",
-                background: `repeating-conic-gradient(${withAlpha(colors.gold, 0.03)} 0deg 7deg, transparent 7deg 27deg)`,
-                WebkitMaskImage: "radial-gradient(circle, black 18%, transparent 58%)",
-                maskImage: "radial-gradient(circle, black 18%, transparent 58%)",
-              }}
-            />
             {[
               { l: "30%", t: "62%", s: 4, c: colors.gold, d: 0, dur: 7 },
               { l: "68%", t: "58%", s: 3, c: colors.goldHi, d: 1.8, dur: 8 },
@@ -201,8 +178,36 @@ export function Landing({
             ))}
           </div>
           <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 18 }}>
-            <div style={{ animation: "float-soft 4s ease-in-out infinite" }}>
-              <Logo size={150} />
+            {/* The logo IS the light source: breathing glow + slowly rotating
+                rays centered on the coin, logo floating on top of them. */}
+            <div style={{ position: "relative", display: "grid", placeItems: "center" }}>
+              <div
+                aria-hidden
+                className="breath-glow"
+                style={{
+                  position: "absolute",
+                  width: 340,
+                  height: 340,
+                  borderRadius: "50%",
+                  background: `radial-gradient(circle, ${withAlpha(colors.gold, 0.15)} 0%, ${withAlpha(colors.violet, 0.12)} 38%, transparent 68%)`,
+                }}
+              />
+              <div
+                aria-hidden
+                className="hero-rays"
+                style={{
+                  position: "absolute",
+                  width: 300,
+                  height: 300,
+                  borderRadius: "50%",
+                  background: `repeating-conic-gradient(${withAlpha(colors.gold, 0.045)} 0deg 7deg, transparent 7deg 27deg)`,
+                  WebkitMaskImage: "radial-gradient(circle, black 20%, transparent 62%)",
+                  maskImage: "radial-gradient(circle, black 20%, transparent 62%)",
+                }}
+              />
+              <div style={{ position: "relative", zIndex: 1, animation: "float-soft 4s ease-in-out infinite" }}>
+                <Logo size={150} />
+              </div>
             </div>
             <h1
               style={{
