@@ -1,6 +1,6 @@
 // Landing — emblem, wordmark, tagline, name input, create / join, rules link.
-import { useState } from "react";
-import { CalendarDays, GraduationCap, HelpCircle, Settings as SettingsIcon, ShoppingCart, UserRound } from "lucide-react";
+import { useEffect, useState } from "react";
+import { CalendarDays, GraduationCap, Hash, HelpCircle, Play, Settings as SettingsIcon, ShoppingCart, UserRound } from "lucide-react";
 import { Logo } from "../components/Logo";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
@@ -63,6 +63,28 @@ export function Landing({
   const effectiveName = account ? account.name : name.trim();
   const canCreate = effectiveName.length > 0;
   const canJoin = effectiveName.length > 0 && code.trim().length === 4;
+
+  // Gold dot on the Dagronde tile until today's round is played (accounts via
+  // the server, guests via their local copy). Best-effort: no dot on failure.
+  const [dailyPending, setDailyPending] = useState(false);
+  useEffect(() => {
+    const tok = localStorage.getItem("penneer.accountToken");
+    fetch("/api/daily/info", { headers: tok ? { Authorization: `Bearer ${tok}` } : {} })
+      .then((r) => r.json())
+      .then((d) => {
+        let played = !!d.played;
+        if (!played) {
+          try {
+            const saved = JSON.parse(localStorage.getItem("penneer.dailyResult") || "null");
+            if (saved && saved.day === d.day) played = true;
+          } catch {
+            /* no local copy */
+          }
+        }
+        setDailyPending(!played);
+      })
+      .catch(() => {});
+  }, []);
 
   const create = () => {
     sound.unlock();
@@ -163,26 +185,47 @@ export function Landing({
           )}
 
           {mode === "none" ? (
-            <>
-              <Button variant="gold" full disabled={!canCreate} onClick={create}>
-                {t("createRoom")}
-              </Button>
-              <Button variant="ghost" full onClick={() => setMode("join")}>
-                {t("joinCta")}
-              </Button>
-              <button
-                onClick={onShowDaily}
-                style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, background: "transparent", border: "none", cursor: "pointer", color: colors.gold, fontFamily: font.ui, fontSize: 13.5, fontWeight: 600, padding: "4px 0 0" }}
-              >
-                <CalendarDays size={16} /> {t("dailyCta")}
-              </button>
-              <button
-                onClick={onShowTraining}
-                style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, background: "transparent", border: "none", cursor: "pointer", color: colors.gold, fontFamily: font.ui, fontSize: 13.5, fontWeight: 600, padding: "2px 0 0" }}
-              >
-                <GraduationCap size={16} /> {t("trainCta")}
-              </button>
-            </>
+            // 8 Ball Pool-style square action tiles, in the Pen Neer arcade skin:
+            // the hero action is the filled gold tile, the rest each get their
+            // own accent. The Dagronde tile carries a gold dot until today's
+            // round is played.
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <Tile
+                primary
+                disabled={!canCreate}
+                onClick={create}
+                icon={<Play size={34} strokeWidth={2.2} />}
+                label={t("createRoom")}
+              />
+              <Tile
+                accent={colors.violet}
+                onClick={() => {
+                  sound.uiTap();
+                  setMode("join");
+                }}
+                icon={<Hash size={34} strokeWidth={2.2} />}
+                label={t("joinCta")}
+              />
+              <Tile
+                accent={colors.orange}
+                onClick={() => {
+                  sound.uiTap();
+                  onShowDaily();
+                }}
+                icon={<CalendarDays size={34} strokeWidth={2.2} />}
+                label={t("dailyTitle")}
+                badge={dailyPending}
+              />
+              <Tile
+                accent={colors.green}
+                onClick={() => {
+                  sound.uiTap();
+                  onShowTraining();
+                }}
+                icon={<GraduationCap size={34} strokeWidth={2.2} />}
+                label={t("trainTitle")}
+              />
+            </div>
           ) : (
             <>
               <input
@@ -230,5 +273,96 @@ export function Landing({
 
       {showPrompt && !account && <ProfilePrompt game={game} onClose={() => setShowPrompt(false)} />}
     </Screen>
+  );
+}
+
+// Square 8BP-style action tile: big glowing icon + label. `primary` renders the
+// filled gold hero tile; the rest get a translucent panel in their accent.
+function Tile({
+  icon,
+  label,
+  onClick,
+  accent = colors.gold,
+  primary = false,
+  disabled = false,
+  badge = false,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+  accent?: string;
+  primary?: boolean;
+  disabled?: boolean;
+  badge?: boolean;
+}) {
+  const base: React.CSSProperties = {
+    position: "relative",
+    aspectRatio: "1 / 1",
+    width: "100%",
+    borderRadius: radius.card,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    padding: 10,
+    cursor: disabled ? "default" : "pointer",
+    fontFamily: font.display,
+    fontWeight: 700,
+    fontSize: 15,
+    lineHeight: 1.25,
+    textAlign: "center",
+    opacity: disabled ? 0.45 : 1,
+  };
+  if (primary) {
+    return (
+      <button
+        onClick={onClick}
+        disabled={disabled}
+        aria-label={label}
+        style={{
+          ...base,
+          color: "#2A1B05",
+          background: `linear-gradient(180deg, ${colors.goldHi}, ${colors.gold})`,
+          border: "none",
+          boxShadow: `0 12px 30px ${withAlpha(colors.gold, 0.32)}, inset 0 -3px 0 rgba(0,0,0,.16)`,
+        }}
+      >
+        {icon}
+        <span>{label}</span>
+      </button>
+    );
+  }
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      style={{
+        ...base,
+        color: colors.ink,
+        background: `linear-gradient(180deg, ${withAlpha(accent, 0.16)}, ${withAlpha("#000000", 0.28)})`,
+        border: `1.5px solid ${withAlpha(accent, 0.45)}`,
+        boxShadow: `inset 0 1px 0 ${withAlpha("#FFFFFF", 0.07)}, 0 10px 26px rgba(0,0,0,.28)`,
+      }}
+    >
+      <span style={{ color: accent, display: "flex", filter: `drop-shadow(0 0 10px ${withAlpha(accent, 0.55)})` }}>{icon}</span>
+      <span>{label}</span>
+      {badge && (
+        <span
+          aria-hidden
+          style={{
+            position: "absolute",
+            top: 10,
+            right: 10,
+            width: 11,
+            height: 11,
+            borderRadius: 999,
+            background: colors.gold,
+            boxShadow: `0 0 10px ${withAlpha(colors.gold, 0.8)}`,
+          }}
+        />
+      )}
+    </button>
   );
 }
