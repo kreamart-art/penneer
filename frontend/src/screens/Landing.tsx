@@ -1,6 +1,6 @@
 // Landing — emblem, wordmark, tagline, name input, create / join, rules link.
 import { useEffect, useState } from "react";
-import { CalendarDays, Check, GraduationCap, Hash, HelpCircle, Play, Settings as SettingsIcon, ShoppingCart, Sparkles, Target, UserRound } from "lucide-react";
+import { CalendarDays, Check, GraduationCap, Hash, HelpCircle, Play, Settings as SettingsIcon, ShoppingCart, Sparkles, Target, UserRound, X } from "lucide-react";
 import { Logo } from "../components/Logo";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
@@ -87,15 +87,24 @@ export function Landing({
   }, []);
 
   // Today's missions (progress for accounts; guests see them with a nudge).
+  // Lives behind the Target icon in the top bar; the badge counts what's open.
   const [missions, setMissions] = useState<{ key: string; target: number; reward: number; progress: number; done: boolean }[] | null>(null);
-  useEffect(() => {
+  const [missionsLeft, setMissionsLeft] = useState(0);
+  const [showMissions, setShowMissions] = useState(false);
+  const fetchMissions = () => {
     const tok = localStorage.getItem("penneer.accountToken");
     fetch("/api/missions", { headers: tok ? { Authorization: `Bearer ${tok}` } : {} })
       .then((r) => r.json())
-      .then((d) => setMissions(d.missions))
+      .then((d) => {
+        setMissions(d.missions);
+        setMissionsLeft(d.seconds_left || 0);
+      })
       .catch(() => {});
-    // Refetch when the account state flips (login/creation while on Landing).
-  }, [account?.id]);
+  };
+  // Refetch when the account state flips (login/creation while on Landing).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(fetchMissions, [account?.id]);
+  const missionsOpen = account && missions ? missions.filter((m) => !m.done).length : 0;
 
   const create = () => {
     sound.unlock();
@@ -138,6 +147,23 @@ export function Landing({
         </button>
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
           <MusicToggle />
+          <button
+            onClick={() => {
+              sound.uiTap();
+              if (!missions) fetchMissions(); // first fetch may have failed offline
+              setShowMissions(true);
+            }}
+            aria-label={t("missionsTitle")}
+            className="pressable glowhover"
+            style={{ position: "relative", background: "transparent", border: "none", cursor: "pointer", color: colors.sub, display: "flex", padding: 9 }}
+          >
+            <Target size={23} />
+            {missionsOpen > 0 && (
+              <span style={{ position: "absolute", top: 3, right: 3, minWidth: 15, height: 15, padding: "0 4px", borderRadius: 999, background: colors.gold, color: colors.bg0, fontFamily: font.ui, fontSize: 9.5, fontWeight: 800, lineHeight: "15px", textAlign: "center", boxShadow: `0 0 8px ${withAlpha(colors.gold, 0.6)}` }}>
+                {missionsOpen}
+              </span>
+            )}
+          </button>
           <button
             onClick={onShowShop}
             aria-label={t("shopTitle")}
@@ -335,59 +361,6 @@ export function Landing({
           )}
         </Card>
 
-        {missions && missions.length > 0 && (
-          <Card className="reveal-rise" style={{ display: "flex", flexDirection: "column", gap: 10, padding: 16, animationDelay: "0.16s" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <Target size={15} color={colors.gold} />
-              <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 700, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint }}>
-                {t("missionsTitle")}
-              </span>
-            </div>
-            {missions.map((m) => (
-              <div key={m.key} style={{ display: "flex", alignItems: "center", gap: 10, opacity: account ? 1 : 0.55 }}>
-                <span
-                  style={{
-                    width: 20,
-                    height: 20,
-                    borderRadius: 999,
-                    flexShrink: 0,
-                    display: "grid",
-                    placeItems: "center",
-                    background: m.done ? colors.green : withAlpha("#000000", 0.3),
-                    border: `1px solid ${m.done ? colors.green : colors.hairline}`,
-                    color: colors.bg0,
-                  }}
-                >
-                  {m.done && <Check size={13} strokeWidth={3} />}
-                </span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
-                    <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: m.done ? colors.sub : colors.ink, textDecoration: m.done ? "line-through" : "none" }}>
-                      {t(`mission_${m.key}`)}
-                    </span>
-                    <span style={{ fontFamily: font.ui, fontSize: 11.5, fontWeight: 700, color: colors.gold, flexShrink: 0 }}>
-                      {t("missionReward", { n: m.reward })}
-                    </span>
-                  </div>
-                  {m.target > 1 && !m.done && (
-                    <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 4 }}>
-                      <div style={{ flex: 1, height: 5, borderRadius: 999, background: withAlpha("#000000", 0.32), overflow: "hidden" }}>
-                        <div style={{ width: `${Math.round((m.progress / m.target) * 100)}%`, height: "100%", borderRadius: 999, background: colors.gold }} />
-                      </div>
-                      <span style={{ fontFamily: font.ui, fontSize: 10.5, color: colors.faint }}>
-                        {m.progress}/{m.target}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-            {!account && (
-              <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12, color: colors.faint }}>{t("missionsGuest")}</p>
-            )}
-          </Card>
-        )}
-
         {game.state.error && (
           <p style={{ textAlign: "center", color: colors.red, fontFamily: font.ui, fontSize: 14, margin: 0 }}>{game.state.error}</p>
         )}
@@ -418,7 +391,104 @@ export function Landing({
       </div>
 
       {showPrompt && !account && <ProfilePrompt game={game} onClose={() => setShowPrompt(false)} />}
+      {showMissions && (
+        <MissionsSheet
+          missions={missions ?? []}
+          secondsLeft={missionsLeft}
+          isAccount={!!account}
+          onClose={() => setShowMissions(false)}
+        />
+      )}
     </Screen>
+  );
+}
+
+// Missions overlay behind the Target icon: today's three with progress, the
+// reward, and when the next set drops. Tap the backdrop or X to close.
+function MissionsSheet({
+  missions,
+  secondsLeft,
+  isAccount,
+  onClose,
+}: {
+  missions: { key: string; target: number; reward: number; progress: number; done: boolean }[];
+  secondsLeft: number;
+  isAccount: boolean;
+  onClose: () => void;
+}) {
+  const { t } = useT();
+  const [left, setLeft] = useState(secondsLeft);
+  useEffect(() => {
+    const id = window.setInterval(() => setLeft((n) => Math.max(0, n - 1)), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+  const p = (n: number) => String(n).padStart(2, "0");
+  const countdown = `${p(Math.floor(left / 3600))}:${p(Math.floor((left % 3600) / 60))}:${p(Math.floor(left % 60))}`;
+  return (
+    <div
+      onClick={onClose}
+      style={{ position: "fixed", inset: 0, zIndex: 80, display: "grid", placeItems: "center", padding: 22, background: "rgba(6,3,18,.6)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)" }}
+    >
+      <Card
+        className="pop-in"
+        style={{ width: "100%", maxWidth: 360, display: "flex", flexDirection: "column", gap: 12, padding: 20 }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }} onClick={(e) => e.stopPropagation()}>
+          <Target size={17} color={colors.gold} />
+          <span style={{ flex: 1, fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink }}>{t("missionsTitle")}</span>
+          <button onClick={onClose} aria-label={t("back")} className="pressable" style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 4 }}>
+            <X size={19} />
+          </button>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 11 }} onClick={(e) => e.stopPropagation()}>
+          {missions.map((m) => (
+            <div key={m.key} style={{ display: "flex", alignItems: "center", gap: 10, opacity: isAccount ? 1 : 0.55 }}>
+              <span
+                style={{
+                  width: 21,
+                  height: 21,
+                  borderRadius: 999,
+                  flexShrink: 0,
+                  display: "grid",
+                  placeItems: "center",
+                  background: m.done ? colors.green : withAlpha("#000000", 0.3),
+                  border: `1px solid ${m.done ? colors.green : colors.hairline}`,
+                  color: colors.bg0,
+                }}
+              >
+                {m.done && <Check size={13} strokeWidth={3} />}
+              </span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
+                  <span style={{ fontFamily: font.ui, fontSize: 13.5, fontWeight: 600, color: m.done ? colors.sub : colors.ink, textDecoration: m.done ? "line-through" : "none" }}>
+                    {t(`mission_${m.key}`)}
+                  </span>
+                  <span style={{ fontFamily: font.ui, fontSize: 11.5, fontWeight: 700, color: colors.gold, flexShrink: 0 }}>
+                    {t("missionReward", { n: m.reward })}
+                  </span>
+                </div>
+                {m.target > 1 && !m.done && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 4 }}>
+                    <div style={{ flex: 1, height: 5, borderRadius: 999, background: withAlpha("#000000", 0.32), overflow: "hidden" }}>
+                      <div style={{ width: `${Math.round((m.progress / m.target) * 100)}%`, height: "100%", borderRadius: 999, background: colors.gold }} />
+                    </div>
+                    <span style={{ fontFamily: font.ui, fontSize: 10.5, color: colors.faint }}>
+                      {m.progress}/{m.target}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+        {!isAccount && (
+          <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.faint }} onClick={(e) => e.stopPropagation()}>{t("missionsGuest")}</p>
+        )}
+        <p style={{ margin: 0, textAlign: "center", fontFamily: font.ui, fontSize: 12, color: colors.faint }} onClick={(e) => e.stopPropagation()}>
+          {t("missionsNewIn", { t: countdown })}
+        </p>
+      </Card>
+    </div>
   );
 }
 
