@@ -12,7 +12,7 @@ import { Toggle } from "../components/Toggle";
 import { Screen, Card } from "../components/Layout";
 import { TopBar } from "../components/TopBar";
 import type { GameApi } from "../net/socket";
-import { ALL_CATEGORY_KEYS, useT } from "../i18n/i18n";
+import { ALL_CATEGORY_KEYS, subLabelKey, useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { decodeDeelcode, encodeDeelcode } from "../util/deelcode";
 import { colors, font, withAlpha } from "../theme/tokens";
@@ -209,17 +209,20 @@ export function Lobby({ game }: { game: GameApi }) {
                     {p.name}
                     {p.id === game.me?.id && <span style={{ color: colors.faint, fontWeight: 500 }}> · {t("you")}</span>}
                   </span>
-                  {p.rank && (
-                    <span style={{ fontFamily: font.ui, fontSize: 11, color: colors.faint }}>
-                      {t(`rank_${p.rank}`)} · lvl {p.level}
-                    </span>
-                  )}
+                  {(() => {
+                    const sub = subLabelKey(p.title, p.rank);
+                    return sub ? (
+                      <span style={{ fontFamily: font.ui, fontSize: 11, color: colors.faint }}>
+                        {t(sub)} · lvl {p.level}
+                      </span>
+                    ) : null;
+                  })()}
                 </div>
                 <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
                   {p.is_bot && <Badge text="bot" color={colors.violet} />}
                   {p.is_spectator && <Badge text={t("watching")} color={colors.faint} />}
                   {p.is_host && <Badge text={t("host")} color={colors.gold} />}
-                  {game.state.isAdmin && p.is_bot && (
+                  {isHost && p.is_bot && (
                     <button onClick={() => game.removeBot(p.id)} style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint }}>
                       <X size={16} />
                     </button>
@@ -228,13 +231,14 @@ export function Lobby({ game }: { game: GameApi }) {
               </div>
             ))}
           </div>
-          {game.state.isAdmin && (
-            <div style={{ marginTop: 12 }}>
-              <Button variant="ghost" onClick={game.addBot}>
+          {isHost && (
+            <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 6 }}>
+              <Button variant="ghost" onClick={() => { sound.uiTap(); game.addBot(); }}>
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
                   <Plus size={16} /> {t("addBot")}
                 </span>
               </Button>
+              <p style={{ margin: 0, textAlign: "center", fontFamily: font.ui, fontSize: 11.5, color: colors.faint }}>{t("addBotHint")}</p>
             </div>
           )}
         </Card>

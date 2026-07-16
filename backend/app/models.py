@@ -55,6 +55,9 @@ class Player:
     # Rank ring + title (from the account's level at join time); guests have none.
     level: int = 0
     rank: Optional[str] = None
+    # Chosen cosmetic title key (shown under the name in place of the rank when
+    # set); None -> the client falls back to the rank label.
+    title: Optional[str] = None
     has_avatar: bool = False
     avatar_ver: int = 0
 
@@ -70,6 +73,7 @@ class Player:
             "user_id": self.user_id,
             "level": self.level,
             "rank": self.rank,
+            "title": self.title,
             "has_avatar": self.has_avatar,
             "avatar_ver": self.avatar_ver,
         }

@@ -10,7 +10,7 @@ import { Scoreboard } from "../components/Scoreboard";
 import { Screen, Card } from "../components/Layout";
 import { TopBar } from "../components/TopBar";
 import type { GameApi, MatchSummary } from "../net/socket";
-import { useT } from "../i18n/i18n";
+import { subLabelKey, useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { makeShareCard, shareOrDownload } from "../util/shareCard";
 import { colors, font, withAlpha } from "../theme/tokens";
@@ -63,9 +63,13 @@ export function Final({ game }: { game: GameApi }) {
           </span>
           <div style={{ display: "flex", gap: 14, flexWrap: "wrap", justifyContent: "center" }}>
             {winners.map((w) => (
-              <div key={w.id} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+              <div key={w.id} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
                 <Avatar name={w.name} color={w.color} size={66} crown userId={w.user_id} hasAvatar={w.has_avatar} avatarVer={w.avatar_ver} rank={w.rank} />
                 <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 22, color: colors.ink }}>{w.name}</span>
+                {(() => {
+                  const sub = subLabelKey(w.title, w.rank);
+                  return sub ? <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: colors.gold }}>{t(sub)}</span> : null;
+                })()}
               </div>
             ))}
           </div>

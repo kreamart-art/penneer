@@ -250,6 +250,10 @@ class Database:
         if "bonus_xp" not in cols:
             self._conn.execute("ALTER TABLE users ADD COLUMN bonus_xp INTEGER NOT NULL DEFAULT 0")
             self._conn.commit()
+        # Chosen cosmetic title key (NULL -> show the auto rank label).
+        if "title" not in cols:
+            self._conn.execute("ALTER TABLE users ADD COLUMN title TEXT")
+            self._conn.commit()
         # Preset artwork changed (v9 = the v8 body-width algorithm plus hand-tuned
         # per-avatar overrides, from per-avatar user feedback: av02 less zoom so
         # her shoulders are back, av06/13/14 nudged down, av15 down + recentered,
@@ -335,11 +339,19 @@ class Database:
         with self._lock:
             rows = self._q(
                 "SELECT id, name, email, color, avatar_ver, avatar IS NOT NULL AS has_avatar, "
-                "avatar_preset, ai_unlocked, created_at "
+                "avatar_preset, ai_unlocked, title, created_at "
                 "FROM users WHERE id=?",
                 (user_id,),
             )
         return dict(rows[0]) if rows else None
+
+    def get_title(self, user_id: str) -> Optional[str]:
+        with self._lock:
+            rows = self._q("SELECT title FROM users WHERE id=?", (user_id,))
+        return rows[0]["title"] if rows else None
+
+    def set_title(self, user_id: str, title: Optional[str]) -> None:
+        self._exec("UPDATE users SET title=? WHERE id=?", (title, user_id))
 
     def find_users(self, query: str, limit: int = 8) -> list[dict]:
         q = (query or "").strip().lower()

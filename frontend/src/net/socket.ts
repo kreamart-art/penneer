@@ -19,6 +19,7 @@ export interface Player {
   avatar_ver: number;
   level: number; // 0 for guests
   rank: string | null; // rank key for the avatar ring + title
+  title?: string | null; // chosen cosmetic title key (shown instead of rank)
 }
 
 // ---- accounts + social ------------------------------------------------------
@@ -75,6 +76,8 @@ export interface Account {
   stats: AccountStats;
   level: LevelInfo;
   badges: Badge[];
+  title: string | null; // chosen title key (null = show rank)
+  titles: { key: string; unlocked: boolean }[]; // catalog + unlock state
   inbox_count: number;
   dm_unread: number;
 }
@@ -635,7 +638,7 @@ export interface GameApi {
   leaveRoom: () => void;
   // accounts + social
   createAccount: (name: string) => void;
-  updateAccount: (patch: { name?: string; color?: string }) => void;
+  updateAccount: (patch: { name?: string; color?: string; title?: string }) => void;
   deleteAccount: () => void;
   logoutAccount: () => void;
   linkEmail: (email: string) => void;

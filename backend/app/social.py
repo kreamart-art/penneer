@@ -16,7 +16,7 @@ import os
 import time
 from typing import Any, Optional
 
-from . import daily, missions, push
+from . import daily, missions, push, titles
 from .db import get_db
 from .models import PLAYER_COLORS
 
@@ -118,6 +118,12 @@ class AccountManager:
         if user is None:
             return {"type": "account", "account": None}
         stats = self.db.stats_of(user_id)
+        level = _level_of(stats)
+        badges = self.db.badges_of(user_id)
+        unlocked = set(titles.unlocked_for(stats, badges, level["level"]))
+        chosen = user.get("title")
+        if chosen not in unlocked:  # a title that is no longer valid falls back to rank
+            chosen = None
         return {
             "type": "account",
             "account": {
@@ -126,8 +132,10 @@ class AccountManager:
                 "avatar_preset": user.get("avatar_preset"),
                 "ai_unlocked": bool(user.get("ai_unlocked")),
                 "stats": stats,
-                "level": _level_of(stats),
-                "badges": self.db.badges_of(user_id),
+                "level": level,
+                "badges": badges,
+                "title": chosen,
+                "titles": [{"key": k, "unlocked": k in unlocked} for k in titles.ALL_KEYS],
                 "inbox_count": len(self.db.inbox(user_id)),
                 "dm_unread": self.db.dm_unread_total(user_id),
             },
@@ -206,6 +214,17 @@ class AccountManager:
                 return
         if "color" in data:
             self.db.set_color(uid, data["color"])
+        if "title" in data:
+            # Empty string clears (back to the rank label). Any other value must
+            # be a currently-unlocked title, else it is ignored.
+            want = data["title"] or None
+            if want is None:
+                self.db.set_title(uid, None)
+            else:
+                stats = self.db.stats_of(uid)
+                unlocked = titles.unlocked_for(stats, self.db.badges_of(uid), _level_of(stats)["level"])
+                if want in unlocked:
+                    self.db.set_title(uid, want)
         await self._send(ws, await self._account_payload(ws, uid))
 
     async def account_delete(self, ws: Any, data: dict) -> None:
@@ -553,6 +572,11 @@ class AccountManager:
         history = room.history
         scores = room.scores or {}
         if not scores:
+            return
+        # A game with any bot is casual: never recorded, so bots give no stats,
+        # XP, missions, badges, leaderboard or ceremony. This keeps titles and
+        # levels farm-proof while letting anyone play a full game solo.
+        if any(getattr(p, "is_bot", False) for p in room.players):
             return
         top = max(scores.values())
 

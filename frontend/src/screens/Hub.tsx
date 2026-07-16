@@ -563,6 +563,9 @@ function ProfileTab({ game }: { game: GameApi }) {
         <StatGrid stats={account.stats} />
       </Card>
 
+      {/* titel-kiezer */}
+      <TitlePicker game={game} />
+
       {/* laatste potjes */}
       <HistoryCard game={game} meId={account.id} />
 
@@ -582,6 +585,65 @@ function ProfileTab({ game }: { game: GameApi }) {
       </Card>
 
     </Fragment>
+  );
+}
+
+// Title picker — the earnable cosmetic shown under your name. Unlocked titles
+// are selectable (the chosen one is highlighted, tap again to clear back to the
+// rank); locked ones show their requirement and can't be picked.
+function TitlePicker({ game }: { game: GameApi }) {
+  const { t } = useT();
+  const account = game.state.account;
+  if (!account) return null;
+  return (
+    <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <Award size={15} color={colors.gold} />
+        <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint, flex: 1 }}>{t("titlesTitle")}</span>
+      </div>
+      <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.sub }}>{t("titlesHint")}</p>
+      <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+        {account.titles.map((tt) => {
+          const active = account.title === tt.key;
+          const locked = !tt.unlocked;
+          return (
+            <button
+              key={tt.key}
+              disabled={locked}
+              onClick={() => {
+                sound.uiTap();
+                game.updateAccount({ title: active ? "" : tt.key });
+              }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                padding: "9px 12px",
+                borderRadius: 10,
+                textAlign: "left",
+                cursor: locked ? "default" : "pointer",
+                background: active ? withAlpha(colors.gold, 0.14) : withAlpha("#000000", 0.2),
+                border: `1px solid ${active ? withAlpha(colors.gold, 0.6) : colors.hairline}`,
+                opacity: locked ? 0.5 : 1,
+              }}
+            >
+              <span style={{ flex: 1, fontFamily: font.ui, fontSize: 14, fontWeight: 700, color: active ? colors.gold : colors.ink }}>
+                {t(`title_${tt.key}`)}
+              </span>
+              {locked ? (
+                <span style={{ fontFamily: font.ui, fontSize: 11.5, color: colors.faint }}>{t(`titlereq_${tt.key}`)}</span>
+              ) : active ? (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontFamily: font.ui, fontSize: 11.5, fontWeight: 700, color: colors.gold }}>
+                  <Check size={13} strokeWidth={3} /> {t("titleActive")}
+                </span>
+              ) : (
+                <span style={{ fontFamily: font.ui, fontSize: 11.5, fontWeight: 600, color: colors.sub }}>{t("titleChoose")}</span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </Card>
   );
 }
 

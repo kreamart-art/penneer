@@ -266,10 +266,11 @@ class RoomManager:
             player.color = account["color"]
         player.has_avatar = bool(account.get("has_avatar"))
         player.avatar_ver = account.get("avatar_ver", 0)
-        # Rank ring + title in the room, from the account's current level.
+        # Rank ring + chosen title in the room, from the account's current state.
         lvl = _level_of(get_db().stats_of(account["id"]))
         player.level = lvl["level"]
         player.rank = lvl["rank"]
+        player.title = get_db().get_title(account["id"])
 
     async def create_room(self, ws: Any, name: str, account: Optional[dict] = None) -> tuple[Room, Player]:
         code = self._gen_code()
@@ -1022,8 +1023,12 @@ class RoomManager:
 
     async def add_bot(self, player_id: str) -> None:
         room = self.room_of_player(player_id)
-        # Testbots are an admin (owner) tool.
-        if room is None or not self._player_is_admin(player_id) or room.phase != "lobby":
+        # The room HOST (or an admin) may add bots for a solo game. A game with
+        # any bot is casual: social.record_game skips it, so bots can't be
+        # farmed for stats/XP/leaderboard.
+        if room is None or room.phase != "lobby":
+            return
+        if room.host_id != player_id and not self._player_is_admin(player_id):
             return
         if len(self.playing_players(room)) >= room.settings.max_players:
             await self.error(player_id, "De room is vol.")
@@ -1042,7 +1047,9 @@ class RoomManager:
 
     async def remove_bot(self, player_id: str, payload: dict) -> None:
         room = self.room_of_player(player_id)
-        if room is None or not self._player_is_admin(player_id) or room.phase != "lobby":
+        if room is None or room.phase != "lobby":
+            return
+        if room.host_id != player_id and not self._player_is_admin(player_id):
             return
         target = payload.get("bot_id")
         bot = room.get_player(target) if target else None
