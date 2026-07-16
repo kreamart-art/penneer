@@ -46,6 +46,7 @@ interface DailyResult {
   time_ms: number;
   board: BoardRow[];
   seconds_left: number;
+  missions_done?: { key: string; reward: number }[];
 }
 
 const authHeaders = (): Record<string, string> => {
@@ -338,6 +339,15 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
           </div>
           {account && !r.ranked && (
             <p style={{ margin: "4px 0 0", fontFamily: font.ui, fontSize: 12.5, color: colors.orange, textAlign: "center" }}>{t("dailyUnranked")}</p>
+          )}
+          {!!r.missions_done?.length && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center", marginTop: 4 }}>
+              {r.missions_done.map((m) => (
+                <span key={m.key} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontFamily: font.ui, fontSize: 12, fontWeight: 700, padding: "5px 11px", borderRadius: 999, color: colors.green, background: withAlpha(colors.green, 0.12), border: `1px solid ${withAlpha(colors.green, 0.45)}` }}>
+                  {t("missionDoneChip")}: {t(`mission_${m.key}`)} · +{m.reward} XP
+                </span>
+              ))}
+            </div>
           )}
         </Card>
 

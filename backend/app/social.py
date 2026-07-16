@@ -16,7 +16,7 @@ import os
 import time
 from typing import Any, Optional
 
-from . import push
+from . import daily, missions, push
 from .db import get_db
 from .models import PLAYER_COLORS
 
@@ -32,7 +32,13 @@ RANKS = [(20, "legende"), (16, "categoriekoning"), (12, "lettermeester"),
 
 
 def _xp_of(stats: dict) -> int:
-    return int(stats.get("points", 0) + 40 * stats.get("wins", 0) + 15 * stats.get("games", 0))
+    # Match XP derives from stats; bonus_xp is the stored mission-reward pot.
+    return int(
+        stats.get("points", 0)
+        + 40 * stats.get("wins", 0)
+        + 15 * stats.get("games", 0)
+        + stats.get("bonus_xp", 0)
+    )
 
 
 def _level_of(stats: dict) -> dict:
@@ -586,12 +592,19 @@ class AccountManager:
             })
         if not players:
             return
+        # Snapshot the level BEFORE recording, so the post-match ceremony can
+        # animate from the exact pre-game state.
+        before = {p["user_id"]: _level_of(self.db.stats_of(p["user_id"])) for p in players}
+        playing_count = len(playing_ids)
+        day = daily.today()
+        active = missions.active_keys(day)
         self.db.record_game(room.code, room.round_no, room.settings.lenient_spelling, players)
         for p in players:
-            stats = self.db.stats_of(p["user_id"])
+            uid = p["user_id"]
+            stats = self.db.stats_of(uid)
             earned = []
             def maybe(badge: str, cond: bool) -> None:
-                if cond and self.db.grant_badge(p["user_id"], badge):
+                if cond and self.db.grant_badge(uid, badge):
                     earned.append(badge)
             maybe("eerste_game", stats["games"] >= 1)
             maybe("eerste_winst", stats["wins"] >= 1)
@@ -605,7 +618,32 @@ class AccountManager:
             maybe("durfal", p["is_winner"] and room.settings.hard_letters)
             maybe("perfecte_ronde", p["_perfect"])
             for badge in earned:
-                await notify(p["user_id"], badge)
+                await notify(uid, badge)
+            # Missions: only today's active three ever get progress.
+            missions_done = []
+            def bump(key: str, inc: int) -> None:
+                if key not in active or inc <= 0:
+                    return
+                target, reward = missions.spec(key)
+                if self.db.mission_bump(uid, day, key, inc, target, reward):
+                    missions_done.append({"key": key, "reward": reward})
+            bump("play_game", 1)
+            bump("win_game", 1 if p["is_winner"] else 0)
+            bump("unique5", p.get("uniques", 0))
+            bump("dubbel3", p.get("dubbels", 0))
+            bump("multi3", 1 if playing_count >= 3 else 0)
+            # Ceremony payload: exact XP delta (game + mission rewards), level
+            # and rank before/after, plus what was earned this match.
+            after = _level_of(self.db.stats_of(uid))
+            await self._push(uid, {
+                "type": "match_summary",
+                "won": bool(p["is_winner"]),
+                "xp_gained": max(0, after["xp"] - before[uid]["xp"]),
+                "level_before": before[uid],
+                "level_after": after,
+                "badges": earned,
+                "missions_done": missions_done,
+            })
 
 
 # Singleton, mirroring RoomManager's lifetime.

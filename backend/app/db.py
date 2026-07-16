@@ -155,6 +155,16 @@ CREATE TABLE IF NOT EXISTS daily_starts (
     started_at REAL NOT NULL,
     PRIMARY KEY (day, user_id)
 );
+-- Dagelijkse missies: progress per account per day per mission key. Rewards
+-- auto-claim on completion (users.bonus_xp), so there is no claimed column.
+CREATE TABLE IF NOT EXISTS mission_progress (
+    day TEXT NOT NULL,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    key TEXT NOT NULL,
+    progress INTEGER NOT NULL DEFAULT 0,
+    done INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (day, user_id, key)
+);
 -- Dagronde: one ranked entry per account per day. words = the submitted
 -- answers as JSON, kept so the player can re-open their result later.
 CREATE TABLE IF NOT EXISTS daily_scores (
@@ -234,6 +244,11 @@ class Database:
             self._conn.commit()
         if "avatar_preset" not in cols:
             self._conn.execute("ALTER TABLE users ADD COLUMN avatar_preset TEXT")
+            self._conn.commit()
+        # Mission rewards: bonus XP on top of the stats-derived XP (missions
+        # auto-claim into this; _xp_of adds it to the level computation).
+        if "bonus_xp" not in cols:
+            self._conn.execute("ALTER TABLE users ADD COLUMN bonus_xp INTEGER NOT NULL DEFAULT 0")
             self._conn.commit()
         # Preset artwork changed (v9 = the v8 body-width algorithm plus hand-tuned
         # per-avatar overrides, from per-avatar user feedback: av02 less zoom so
@@ -682,7 +697,46 @@ class Database:
                 break
         out = dict(rows[0])
         out["streak"] = streak
+        with self._lock:
+            bonus = self._q("SELECT bonus_xp FROM users WHERE id=?", (user_id,))
+        out["bonus_xp"] = int(bonus[0]["bonus_xp"]) if bonus else 0
         return out
+
+    # ---- dagelijkse missies ----------------------------------------------------
+
+    def mission_bump(self, user_id: str, day: str, key: str, inc: int, target: int, reward: int) -> bool:
+        """Add progress to a mission; True exactly when THIS bump completes it
+        (the reward lands on users.bonus_xp right here, auto-claim)."""
+        if inc <= 0:
+            return False
+        with self._lock:
+            self._exec(
+                "INSERT OR IGNORE INTO mission_progress (day, user_id, key, progress, done) VALUES (?,?,?,0,0)",
+                (day, user_id, key),
+            )
+            row = self._q(
+                "SELECT progress, done FROM mission_progress WHERE day=? AND user_id=? AND key=?",
+                (day, user_id, key),
+            )[0]
+            if row["done"]:
+                return False
+            prog = min(target, int(row["progress"]) + inc)
+            done = 1 if prog >= target else 0
+            self._exec(
+                "UPDATE mission_progress SET progress=?, done=? WHERE day=? AND user_id=? AND key=?",
+                (prog, done, day, user_id, key),
+            )
+            if done:
+                self._exec("UPDATE users SET bonus_xp = bonus_xp + ? WHERE id=?", (reward, user_id))
+        return bool(done)
+
+    def mission_state(self, user_id: str, day: str) -> dict:
+        with self._lock:
+            rows = self._q(
+                "SELECT key, progress, done FROM mission_progress WHERE day=? AND user_id=?",
+                (day, user_id),
+            )
+        return {r["key"]: {"progress": int(r["progress"]), "done": bool(r["done"])} for r in rows}
 
     def leaderboard(self, since: float = 0.0, until: Optional[float] = None, limit: int = 25) -> list[dict]:
         with self._lock:

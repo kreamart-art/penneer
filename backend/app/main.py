@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import daily, game, paypal, push
+from . import daily, game, missions, paypal, push
 from .db import AVATAR_MAX_BYTES, get_db
 from .ws import router as ws_router
 
@@ -240,6 +240,7 @@ async def daily_submit(request: Request) -> JSONResponse:
     score, breakdown = daily.score_answers(day, answers)
     ranked = False
     time_ms = 0
+    missions_done: list[dict] = []
     if uid:
         started = db.daily_start(uid, day, now)
         elapsed = now - started
@@ -248,7 +249,15 @@ async def daily_submit(request: Request) -> JSONResponse:
         if elapsed <= daily.DURATION_S + daily.GRACE_S:
             time_ms = int(min(max(elapsed, 1.0), daily.DURATION_S) * 1000)
             ranked = db.daily_submit(uid, day, score, time_ms, json.dumps(answers)[:4000], now)
-    return JSONResponse({**_daily_result_payload(db, uid, day, score, breakdown, ranked, time_ms), "already": False})
+        # Missions: playing counts (even a late submit), but only today's
+        # active missions ever get progress.
+        active = missions.active_keys(day)
+        for key, inc in (("daily_play", 1), ("daily30", 1 if score >= 30 else 0)):
+            if key in active and inc > 0:
+                target, reward = missions.spec(key)
+                if db.mission_bump(uid, day, key, inc, target, reward):
+                    missions_done.append({"key": key, "reward": reward})
+    return JSONResponse({**_daily_result_payload(db, uid, day, score, breakdown, ranked, time_ms), "already": False, "missions_done": missions_done})
 
 
 @app.get("/api/daily/result")
@@ -266,6 +275,29 @@ async def daily_result(request: Request) -> JSONResponse:
         stored = {}
     _, breakdown = daily.score_answers(day, stored)
     return JSONResponse(_daily_result_payload(db, uid, day, int(entry["score"]), breakdown, True, int(entry["time_ms"])))
+
+
+# ---- dagelijkse missies ------------------------------------------------------
+
+@app.get("/api/missions")
+async def missions_get(request: Request) -> JSONResponse:
+    """Today's three missions with the caller's progress (guests: no progress,
+    the client shows a make-a-profile nudge instead)."""
+    db = get_db()
+    day = daily.today()
+    uid = db.auth(_bearer(request))
+    defs = missions.missions_for(day)
+    state = db.mission_state(uid, day) if uid else {}
+    out = []
+    for d in defs:
+        s = state.get(d["key"], {})
+        out.append({**d, "progress": min(d["target"], int(s.get("progress", 0))), "done": bool(s.get("done", False))})
+    return JSONResponse({
+        "day": day,
+        "seconds_left": daily.seconds_to_next_day(),
+        "authed": bool(uid),
+        "missions": out,
+    })
 
 
 # ---- web push (real notifications while the app is closed) ------------------

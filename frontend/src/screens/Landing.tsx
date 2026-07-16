@@ -1,6 +1,6 @@
 // Landing — emblem, wordmark, tagline, name input, create / join, rules link.
 import { useEffect, useState } from "react";
-import { CalendarDays, GraduationCap, Hash, HelpCircle, Play, Settings as SettingsIcon, ShoppingCart, Sparkles, UserRound } from "lucide-react";
+import { CalendarDays, Check, GraduationCap, Hash, HelpCircle, Play, Settings as SettingsIcon, ShoppingCart, Sparkles, Target, UserRound } from "lucide-react";
 import { Logo } from "../components/Logo";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
@@ -85,6 +85,17 @@ export function Landing({
       })
       .catch(() => {});
   }, []);
+
+  // Today's missions (progress for accounts; guests see them with a nudge).
+  const [missions, setMissions] = useState<{ key: string; target: number; reward: number; progress: number; done: boolean }[] | null>(null);
+  useEffect(() => {
+    const tok = localStorage.getItem("penneer.accountToken");
+    fetch("/api/missions", { headers: tok ? { Authorization: `Bearer ${tok}` } : {} })
+      .then((r) => r.json())
+      .then((d) => setMissions(d.missions))
+      .catch(() => {});
+    // Refetch when the account state flips (login/creation while on Landing).
+  }, [account?.id]);
 
   const create = () => {
     sound.unlock();
@@ -323,6 +334,59 @@ export function Landing({
             </>
           )}
         </Card>
+
+        {missions && missions.length > 0 && (
+          <Card className="reveal-rise" style={{ display: "flex", flexDirection: "column", gap: 10, padding: 16, animationDelay: "0.16s" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Target size={15} color={colors.gold} />
+              <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 700, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint }}>
+                {t("missionsTitle")}
+              </span>
+            </div>
+            {missions.map((m) => (
+              <div key={m.key} style={{ display: "flex", alignItems: "center", gap: 10, opacity: account ? 1 : 0.55 }}>
+                <span
+                  style={{
+                    width: 20,
+                    height: 20,
+                    borderRadius: 999,
+                    flexShrink: 0,
+                    display: "grid",
+                    placeItems: "center",
+                    background: m.done ? colors.green : withAlpha("#000000", 0.3),
+                    border: `1px solid ${m.done ? colors.green : colors.hairline}`,
+                    color: colors.bg0,
+                  }}
+                >
+                  {m.done && <Check size={13} strokeWidth={3} />}
+                </span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
+                    <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: m.done ? colors.sub : colors.ink, textDecoration: m.done ? "line-through" : "none" }}>
+                      {t(`mission_${m.key}`)}
+                    </span>
+                    <span style={{ fontFamily: font.ui, fontSize: 11.5, fontWeight: 700, color: colors.gold, flexShrink: 0 }}>
+                      {t("missionReward", { n: m.reward })}
+                    </span>
+                  </div>
+                  {m.target > 1 && !m.done && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 4 }}>
+                      <div style={{ flex: 1, height: 5, borderRadius: 999, background: withAlpha("#000000", 0.32), overflow: "hidden" }}>
+                        <div style={{ width: `${Math.round((m.progress / m.target) * 100)}%`, height: "100%", borderRadius: 999, background: colors.gold }} />
+                      </div>
+                      <span style={{ fontFamily: font.ui, fontSize: 10.5, color: colors.faint }}>
+                        {m.progress}/{m.target}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+            {!account && (
+              <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12, color: colors.faint }}>{t("missionsGuest")}</p>
+            )}
+          </Card>
+        )}
 
         {game.state.error && (
           <p style={{ textAlign: "center", color: colors.red, fontFamily: font.ui, fontSize: 14, margin: 0 }}>{game.state.error}</p>

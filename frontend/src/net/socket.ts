@@ -253,6 +253,17 @@ export interface ClientState {
   // Newly earned badges to toast (drained by the UI).
   badgeToasts: { player_id: string | null; name: string; badge: string }[];
   chatTyping: Record<string, { name: string; ts: number }>; // who is typing now
+  // Post-match ceremony data (accounts only), sent by the server at game over.
+  matchSummary: MatchSummary | null;
+}
+
+export interface MatchSummary {
+  won: boolean;
+  xp_gained: number;
+  level_before: LevelInfo;
+  level_after: LevelInfo;
+  badges: string[];
+  missions_done: { key: string; reward: number }[];
 }
 
 type Action =
@@ -306,6 +317,7 @@ type ServerMessage =
   | { type: "invite_sent"; to_user: string }
   | { type: "invite_accepted"; room_code: string }
   | { type: "badge_earned"; player_id: string | null; name: string; badge: string }
+  | { type: "match_summary"; won: boolean; xp_gained: number; level_before: LevelInfo; level_after: LevelInfo; badges: string[]; missions_done: { key: string; reward: number }[] }
   | { type: "chat_typing"; player_id: string; name: string; typing: boolean }
   | { type: "error"; message: string };
 
@@ -392,6 +404,7 @@ const initialState: ClientState = {
   loginLinkSent: false,
   joinRoomCode: null,
   badgeToasts: [],
+  matchSummary: null,
 };
 
 function reducer(state: ClientState, action: Action): ClientState {
@@ -453,6 +466,8 @@ function reducer(state: ClientState, action: Action): ClientState {
       // room_state always follows these; nothing extra to do.
       return state;
     case "game_started":
+      // New game: the reel resets and last game's ceremony data is stale.
+      return { ...state, spinning: false, matchSummary: null };
     case "turn_started":
       // The reel resets at the start of every turn.
       return { ...state, spinning: false };
@@ -547,6 +562,8 @@ function reducer(state: ClientState, action: Action): ClientState {
       return { ...state, joinRoomCode: msg.room_code };
     case "badge_earned":
       return { ...state, badgeToasts: [...state.badgeToasts, { player_id: msg.player_id, name: msg.name, badge: msg.badge }] };
+    case "match_summary":
+      return { ...state, matchSummary: { won: msg.won, xp_gained: msg.xp_gained, level_before: msg.level_before, level_after: msg.level_after, badges: msg.badges, missions_done: msg.missions_done } };
     case "chat_history":
       return { ...state, chat: msg.messages };
     case "chat": {
