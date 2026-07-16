@@ -136,6 +136,7 @@ class AccountManager:
                 "badges": badges,
                 "title": chosen,
                 "titles": [{"key": k, "unlocked": k in unlocked} for k in titles.ALL_KEYS],
+                "club": self.db.club_of(user_id),
                 "inbox_count": len(self.db.inbox(user_id)),
                 "dm_unread": self.db.dm_unread_total(user_id),
             },
@@ -170,6 +171,10 @@ class AccountManager:
             "inbox_get": self.inbox_get,
             "invite_respond": self.invite_respond,
             "leaderboard_get": self.leaderboard_get,
+            "club_create": self.club_create,
+            "club_join": self.club_join,
+            "club_leave": self.club_leave,
+            "club_get": self.club_get,
         }.get(mtype)
         if handler is None:
             return False
@@ -546,6 +551,67 @@ class AccountManager:
     async def _push_inbox(self, user_id: str) -> None:
         items = self.db.inbox(user_id)
         await self._push(user_id, {"type": "inbox", "items": items})
+
+    # ---- clubs ---------------------------------------------------------------
+
+    def _club_payload(self, user_id: str, period: str) -> dict:
+        import datetime
+
+        club = self.db.club_of(user_id)
+        if not club:
+            return {"type": "club", "club": None, "period": "month", "members": []}
+        if period == "month":
+            since: float = self._month_start(datetime.datetime.now())
+        else:
+            period = "all"
+            since = 0.0
+        rows = self.db.club_ranked(club["id"], since=since)
+        members = [
+            {**self._public(r), "points": r["points"], "games": r["games"], "wins": r["wins"], "is_owner": bool(r["is_owner"])}
+            for r in rows
+        ]
+        return {"type": "club", "club": club, "period": period, "members": members}
+
+    async def club_create(self, ws: Any, data: dict) -> None:
+        uid = self.user_of(ws)
+        if not uid:
+            return
+        club = self.db.create_club(uid, data.get("name") or "")
+        if club is None:
+            await self._send(ws, {"type": "error", "message": "Kies een clubnaam van 2 tot 24 tekens, of verlaat eerst je huidige club."})
+            return
+        await self._send(ws, await self._account_payload(ws, uid))
+        await self._send(ws, self._club_payload(uid, data.get("period") or "month"))
+
+    async def club_join(self, ws: Any, data: dict) -> None:
+        uid = self.user_of(ws)
+        if not uid:
+            return
+        club, reason = self.db.join_club(uid, data.get("code") or "")
+        if club is None:
+            msg = {
+                "already_in_club": "Je zit al in een club. Verlaat die eerst.",
+                "no_club": "Geen club met deze code.",
+                "club_full": "Deze club zit vol.",
+            }.get(reason, "Kon niet lid worden.")
+            await self._send(ws, {"type": "error", "message": msg})
+            return
+        await self._send(ws, await self._account_payload(ws, uid))
+        await self._send(ws, self._club_payload(uid, data.get("period") or "month"))
+
+    async def club_leave(self, ws: Any, data: dict) -> None:
+        uid = self.user_of(ws)
+        if not uid:
+            return
+        self.db.leave_club(uid)
+        await self._send(ws, await self._account_payload(ws, uid))
+        await self._send(ws, {"type": "club", "club": None, "period": "month", "members": []})
+
+    async def club_get(self, ws: Any, data: dict) -> None:
+        uid = self.user_of(ws)
+        if not uid:
+            return
+        await self._send(ws, self._club_payload(uid, data.get("period") or "month"))
 
     async def _push_account(self, user_id: str) -> None:
         """Send the fresh account payload to every live connection of a user

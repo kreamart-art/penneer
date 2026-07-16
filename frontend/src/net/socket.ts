@@ -78,6 +78,7 @@ export interface Account {
   badges: Badge[];
   title: string | null; // chosen title key (null = show rank)
   titles: { key: string; unlocked: boolean }[]; // catalog + unlock state
+  club: ClubSummary | null; // the user's club (one per user), or null
   inbox_count: number;
   dm_unread: number;
 }
@@ -89,6 +90,27 @@ export interface PublicUser {
   has_avatar: boolean;
   avatar_ver: number;
   online: boolean;
+}
+
+export interface ClubSummary {
+  id: string;
+  name: string;
+  code: string;
+  member_count: number;
+  is_owner: boolean;
+}
+
+export interface ClubMember extends PublicUser {
+  points: number;
+  games: number;
+  wins: number;
+  is_owner: boolean;
+}
+
+export interface ClubBoard {
+  club: ClubSummary | null;
+  period: "month" | "all";
+  members: ClubMember[];
 }
 
 export interface Friend extends PublicUser {
@@ -244,6 +266,7 @@ export interface ClientState {
   inbox: InboxItem[];
   searchResults: PublicUser[];
   leaderboard: { period: "all" | "week" | "month"; rows: LeaderboardRow[] } | null;
+  club: ClubBoard | null; // the club board for the open club view
   viewedProfile: PublicProfile | null;
   history: HistoryGame[];
   // Direct messages (profile-to-profile): thread list + the open conversation.
@@ -315,6 +338,7 @@ type ServerMessage =
   | { type: "dm_thread"; user_id: string; messages: DmMessage[] }
   | { type: "dm_threads"; threads: DmThreadSummary[] }
   | { type: "leaderboard"; period: "all" | "week" | "month"; rows: LeaderboardRow[] }
+  | { type: "club"; club: ClubSummary | null; period: "month" | "all"; members: ClubMember[] }
   | { type: "presence"; user_id: string; online: boolean }
   | { type: "login_link_sent" }
   | { type: "invite_sent"; to_user: string }
@@ -399,6 +423,7 @@ const initialState: ClientState = {
   inbox: [],
   searchResults: [],
   leaderboard: null,
+  club: null,
   viewedProfile: null,
   history: [],
   dmThreads: [],
@@ -552,6 +577,8 @@ function reducer(state: ClientState, action: Action): ClientState {
       return { ...state, dmThreads: msg.threads };
     case "leaderboard":
       return { ...state, leaderboard: { period: msg.period, rows: msg.rows } };
+    case "club":
+      return { ...state, club: { club: msg.club, period: msg.period, members: msg.members } };
     case "presence":
       return {
         ...state,
@@ -661,6 +688,10 @@ export interface GameApi {
   inviteSend: (user_id: string, kind: "invite" | "challenge") => void;
   inviteRespond: (invite_id: string, accept: boolean) => void;
   loadLeaderboard: (period: "all" | "week" | "month") => void;
+  createClub: (name: string) => void;
+  joinClub: (code: string) => void;
+  leaveClub: () => void;
+  loadClub: (period: "month" | "all") => void;
   rematch: () => void;
   clearJoin: () => void;
   drainToasts: () => void;
@@ -871,6 +902,10 @@ export function useGame(): GameApi {
     inviteSend: (user_id, kind) => send({ type: "invite_send", user_id, kind }),
     inviteRespond: (invite_id, accept) => send({ type: "invite_respond", invite_id, accept }),
     loadLeaderboard: (period) => send({ type: "leaderboard_get", period }),
+    createClub: (name) => send({ type: "club_create", name }),
+    joinClub: (code) => send({ type: "club_join", code }),
+    leaveClub: () => send({ type: "club_leave" }),
+    loadClub: (period) => send({ type: "club_get", period }),
     rematch: () => send({ type: "rematch" }),
     clearJoin: () => dispatch({ type: "clearJoin" }),
     drainToasts: () => dispatch({ type: "drainToasts" }),

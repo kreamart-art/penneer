@@ -155,6 +155,23 @@ CREATE TABLE IF NOT EXISTS daily_starts (
     started_at REAL NOT NULL,
     PRIMARY KEY (day, user_id)
 );
+-- Clubs: a friend group with its own leaderboard. One club per user (enforced
+-- in code). The owner is a member too; ownership transfers to the oldest
+-- remaining member when the owner leaves, or the club is deleted if empty.
+CREATE TABLE IF NOT EXISTS clubs (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    code TEXT NOT NULL UNIQUE,
+    owner_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at REAL NOT NULL
+);
+CREATE TABLE IF NOT EXISTS club_members (
+    club_id TEXT NOT NULL REFERENCES clubs(id) ON DELETE CASCADE,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    joined_at REAL NOT NULL,
+    PRIMARY KEY (club_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_club_members_user ON club_members(user_id);
 -- Dagelijkse missies: progress per account per day per mission key. Rewards
 -- auto-claim on completion (users.bonus_xp), so there is no claimed column.
 CREATE TABLE IF NOT EXISTS mission_progress (
@@ -749,6 +766,112 @@ class Database:
                 (day, user_id),
             )
         return {r["key"]: {"progress": int(r["progress"]), "done": bool(r["done"])} for r in rows}
+
+    # ---- clubs ---------------------------------------------------------------
+
+    CLUB_MAX = 50
+
+    def club_of(self, user_id: str) -> Optional[dict]:
+        """The user's club (one per user) with owner flag + member count, or None."""
+        with self._lock:
+            rows = self._q(
+                """
+                SELECT c.id, c.name, c.code, c.owner_id,
+                       (SELECT COUNT(*) FROM club_members m WHERE m.club_id=c.id) AS member_count
+                FROM club_members cm JOIN clubs c ON c.id = cm.club_id
+                WHERE cm.user_id = ? LIMIT 1
+                """,
+                (user_id,),
+            )
+        if not rows:
+            return None
+        r = dict(rows[0])
+        return {"id": r["id"], "name": r["name"], "code": r["code"], "member_count": int(r["member_count"]), "is_owner": r["owner_id"] == user_id}
+
+    def _gen_club_code(self) -> str:
+        alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # no ambiguous chars
+        while True:
+            code = "".join(secrets.choice(alphabet) for _ in range(6))
+            if not self._q("SELECT 1 FROM clubs WHERE code=?", (code,)):
+                return code
+
+    def create_club(self, owner_id: str, name: str) -> Optional[dict]:
+        """Create a club with the owner as first member. None if the name is
+        invalid or the user is already in a club."""
+        name = (name or "").strip()[:24]
+        if len(name) < 2 or self.club_of(owner_id) is not None:
+            return None
+        cid = _new_id()
+        now = time.time()
+        with self._lock:
+            code = self._gen_club_code()
+            self._exec("INSERT INTO clubs (id, name, code, owner_id, created_at) VALUES (?,?,?,?,?)", (cid, name, code, owner_id, now))
+            self._exec("INSERT INTO club_members (club_id, user_id, joined_at) VALUES (?,?,?)", (cid, owner_id, now))
+        return self.club_of(owner_id)
+
+    def join_club(self, user_id: str, code: str) -> tuple[Optional[dict], str]:
+        """Join by code. Returns (club, "") on success, else (None, reason_key)."""
+        code = (code or "").strip().upper()
+        if self.club_of(user_id) is not None:
+            return None, "already_in_club"
+        with self._lock:
+            rows = self._q("SELECT id FROM clubs WHERE code=?", (code,))
+            if not rows:
+                return None, "no_club"
+            cid = rows[0]["id"]
+            n = self._q("SELECT COUNT(*) AS n FROM club_members WHERE club_id=?", (cid,))[0]["n"]
+            if int(n) >= self.CLUB_MAX:
+                return None, "club_full"
+            self._exec("INSERT OR IGNORE INTO club_members (club_id, user_id, joined_at) VALUES (?,?,?)", (cid, user_id, time.time()))
+        return self.club_of(user_id), ""
+
+    def leave_club(self, user_id: str) -> None:
+        """Leave your club. If you were the owner, pass it to the oldest
+        remaining member; if none remain, delete the club."""
+        club = self.club_of(user_id)
+        if club is None:
+            return
+        cid = club["id"]
+        with self._lock:
+            self._exec("DELETE FROM club_members WHERE club_id=? AND user_id=?", (cid, user_id))
+            if club["is_owner"]:
+                rows = self._q("SELECT user_id FROM club_members WHERE club_id=? ORDER BY joined_at ASC LIMIT 1", (cid,))
+                if rows:
+                    self._exec("UPDATE clubs SET owner_id=? WHERE id=?", (rows[0]["user_id"], cid))
+                else:
+                    self._exec("DELETE FROM clubs WHERE id=?", (cid,))
+
+    def club_ranked(self, club_id: str, since: float = 0.0, until: Optional[float] = None) -> list[dict]:
+        """Members ranked by points over a period (members with no games in the
+        window still appear, at 0). Bot games are never recorded, so they can't
+        show up here."""
+        with self._lock:
+            members = self._q("SELECT user_id FROM club_members WHERE club_id=?", (club_id,))
+            ids = [m["user_id"] for m in members]
+            if not ids:
+                return []
+            owner = self._q("SELECT owner_id FROM clubs WHERE id=?", (club_id,))
+            owner_id = owner[0]["owner_id"] if owner else None
+            ph = ",".join("?" for _ in ids)
+            rows = self._q(
+                f"""
+                SELECT u.id, u.name, u.color, u.avatar_ver, u.avatar IS NOT NULL AS has_avatar,
+                       COALESCE(SUM(gp.score),0) AS points, COUNT(gp.game_id) AS games,
+                       COALESCE(SUM(gp.is_winner),0) AS wins
+                FROM users u
+                LEFT JOIN game_players gp ON gp.user_id = u.id
+                LEFT JOIN games g ON g.id = gp.game_id AND g.finished_at >= ? AND g.finished_at < ?
+                WHERE u.id IN ({ph})
+                GROUP BY u.id ORDER BY points DESC, wins DESC, u.name ASC
+                """,
+                (since, until if until is not None else float("inf"), *ids),
+            )
+        out = []
+        for r in rows:
+            d = dict(r)
+            d["is_owner"] = d["id"] == owner_id
+            out.append(d)
+        return out
 
     def leaderboard(self, since: float = 0.0, until: Optional[float] = None, limit: int = 25) -> list[dict]:
         with self._lock:

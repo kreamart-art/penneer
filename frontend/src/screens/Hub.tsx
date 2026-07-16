@@ -1,7 +1,7 @@
 // Hub — profile, friends, inbox and leaderboard in one tabbed screen.
 // Reached from the Landing. A profile is optional: guests see the create form.
 import { Fragment, useEffect, useRef, useState } from "react";
-import { ArrowLeft, Award, Bell, Camera, Check, MessageCircle, MoreVertical, Settings as SettingsIcon, Share2, Smile, Star, Swords, Trash2, Trophy, UserPlus, Users, X, ZoomIn, ZoomOut } from "lucide-react";
+import { ArrowLeft, Award, Bell, Camera, Check, Copy, LogOut, MessageCircle, MoreVertical, Plus, Settings as SettingsIcon, Share2, Smile, Star, Swords, Trash2, Trophy, UserPlus, Users, X, ZoomIn, ZoomOut } from "lucide-react";
 import { Avatar, RANK_RING } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { MusicToggle } from "../components/MusicToggle";
@@ -331,6 +331,7 @@ function ProfileTab({ game }: { game: GameApi }) {
   const [editFile, setEditFile] = useState<File | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
+  const [clubOpen, setClubOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const colorInputRef = useRef<HTMLInputElement | null>(null);
   const colorDebounce = useRef<number | undefined>(undefined);
@@ -416,6 +417,10 @@ function ProfileTab({ game }: { game: GameApi }) {
         }}
       />
     );
+  }
+
+  if (clubOpen) {
+    return <ClubScreen game={game} onBack={() => setClubOpen(false)} />;
   }
 
   const shareCard = async () => {
@@ -563,6 +568,31 @@ function ProfileTab({ game }: { game: GameApi }) {
         <StatGrid stats={account.stats} />
       </Card>
 
+      {/* club */}
+      <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <Users size={15} color={colors.gold} />
+          <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint, flex: 1 }}>{t("clubTitle")}</span>
+        </div>
+        {account.club ? (
+          <button
+            onClick={() => { sound.uiTap(); setClubOpen(true); }}
+            style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderRadius: 12, cursor: "pointer", background: withAlpha(colors.gold, 0.1), border: `1px solid ${withAlpha(colors.gold, 0.35)}`, textAlign: "left", width: "100%" }}
+          >
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15, color: colors.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{account.club.name}</div>
+              <div style={{ fontFamily: font.ui, fontSize: 12, color: colors.sub }}>{t("clubMembersN", { n: account.club.member_count })}</div>
+            </div>
+            <span style={{ fontFamily: font.ui, fontSize: 12.5, fontWeight: 700, color: colors.gold }}>{t("clubOpen")}</span>
+          </button>
+        ) : (
+          <>
+            <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.sub, lineHeight: 1.5 }}>{t("clubIntro")}</p>
+            <Button variant="gold" full onClick={() => { sound.uiTap(); setClubOpen(true); }}>{t("clubMakeOrJoin")}</Button>
+          </>
+        )}
+      </Card>
+
       {/* titel-kiezer */}
       <TitlePicker game={game} />
 
@@ -644,6 +674,138 @@ function TitlePicker({ game }: { game: GameApi }) {
         })}
       </div>
     </Card>
+  );
+}
+
+// Club screen — a friend group with its own leaderboard. Its own page (like the
+// avatar picker) so the profile tab stays short. Two states: in a club (name,
+// share code, season/all-time ranked members, leave) or not (create / join).
+function ClubScreen({ game, onBack }: { game: GameApi; onBack: () => void }) {
+  const { t } = useT();
+  const account = game.state.account;
+  const board = game.state.club;
+  const club = account?.club ?? null;
+  const [period, setPeriod] = useState<"month" | "all">("month");
+  const [name, setName] = useState("");
+  const [code, setCode] = useState("");
+  const [copied, setCopied] = useState(false);
+  const [confirmLeave, setConfirmLeave] = useState(false);
+
+  useEffect(() => {
+    game.loadClub(period);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [period, club?.id]);
+
+  const header = (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", paddingTop: "calc(14px + env(safe-area-inset-top))" }}>
+      <button onClick={onBack} aria-label={t("back")} style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 2 }}>
+        <ArrowLeft size={20} />
+      </button>
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>
+        <Users size={18} color={colors.gold} /> {t("clubTitle")}
+      </span>
+    </div>
+  );
+
+  // ---- not in a club: create or join ----
+  if (!club) {
+    return (
+      <Screen top={header}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13.5, color: colors.sub, lineHeight: 1.55 }}>{t("clubIntroLong")}</p>
+          </Card>
+          <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase", color: colors.faint }}>{t("clubCreateTitle")}</span>
+            <input style={inputStyle} placeholder={t("clubNamePlaceholder")} value={name} maxLength={24} onChange={(e) => setName(e.target.value)} />
+            <Button variant="gold" full disabled={name.trim().length < 2} onClick={() => { sound.uiTap(); game.createClub(name.trim()); }}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Plus size={16} /> {t("clubCreateBtn")}</span>
+            </Button>
+          </Card>
+          <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase", color: colors.faint }}>{t("clubJoinTitle")}</span>
+            <input
+              style={{ ...inputStyle, fontFamily: font.display, letterSpacing: 4, textAlign: "center", textTransform: "uppercase" }}
+              placeholder={t("clubCodePlaceholder")}
+              value={code}
+              maxLength={6}
+              onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
+            />
+            <Button variant="primary" full disabled={code.length < 6} onClick={() => { sound.uiTap(); game.joinClub(code); }}>{t("clubJoinBtn")}</Button>
+          </Card>
+        </div>
+      </Screen>
+    );
+  }
+
+  // ---- in a club: header + ranked members + leave ----
+  const members = board?.members ?? [];
+  const shareCode = () => {
+    try { navigator.clipboard?.writeText(club.code); } catch { /* ignore */ }
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1500);
+  };
+  return (
+    <Screen top={header}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <Card style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "center" }}>
+          <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 22, color: colors.ink, textAlign: "center" }}>{club.name}</span>
+          <span style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.sub }}>{t("clubMembersN", { n: club.member_count })}</span>
+          <button onClick={shareCode} style={{ display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer", background: withAlpha(colors.gold, 0.12), border: `1px solid ${withAlpha(colors.gold, 0.4)}`, borderRadius: 999, padding: "7px 14px" }}>
+            <span style={{ fontFamily: font.ui, fontSize: 11, color: colors.faint }}>{t("clubCodeLabel")}</span>
+            <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15, letterSpacing: 3, color: colors.gold }}>{club.code}</span>
+            {copied ? <Check size={15} color={colors.green} /> : <Copy size={15} color={colors.sub} />}
+          </button>
+        </Card>
+
+        <div style={{ display: "flex", gap: 8 }}>
+          {(["month", "all"] as const).map((p) => (
+            <button
+              key={p}
+              onClick={() => setPeriod(p)}
+              style={{ flex: 1, padding: "8px 4px", borderRadius: radius.button, cursor: "pointer", fontFamily: font.ui, fontSize: 13, fontWeight: 600, border: `1px solid ${period === p ? withAlpha(colors.gold, 0.5) : colors.panelBorder}`, background: period === p ? withAlpha(colors.gold, 0.12) : "transparent", color: period === p ? colors.gold : colors.sub }}
+            >
+              {p === "month" ? t("seasonChip") : t("allTime")}
+            </button>
+          ))}
+        </div>
+
+        <Card style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {members.length === 0 && <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13, color: colors.faint }}>{t("clubEmptyBoard")}</p>}
+          {members.map((m, i) => {
+            const mine = account && m.id === account.id;
+            return (
+              <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 8px", borderRadius: 10, background: mine ? withAlpha(colors.gold, 0.1) : "transparent", border: `1px solid ${mine ? withAlpha(colors.gold, 0.4) : "transparent"}` }}>
+                <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 14, color: i === 0 ? colors.gold : colors.faint, width: 20, textAlign: "center" }}>{i + 1}</span>
+                <Avatar name={m.name} color={m.color} size={30} crown={m.is_owner} userId={m.id} hasAvatar={!!m.has_avatar} avatarVer={m.avatar_ver} />
+                <span style={{ flex: 1, fontFamily: font.ui, fontSize: 13.5, fontWeight: 600, color: colors.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {m.name}{mine && <span style={{ color: colors.faint, fontWeight: 500 }}> · {t("you")}</span>}
+                </span>
+                <span style={{ fontFamily: font.ui, fontSize: 11, color: colors.faint }}>{t("clubGamesN", { n: m.games })}</span>
+                <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16, color: i === 0 ? colors.gold : colors.ink, width: 42, textAlign: "right" }}>{m.points}</span>
+              </div>
+            );
+          })}
+        </Card>
+
+        {confirmLeave ? (
+          <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13, color: colors.sub, lineHeight: 1.5 }}>{club.is_owner ? t("clubLeaveOwnerWarn") : t("clubLeaveWarn")}</p>
+            <div style={{ display: "flex", gap: 8 }}>
+              <Button variant="ghost" full onClick={() => setConfirmLeave(false)}>{t("cancelCorrection")}</Button>
+              <Button variant="danger" full onClick={() => { sound.uiTap(); game.leaveClub(); setConfirmLeave(false); }}>{t("clubLeaveBtn")}</Button>
+            </div>
+          </Card>
+        ) : (
+          <button
+            onClick={() => setConfirmLeave(true)}
+            style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, background: "transparent", border: `1px solid ${withAlpha(colors.red, 0.4)}`, cursor: "pointer", color: colors.redHi, fontFamily: font.ui, fontSize: 13, fontWeight: 600, borderRadius: 10, padding: "9px 12px" }}
+          >
+            <LogOut size={15} /> {t("clubLeaveBtn")}
+          </button>
+        )}
+      </div>
+    </Screen>
   );
 }
 
