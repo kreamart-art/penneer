@@ -303,6 +303,17 @@ export const sound = {
     this.setSfxMuted(!sfxMuted);
   },
 
+  // Subtle haptic feedback on important taps/moments. No-op when sfx is muted
+  // or the device has no vibration motor (desktop). Keep patterns short.
+  haptic(pattern: number | number[] = 12) {
+    if (sfxMuted) return;
+    try {
+      (navigator as Navigator & { vibrate?: (p: number | number[]) => boolean }).vibrate?.(pattern);
+    } catch {
+      /* vibration unsupported */
+    }
+  },
+
   // Call inside a user gesture (intro tap, create/join) to unlock audio on iOS.
   unlock: () => {
     ensureCtx();

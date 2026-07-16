@@ -1,7 +1,7 @@
 // Results — running scoreboard, then a card per player with answers (check /
 // cross / strike, "dubbel" tags) and round points. Tap an answer to challenge.
 import { useEffect, useRef, useState } from "react";
-import { Check, HelpCircle, Search, X } from "lucide-react";
+import { Check, Flame, HelpCircle, Search, Sparkles, Star, X } from "lucide-react";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { Scoreboard } from "../components/Scoreboard";
@@ -28,6 +28,7 @@ export function Results({ game }: { game: GameApi }) {
     if (!played.current) {
       played.current = true;
       sound.results();
+      sound.haptic([12, 50, 12]); // the reveal lands with a light double tap
     }
   }, []);
 
@@ -48,11 +49,26 @@ export function Results({ game }: { game: GameApi }) {
   };
 
   const roundTotal = (pid: string) => cats.reduce((sum, c) => sum + (round?.points[pid]?.[c] ?? 0), 0);
+  const uniqueCount = (pid: string) => cats.filter((c) => (round?.points[pid]?.[c] ?? 0) === 10).length;
 
   // Mirror of the server's normalize(): detects a manually paired answer
   // (canon differs from the word itself).
   const norm = (s: string) =>
     s.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
+
+  // "Woord van de ronde": the longest valid word anyone played this round, a
+  // little spotlight. Only shown when it's actually long (>= 6 letters).
+  let wotr: { word: string; name: string; len: number } | null = null;
+  for (const p of players) {
+    for (const cat of cats) {
+      const a = round?.answers[p.id]?.[cat];
+      if (a && a.valid && a.text) {
+        const len = norm(a.text).length;
+        if (!wotr || len > wotr.len) wotr = { word: a.text, name: p.name, len };
+      }
+    }
+  }
+  const wordOfRound = wotr && wotr.len >= 6 ? wotr : null;
 
   // One highlight line per category: the story of the round ("iedereen had
   // ZEBRA", "alleen Karim had iets"). Recomputed on corrections; the entrance
@@ -99,11 +115,22 @@ export function Results({ game }: { game: GameApi }) {
           <Scoreboard players={room.players} scores={room.scores} meId={game.me?.id ?? null} />
         </Card>
 
-        {highlights.length > 0 && (
+        {(highlights.length > 0 || wordOfRound) && (
           <Card style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <div style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint }}>
               {t("revealHighlights")}
             </div>
+            {wordOfRound && (
+              <div className="reveal-rise" style={{ animationDelay: "0.15s", display: "flex", alignItems: "center", gap: 9, padding: "8px 10px", borderRadius: 10, background: withAlpha(colors.gold, 0.1), border: `1px solid ${withAlpha(colors.gold, 0.3)}` }}>
+                <Sparkles size={15} color={colors.gold} style={{ flexShrink: 0 }} />
+                <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+                  <span style={{ fontFamily: font.ui, fontSize: 10.5, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase", color: colors.faint }}>{t("wordOfRound")}</span>
+                  <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15, color: colors.gold, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {wordOfRound.word.toUpperCase()} <span style={{ fontFamily: font.ui, fontWeight: 500, fontSize: 12, color: colors.sub }}>· {wordOfRound.name}</span>
+                  </span>
+                </div>
+              </div>
+            )}
             {highlights.map((h, i) => (
               <div key={h.cat} className="reveal-rise" style={{ animationDelay: `${lineDelay(i)}s`, display: "flex", alignItems: "baseline", gap: 10 }}>
                 <span style={{ fontFamily: font.ui, fontSize: 11, color: colors.faint, width: 58, flexShrink: 0 }}>{tCat(h.cat)}</span>
@@ -119,6 +146,9 @@ export function Results({ game }: { game: GameApi }) {
 
         {players.map((p, pi) => {
           const answers = round?.answers[p.id] ?? {};
+          const uniq = uniqueCount(p.id);
+          const perfect = cats.length > 0 && uniq === cats.length;
+          const hot = !perfect && uniq >= 3;
           return (
             <Card key={p.id} className="reveal-rise" style={{ animationDelay: `${cardDelay(pi)}s`, display: "flex", flexDirection: "column", gap: 12 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -127,7 +157,29 @@ export function Results({ game }: { game: GameApi }) {
                   {p.name}
                   {p.id === game.me?.id && <span style={{ color: colors.faint, fontWeight: 500 }}> · {t("you")}</span>}
                 </span>
-                <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 20, color: colors.gold }}>+{roundTotal(p.id)}</span>
+                {(perfect || hot) && (
+                  <span
+                    className="pop-in"
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 4,
+                      fontFamily: font.ui,
+                      fontSize: 11,
+                      fontWeight: 800,
+                      padding: "3px 9px",
+                      borderRadius: 999,
+                      animationDelay: `${cardDelay(pi) + 0.3}s`,
+                      color: perfect ? colors.bg0 : colors.orange,
+                      background: perfect ? `linear-gradient(180deg, ${colors.goldHi}, ${colors.gold})` : withAlpha(colors.orange, 0.14),
+                      border: perfect ? "none" : `1px solid ${withAlpha(colors.orange, 0.5)}`,
+                    }}
+                  >
+                    {perfect ? <Star size={12} fill="currentColor" /> : <Flame size={12} />}
+                    {perfect ? t("flairPerfect") : t("flairHot")}
+                  </span>
+                )}
+                <span className="pop-in" style={{ animationDelay: `${cardDelay(pi) + 0.15}s`, fontFamily: font.display, fontWeight: 700, fontSize: 20, color: colors.gold }}>+{roundTotal(p.id)}</span>
               </div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -207,6 +259,7 @@ export function Results({ game }: { game: GameApi }) {
                                   key={pl.id}
                                   onClick={() => {
                                     sound.dubbel();
+                                    sound.haptic(12);
                                     game.markSame(p.id, cat, pl.id);
                                     setSelected(null);
                                     setPairing(false);
@@ -228,6 +281,7 @@ export function Results({ game }: { game: GameApi }) {
                               onClick={() => {
                                 if (valid) sound.reject();
                                 else sound.approve();
+                                sound.haptic(15);
                                 game.challenge(p.id, cat);
                                 setSelected(null);
                               }}

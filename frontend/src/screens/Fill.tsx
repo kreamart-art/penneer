@@ -188,7 +188,7 @@ export function Fill({ game }: { game: GameApi }) {
           <div style={{ maxWidth: 460, margin: "0 auto", padding: "0 18px", pointerEvents: "auto" }}>
             {/* No local click sound: the buzzer plays for EVERYONE (presser
                 included) off the server's round_ended broadcast, in App. */}
-            <Button variant="danger" full onClick={() => game.stopRound()}>
+            <Button variant="danger" full onClick={() => { sound.haptic([15, 40, 15]); game.stopRound(); }}>
               {t("penNeer")}
             </Button>
           </div>
@@ -214,7 +214,7 @@ export function Fill({ game }: { game: GameApi }) {
             <Button
               variant={iAmReady ? "ghost" : "gold"}
               full
-              onClick={() => { if (!iAmReady) sound.ready(); game.setReady(!iAmReady); }}
+              onClick={() => { if (!iAmReady) { sound.ready(); sound.haptic(12); } game.setReady(!iAmReady); }}
               style={iAmReady ? undefined : { animation: "fill-pulse 1.8s ease-in-out infinite" }}
             >
               {iAmReady ? t("notYet") : t("imReady")}
