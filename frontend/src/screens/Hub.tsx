@@ -5,6 +5,7 @@ import { ArrowLeft, Award, Bell, Camera, Check, Copy, LogOut, MessageCircle, Mor
 import { Avatar, RANK_RING } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { MusicToggle } from "../components/MusicToggle";
+import { Toggle } from "../components/Toggle";
 import { Screen, Card } from "../components/Layout";
 import type { AccountStats, Friend, GameApi, InboxItem, LevelInfo } from "../net/socket";
 import { useT } from "../i18n/i18n";
@@ -885,6 +886,15 @@ function ProfileSettings({
         </button>
         <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink }}>{t("profileSettings")}</span>
       </div>
+
+      {/* soepele spelling (dyslexie-hulp) voor Oefenen + Dagronde */}
+      <Card style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={{ flex: 1, fontFamily: font.ui, fontWeight: 600, fontSize: 14, color: colors.ink }}>{t("lenientTitle")}</span>
+          <Toggle on={!!account.lenient_spelling} onChange={(v) => { sound.uiTap(); game.setLenient(v); }} />
+        </div>
+        <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.faint, lineHeight: 1.5 }}>{t("lenientHint")}</p>
+      </Card>
 
       {/* e-mail koppelen */}
       <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>

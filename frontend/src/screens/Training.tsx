@@ -43,7 +43,7 @@ const inputStyle: React.CSSProperties = {
   padding: "12px 14px",
 };
 
-export function Training({ onBack }: { onBack: () => void }) {
+export function Training({ onBack, lenient = false }: { onBack: () => void; lenient?: boolean }) {
   const { t, tCat } = useT();
   const [phase, setPhase] = useState<"setup" | "round" | "result">("setup");
   const [selected, setSelected] = useState<Set<string>>(new Set(DEFAULT_ON));
@@ -89,7 +89,7 @@ export function Training({ onBack }: { onBack: () => void }) {
       const res = await fetch("/api/train/check", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ letter, categories: cats, answers }),
+        body: JSON.stringify({ letter, categories: cats, answers, lenient }),
       });
       const data: CheckResult = await res.json();
       setResult(data);

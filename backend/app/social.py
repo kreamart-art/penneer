@@ -137,6 +137,7 @@ class AccountManager:
                 "title": chosen,
                 "titles": [{"key": k, "unlocked": k in unlocked} for k in titles.ALL_KEYS],
                 "club": self.db.club_of(user_id),
+                "lenient_spelling": bool(user.get("lenient_spelling")),
                 "inbox_count": len(self.db.inbox(user_id)),
                 "dm_unread": self.db.dm_unread_total(user_id),
             },
@@ -175,6 +176,7 @@ class AccountManager:
             "club_join": self.club_join,
             "club_leave": self.club_leave,
             "club_get": self.club_get,
+            "set_lenient": self.set_lenient,
         }.get(mtype)
         if handler is None:
             return False
@@ -612,6 +614,13 @@ class AccountManager:
         if not uid:
             return
         await self._send(ws, self._club_payload(uid, data.get("period") or "month"))
+
+    async def set_lenient(self, ws: Any, data: dict) -> None:
+        uid = self.user_of(ws)
+        if not uid:
+            return
+        self.db.set_lenient(uid, bool(data.get("on")))
+        await self._send(ws, await self._account_payload(ws, uid))
 
     async def _push_account(self, user_id: str) -> None:
         """Send the fresh account payload to every live connection of a user

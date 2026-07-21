@@ -79,6 +79,7 @@ export interface Account {
   title: string | null; // chosen title key (null = show rank)
   titles: { key: string; unlocked: boolean }[]; // catalog + unlock state
   club: ClubSummary | null; // the user's club (one per user), or null
+  lenient_spelling: boolean; // forgives near-miss spellings in Oefenen + Dagronde
   inbox_count: number;
   dm_unread: number;
 }
@@ -692,6 +693,7 @@ export interface GameApi {
   joinClub: (code: string) => void;
   leaveClub: () => void;
   loadClub: (period: "month" | "all") => void;
+  setLenient: (on: boolean) => void;
   rematch: () => void;
   clearJoin: () => void;
   drainToasts: () => void;
@@ -906,6 +908,7 @@ export function useGame(): GameApi {
     joinClub: (code) => send({ type: "club_join", code }),
     leaveClub: () => send({ type: "club_leave" }),
     loadClub: (period) => send({ type: "club_get", period }),
+    setLenient: (on) => send({ type: "set_lenient", on }),
     rematch: () => send({ type: "rematch" }),
     clearJoin: () => dispatch({ type: "clearJoin" }),
     drainToasts: () => dispatch({ type: "drainToasts" }),

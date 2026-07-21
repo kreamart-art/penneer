@@ -268,7 +268,7 @@ export default function App() {
       />
     );
   } else if (showTraining) {
-    screen = <Training onBack={() => setShowTraining(false)} />;
+    screen = <Training onBack={() => setShowTraining(false)} lenient={!!game.state.account?.lenient_spelling} />;
   } else if (showShop) {
     screen = <Shop game={game} onBack={() => setShowShop(false)} />;
   } else if (showHub) {

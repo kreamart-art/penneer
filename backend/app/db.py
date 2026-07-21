@@ -147,6 +147,12 @@ CREATE TABLE IF NOT EXISTS meta (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
 );
+-- Dagronde: the letter of each day, stored once so it is stable and so the
+-- next day can be chosen to differ from it (no two days in a row the same).
+CREATE TABLE IF NOT EXISTS daily_letters (
+    day TEXT PRIMARY KEY,
+    letter TEXT NOT NULL
+);
 -- Dagronde: first start per account per day (anchors the 60s submit window;
 -- restarting the screen never resets it, so peeking costs your own clock).
 CREATE TABLE IF NOT EXISTS daily_starts (
@@ -267,6 +273,18 @@ class Database:
         if "bonus_xp" not in cols:
             self._conn.execute("ALTER TABLE users ADD COLUMN bonus_xp INTEGER NOT NULL DEFAULT 0")
             self._conn.commit()
+        # Per-account soepele spelling: forgives near-miss spellings in Oefenen
+        # and the Dagronde (a dyslexia aid), the same fuzzy match the room option
+        # uses.
+        if "lenient_spelling" not in cols:
+            self._conn.execute("ALTER TABLE users ADD COLUMN lenient_spelling INTEGER NOT NULL DEFAULT 0")
+            self._conn.commit()
+        # Dagronde: remember which lenient setting a submission was scored with,
+        # so re-opening the result stays consistent with the stored score.
+        dcols = {r["name"] for r in self._conn.execute("PRAGMA table_info(daily_scores)").fetchall()}
+        if dcols and "lenient" not in dcols:
+            self._conn.execute("ALTER TABLE daily_scores ADD COLUMN lenient INTEGER NOT NULL DEFAULT 0")
+            self._conn.commit()
         # Chosen cosmetic title key (NULL -> show the auto rank label).
         if "title" not in cols:
             self._conn.execute("ALTER TABLE users ADD COLUMN title TEXT")
@@ -356,11 +374,19 @@ class Database:
         with self._lock:
             rows = self._q(
                 "SELECT id, name, email, color, avatar_ver, avatar IS NOT NULL AS has_avatar, "
-                "avatar_preset, ai_unlocked, title, created_at "
+                "avatar_preset, ai_unlocked, title, lenient_spelling, created_at "
                 "FROM users WHERE id=?",
                 (user_id,),
             )
         return dict(rows[0]) if rows else None
+
+    def set_lenient(self, user_id: str, on: bool) -> None:
+        self._exec("UPDATE users SET lenient_spelling=? WHERE id=?", (int(on), user_id))
+
+    def lenient_of(self, user_id: str) -> bool:
+        with self._lock:
+            rows = self._q("SELECT lenient_spelling FROM users WHERE id=?", (user_id,))
+        return bool(rows[0]["lenient_spelling"]) if rows else False
 
     def get_title(self, user_id: str) -> Optional[str]:
         with self._lock:
@@ -892,6 +918,19 @@ class Database:
 
     # ---- dagronde ------------------------------------------------------------
 
+    def daily_letter_get(self, day: str) -> Optional[str]:
+        with self._lock:
+            rows = self._q("SELECT letter FROM daily_letters WHERE day=?", (day,))
+        return rows[0]["letter"] if rows else None
+
+    def daily_letter_set(self, day: str, letter: str) -> str:
+        """Store the day's letter once; returns whatever ends up stored (so a
+        concurrent writer never diverges — the pick is deterministic anyway)."""
+        with self._lock:
+            self._exec("INSERT OR IGNORE INTO daily_letters (day, letter) VALUES (?,?)", (day, letter))
+            rows = self._q("SELECT letter FROM daily_letters WHERE day=?", (day,))
+        return rows[0]["letter"] if rows else letter
+
     def daily_start(self, user_id: str, day: str, now: float) -> float:
         """Record the FIRST start of the day; later calls return that anchor."""
         with self._lock:
@@ -901,13 +940,13 @@ class Database:
             self._exec("INSERT INTO daily_starts (day, user_id, started_at) VALUES (?,?,?)", (day, user_id, now))
             return now
 
-    def daily_submit(self, user_id: str, day: str, score: int, time_ms: int, words_json: str, now: float) -> bool:
+    def daily_submit(self, user_id: str, day: str, score: int, time_ms: int, words_json: str, now: float, lenient: bool = False) -> bool:
         """Store the day's entry. False if this account already played today."""
         with self._lock:
             try:
                 self._exec(
-                    "INSERT INTO daily_scores (day, user_id, score, time_ms, words, created_at) VALUES (?,?,?,?,?,?)",
-                    (day, user_id, score, time_ms, words_json, now),
+                    "INSERT INTO daily_scores (day, user_id, score, time_ms, words, created_at, lenient) VALUES (?,?,?,?,?,?,?)",
+                    (day, user_id, score, time_ms, words_json, now, int(lenient)),
                 )
                 return True
             except sqlite3.IntegrityError:
@@ -915,7 +954,7 @@ class Database:
 
     def daily_entry(self, user_id: str, day: str) -> Optional[dict]:
         with self._lock:
-            rows = self._q("SELECT score, time_ms, words, created_at FROM daily_scores WHERE day=? AND user_id=?", (day, user_id))
+            rows = self._q("SELECT score, time_ms, words, created_at, lenient FROM daily_scores WHERE day=? AND user_id=?", (day, user_id))
         return dict(rows[0]) if rows else None
 
     def daily_board(self, day: str, limit: int = 25) -> list[dict]:

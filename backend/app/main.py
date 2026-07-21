@@ -123,13 +123,21 @@ async def train_check(request: Request) -> JSONResponse:
     letter = (str((body or {}).get("letter") or "").strip() or "?")[:1]
     cats = [c for c in ((body or {}).get("categories") or []) if c in game.TRAINABLE_CATEGORIES]
     answers = (body or {}).get("answers") or {}
+    # Soepele spelling: the client sends its account setting; training is not
+    # ranked, so trusting it is fine (a dyslexia aid, not a competitive edge).
+    lenient = bool((body or {}).get("lenient"))
     out = {}
     learned = 0  # words revealed that the player did not know
     correct = 0  # answers that were in the list
     for cat in cats:
         word = str(answers.get(cat) or "").strip()
-        valid, in_list = game.classify(word, letter, cat)
-        canon = game.list_canonical(word, cat) if in_list else None
+        valid, in_list_exact = game.classify(word, letter, cat)
+        if lenient and valid:
+            canon = game.list_canonical(word, cat, lenient=True)
+            in_list = canon is not None
+        else:
+            in_list = in_list_exact
+            canon = game.list_canonical(word, cat) if in_list else None
         all_words = game.list_words_for_letter(cat, letter)
         missed = [w for w in all_words if game.normalize(w) != canon]
         if in_list:
@@ -225,19 +233,21 @@ async def daily_submit(request: Request) -> JSONResponse:
     uid = db.auth(_bearer(request))
     now = time.time()
 
+    lenient = db.lenient_of(uid) if uid else False
     entry = db.daily_entry(uid, day) if uid else None
     if entry is not None:
         # Already on the board: return the STORED result, never re-judge new
-        # words into a second attempt.
+        # words into a second attempt. Score it with the lenient setting the
+        # submission used, so the breakdown matches the stored score.
         try:
             stored = json.loads(entry["words"])
         except Exception:
             stored = {}
-        _, breakdown = daily.score_answers(day, stored)
+        _, breakdown = daily.score_answers(day, stored, lenient=bool(entry.get("lenient")))
         return JSONResponse({**_daily_result_payload(db, uid, day, int(entry["score"]), breakdown, True, int(entry["time_ms"])), "already": True})
 
     answers = {str(k)[:24]: str(v)[:40] for k, v in ((body or {}).get("answers") or {}).items()}
-    score, breakdown = daily.score_answers(day, answers)
+    score, breakdown = daily.score_answers(day, answers, lenient=lenient)
     ranked = False
     time_ms = 0
     missions_done: list[dict] = []
@@ -248,7 +258,7 @@ async def daily_submit(request: Request) -> JSONResponse:
         # day and scores against its letter; rare enough to keep the code flat.
         if elapsed <= daily.DURATION_S + daily.GRACE_S:
             time_ms = int(min(max(elapsed, 1.0), daily.DURATION_S) * 1000)
-            ranked = db.daily_submit(uid, day, score, time_ms, json.dumps(answers)[:4000], now)
+            ranked = db.daily_submit(uid, day, score, time_ms, json.dumps(answers)[:4000], now, lenient=lenient)
         # Missions: playing counts (even a late submit), but only today's
         # active missions ever get progress.
         active = missions.active_keys(day)
@@ -273,7 +283,7 @@ async def daily_result(request: Request) -> JSONResponse:
         stored = json.loads(entry["words"])
     except Exception:
         stored = {}
-    _, breakdown = daily.score_answers(day, stored)
+    _, breakdown = daily.score_answers(day, stored, lenient=bool(entry.get("lenient")))
     return JSONResponse(_daily_result_payload(db, uid, day, int(entry["score"]), breakdown, True, int(entry["time_ms"])))
 
 

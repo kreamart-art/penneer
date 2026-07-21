@@ -137,6 +137,13 @@ BEROEP = [
     "verpleegster", "nurse", "vertaler", "translator", "verzorgende", "violist", "violinist", "visser",
     "fisherman", "vroedvrouw", "midwife", "wetenschapper", "scientist", "wiskundige", "mathematician",
     "zanger", "singer", "zangeres", "zakenman", "businessman", "zeeman",
+    # veelgevraagde moderne/algemene beroepen (aangevuld 2026-07-21)
+    "rapper", "dj", "youtuber", "influencer", "streamer", "danseres", "model",
+    "agent", "militair", "dakdekker", "chauffeur", "kassamedewerker", "jurist",
+    "programmeur", "ontwikkelaar", "ontwerper", "komiek", "clown", "atleet",
+    "voetballer", "tennisser", "zwemmer", "turner", "bokser", "coach", "trainer",
+    "scheidsrechter", "koning", "koningin", "president", "minister",
+    "burgemeester", "pastoor", "priester", "dominee", "imam", "rabbijn",
 ]
 
 RAW: dict[str, list[str]] = {
