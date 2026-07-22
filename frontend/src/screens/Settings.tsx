@@ -79,7 +79,7 @@ export function Settings({ game, onBack, onShowRules }: { game: GameApi; onBack:
   const ios = isIos();
   const iosInApp = isIosInAppBrowser();
   const [adminCode, setAdminCode] = useState("");
-  const { isAdmin, adminAi, recoveryCodes, aiCodes, avatarCodes } = game.state;
+  const { isAdmin, adminAi, recoveryCodes, aiCodes, avatarCodes, buzzerCodes } = game.state;
 
   useEffect(() => onInstallChange(() => setInstallable(canInstall())), []);
 
@@ -347,6 +347,32 @@ export function Settings({ game, onBack, onShowRules }: { game: GameApi; onBack:
                 <div style={{ display: "flex", gap: 8 }}>
                   <Button variant="ghost" onClick={() => game.adminGenAvatarCodes(1)}>{t("aiCodesGenOne")}</Button>
                   <Button variant="ghost" onClick={() => game.adminGenAvatarCodes(5)}>{t("aiCodesGenFive")}</Button>
+                </div>
+              </div>
+
+              {/* Buzzer-skin unlock codes */}
+              <div style={{ borderTop: `1px solid ${colors.hairline}`, paddingTop: 12 }}>
+                <div style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint, marginBottom: 6 }}>
+                  {t("buzzCodesTitle")}
+                </div>
+                <p style={{ fontFamily: font.ui, fontSize: 12, color: colors.faint, margin: "0 0 8px", lineHeight: 1.5 }}>{t("buzzCodesHint")}</p>
+                {buzzerCodes && (
+                  <p style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.sub, margin: "0 0 8px" }}>
+                    {t("aiCodesStats", { open: String(buzzerCodes.open), redeemed: String(buzzerCodes.redeemed), total: String(buzzerCodes.total) })}
+                  </p>
+                )}
+                {buzzerCodes?.new && buzzerCodes.new.length > 0 && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
+                    {buzzerCodes.new.map((c) => (
+                      <span key={c} style={{ fontFamily: font.display, fontSize: 13, letterSpacing: 1, padding: "5px 9px", borderRadius: 8, color: colors.green, background: withAlpha(colors.green, 0.14), userSelect: "all" }}>
+                        {c}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <div style={{ display: "flex", gap: 8 }}>
+                  <Button variant="ghost" onClick={() => game.adminGenBuzzerCodes(1)}>{t("aiCodesGenOne")}</Button>
+                  <Button variant="ghost" onClick={() => game.adminGenBuzzerCodes(5)}>{t("aiCodesGenFive")}</Button>
                 </div>
               </div>
             </>

@@ -132,6 +132,8 @@ class AccountManager:
                 "avatar_preset": user.get("avatar_preset"),
                 "ai_unlocked": bool(user.get("ai_unlocked")),
                 "premium_avatars": bool(user.get("premium_avatars")),
+                "buzzer_skins": bool(user.get("buzzer_skins")),
+                "buzzer_skin": user.get("buzzer_skin"),
                 "stats": stats,
                 "level": level,
                 "badges": badges,
@@ -178,6 +180,7 @@ class AccountManager:
             "club_leave": self.club_leave,
             "club_get": self.club_get,
             "set_lenient": self.set_lenient,
+            "set_buzzer_skin": self.set_buzzer_skin,
         }.get(mtype)
         if handler is None:
             return False
@@ -626,6 +629,14 @@ class AccountManager:
         if not uid:
             return
         self.db.set_lenient(uid, bool(data.get("on")))
+        await self._send(ws, await self._account_payload(ws, uid))
+
+    async def set_buzzer_skin(self, ws: Any, data: dict) -> None:
+        uid = self.user_of(ws)
+        if not uid:
+            return
+        skin = data.get("skin")
+        self.db.set_buzzer_skin(uid, skin if isinstance(skin, str) and skin else None)
         await self._send(ws, await self._account_payload(ws, uid))
 
     async def _push_account(self, user_id: str) -> None:

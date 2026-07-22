@@ -77,6 +77,8 @@ export interface Account {
   avatar_preset: string | null; // chosen preset id (null = custom photo)
   ai_unlocked: boolean; // bought the AI referee for this account
   premium_avatars: boolean; // bought the premium avatar pack (av19..av36)
+  buzzer_skins: boolean; // bought the buzzer-skin pack (bz01..bz05)
+  buzzer_skin: string | null; // chosen skin id, null = default red buzzer
   stats: AccountStats;
   level: LevelInfo;
   badges: Badge[];
@@ -261,6 +263,7 @@ export interface ClientState {
   recoveryCodes: RecoveryCode[];
   aiCodes: AiCodeInfo | null; // AI-referee unlock-code stats + freshly generated codes
   avatarCodes: AiCodeInfo | null; // premium-avatar unlock-code stats
+  buzzerCodes: AiCodeInfo | null; // buzzer-skin unlock-code stats
   // Shop: result of the last code redeem (null until one happens).
   shopResult: ShopResult | null;
   // In-room chat (so players can ask what a word means without leaving).
@@ -331,7 +334,7 @@ type ServerMessage =
   | { type: "results"; round_no: number; answers: RoundView["answers"]; points: RoundView["points"]; scores: Record<string, number> }
   | { type: "results_updated"; points: RoundView["points"]; scores: Record<string, number>; answers: RoundView["answers"] }
   | { type: "game_over"; scores: Record<string, number>; winner_id: string | null }
-  | { type: "admin_ok"; is_admin: boolean; ai: AdminAi; recovery_codes: RecoveryCode[]; ai_codes: AiCodeInfo; avatar_codes?: AiCodeInfo }
+  | { type: "admin_ok"; is_admin: boolean; ai: AdminAi; recovery_codes: RecoveryCode[]; ai_codes: AiCodeInfo; avatar_codes?: AiCodeInfo; buzzer_codes?: AiCodeInfo }
   | { type: "shop_result"; ok: boolean; reason: string }
   | { type: "chat"; message: ChatMessage }
   | { type: "chat_history"; messages: ChatMessage[] }
@@ -421,6 +424,7 @@ const initialState: ClientState = {
   recoveryCodes: [],
   aiCodes: null,
   avatarCodes: null,
+  buzzerCodes: null,
   shopResult: null,
   chat: [],
   chatSeen: 0,
@@ -462,13 +466,14 @@ function reducer(state: ClientState, action: Action): ClientState {
       recoveryCodes: state.recoveryCodes,
       aiCodes: state.aiCodes,
       avatarCodes: state.avatarCodes,
+      buzzerCodes: state.buzzerCodes,
     };
   }
   if (action.type === "clearError") {
     return { ...state, error: null };
   }
   if (action.type === "adminLogout") {
-    return { ...state, isAdmin: false, adminAi: null, recoveryCodes: [], aiCodes: null, avatarCodes: null };
+    return { ...state, isAdmin: false, adminAi: null, recoveryCodes: [], aiCodes: null, avatarCodes: null, buzzerCodes: null };
   }
   if (action.type === "clearShopResult") {
     return { ...state, shopResult: null };
@@ -532,7 +537,7 @@ function reducer(state: ClientState, action: Action): ClientState {
     case "game_over":
       return state; // room_state carries the authoritative snapshot
     case "admin_ok":
-      return { ...state, isAdmin: msg.is_admin, adminAi: msg.ai, recoveryCodes: msg.recovery_codes, aiCodes: msg.ai_codes, avatarCodes: msg.avatar_codes ?? state.avatarCodes };
+      return { ...state, isAdmin: msg.is_admin, adminAi: msg.ai, recoveryCodes: msg.recovery_codes, aiCodes: msg.ai_codes, avatarCodes: msg.avatar_codes ?? state.avatarCodes, buzzerCodes: msg.buzzer_codes ?? state.buzzerCodes };
     case "shop_result":
       return { ...state, shopResult: { ok: msg.ok, reason: msg.reason } };
     case "account": {
@@ -668,6 +673,7 @@ export interface GameApi {
   adminSetAi: (enabled: boolean) => void;
   adminGenAiCodes: (count: number) => void;
   adminGenAvatarCodes: (count: number) => void;
+  adminGenBuzzerCodes: (count: number) => void;
   redeemAiCode: (code: string) => void;
   clearShopResult: () => void;
   sendChat: (text: string, voice?: { id: string; dur: number }) => void;
@@ -705,6 +711,7 @@ export interface GameApi {
   leaveClub: () => void;
   loadClub: (period: "month" | "all") => void;
   setLenient: (on: boolean) => void;
+  setBuzzerSkin: (skin: string | null) => void;
   rematch: () => void;
   clearJoin: () => void;
   drainToasts: () => void;
@@ -868,6 +875,7 @@ export function useGame(): GameApi {
     adminSetAi: (enabled) => send({ type: "admin_set_ai", enabled }),
     adminGenAiCodes: (count) => send({ type: "admin_gen_ai_codes", count }),
     adminGenAvatarCodes: (count) => send({ type: "admin_gen_ai_codes", count, product: "avatars" }),
+    adminGenBuzzerCodes: (count) => send({ type: "admin_gen_ai_codes", count, product: "buzzers" }),
     redeemAiCode: (code) => {
       const c = code.trim();
       if (c) send({ type: "shop_redeem", code: c });
@@ -923,6 +931,7 @@ export function useGame(): GameApi {
     leaveClub: () => send({ type: "club_leave" }),
     loadClub: (period) => send({ type: "club_get", period }),
     setLenient: (on) => send({ type: "set_lenient", on }),
+    setBuzzerSkin: (skin) => send({ type: "set_buzzer_skin", skin }),
     rematch: () => send({ type: "rematch" }),
     clearJoin: () => dispatch({ type: "clearJoin" }),
     drainToasts: () => dispatch({ type: "drainToasts" }),

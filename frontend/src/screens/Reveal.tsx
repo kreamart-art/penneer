@@ -55,7 +55,7 @@ export function Reveal({ game }: { game: GameApi }) {
             <p style={{ fontFamily: font.ui, fontSize: 15, color: colors.green, textAlign: "center", margin: 0 }}>{t("everyoneFills")}</p>
           ) : game.isActive ? (
             <>
-              <Buzzer label={spinning ? "STOP" : t("spin")} size={104} onPress={() => (spinning ? game.spinStop() : game.spinStart())} />
+              <Buzzer label={spinning ? "STOP" : t("spin")} size={104} skin={game.state.account?.buzzer_skin ?? null} onPress={() => (spinning ? game.spinStop() : game.spinStart())} />
               <p style={{ fontFamily: font.ui, fontSize: 13.5, color: colors.sub, textAlign: "center", maxWidth: 280, margin: 0 }}>
                 {spinning ? t("pressStop") : t("pressToSpin")}
               </p>

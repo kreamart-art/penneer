@@ -1,7 +1,7 @@
 // Hub — profile, friends, inbox and leaderboard in one tabbed screen.
 // Reached from the Landing. A profile is optional: guests see the create form.
 import { Fragment, useEffect, useRef, useState } from "react";
-import { ArrowLeft, Award, Bell, Camera, Check, Copy, Lock, LogOut, MessageCircle, MoreVertical, Pencil, Plus, Settings as SettingsIcon, Share2, ShoppingCart, Smile, Sparkles, Star, Swords, Trash2, Trophy, UserPlus, Users, X, ZoomIn, ZoomOut } from "lucide-react";
+import { ArrowLeft, Award, Bell, Camera, Check, CircleDot, Copy, Lock, LogOut, MessageCircle, MoreVertical, Pencil, Plus, Settings as SettingsIcon, Share2, ShoppingCart, Smile, Sparkles, Star, Swords, Trash2, Trophy, UserPlus, Users, X, ZoomIn, ZoomOut } from "lucide-react";
 import { Avatar, RANK_RING } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { MicButton } from "../components/MicButton";
@@ -648,6 +648,9 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
       {/* titel-kiezer */}
       <TitlePicker game={game} />
 
+      {/* Draai-knop-skin (shop 'buzzers' pack) */}
+      <BuzzerPicker game={game} onShowShop={onShowShop} />
+
       {/* laatste potjes */}
       <HistoryCard game={game} meId={account.id} />
 
@@ -673,6 +676,68 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
 // Title picker — the earnable cosmetic shown under your name. Unlocked titles
 // are selectable (the chosen one is highlighted, tap again to clear back to the
 // rank); locked ones show their requirement and can't be picked.
+/** Pick your Draai-buzzer skin (bought in the shop). The default red one is
+ *  always free; the pack skins are locked behind the 'buzzers' unlock. */
+function BuzzerPicker({ game, onShowShop }: { game: GameApi; onShowShop: () => void }) {
+  const { t } = useT();
+  const account = game.state.account!;
+  const owned = !!account.buzzer_skins;
+  const active = account.buzzer_skin ?? null;
+  const skins = ["bz01", "bz02", "bz03", "bz04", "bz05"];
+
+  const tile = (id: string | null, locked: boolean) => {
+    const isActive = active === id;
+    return (
+      <button
+        key={id ?? "default"}
+        onClick={() => {
+          sound.uiTap();
+          if (locked) onShowShop();
+          else game.setBuzzerSkin(id);
+        }}
+        aria-label={id ?? t("buzzDefault")}
+        className="pressable"
+        style={{
+          position: "relative",
+          aspectRatio: "1 / 1",
+          borderRadius: 14,
+          border: `2px solid ${isActive ? colors.gold : colors.panelBorder}`,
+          background: withAlpha("#000000", 0.22),
+          cursor: "pointer",
+          padding: 6,
+          boxShadow: isActive ? `0 0 12px ${withAlpha(colors.gold, 0.5)}` : "none",
+        }}
+      >
+        <img
+          src={id ? `/buzzers/${id}.webp` : "/buzzer.webp"}
+          alt=""
+          loading="lazy"
+          style={{ width: "100%", height: "100%", objectFit: "contain", display: "block", opacity: locked ? 0.35 : 1, filter: locked ? "grayscale(0.6)" : "none" }}
+        />
+        {locked && (
+          <span style={{ position: "absolute", right: 5, bottom: 5, width: 20, height: 20, borderRadius: 7, display: "grid", placeItems: "center", background: withAlpha("#000000", 0.55), color: colors.gold }}>
+            <Lock size={12} />
+          </span>
+        )}
+      </button>
+    );
+  };
+
+  return (
+    <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <CircleDot size={15} color={colors.gold} />
+        <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint, flex: 1 }}>{t("buzzPickTitle")}</span>
+      </div>
+      <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.sub, lineHeight: 1.5 }}>{owned ? t("buzzPickHint") : t("buzzLockedHint")}</p>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+        {tile(null, false)}
+        {skins.map((id) => tile(id, !owned))}
+      </div>
+    </Card>
+  );
+}
+
 function TitlePicker({ game }: { game: GameApi }) {
   const { t } = useT();
   const account = game.state.account;

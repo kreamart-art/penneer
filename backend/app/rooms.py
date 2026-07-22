@@ -65,7 +65,8 @@ class RoomManager:
         return codes
 
     def _admin_payload(self, is_admin: bool, ai_codes: Optional[list[str]] = None,
-                       avatar_codes: Optional[list[str]] = None) -> dict:
+                       avatar_codes: Optional[list[str]] = None,
+                       buzzer_codes: Optional[list[str]] = None) -> dict:
         codes = self._recovery_codes()
         db = get_db()
         return {
@@ -77,6 +78,7 @@ class RoomManager:
             # codes only when freshly generated (never recoverable after this).
             "ai_codes": {**db.ai_code_stats("ai"), "new": ai_codes or []},
             "avatar_codes": {**db.ai_code_stats("avatars"), "new": avatar_codes or []},
+            "buzzer_codes": {**db.ai_code_stats("buzzers"), "new": buzzer_codes or []},
         }
 
     def _is_admin_conn(self, ws: Any) -> bool:
@@ -135,12 +137,14 @@ class RoomManager:
             count = 1
         count = max(1, min(count, 20))
         product = payload.get("product") or "ai"
-        if product not in ("ai", "avatars"):
+        if product not in ("ai", "avatars", "buzzers"):
             product = "ai"
         codes = [get_db().create_ai_code("admin", product) for _ in range(count)]
         try:
             if product == "avatars":
                 await ws.send_json(self._admin_payload(True, avatar_codes=codes))
+            elif product == "buzzers":
+                await ws.send_json(self._admin_payload(True, buzzer_codes=codes))
             else:
                 await ws.send_json(self._admin_payload(True, ai_codes=codes))
         except Exception:

@@ -477,7 +477,7 @@ async def shop_paypal_capture(request: Request) -> JSONResponse:
     custom = result.get("custom_id") or ""
     buyer, _, product = custom.partition("|")
     product = product or "ai"
-    if product not in ("ai", "avatars"):
+    if product not in ("ai", "avatars", "buzzers"):
         product = "ai"
 
     # Amount + currency must match what we sell for THIS product — never trust

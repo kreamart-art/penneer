@@ -11,13 +11,15 @@ interface Props {
   disabled?: boolean;
   /** Diameter of the red ball; the ring/fire art renders larger around it. */
   size?: number;
+  /** Bought buzzer skin (bz01..bz05); null/undefined = the default red art. */
+  skin?: string | null;
 }
 
 // Where the ball's center sits inside the art image (fractions of the image).
 const ART_CX = 0.5;
 const ART_CY = 0.43;
 
-export function Buzzer({ label, onPress, disabled, size = 138 }: Props) {
+export function Buzzer({ label, onPress, disabled, size = 138, skin }: Props) {
   const [down, setDown] = useState(false);
   const hit = size * 1.55; // tap circle: ball + lit ring
   const art = size * 2.0; // full art width (arrows + fire bleed past the ring)
@@ -47,7 +49,7 @@ export function Buzzer({ label, onPress, disabled, size = 138 }: Props) {
       }}
     >
       <img
-        src="/buzzer.webp"
+        src={skin ? `/buzzers/${skin}.webp` : "/buzzer.webp"}
         alt=""
         draggable={false}
         style={{

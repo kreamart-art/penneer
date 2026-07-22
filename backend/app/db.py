@@ -241,6 +241,10 @@ PRESET_IDS = [f"av{i:02d}" for i in range(1, 19)]
 # the free defaults; picking one requires the unlock (set_avatar_preset gates).
 PREMIUM_PRESET_IDS = [f"av{i:02d}" for i in range(19, 37)]
 ALL_PRESET_IDS = PRESET_IDS + PREMIUM_PRESET_IDS
+
+# Buzzer skins (shop 'buzzers' pack): art in frontend/public/buzzers/bzNN.webp.
+# The default red buzzer is not an id here; NULL buzzer_skin = default.
+BUZZER_SKIN_IDS = [f"bz{i:02d}" for i in range(1, 6)]
 _preset_cache: dict[str, Optional[bytes]] = {}
 
 
@@ -323,6 +327,11 @@ class Database:
         pcols = {r["name"] for r in self._conn.execute("PRAGMA table_info(purchases)").fetchall()}
         if "product" not in pcols:
             self._conn.execute("ALTER TABLE purchases ADD COLUMN product TEXT NOT NULL DEFAULT 'ai'")
+            self._conn.commit()
+        # Buzzer skins: the pack unlock + the chosen skin (NULL = default red).
+        if "buzzer_skins" not in cols:
+            self._conn.execute("ALTER TABLE users ADD COLUMN buzzer_skins INTEGER NOT NULL DEFAULT 0")
+            self._conn.execute("ALTER TABLE users ADD COLUMN buzzer_skin TEXT")
             self._conn.commit()
         # Preset artwork changed (v9 = the v8 body-width algorithm plus hand-tuned
         # per-avatar overrides, from per-avatar user feedback: av02 less zoom so
@@ -409,7 +418,7 @@ class Database:
         with self._lock:
             rows = self._q(
                 "SELECT id, name, email, color, avatar_ver, avatar IS NOT NULL AS has_avatar, "
-                "avatar_preset, ai_unlocked, premium_avatars, title, lenient_spelling, created_at "
+                "avatar_preset, ai_unlocked, premium_avatars, buzzer_skins, buzzer_skin, title, lenient_spelling, created_at "
                 "FROM users WHERE id=?",
                 (user_id,),
             )
@@ -1269,13 +1278,31 @@ class Database:
             rows = self._q("SELECT premium_avatars FROM users WHERE id=?", (user_id,))
         return bool(rows and rows[0]["premium_avatars"])
 
+    def is_buzzers_unlocked(self, user_id: str) -> bool:
+        if not user_id:
+            return False
+        with self._lock:
+            rows = self._q("SELECT buzzer_skins FROM users WHERE id=?", (user_id,))
+        return bool(rows and rows[0]["buzzer_skins"])
+
+    def set_buzzer_skin(self, user_id: str, skin: Optional[str]) -> bool:
+        """Pick a buzzer skin (must own the pack), or None to go back to the
+        default red buzzer (always allowed)."""
+        if not skin:
+            self._exec("UPDATE users SET buzzer_skin=NULL WHERE id=?", (user_id,))
+            return True
+        if skin not in BUZZER_SKIN_IDS or not self.is_buzzers_unlocked(user_id):
+            return False
+        self._exec("UPDATE users SET buzzer_skin=? WHERE id=?", (skin, user_id))
+        return True
+
     def _new_ai_code(self) -> str:
         # Human-friendly, unambiguous alphabet (no O/0/I/1), grouped for reading.
         alpha = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
         return "-".join("".join(secrets.choice(alpha) for _ in range(4)) for _ in range(3))
 
     # Which users column a product unlocks.
-    _PRODUCT_COL = {"ai": "ai_unlocked", "avatars": "premium_avatars"}
+    _PRODUCT_COL = {"ai": "ai_unlocked", "avatars": "premium_avatars", "buzzers": "buzzer_skins"}
 
     def create_ai_code(self, source: str = "admin", product: str = "ai") -> str:
         """Mint a fresh unlock code for `product`, store only its hash, return
@@ -1296,14 +1323,14 @@ class Database:
 
     def redeem_ai_code(self, user_id: str, code: str) -> str:
         """Redeem an unlock code for this account. The code carries which product
-        it unlocks (ai | avatars). Returns:
+        it unlocks (ai | avatars | buzzers). Returns:
         'ok' | 'already' (account already had this product) | 'used' | 'invalid'."""
         code = (code or "").strip().upper().replace(" ", "")
         if not code or not user_id:
             return "invalid"
         h = _hash(code)
         with self._lock:  # non-reentrant lock: query inline, never call get_user()
-            urows = self._q("SELECT ai_unlocked, premium_avatars FROM users WHERE id=?", (user_id,))
+            urows = self._q("SELECT ai_unlocked, premium_avatars, buzzer_skins FROM users WHERE id=?", (user_id,))
             if not urows:
                 return "invalid"
             rows = self._q("SELECT redeemed_by, product FROM ai_codes WHERE code_hash=?", (h,))

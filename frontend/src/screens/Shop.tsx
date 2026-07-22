@@ -2,10 +2,11 @@
 // unlocked per account (never admin), tied to your profile:
 //   1. the AI referee for your own rooms
 //   2. the premium avatar pack (av19..av36)
+//   3. the buzzer-skin pack (bz01..bz05, more skins coming)
 // Two ways to unlock either: pay with PayPal, or redeem a code the owner handed
 // out (the code carries which product it unlocks). A profile is required.
 import { useEffect, useState } from "react";
-import { ArrowLeft, Bot, Check, ShoppingCart, Sparkles, Ticket } from "lucide-react";
+import { ArrowLeft, Bot, Check, CircleDot, ShoppingCart, Sparkles, Ticket } from "lucide-react";
 import { Screen, Card } from "../components/Layout";
 import { Button } from "../components/Button";
 import { MusicToggle } from "../components/MusicToggle";
@@ -16,12 +17,15 @@ import { colors, font, withAlpha } from "../theme/tokens";
 // Preview thumbnails for the premium pack (first six of av19..av36).
 const AVATAR_PREVIEW = [19, 20, 24, 27, 28, 34].map((n) => `av${n}`);
 const AVATAR_ART_VERSION = 9;
+// Preview thumbnails for the buzzer-skin pack.
+const BUZZER_PREVIEW = ["bz01", "bz02", "bz03", "bz04", "bz05"];
 
 interface ShopStatus {
   enabled: boolean;
   currency: string;
   ai_price?: string;
   avatars_price?: string;
+  buzzers_price?: string;
   price?: string; // legacy (= ai_price)
 }
 
@@ -36,9 +40,10 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
   const account = game.state.account;
   const aiActive = !!account?.ai_unlocked || !!game.state.room?.ai_referee || !!game.state.adminAi?.enabled;
   const avatarsOwned = !!account?.premium_avatars;
+  const buzzersOwned = !!account?.buzzer_skins;
   const [status, setStatus] = useState<ShopStatus | null>(null);
   const [code, setCode] = useState("");
-  const [buying, setBuying] = useState<"ai" | "avatars" | null>(null);
+  const [buying, setBuying] = useState<"ai" | "avatars" | "buzzers" | null>(null);
   const shopResult = game.state.shopResult;
 
   useEffect(() => {
@@ -55,7 +60,7 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
   // Clear a stale redeem result when leaving the screen.
   useEffect(() => () => game.clearShopResult(), []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const startPaypal = async (product: "ai" | "avatars") => {
+  const startPaypal = async (product: "ai" | "avatars" | "buzzers") => {
     setBuying(product);
     try {
       const token = localStorage.getItem("penneer.accountToken") || "";
@@ -93,7 +98,7 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
     : null;
 
   // The redeem box is useful as long as at least one product is still locked.
-  const showRedeem = !!account && (!aiActive || !avatarsOwned);
+  const showRedeem = !!account && (!aiActive || !avatarsOwned || !buzzersOwned);
 
   return (
     <Screen
@@ -181,6 +186,46 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
           ) : status?.enabled ? (
             <Button variant="gold" full disabled={buying !== null} onClick={() => startPaypal("avatars")}>
               {buying === "avatars" ? t("shopOpeningPaypal") : `${t("shopBuyPaypal")} · ${money(status.avatars_price, status.currency)}`}
+            </Button>
+          ) : (
+            <div style={{ textAlign: "center", padding: "4px 0 2px", fontFamily: font.ui, fontSize: 12.5, color: colors.faint, lineHeight: 1.5 }}>{t("shopPaypalSoon")}</div>
+          )}
+        </Card>
+
+        {/* ---- Buzzer skins ---- */}
+        <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ width: 52, height: 52, borderRadius: 16, display: "grid", placeItems: "center", background: withAlpha(colors.red, 0.14), border: `1px solid ${withAlpha(colors.red, 0.45)}`, color: colors.red }}>
+              <CircleDot size={24} />
+            </span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>{t("shopBuzzTitle")}</div>
+              <div style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint }}>{t("shopBuzzTag")}</div>
+            </div>
+            {status?.enabled && !buzzersOwned && (
+              <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 18, color: colors.gold }}>{money(status.buzzers_price, status.currency)}</div>
+            )}
+          </div>
+
+          {/* preview strip: the five skins */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 6 }}>
+            {BUZZER_PREVIEW.map((id) => (
+              <div key={id} style={{ aspectRatio: "1 / 1", display: "grid", placeItems: "center" }}>
+                <img src={`/buzzers/${id}.webp`} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
+              </div>
+            ))}
+          </div>
+
+          <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13.5, color: colors.sub, lineHeight: 1.55 }}>{t("shopBuzzBody")}</p>
+          <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, fontStyle: "italic", color: colors.gold }}>{t("shopBuzzMore")}</p>
+
+          {buzzersOwned ? (
+            <div style={{ textAlign: "center", padding: "6px 0 2px", fontFamily: font.ui, fontSize: 13.5, color: colors.green }}>{t("shopBuzzActive")}</div>
+          ) : !account ? (
+            <div style={{ textAlign: "center", padding: "6px 0 2px", fontFamily: font.ui, fontSize: 13, color: colors.faint, lineHeight: 1.5 }}>{t("shopNeedProfile")}</div>
+          ) : status?.enabled ? (
+            <Button variant="gold" full disabled={buying !== null} onClick={() => startPaypal("buzzers")}>
+              {buying === "buzzers" ? t("shopOpeningPaypal") : `${t("shopBuyPaypal")} · ${money(status.buzzers_price, status.currency)}`}
             </Button>
           ) : (
             <div style={{ textAlign: "center", padding: "4px 0 2px", fontFamily: font.ui, fontSize: 12.5, color: colors.faint, lineHeight: 1.5 }}>{t("shopPaypalSoon")}</div>

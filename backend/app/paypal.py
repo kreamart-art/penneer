@@ -52,6 +52,7 @@ def _secret() -> str:
 PRODUCTS = {
     "ai": {"env": "PENNEER_PRICE", "default": "3.99", "desc": "Pen Neer AI-scheidsrechter"},
     "avatars": {"env": "PENNEER_AVATARS_PRICE", "default": "2.99", "desc": "Pen Neer Premium avatars"},
+    "buzzers": {"env": "PENNEER_BUZZERS_PRICE", "default": "2.99", "desc": "Pen Neer knoppen-pack"},
 }
 
 
@@ -78,6 +79,7 @@ def status() -> dict:
         "price": price("ai"),  # kept for older clients
         "ai_price": price("ai"),
         "avatars_price": price("avatars"),
+        "buzzers_price": price("buzzers"),
         "currency": currency(),
         "env": _env(),
     }
