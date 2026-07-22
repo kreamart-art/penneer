@@ -131,6 +131,7 @@ class AccountManager:
                 "email": user.get("email"),
                 "avatar_preset": user.get("avatar_preset"),
                 "ai_unlocked": bool(user.get("ai_unlocked")),
+                "premium_avatars": bool(user.get("premium_avatars")),
                 "stats": stats,
                 "level": level,
                 "badges": badges,

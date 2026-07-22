@@ -426,7 +426,9 @@ async def shop_paypal_create(request: Request) -> JSONResponse:
         return JSONResponse({"error": "auth"}, status_code=401)
     if not paypal.configured():
         return JSONResponse({"error": "unavailable"}, status_code=503)
-    order = await paypal.create_order(uid)
+    body = await request.json() if request.headers.get("content-type", "").startswith("application/json") else {}
+    product = (body or {}).get("product") or "ai"
+    order = await paypal.create_order(uid, product)
     if not order:
         return JSONResponse({"error": "paypal"}, status_code=502)
     return JSONResponse(order)
@@ -468,18 +470,23 @@ async def shop_paypal_capture(request: Request) -> JSONResponse:
             return JSONResponse({"error": "pending"}, status_code=402)
         return JSONResponse({"error": "not_completed"}, status_code=402)
 
-    # Amount + currency must match what we sell — never trust the returned order
-    # blindly (defense against a tampered/foreign order id).
-    if (result.get("amount") != paypal.price()) or (result.get("currency") != paypal.currency()):
+    # custom_id is "uid|product" (older AI-only orders were just "uid").
+    custom = result.get("custom_id") or ""
+    buyer, _, product = custom.partition("|")
+    product = product or "ai"
+    if product not in ("ai", "avatars"):
+        product = "ai"
+
+    # Amount + currency must match what we sell for THIS product — never trust
+    # the returned order blindly (defense against a tampered/foreign order id).
+    if (result.get("amount") != paypal.price(product)) or (result.get("currency") != paypal.currency()):
         return JSONResponse({"error": "amount"}, status_code=402)
 
-    # The payer is whoever the order was created for (custom_id). Fall back to
-    # the authenticated caller only if PayPal dropped custom_id.
-    buyer = result.get("custom_id") or uid
-    if not db.get_user(buyer):
+    # Fall back to the authenticated caller only if PayPal dropped custom_id.
+    if not buyer or not db.get_user(buyer):
         buyer = uid
 
-    code = db.fulfil_purchase(order_id, buyer, paypal.price(), paypal.currency())
+    code = db.fulfil_purchase(order_id, buyer, paypal.price(product), paypal.currency(), product=product)
     if code is None:
         # Lost a race; the winning request already fulfilled it.
         return JSONResponse({"ok": True, "already": True})

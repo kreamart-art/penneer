@@ -1,7 +1,7 @@
 // Hub — profile, friends, inbox and leaderboard in one tabbed screen.
 // Reached from the Landing. A profile is optional: guests see the create form.
 import { Fragment, useEffect, useRef, useState } from "react";
-import { ArrowLeft, Award, Bell, Camera, Check, Copy, LogOut, MessageCircle, MoreVertical, Plus, Settings as SettingsIcon, Share2, Smile, Star, Swords, Trash2, Trophy, UserPlus, Users, X, ZoomIn, ZoomOut } from "lucide-react";
+import { ArrowLeft, Award, Bell, Camera, Check, Copy, Lock, LogOut, MessageCircle, MoreVertical, Plus, Settings as SettingsIcon, Share2, ShoppingCart, Smile, Sparkles, Star, Swords, Trash2, Trophy, UserPlus, Users, X, ZoomIn, ZoomOut } from "lucide-react";
 import { Avatar, RANK_RING } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { MicButton } from "../components/MicButton";
@@ -31,11 +31,13 @@ type Tab = "profile" | "friends" | "inbox" | "leaderboard";
 
 // Built-in illustrated avatars, mirrored server-side (backend/app/avatars).
 const AVATAR_PRESETS = Array.from({ length: 18 }, (_, i) => `av${String(i + 1).padStart(2, "0")}`);
+// Premium pack (av19..av36), shown locked in the picker until bought in the shop.
+const PREMIUM_AVATAR_PRESETS = Array.from({ length: 18 }, (_, i) => `av${String(i + 19).padStart(2, "0")}`);
 // Bump whenever the preset artwork changes (matches db.PRESET_ART_VERSION) so the
 // picker's static images cache-bust instead of serving the stale ones.
 const AVATAR_ART_VERSION = 9;
 
-export function Hub({ game, onBack, onChallenge }: { game: GameApi; onBack: () => void; onChallenge: (userId: string) => void }) {
+export function Hub({ game, onBack, onShowShop, onChallenge }: { game: GameApi; onBack: () => void; onShowShop: () => void; onChallenge: (userId: string) => void }) {
   const { t } = useT();
   const [tab, setTab] = useState<Tab>("profile");
   const account = game.state.account;
@@ -108,7 +110,7 @@ export function Hub({ game, onBack, onChallenge }: { game: GameApi; onBack: () =
           ))}
         </div>
 
-        {tab === "profile" && <ProfileTab game={game} />}
+        {tab === "profile" && <ProfileTab game={game} onShowShop={onShowShop} />}
         {tab === "friends" && <FriendsTab game={game} onChallenge={onChallenge} />}
         {tab === "inbox" && <InboxTab game={game} />}
         {tab === "leaderboard" && <LeaderboardTab game={game} />}
@@ -348,7 +350,7 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
 
 // ---- Profiel ----------------------------------------------------------------
 
-function ProfileTab({ game }: { game: GameApi }) {
+function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => void }) {
   const { t } = useT();
   const account = game.state.account;
   const [name, setName] = useState(account?.name ?? "");
@@ -436,8 +438,10 @@ function ProfileTab({ game }: { game: GameApi }) {
     return (
       <AvatarPickerScreen
         current={account.avatar_preset}
+        premiumOwned={!!account.premium_avatars}
         busy={busy}
         onBack={() => setAvatarPickerOpen(false)}
+        onShowShop={onShowShop}
         onPick={async (id) => {
           await pickPreset(id);
           setAvatarPickerOpen(false);
@@ -837,15 +841,73 @@ function ClubScreen({ game, onBack }: { game: GameApi; onBack: () => void }) {
 }
 
 // Avatar picker — its own page so the profile tab stays short.
-function AvatarPickerScreen({
+function AvatarGrid({
+  ids,
   current,
   busy,
+  locked,
+  onPick,
+}: {
+  ids: string[];
+  current: string | null;
+  busy: boolean;
+  locked?: boolean;
+  onPick: (id: string) => void;
+}) {
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+      {ids.map((id) => {
+        const active = current === id;
+        return (
+          <button
+            key={id}
+            onClick={() => onPick(id)}
+            disabled={busy}
+            aria-label={id}
+            style={{
+              position: "relative",
+              padding: 0,
+              border: `2px solid ${active ? colors.gold : "transparent"}`,
+              borderRadius: 16,
+              overflow: "hidden",
+              cursor: "pointer",
+              aspectRatio: "1 / 1",
+              background: "transparent",
+              opacity: busy ? 0.6 : 1,
+              boxShadow: active ? `0 0 12px ${withAlpha(colors.gold, 0.55)}` : "none",
+            }}
+          >
+            <img
+              src={`/avatars/${id}.jpg?v=${AVATAR_ART_VERSION}`}
+              alt={id}
+              loading="lazy"
+              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", filter: locked ? "grayscale(0.7) brightness(0.62)" : "none" }}
+            />
+            {locked && (
+              <span style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", color: "#fff" }}>
+                <Lock size={18} style={{ filter: "drop-shadow(0 1px 3px rgba(0,0,0,.7))" }} />
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function AvatarPickerScreen({
+  current,
+  premiumOwned,
+  busy,
   onBack,
+  onShowShop,
   onPick,
 }: {
   current: string | null;
+  premiumOwned: boolean;
   busy: boolean;
   onBack: () => void;
+  onShowShop: () => void;
   onPick: (id: string) => void;
 }) {
   const { t } = useT();
@@ -858,32 +920,32 @@ function AvatarPickerScreen({
         <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink }}>{t("chooseAvatarTitle")}</span>
       </div>
       <Card>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
-          {AVATAR_PRESETS.map((id) => {
-            const active = current === id;
-            return (
-              <button
-                key={id}
-                onClick={() => onPick(id)}
-                disabled={busy}
-                aria-label={id}
-                style={{
-                  padding: 0,
-                  border: `2px solid ${active ? colors.gold : "transparent"}`,
-                  borderRadius: 16,
-                  overflow: "hidden",
-                  cursor: "pointer",
-                  aspectRatio: "1 / 1",
-                  background: "transparent",
-                  opacity: busy ? 0.6 : 1,
-                  boxShadow: active ? `0 0 12px ${withAlpha(colors.gold, 0.55)}` : "none",
-                }}
-              >
-                <img src={`/avatars/${id}.jpg?v=${AVATAR_ART_VERSION}`} alt={id} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-              </button>
-            );
-          })}
+        <AvatarGrid ids={AVATAR_PRESETS} current={current} busy={busy} onPick={onPick} />
+      </Card>
+
+      {/* Premium pack: unlocked -> pickable; locked -> greyed with a shop nudge. */}
+      <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <Sparkles size={15} color={colors.violet} />
+          <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", color: colors.faint }}>{t("pickerPremiumLabel")}</span>
         </div>
+        <AvatarGrid
+          ids={PREMIUM_AVATAR_PRESETS}
+          current={current}
+          busy={busy}
+          locked={!premiumOwned}
+          onPick={(id) => (premiumOwned ? onPick(id) : onShowShop())}
+        />
+        {!premiumOwned && (
+          <>
+            <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.faint, lineHeight: 1.5 }}>{t("pickerPremiumLocked")}</p>
+            <Button variant="gold" full onClick={onShowShop}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                <ShoppingCart size={16} /> {t("pickerToShop")}
+              </span>
+            </Button>
+          </>
+        )}
       </Card>
     </>
   );

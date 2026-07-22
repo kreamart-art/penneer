@@ -76,6 +76,7 @@ export interface Account {
   email: string | null;
   avatar_preset: string | null; // chosen preset id (null = custom photo)
   ai_unlocked: boolean; // bought the AI referee for this account
+  premium_avatars: boolean; // bought the premium avatar pack (av19..av36)
   stats: AccountStats;
   level: LevelInfo;
   badges: Badge[];
@@ -258,7 +259,8 @@ export interface ClientState {
   isAdmin: boolean;
   adminAi: AdminAi | null;
   recoveryCodes: RecoveryCode[];
-  aiCodes: AiCodeInfo | null; // shop unlock-code stats + freshly generated codes
+  aiCodes: AiCodeInfo | null; // AI-referee unlock-code stats + freshly generated codes
+  avatarCodes: AiCodeInfo | null; // premium-avatar unlock-code stats
   // Shop: result of the last code redeem (null until one happens).
   shopResult: ShopResult | null;
   // In-room chat (so players can ask what a word means without leaving).
@@ -329,7 +331,7 @@ type ServerMessage =
   | { type: "results"; round_no: number; answers: RoundView["answers"]; points: RoundView["points"]; scores: Record<string, number> }
   | { type: "results_updated"; points: RoundView["points"]; scores: Record<string, number>; answers: RoundView["answers"] }
   | { type: "game_over"; scores: Record<string, number>; winner_id: string | null }
-  | { type: "admin_ok"; is_admin: boolean; ai: AdminAi; recovery_codes: RecoveryCode[]; ai_codes: AiCodeInfo }
+  | { type: "admin_ok"; is_admin: boolean; ai: AdminAi; recovery_codes: RecoveryCode[]; ai_codes: AiCodeInfo; avatar_codes?: AiCodeInfo }
   | { type: "shop_result"; ok: boolean; reason: string }
   | { type: "chat"; message: ChatMessage }
   | { type: "chat_history"; messages: ChatMessage[] }
@@ -418,6 +420,7 @@ const initialState: ClientState = {
   adminAi: null,
   recoveryCodes: [],
   aiCodes: null,
+  avatarCodes: null,
   shopResult: null,
   chat: [],
   chatSeen: 0,
@@ -458,13 +461,14 @@ function reducer(state: ClientState, action: Action): ClientState {
       adminAi: state.adminAi,
       recoveryCodes: state.recoveryCodes,
       aiCodes: state.aiCodes,
+      avatarCodes: state.avatarCodes,
     };
   }
   if (action.type === "clearError") {
     return { ...state, error: null };
   }
   if (action.type === "adminLogout") {
-    return { ...state, isAdmin: false, adminAi: null, recoveryCodes: [], aiCodes: null };
+    return { ...state, isAdmin: false, adminAi: null, recoveryCodes: [], aiCodes: null, avatarCodes: null };
   }
   if (action.type === "clearShopResult") {
     return { ...state, shopResult: null };
@@ -528,7 +532,7 @@ function reducer(state: ClientState, action: Action): ClientState {
     case "game_over":
       return state; // room_state carries the authoritative snapshot
     case "admin_ok":
-      return { ...state, isAdmin: msg.is_admin, adminAi: msg.ai, recoveryCodes: msg.recovery_codes, aiCodes: msg.ai_codes };
+      return { ...state, isAdmin: msg.is_admin, adminAi: msg.ai, recoveryCodes: msg.recovery_codes, aiCodes: msg.ai_codes, avatarCodes: msg.avatar_codes ?? state.avatarCodes };
     case "shop_result":
       return { ...state, shopResult: { ok: msg.ok, reason: msg.reason } };
     case "account": {
@@ -663,6 +667,7 @@ export interface GameApi {
   adminLogout: () => void;
   adminSetAi: (enabled: boolean) => void;
   adminGenAiCodes: (count: number) => void;
+  adminGenAvatarCodes: (count: number) => void;
   redeemAiCode: (code: string) => void;
   clearShopResult: () => void;
   sendChat: (text: string, voice?: { id: string; dur: number }) => void;
@@ -862,6 +867,7 @@ export function useGame(): GameApi {
     },
     adminSetAi: (enabled) => send({ type: "admin_set_ai", enabled }),
     adminGenAiCodes: (count) => send({ type: "admin_gen_ai_codes", count }),
+    adminGenAvatarCodes: (count) => send({ type: "admin_gen_ai_codes", count, product: "avatars" }),
     redeemAiCode: (code) => {
       const c = code.trim();
       if (c) send({ type: "shop_redeem", code: c });

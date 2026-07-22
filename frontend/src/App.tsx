@@ -276,6 +276,10 @@ export default function App() {
       <Hub
         game={game}
         onBack={() => setShowHub(false)}
+        onShowShop={() => {
+          setShowHub(false);
+          setShowShop(true);
+        }}
         onChallenge={(userId) => {
           pendingChallenge.current = userId;
           game.createRoom(game.state.account?.name ?? "Speler");

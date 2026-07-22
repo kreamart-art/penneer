@@ -1,9 +1,11 @@
-// Shop — reached via the cart icon on the Landing. Sells ONE thing: the AI
-// referee for your own rooms, unlocked per account (never admin). Two ways to
-// unlock: pay with PayPal, or redeem a code the owner handed out. The unlock is
-// tied to your profile, so a profile is required.
+// Shop — reached via the cart icon on the Landing. Sells two things, each
+// unlocked per account (never admin), tied to your profile:
+//   1. the AI referee for your own rooms
+//   2. the premium avatar pack (av19..av36)
+// Two ways to unlock either: pay with PayPal, or redeem a code the owner handed
+// out (the code carries which product it unlocks). A profile is required.
 import { useEffect, useState } from "react";
-import { ArrowLeft, Bot, Check, ShoppingCart, Ticket } from "lucide-react";
+import { ArrowLeft, Bot, Check, ShoppingCart, Sparkles, Ticket } from "lucide-react";
 import { Screen, Card } from "../components/Layout";
 import { Button } from "../components/Button";
 import { MusicToggle } from "../components/MusicToggle";
@@ -11,25 +13,32 @@ import type { GameApi } from "../net/socket";
 import { useT } from "../i18n/i18n";
 import { colors, font, withAlpha } from "../theme/tokens";
 
+// Preview thumbnails for the premium pack (first six of av19..av36).
+const AVATAR_PREVIEW = [19, 20, 24, 27, 28, 34].map((n) => `av${n}`);
+const AVATAR_ART_VERSION = 9;
+
 interface ShopStatus {
   enabled: boolean;
-  price: string;
   currency: string;
+  ai_price?: string;
+  avatars_price?: string;
+  price?: string; // legacy (= ai_price)
 }
 
-function priceLabel(s: ShopStatus | null): string {
-  if (!s) return "";
-  const sym = s.currency === "EUR" ? "€" : s.currency === "USD" ? "$" : s.currency + " ";
-  return `${sym}${s.price.replace(".", ",")}`;
+function money(value: string | undefined, currency: string): string {
+  if (!value) return "";
+  const sym = currency === "EUR" ? "€" : currency === "USD" ? "$" : currency + " ";
+  return `${sym}${value.replace(".", ",")}`;
 }
 
 export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
   const { t } = useT();
   const account = game.state.account;
   const aiActive = !!account?.ai_unlocked || !!game.state.room?.ai_referee || !!game.state.adminAi?.enabled;
+  const avatarsOwned = !!account?.premium_avatars;
   const [status, setStatus] = useState<ShopStatus | null>(null);
   const [code, setCode] = useState("");
-  const [buying, setBuying] = useState(false);
+  const [buying, setBuying] = useState<"ai" | "avatars" | null>(null);
   const shopResult = game.state.shopResult;
 
   useEffect(() => {
@@ -46,13 +55,14 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
   // Clear a stale redeem result when leaving the screen.
   useEffect(() => () => game.clearShopResult(), []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const startPaypal = async () => {
-    setBuying(true);
+  const startPaypal = async (product: "ai" | "avatars") => {
+    setBuying(product);
     try {
       const token = localStorage.getItem("penneer.accountToken") || "";
       const res = await fetch("/api/shop/paypal/create", {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ product }),
       });
       const data = await res.json();
       if (res.ok && data.approve_url) {
@@ -62,7 +72,7 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
     } catch {
       /* fall through to re-enable the button */
     }
-    setBuying(false);
+    setBuying(null);
   };
 
   const redeem = () => {
@@ -74,13 +84,16 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
     ? shopResult.ok
       ? shopResult.reason === "already"
         ? t("shopAlready")
-        : t("shopRedeemOk")
+        : t("shopRedeemDone")
       : shopResult.reason === "used"
         ? t("shopCodeUsed")
         : shopResult.reason === "auth"
           ? t("shopNeedProfile")
           : t("shopCodeInvalid")
     : null;
+
+  // The redeem box is useful as long as at least one product is still locked.
+  const showRedeem = !!account && (!aiActive || !avatarsOwned);
 
   return (
     <Screen
@@ -99,6 +112,7 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
       }
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        {/* ---- AI referee ---- */}
         <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <span style={{ width: 52, height: 52, borderRadius: 16, display: "grid", placeItems: "center", background: withAlpha(colors.gold, 0.14), border: `1px solid ${withAlpha(colors.gold, 0.45)}`, color: colors.gold }}>
@@ -109,7 +123,7 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
               <div style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint }}>{t("shopAiTag")}</div>
             </div>
             {status?.enabled && !aiActive && (
-              <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 18, color: colors.gold }}>{priceLabel(status)}</div>
+              <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 18, color: colors.gold }}>{money(status.ai_price ?? status.price, status.currency)}</div>
             )}
           </div>
           <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13.5, color: colors.sub, lineHeight: 1.55 }}>{t("shopAiBody")}</p>
@@ -122,26 +136,59 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
           </div>
 
           {aiActive ? (
-            <div style={{ textAlign: "center", padding: "10px 0 2px", fontFamily: font.ui, fontSize: 13.5, color: colors.green }}>
-              {t("shopAiActive")}
-            </div>
+            <div style={{ textAlign: "center", padding: "10px 0 2px", fontFamily: font.ui, fontSize: 13.5, color: colors.green }}>{t("shopAiActive")}</div>
           ) : !account ? (
-            <div style={{ textAlign: "center", padding: "8px 0 2px", fontFamily: font.ui, fontSize: 13, color: colors.faint, lineHeight: 1.5 }}>
-              {t("shopNeedProfile")}
-            </div>
+            <div style={{ textAlign: "center", padding: "8px 0 2px", fontFamily: font.ui, fontSize: 13, color: colors.faint, lineHeight: 1.5 }}>{t("shopNeedProfile")}</div>
           ) : status?.enabled ? (
-            <Button variant="gold" full disabled={buying} onClick={startPaypal}>
-              {buying ? t("shopOpeningPaypal") : `${t("shopBuyPaypal")} · ${priceLabel(status)}`}
+            <Button variant="gold" full disabled={buying !== null} onClick={() => startPaypal("ai")}>
+              {buying === "ai" ? t("shopOpeningPaypal") : `${t("shopBuyPaypal")} · ${money(status.ai_price ?? status.price, status.currency)}`}
             </Button>
           ) : (
-            <div style={{ textAlign: "center", padding: "6px 0 2px", fontFamily: font.ui, fontSize: 12.5, color: colors.faint, lineHeight: 1.5 }}>
-              {t("shopPaypalSoon")}
-            </div>
+            <div style={{ textAlign: "center", padding: "6px 0 2px", fontFamily: font.ui, fontSize: 12.5, color: colors.faint, lineHeight: 1.5 }}>{t("shopPaypalSoon")}</div>
           )}
         </Card>
 
-        {/* Redeem a code — always available to a logged-in account. */}
-        {account && !aiActive && (
+        {/* ---- Premium avatars ---- */}
+        <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ width: 52, height: 52, borderRadius: 16, display: "grid", placeItems: "center", background: withAlpha(colors.violet, 0.16), border: `1px solid ${withAlpha(colors.violet, 0.5)}`, color: colors.violet }}>
+              <Sparkles size={24} />
+            </span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>{t("shopAvatarsTitle")}</div>
+              <div style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint }}>{t("shopAvatarsTag")}</div>
+            </div>
+            {status?.enabled && !avatarsOwned && (
+              <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 18, color: colors.gold }}>{money(status.avatars_price, status.currency)}</div>
+            )}
+          </div>
+
+          {/* preview strip */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 6 }}>
+            {AVATAR_PREVIEW.map((id) => (
+              <div key={id} style={{ aspectRatio: "1 / 1", borderRadius: 10, overflow: "hidden", border: `1px solid ${colors.panelBorder}` }}>
+                <img src={`/avatars/${id}.jpg?v=${AVATAR_ART_VERSION}`} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+              </div>
+            ))}
+          </div>
+
+          <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13.5, color: colors.sub, lineHeight: 1.55 }}>{t("shopAvatarsBody")}</p>
+
+          {avatarsOwned ? (
+            <div style={{ textAlign: "center", padding: "6px 0 2px", fontFamily: font.ui, fontSize: 13.5, color: colors.green }}>{t("shopAvatarsActive")}</div>
+          ) : !account ? (
+            <div style={{ textAlign: "center", padding: "6px 0 2px", fontFamily: font.ui, fontSize: 13, color: colors.faint, lineHeight: 1.5 }}>{t("shopNeedProfile")}</div>
+          ) : status?.enabled ? (
+            <Button variant="gold" full disabled={buying !== null} onClick={() => startPaypal("avatars")}>
+              {buying === "avatars" ? t("shopOpeningPaypal") : `${t("shopBuyPaypal")} · ${money(status.avatars_price, status.currency)}`}
+            </Button>
+          ) : (
+            <div style={{ textAlign: "center", padding: "4px 0 2px", fontFamily: font.ui, fontSize: 12.5, color: colors.faint, lineHeight: 1.5 }}>{t("shopPaypalSoon")}</div>
+          )}
+        </Card>
+
+        {/* Redeem a code — works for either product (the code carries which). */}
+        {showRedeem && (
           <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontFamily: font.ui, fontSize: 13, fontWeight: 600, letterSpacing: 0.4, textTransform: "uppercase", color: colors.faint }}>
               <Ticket size={15} /> {t("shopHaveCode")}
@@ -154,9 +201,7 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
                 onKeyDown={(e) => { if (e.key === "Enter" && code.trim()) redeem(); }}
                 style={{ flex: 1, minWidth: 0, fontFamily: font.display, letterSpacing: 1.5, fontSize: 14, color: colors.ink, background: withAlpha("#000000", 0.25), border: `1.5px solid ${colors.panelBorder}`, borderRadius: 10, padding: "11px 12px", textTransform: "uppercase" }}
               />
-              <Button variant="primary" disabled={!code.trim()} onClick={redeem}>
-                {t("shopRedeem")}
-              </Button>
+              <Button variant="primary" disabled={!code.trim()} onClick={redeem}>{t("shopRedeem")}</Button>
             </div>
             {resultMsg && (
               <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13, color: shopResult?.ok ? colors.green : colors.red }}>{resultMsg}</p>

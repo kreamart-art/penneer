@@ -64,16 +64,19 @@ class RoomManager:
             codes.append(h[:10].upper())
         return codes
 
-    def _admin_payload(self, is_admin: bool, ai_codes: Optional[list[str]] = None) -> dict:
+    def _admin_payload(self, is_admin: bool, ai_codes: Optional[list[str]] = None,
+                       avatar_codes: Optional[list[str]] = None) -> dict:
         codes = self._recovery_codes()
+        db = get_db()
         return {
             "type": "admin_ok",
             "is_admin": is_admin,
             "ai": {**ai_referee.status(), "enabled": self.ai_enabled},
             "recovery_codes": [{"code": c, "used": c in self.used_recovery} for c in codes],
-            # Shop unlock codes: aggregate stats always; the plain codes only when
-            # freshly generated (they are never recoverable after this reply).
-            "ai_codes": {**get_db().ai_code_stats(), "new": ai_codes or []},
+            # Shop unlock codes per product: aggregate stats always; the plain
+            # codes only when freshly generated (never recoverable after this).
+            "ai_codes": {**db.ai_code_stats("ai"), "new": ai_codes or []},
+            "avatar_codes": {**db.ai_code_stats("avatars"), "new": avatar_codes or []},
         }
 
     def _is_admin_conn(self, ws: Any) -> bool:
@@ -131,9 +134,15 @@ class RoomManager:
         except (TypeError, ValueError):
             count = 1
         count = max(1, min(count, 20))
-        codes = [get_db().create_ai_code("admin") for _ in range(count)]
+        product = payload.get("product") or "ai"
+        if product not in ("ai", "avatars"):
+            product = "ai"
+        codes = [get_db().create_ai_code("admin", product) for _ in range(count)]
         try:
-            await ws.send_json(self._admin_payload(True, ai_codes=codes))
+            if product == "avatars":
+                await ws.send_json(self._admin_payload(True, avatar_codes=codes))
+            else:
+                await ws.send_json(self._admin_payload(True, ai_codes=codes))
         except Exception:
             pass
 

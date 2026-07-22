@@ -48,12 +48,20 @@ def _secret() -> str:
     return (os.environ.get("PAYPAL_SECRET") or "").strip()
 
 
-def price() -> str:
+# The shop's products: what each sells + its price env + default + description.
+PRODUCTS = {
+    "ai": {"env": "PENNEER_PRICE", "default": "3.99", "desc": "Pen Neer AI-scheidsrechter"},
+    "avatars": {"env": "PENNEER_AVATARS_PRICE", "default": "2.99", "desc": "Pen Neer Premium avatars"},
+}
+
+
+def price(product: str = "ai") -> str:
     # PayPal wants a fixed 2-decimal string.
+    p = PRODUCTS.get(product, PRODUCTS["ai"])
     try:
-        return f"{float(os.environ.get('PENNEER_PRICE', '3.99')):.2f}"
+        return f"{float(os.environ.get(p['env'], p['default'])):.2f}"
     except ValueError:
-        return "3.99"
+        return p["default"]
 
 
 def currency() -> str:
@@ -67,7 +75,9 @@ def configured() -> bool:
 def status() -> dict:
     return {
         "enabled": configured(),
-        "price": price(),
+        "price": price("ai"),  # kept for older clients
+        "ai_price": price("ai"),
+        "avatars_price": price("avatars"),
         "currency": currency(),
         "env": _env(),
     }
@@ -84,24 +94,28 @@ async def _token(client) -> Optional[str]:
     return resp.json().get("access_token")
 
 
-async def create_order(user_id: str) -> Optional[dict]:
-    """Create an order for one AI-unlock tied to `user_id`. Returns
+async def create_order(user_id: str, product: str = "ai") -> Optional[dict]:
+    """Create an order for one `product` unlock tied to `user_id`. Returns
     {"order_id", "approve_url"} or None on any failure."""
     if not configured() or not user_id:
         return None
+    if product not in PRODUCTS:
+        product = "ai"
     try:
         import httpx
     except Exception:
         return None
     # PayPal redirects the buyer back to return_url with ?token=<order_id>
     # (and &PayerID=...) appended, so the SPA reads `paypal=return` + `token`.
+    # custom_id carries BOTH the buyer and the product ("uid|product") so the
+    # capture unlocks exactly the right thing for exactly the payer.
     body = {
         "intent": "CAPTURE",
         "purchase_units": [
             {
-                "custom_id": user_id,
-                "description": "Pen Neer AI-scheidsrechter",
-                "amount": {"currency_code": currency(), "value": price()},
+                "custom_id": f"{user_id}|{product}",
+                "description": PRODUCTS[product]["desc"],
+                "amount": {"currency_code": currency(), "value": price(product)},
             }
         ],
         "application_context": {

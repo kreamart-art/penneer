@@ -107,6 +107,7 @@ CREATE TABLE IF NOT EXISTS badges (
 CREATE TABLE IF NOT EXISTS ai_codes (
     code_hash TEXT PRIMARY KEY,
     source TEXT NOT NULL,              -- admin | paypal
+    product TEXT NOT NULL DEFAULT 'ai', -- ai | avatars (what the code unlocks)
     created_at REAL NOT NULL,
     redeemed_by TEXT REFERENCES users(id) ON DELETE SET NULL,
     redeemed_at REAL
@@ -116,6 +117,7 @@ CREATE TABLE IF NOT EXISTS ai_codes (
 CREATE TABLE IF NOT EXISTS purchases (
     order_id TEXT PRIMARY KEY,
     provider TEXT NOT NULL,
+    product TEXT NOT NULL DEFAULT 'ai', -- ai | avatars
     user_id TEXT,
     amount TEXT,
     currency TEXT,
@@ -235,11 +237,15 @@ import pathlib as _pathlib
 
 _AVATAR_DIR = _pathlib.Path(__file__).parent / "avatars"
 PRESET_IDS = [f"av{i:02d}" for i in range(1, 19)]
+# Premium pack (shop unlock, users.premium_avatars): av19..av36. Never part of
+# the free defaults; picking one requires the unlock (set_avatar_preset gates).
+PREMIUM_PRESET_IDS = [f"av{i:02d}" for i in range(19, 37)]
+ALL_PRESET_IDS = PRESET_IDS + PREMIUM_PRESET_IDS
 _preset_cache: dict[str, Optional[bytes]] = {}
 
 
 def preset_bytes(preset_id: str) -> Optional[bytes]:
-    if preset_id not in PRESET_IDS:
+    if preset_id not in ALL_PRESET_IDS:
         return None
     if preset_id not in _preset_cache:
         try:
@@ -303,6 +309,20 @@ class Database:
         # Chosen cosmetic title key (NULL -> show the auto rank label).
         if "title" not in cols:
             self._conn.execute("ALTER TABLE users ADD COLUMN title TEXT")
+            self._conn.commit()
+        # Premium avatar pack (av19..av36) bought in the shop.
+        if "premium_avatars" not in cols:
+            self._conn.execute("ALTER TABLE users ADD COLUMN premium_avatars INTEGER NOT NULL DEFAULT 0")
+            self._conn.commit()
+        # Shop is now multi-product: a code/order unlocks either 'ai' or
+        # 'avatars'. Old rows predate the pack, so they default to 'ai'.
+        accols = {r["name"] for r in self._conn.execute("PRAGMA table_info(ai_codes)").fetchall()}
+        if "product" not in accols:
+            self._conn.execute("ALTER TABLE ai_codes ADD COLUMN product TEXT NOT NULL DEFAULT 'ai'")
+            self._conn.commit()
+        pcols = {r["name"] for r in self._conn.execute("PRAGMA table_info(purchases)").fetchall()}
+        if "product" not in pcols:
+            self._conn.execute("ALTER TABLE purchases ADD COLUMN product TEXT NOT NULL DEFAULT 'ai'")
             self._conn.commit()
         # Preset artwork changed (v9 = the v8 body-width algorithm plus hand-tuned
         # per-avatar overrides, from per-avatar user feedback: av02 less zoom so
@@ -389,7 +409,7 @@ class Database:
         with self._lock:
             rows = self._q(
                 "SELECT id, name, email, color, avatar_ver, avatar IS NOT NULL AS has_avatar, "
-                "avatar_preset, ai_unlocked, title, lenient_spelling, created_at "
+                "avatar_preset, ai_unlocked, premium_avatars, title, lenient_spelling, created_at "
                 "FROM users WHERE id=?",
                 (user_id,),
             )
@@ -460,9 +480,12 @@ class Database:
         return True
 
     def set_avatar_preset(self, user_id: str, preset_id: str) -> bool:
-        """Store a built-in preset avatar as this account's photo."""
+        """Store a built-in preset avatar as this account's photo. Premium pack
+        presets (av19..av36) require the shop unlock; without it, refused."""
         data = preset_bytes(preset_id)
         if not data:
+            return False
+        if preset_id in PREMIUM_PRESET_IDS and not self.is_premium_avatars_unlocked(user_id):
             return False
         with self._lock:
             self._exec(
@@ -1239,13 +1262,25 @@ class Database:
             rows = self._q("SELECT ai_unlocked FROM users WHERE id=?", (user_id,))
         return bool(rows and rows[0]["ai_unlocked"])
 
+    def is_premium_avatars_unlocked(self, user_id: str) -> bool:
+        if not user_id:
+            return False
+        with self._lock:
+            rows = self._q("SELECT premium_avatars FROM users WHERE id=?", (user_id,))
+        return bool(rows and rows[0]["premium_avatars"])
+
     def _new_ai_code(self) -> str:
         # Human-friendly, unambiguous alphabet (no O/0/I/1), grouped for reading.
         alpha = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
         return "-".join("".join(secrets.choice(alpha) for _ in range(4)) for _ in range(3))
 
-    def create_ai_code(self, source: str = "admin") -> str:
-        """Mint a fresh unlock code, store only its hash, return the plain code."""
+    # Which users column a product unlocks.
+    _PRODUCT_COL = {"ai": "ai_unlocked", "avatars": "premium_avatars"}
+
+    def create_ai_code(self, source: str = "admin", product: str = "ai") -> str:
+        """Mint a fresh unlock code for `product`, store only its hash, return
+        the plain code."""
+        product = product if product in self._PRODUCT_COL else "ai"
         with self._lock:
             while True:
                 code = self._new_ai_code()
@@ -1254,40 +1289,46 @@ class Database:
                 if exists:
                     continue
                 self._exec(
-                    "INSERT INTO ai_codes (code_hash, source, created_at) VALUES (?,?,?)",
-                    (h, source if source in ("admin", "paypal") else "admin", time.time()),
+                    "INSERT INTO ai_codes (code_hash, source, product, created_at) VALUES (?,?,?,?)",
+                    (h, source if source in ("admin", "paypal") else "admin", product, time.time()),
                 )
                 return code
 
     def redeem_ai_code(self, user_id: str, code: str) -> str:
-        """Redeem an unlock code for this account. Returns:
-        'ok' | 'already' (account already had AI) | 'used' | 'invalid'."""
+        """Redeem an unlock code for this account. The code carries which product
+        it unlocks (ai | avatars). Returns:
+        'ok' | 'already' (account already had this product) | 'used' | 'invalid'."""
         code = (code or "").strip().upper().replace(" ", "")
         if not code or not user_id:
             return "invalid"
         h = _hash(code)
         with self._lock:  # non-reentrant lock: query inline, never call get_user()
-            urows = self._q("SELECT ai_unlocked FROM users WHERE id=?", (user_id,))
+            urows = self._q("SELECT ai_unlocked, premium_avatars FROM users WHERE id=?", (user_id,))
             if not urows:
                 return "invalid"
-            if urows[0]["ai_unlocked"]:
-                return "already"
-            rows = self._q("SELECT redeemed_by FROM ai_codes WHERE code_hash=?", (h,))
+            rows = self._q("SELECT redeemed_by, product FROM ai_codes WHERE code_hash=?", (h,))
             if not rows:
                 return "invalid"
+            product = rows[0]["product"] or "ai"
+            col = self._PRODUCT_COL.get(product, "ai_unlocked")
+            if urows[0][col]:
+                return "already"
             if rows[0]["redeemed_by"]:
                 return "used"
             self._exec(
                 "UPDATE ai_codes SET redeemed_by=?, redeemed_at=? WHERE code_hash=? AND redeemed_by IS NULL",
                 (user_id, time.time(), h),
             )
-            self._exec("UPDATE users SET ai_unlocked=1 WHERE id=?", (user_id,))
+            self._exec(f"UPDATE users SET {col}=1 WHERE id=?", (user_id,))
         return "ok"
 
-    def ai_code_stats(self) -> dict:
+    def ai_code_stats(self, product: str = "ai") -> dict:
+        product = product if product in self._PRODUCT_COL else "ai"
         with self._lock:
             rows = self._q(
-                "SELECT COUNT(*) AS total, COALESCE(SUM(redeemed_by IS NOT NULL),0) AS redeemed FROM ai_codes"
+                "SELECT COUNT(*) AS total, COALESCE(SUM(redeemed_by IS NOT NULL),0) AS redeemed "
+                "FROM ai_codes WHERE product=?",
+                (product,),
             )
         r = rows[0]
         return {"total": r["total"], "redeemed": r["redeemed"], "open": r["total"] - r["redeemed"]}
@@ -1307,30 +1348,33 @@ class Database:
         return rows[0]["code"] if rows else None
 
     def fulfil_purchase(
-        self, order_id: str, user_id: str, amount: str, currency: str, email: Optional[str] = None
+        self, order_id: str, user_id: str, amount: str, currency: str,
+        email: Optional[str] = None, product: str = "ai",
     ) -> Optional[str]:
-        """Record a captured PayPal order and unlock the buyer's AI, exactly once.
-        Returns the issued unlock code, or None if this order was already fulfilled
-        by a concurrent request (the caller should then read purchase_code())."""
+        """Record a captured PayPal order and unlock `product` for the buyer,
+        exactly once. Returns the issued unlock code, or None if this order was
+        already fulfilled by a concurrent request (caller reads purchase_code())."""
         if not order_id or not user_id:
             return None
+        product = product if product in self._PRODUCT_COL else "ai"
+        col = self._PRODUCT_COL[product]
         code = self._new_ai_code()
         now = time.time()
         with self._lock:
             # INSERT OR IGNORE on the order id is the idempotency gate: a replayed
             # capture hits the existing row and inserts nothing.
             cur = self._exec(
-                "INSERT OR IGNORE INTO purchases (order_id, provider, user_id, amount, currency, code, email, created_at) "
-                "VALUES (?,?,?,?,?,?,?,?)",
-                (order_id, "paypal", user_id, amount, currency, code, email, now),
+                "INSERT OR IGNORE INTO purchases (order_id, provider, product, user_id, amount, currency, code, email, created_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?)",
+                (order_id, "paypal", product, user_id, amount, currency, code, email, now),
             )
             if cur.rowcount == 0:
                 return None  # already fulfilled; caller reads purchase_code()
             self._exec(
-                "INSERT OR IGNORE INTO ai_codes (code_hash, source, created_at, redeemed_by, redeemed_at) VALUES (?,?,?,?,?)",
-                (_hash(code), "paypal", now, user_id, now),
+                "INSERT OR IGNORE INTO ai_codes (code_hash, source, product, created_at, redeemed_by, redeemed_at) VALUES (?,?,?,?,?,?)",
+                (_hash(code), "paypal", product, now, user_id, now),
             )
-            self._exec("UPDATE users SET ai_unlocked=1 WHERE id=?", (user_id,))
+            self._exec(f"UPDATE users SET {col}=1 WHERE id=?", (user_id,))
         return code
 
 
