@@ -35,9 +35,15 @@ body,
   margin: 0;
 }
 
+/* Solid base = the gradient's END colour. Any sliver the fixed layer might not
+   cover is #0e0922 on #0e0922, so a seam is physically impossible. */
+html {
+  background: #0e0922;
+}
+
 body {
   font-family: "Inter", system-ui, sans-serif;
-  background: #0e0922;
+  background: transparent;
   color: #f4efff;
   overscroll-behavior: none;
 }
@@ -52,41 +58,44 @@ body {
   overflow-x: clip;
 }
 
-/* Fixed full-screen background layer so the gradient fills the whole device,
-   including behind the iOS status bar and the home-indicator safe areas
-   (with viewport-fit=cover). The layer BLEEDS past every edge: on iPhone the
-   layout viewport can be shorter than the real screen (Safari toolbars,
-   standalone safe-areas), which left a visible seam where the gradient
-   stopped. Oversizing pushes any edge off-screen in every mode. */
+/* Fixed full-screen background gradient. `height: 100vh` is the iOS trick: on
+   iPhone `vh` is the TALLEST viewport (toolbars retracted), so the layer always
+   over-covers the visible area and the home-indicator safe area (with
+   viewport-fit=cover). The gradient reaches its end colour #0e0922 by 82% and
+   holds it, so the whole bottom is one flat colour (= the html base) with no
+   band. No negative offsets to guess at. */
 body::before {
   content: "";
   position: fixed;
-  top: -60px;
-  left: -40px;
-  right: -40px;
-  bottom: -180px;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100vh;
+  min-height: 100dvh;
   z-index: -1;
-  background: radial-gradient(120% 80% at 50% -8%, #41216f 0%, #1a1140 42%, #0e0922 100%);
+  background: radial-gradient(135% 95% at 50% -6%, #41216f 0%, #1a1140 46%, #0e0922 82%);
 }
 
 /* Premium finish on top of the gradient (still behind all content): soft ink
-   clouds in the corners, a whisper of paper grain, and a gentle vignette.
-   Static layers only, so this costs nothing per frame. */
+   clouds in the corners, a whisper of paper grain, and a gentle vignette. The
+   vignette is centred at 50% 50% and kept weak, so top and bottom darken
+   equally (no single band stands out at the bottom edge). */
 body::after {
   content: "";
   position: fixed;
-  top: -30px;
-  left: -20px;
-  right: -20px;
-  bottom: -180px;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100vh;
+  min-height: 100dvh;
   z-index: -1;
   pointer-events: none;
   background:
-    radial-gradient(60% 44% at -8% 106%, rgba(122, 103, 255, 0.11), transparent 70%),
-    radial-gradient(55% 40% at 108% 102%, rgba(255, 86, 74, 0.06), transparent 70%),
-    radial-gradient(50% 36% at 106% -6%, rgba(255, 194, 61, 0.05), transparent 70%),
+    radial-gradient(60% 44% at -8% 104%, rgba(122, 103, 255, 0.1), transparent 70%),
+    radial-gradient(55% 40% at 108% 100%, rgba(255, 86, 74, 0.055), transparent 70%),
+    radial-gradient(50% 36% at 106% -4%, rgba(255, 194, 61, 0.05), transparent 70%),
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
-    radial-gradient(120% 90% at 50% 40%, transparent 58%, rgba(6, 3, 18, 0.4) 100%);
+    radial-gradient(130% 100% at 50% 50%, transparent 62%, rgba(6, 3, 18, 0.26) 100%);
 }
 
 /* Inputs reset to the arcade look. */
