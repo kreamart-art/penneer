@@ -53,11 +53,14 @@ export interface DmMessage {
   to_user: string;
   text: string;
   created_at: number;
+  voice_id?: string | null;
+  voice_dur?: number;
 }
 
 export interface DmThreadSummary {
   partner: string;
   last_text: string;
+  last_voice?: boolean;
   last_from_me: boolean;
   last_at: number;
   unread: number;
@@ -238,6 +241,8 @@ export interface ChatMessage {
   color: string;
   text: string;
   ts: number;
+  voice_id?: string;
+  voice_dur?: number;
 }
 
 export interface ClientState {
@@ -562,6 +567,7 @@ function reducer(state: ClientState, action: Action): ClientState {
         return {
           ...t,
           last_text: m.text,
+          last_voice: !!m.voice_id,
           last_from_me: !incoming,
           last_at: m.created_at,
           unread: incoming && !openMatches ? t.unread + 1 : openMatches ? 0 : t.unread,
@@ -659,7 +665,7 @@ export interface GameApi {
   adminGenAiCodes: (count: number) => void;
   redeemAiCode: (code: string) => void;
   clearShopResult: () => void;
-  sendChat: (text: string) => void;
+  sendChat: (text: string, voice?: { id: string; dur: number }) => void;
   sendChatTyping: (typing: boolean) => void;
   openChat: () => void;
   closeChat: () => void;
@@ -675,7 +681,7 @@ export interface GameApi {
   searchUsers: (query: string) => void;
   viewProfile: (user_id: string) => void;
   historyGet: () => void;
-  dmSend: (user_id: string, text: string) => void;
+  dmSend: (user_id: string, text: string, voice?: { id: string; dur: number }) => void;
   dmOpen: (user_id: string) => void;
   dmClose: () => void;
   dmRefreshThreads: () => void;
@@ -861,9 +867,10 @@ export function useGame(): GameApi {
       if (c) send({ type: "shop_redeem", code: c });
     },
     clearShopResult: () => dispatch({ type: "clearShopResult" }),
-    sendChat: (text) => {
+    sendChat: (text, voice) => {
       const t = text.trim().slice(0, 280);
-      if (t) send({ type: "chat_send", text: t });
+      if (voice) send({ type: "chat_send", text: t, voice_id: voice.id, voice_dur: voice.dur });
+      else if (t) send({ type: "chat_send", text: t });
     },
     sendChatTyping: (typing) => send({ type: "chat_typing", typing }),
     openChat: () => dispatch({ type: "chatOpen", open: true }),
@@ -887,9 +894,10 @@ export function useGame(): GameApi {
     searchUsers: (query) => send({ type: "user_search", query }),
     viewProfile: (user_id) => send({ type: "profile_view", user_id }),
     historyGet: () => send({ type: "history_get" }),
-    dmSend: (user_id, text) => {
+    dmSend: (user_id, text, voice) => {
       const t = text.trim().slice(0, 500);
-      if (t) send({ type: "dm_send", user_id, text: t });
+      if (voice) send({ type: "dm_send", user_id, text: t, voice_id: voice.id, voice_dur: voice.dur });
+      else if (t) send({ type: "dm_send", user_id, text: t });
     },
     dmOpen: (user_id) => send({ type: "dm_thread", user_id }),
     dmClose: () => dispatch({ type: "dmClose" }),

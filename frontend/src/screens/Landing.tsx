@@ -7,6 +7,8 @@ import { Button } from "../components/Button";
 import { NotifyNudge } from "../components/NotifyNudge";
 import { MusicToggle } from "../components/MusicToggle";
 import { ProfilePrompt, profilePromptSeen } from "../components/ProfilePrompt";
+import { InstallPrompt, installPromptSeen, type InstallVariant } from "../components/InstallPrompt";
+import { canInstall, isIos, isIosChrome, isIosInAppBrowser, isStandalone, onInstallChange } from "../pwa/install";
 import { Screen, Card } from "../components/Layout";
 import type { GameApi } from "../net/socket";
 import { useT } from "../i18n/i18n";
@@ -58,6 +60,42 @@ export function Landing({
       return false;
     }
   });
+
+  // Install prompt: after the profile prompt is out of the way, first-time
+  // visitors who can actually install get one nudge (iPhone: the share-route
+  // steps; Android/desktop: the real install button). Dismiss once = never
+  // auto-shown again (Settings keeps the install path). ?installdemo=ios|
+  // chromeios|inapp|android previews a variant.
+  const [installVariant, setInstallVariant] = useState<InstallVariant | null>(() => {
+    try {
+      const demo = new URLSearchParams(window.location.search).get("installdemo");
+      if (demo === "ios" || demo === "chromeios" || demo === "inapp" || demo === "android") return demo;
+    } catch {
+      /* ignore */
+    }
+    return null;
+  });
+  useEffect(() => {
+    if (installVariant || showPrompt) return;
+    if (isStandalone() || installPromptSeen()) return;
+    const resolve = (): InstallVariant | null => {
+      if (isIosInAppBrowser()) return "inapp";
+      if (isIosChrome()) return "chromeios";
+      if (isIos()) return "ios";
+      if (canInstall()) return "android";
+      return null;
+    };
+    const id = setTimeout(() => setInstallVariant(resolve()), 900);
+    // beforeinstallprompt can fire after our timeout; catch late arrivals.
+    const off = onInstallChange(() => {
+      if (!installPromptSeen() && !isStandalone()) setInstallVariant((v) => v ?? resolve());
+    });
+    return () => {
+      clearTimeout(id);
+      off();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showPrompt]);
 
   // With a profile the server uses the account name; guests type one.
   const effectiveName = account ? account.name : name.trim();
@@ -249,10 +287,15 @@ export function Landing({
             <h1
               style={{
                 margin: 0,
-                fontFamily: font.display,
-                fontWeight: 700,
-                fontSize: 52,
-                letterSpacing: 2.5,
+                // Cybergame (the studio face, already italic-shaped) is only
+                // this wordmark; vw-clamped so it never clips small phones.
+                // Cybergame is a very condensed face: it needs a much larger
+                // px size than Space Grotesk did to span the same hero width.
+                fontFamily: "'Cybergame', 'Space Grotesk', sans-serif",
+                fontWeight: 400,
+                fontSize: "min(72px, 17.5vw)",
+                letterSpacing: "0.14em",
+                whiteSpace: "nowrap",
                 color: colors.ink,
                 textShadow: `0 0 44px ${withAlpha(colors.violet, 0.85)}, 0 0 16px ${withAlpha(colors.gold, 0.4)}, 0 2px 0 rgba(0,0,0,.28)`,
               }}
@@ -391,6 +434,7 @@ export function Landing({
       </div>
 
       {showPrompt && !account && <ProfilePrompt game={game} onClose={() => setShowPrompt(false)} />}
+      {installVariant && !showPrompt && <InstallPrompt variant={installVariant} onClose={() => setInstallVariant(null)} />}
       {showMissions && (
         <MissionsSheet
           missions={missions ?? []}

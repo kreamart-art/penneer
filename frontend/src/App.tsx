@@ -314,8 +314,10 @@ export default function App() {
             pointerEvents: "none",
           }}
         >
-          <div style={{ textAlign: "center", animation: "pen-splash 1.7s ease forwards" }}>
-            <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 44, letterSpacing: 1.5, color: "#FFC23D", textShadow: "0 0 34px rgba(255,194,61,.55)" }}>
+          <div style={{ textAlign: "center", animation: "pen-splash 1.7s ease forwards", padding: "0 12px" }}>
+            {/* Early GameBoy is a pixel font that draws small for its px size and
+                has no lowercase, so it runs bigger, uppercased, and vw-clamped. */}
+            <div style={{ fontFamily: "'Early GameBoy', 'Space Grotesk', sans-serif", fontWeight: 400, fontSize: "min(34px, 7.4vw)", letterSpacing: 1, lineHeight: 1.35, textTransform: "uppercase", color: "#FFC23D", textShadow: "0 0 34px rgba(255,194,61,.55), 0 3px 0 rgba(0,0,0,.35)" }}>
               {t("penDownSplash")}
             </div>
             <div style={{ marginTop: 6, fontFamily: "Inter, sans-serif", fontSize: 15, color: "#CFC6E8" }}>

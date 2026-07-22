@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import os
 import time
+import uuid
 from pathlib import Path
 
 from fastapi import FastAPI, Request, Response
@@ -17,7 +18,7 @@ from fastapi.staticfiles import StaticFiles
 
 from . import daily, game, missions, paypal, push
 from .db import AVATAR_MAX_BYTES, get_db
-from .ws import router as ws_router
+from .ws import manager, router as ws_router
 
 app = FastAPI(title="Pen Neer")
 
@@ -57,6 +58,67 @@ async def upload_avatar(request: Request) -> Response:
     if not db.set_avatar(uid, body, mime):
         return Response("Ongeldig beeldformaat.", status_code=400)
     return Response(status_code=204)
+
+
+# ---- voice memos (chat + DM). Uploaded over HTTP, referenced by id in the
+# chat/dm message; blobs never travel over the WebSocket. Playback GETs are
+# capability URLs (unguessable uuid ids), the same privacy model as avatars.
+VOICE_MAX_BYTES = 1_600_000  # ~60s of opus/aac comfortably
+VOICE_KEEP_PER_ROOM = 24
+
+
+@app.post("/api/voice/{code}")
+async def upload_room_voice(code: str, request: Request):
+    """A room member uploads a memo; returns the id to reference in chat_send."""
+    room = manager.rooms.get(code.upper())
+    player_id = request.query_params.get("player") or ""
+    if room is None or room.get_player(player_id) is None:
+        return Response(status_code=403)
+    mime = request.headers.get("content-type", "")
+    if not mime.startswith("audio/"):
+        return Response(status_code=400)
+    body = await request.body()
+    if not body or len(body) > VOICE_MAX_BYTES:
+        return Response("Opname is te groot.", status_code=413)
+    vid = uuid.uuid4().hex
+    room.voice[vid] = (mime, body)
+    while len(room.voice) > VOICE_KEEP_PER_ROOM:
+        room.voice.pop(next(iter(room.voice)))
+    return JSONResponse({"id": vid})
+
+
+@app.get("/api/voice/{code}/{vid}")
+async def get_room_voice(code: str, vid: str) -> Response:
+    room = manager.rooms.get(code.upper())
+    entry = room.voice.get(vid) if room else None
+    if entry is None:
+        return Response(status_code=404)
+    mime, body = entry
+    return Response(body, media_type=mime, headers={"Cache-Control": "private, max-age=3600"})
+
+
+@app.post("/api/dm/voice")
+async def upload_dm_voice(request: Request):
+    db = get_db()
+    uid = db.auth(_bearer(request))
+    if uid is None:
+        return Response(status_code=401)
+    mime = request.headers.get("content-type", "")
+    if not mime.startswith("audio/"):
+        return Response(status_code=400)
+    body = await request.body()
+    if not body or len(body) > VOICE_MAX_BYTES:
+        return Response("Opname is te groot.", status_code=413)
+    return JSONResponse({"id": db.dm_voice_store(uid, mime, body)})
+
+
+@app.get("/api/dm/voice/{vid}")
+async def get_dm_voice(vid: str) -> Response:
+    entry = get_db().dm_voice_get(vid)
+    if entry is None:
+        return Response(status_code=404)
+    mime, body = entry
+    return Response(body, media_type=mime, headers={"Cache-Control": "private, max-age=31536000, immutable"})
 
 
 @app.delete("/api/avatar")

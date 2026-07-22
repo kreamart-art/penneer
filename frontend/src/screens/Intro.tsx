@@ -54,10 +54,13 @@ export function Intro({ onDone }: { onDone: () => void }) {
       <h1
         style={{
           margin: 0,
-          fontFamily: font.display,
-          fontWeight: 700,
-          fontSize: 46,
-          letterSpacing: 2,
+          // Same wordmark face as the main page (Cybergame is condensed,
+          // hence the larger px size and wider tracking).
+          fontFamily: "'Cybergame', 'Space Grotesk', sans-serif",
+          fontWeight: 400,
+          fontSize: "min(62px, 15vw)",
+          letterSpacing: "0.14em",
+          whiteSpace: "nowrap",
           color: colors.ink,
           textShadow: `0 0 34px ${withAlpha(colors.violet, 0.8)}`,
           opacity: started ? 1 : 0,

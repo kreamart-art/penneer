@@ -141,6 +141,15 @@ CREATE TABLE IF NOT EXISTS dms (
     created_at REAL NOT NULL,
     read INTEGER NOT NULL DEFAULT 0
 );
+-- Voice memos sent in DMs (blob in the db, like avatars). Referenced from
+-- dms.voice_id; fetched via an unguessable capability URL.
+CREATE TABLE IF NOT EXISTS dm_voice (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    mime TEXT NOT NULL,
+    data BLOB NOT NULL,
+    created_at REAL NOT NULL
+);
 -- Tiny key-value store for server config that must survive restarts without
 -- env changes (e.g. auto-generated VAPID keys on the persistent volume).
 CREATE TABLE IF NOT EXISTS meta (
@@ -284,6 +293,12 @@ class Database:
         dcols = {r["name"] for r in self._conn.execute("PRAGMA table_info(daily_scores)").fetchall()}
         if dcols and "lenient" not in dcols:
             self._conn.execute("ALTER TABLE daily_scores ADD COLUMN lenient INTEGER NOT NULL DEFAULT 0")
+            self._conn.commit()
+        # Voice memos in DMs: reference + duration on the message row.
+        mcols = {r["name"] for r in self._conn.execute("PRAGMA table_info(dms)").fetchall()}
+        if mcols and "voice_id" not in mcols:
+            self._conn.execute("ALTER TABLE dms ADD COLUMN voice_id TEXT")
+            self._conn.execute("ALTER TABLE dms ADD COLUMN voice_dur INTEGER NOT NULL DEFAULT 0")
             self._conn.commit()
         # Chosen cosmetic title key (NULL -> show the auto rank label).
         if "title" not in cols:
@@ -1109,25 +1124,59 @@ class Database:
 
     DM_MAX_LEN = 500
 
-    def dm_send(self, from_user: str, to_user: str, text: str) -> Optional[dict]:
+    def dm_voice_store(self, user_id: str, mime: str, data: bytes) -> str:
+        """Store a DM voice memo blob; keep a per-user cap so storage stays sane."""
+        vid = _new_id()
+        with self._lock:
+            self._exec(
+                "INSERT INTO dm_voice (id, user_id, mime, data, created_at) VALUES (?,?,?,?,?)",
+                (vid, user_id, mime, data, time.time()),
+            )
+            self._exec(
+                "DELETE FROM dm_voice WHERE user_id=? AND id NOT IN "
+                "(SELECT id FROM dm_voice WHERE user_id=? ORDER BY created_at DESC LIMIT 200)",
+                (user_id, user_id),
+            )
+        return vid
+
+    def dm_voice_get(self, vid: str) -> Optional[tuple[str, bytes]]:
+        with self._lock:
+            row = self._q("SELECT mime, data FROM dm_voice WHERE id=?", (vid,))
+        if not row:
+            return None
+        return row[0]["mime"], row[0]["data"]
+
+    def dm_send(self, from_user: str, to_user: str, text: str,
+                voice_id: Optional[str] = None, voice_dur: int = 0) -> Optional[dict]:
         text = (text or "").strip()[: self.DM_MAX_LEN]
-        if not text or from_user == to_user:
+        if voice_id:
+            # The memo must be the sender's own upload; a voice message has no text.
+            with self._lock:
+                owned = self._q("SELECT 1 FROM dm_voice WHERE id=? AND user_id=?", (voice_id, from_user))
+            if not owned:
+                return None
+            text = ""
+            voice_dur = max(0, min(120, int(voice_dur or 0)))
+        elif not text:
+            return None
+        if from_user == to_user:
             return None
         mid = _new_id()
         now = time.time()
         with self._lock:
             self._exec(
-                "INSERT INTO dms (id, from_user, to_user, text, created_at) VALUES (?,?,?,?,?)",
-                (mid, from_user, to_user, text, now),
+                "INSERT INTO dms (id, from_user, to_user, text, created_at, voice_id, voice_dur) VALUES (?,?,?,?,?,?,?)",
+                (mid, from_user, to_user, text, now, voice_id, voice_dur if voice_id else 0),
             )
-        return {"id": mid, "from_user": from_user, "to_user": to_user, "text": text, "created_at": now}
+        return {"id": mid, "from_user": from_user, "to_user": to_user, "text": text,
+                "created_at": now, "voice_id": voice_id, "voice_dur": voice_dur if voice_id else 0}
 
     def dm_thread(self, user_id: str, other_id: str, limit: int = 60) -> list[dict]:
         """Conversation between two users, oldest first. Marks the incoming
         half as read."""
         with self._lock:
             rows = self._q(
-                "SELECT id, from_user, to_user, text, created_at FROM dms "
+                "SELECT id, from_user, to_user, text, created_at, voice_id, voice_dur FROM dms "
                 "WHERE (from_user=? AND to_user=?) OR (from_user=? AND to_user=?) "
                 "ORDER BY created_at DESC LIMIT ?",
                 (user_id, other_id, other_id, user_id, limit),
@@ -1151,7 +1200,7 @@ class Database:
             out = []
             for r in rows:
                 last = self._q(
-                    "SELECT from_user, text, created_at FROM dms "
+                    "SELECT from_user, text, created_at, voice_id FROM dms "
                     "WHERE (from_user=? AND to_user=?) OR (from_user=? AND to_user=?) "
                     "ORDER BY created_at DESC LIMIT 1",
                     (user_id, r["partner"], r["partner"], user_id),
@@ -1163,6 +1212,7 @@ class Database:
                 out.append({
                     "partner": r["partner"],
                     "last_text": last["text"],
+                    "last_voice": bool(last["voice_id"]),
                     "last_from_me": last["from_user"] == user_id,
                     "last_at": last["created_at"],
                     "unread": unread,

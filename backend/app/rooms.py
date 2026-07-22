@@ -216,12 +216,23 @@ class RoomManager:
         p = room.get_player(player_id)
         if p is None or p.is_bot:
             return
+        # A message is either text or a voice memo (uploaded first over HTTP,
+        # referenced here by id so the blob never travels over the socket).
+        voice_id = payload.get("voice_id")
         text = payload.get("text")
         if not isinstance(text, str):
-            return
+            text = ""
         text = text.strip()[:280]
-        if not text:
-            return
+        if isinstance(voice_id, str) and voice_id in room.voice:
+            voice_dur = payload.get("voice_dur")
+            voice_dur = int(voice_dur) if isinstance(voice_dur, (int, float)) else 0
+            voice_dur = max(0, min(120, voice_dur))
+            text = ""
+        else:
+            voice_id = None
+            voice_dur = 0
+            if not text:
+                return
         room.chat_seq += 1
         msg = {
             "id": room.chat_seq,
@@ -231,6 +242,9 @@ class RoomManager:
             "text": text,
             "ts": time.time(),
         }
+        if voice_id:
+            msg["voice_id"] = voice_id
+            msg["voice_dur"] = voice_dur
         room.chat.append(msg)
         if len(room.chat) > 60:
             room.chat = room.chat[-60:]

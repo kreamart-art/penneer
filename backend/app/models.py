@@ -170,6 +170,9 @@ class Room:
     # out of public() — it has its own channel (chat_history on join, chat on send).
     chat: list[dict] = field(default_factory=list)
     chat_seq: int = 0
+    # Voice memos sent in chat: id -> (mime, bytes). In-memory like the chat
+    # itself; capped (oldest dropped) so a chatty room can't eat the box.
+    voice: dict[str, tuple[str, bytes]] = field(default_factory=dict)
 
     # ---- helpers ----
     def get_player(self, pid: str) -> Optional[Player]:

@@ -31,10 +31,12 @@ export function TopBar({ code, roundNo, totalRounds, connected, onLeave, game }:
     >
       <span
         style={{
-          fontFamily: font.display,
-          fontWeight: 700,
-          fontSize: 18,
-          letterSpacing: 1,
+          // The wordmark face (Cybergame is condensed, so larger px + spacing).
+          fontFamily: "'Cybergame', 'Space Grotesk', sans-serif",
+          fontWeight: 400,
+          fontSize: 24,
+          letterSpacing: 2.5,
+          whiteSpace: "nowrap",
           color: colors.ink,
           textShadow: `0 0 18px ${withAlpha(colors.violet, 0.5)}`,
         }}

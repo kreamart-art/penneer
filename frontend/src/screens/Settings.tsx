@@ -331,7 +331,7 @@ export function Settings({ game, onBack, onShowRules }: { game: GameApi; onBack:
         <Card style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, paddingTop: 22 }}>
           <SectionLabel>{t("about")}</SectionLabel>
           <Logo size={84} />
-          <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 24, letterSpacing: 1, color: colors.ink }}>PEN NEER</span>
+          <span style={{ fontFamily: "'Cybergame', 'Space Grotesk', sans-serif", fontWeight: 400, fontSize: 30, letterSpacing: 2.5, color: colors.ink }}>PEN NEER</span>
           <span style={{ fontFamily: font.ui, fontSize: 13, color: colors.sub }}>
             {t("versionLabel")} {APP_VERSION}
           </span>

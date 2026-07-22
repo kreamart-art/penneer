@@ -6,6 +6,24 @@
   color-scheme: dark;
 }
 
+/* Studio fonts (frontend/public/fonts). Cybergame is only the PEN NEER
+   wordmark on the main page; Early GameBoy only the "Pennen neer!" splash.
+   The italic file is registered as normal so fallbacks stay upright. */
+@font-face {
+  font-family: "Cybergame";
+  src: url("/fonts/cybergame-italic.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Early GameBoy";
+  src: url("/fonts/early-gameboy.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 * {
   -webkit-tap-highlight-color: transparent;
 }
@@ -36,11 +54,17 @@ body {
 
 /* Fixed full-screen background layer so the gradient fills the whole device,
    including behind the iOS status bar and the home-indicator safe areas
-   (with viewport-fit=cover). No abrupt edge at the top. */
+   (with viewport-fit=cover). The layer BLEEDS past every edge: on iPhone the
+   layout viewport can be shorter than the real screen (Safari toolbars,
+   standalone safe-areas), which left a visible seam where the gradient
+   stopped. Oversizing pushes any edge off-screen in every mode. */
 body::before {
   content: "";
   position: fixed;
-  inset: 0;
+  top: -60px;
+  left: -40px;
+  right: -40px;
+  bottom: -180px;
   z-index: -1;
   background: radial-gradient(120% 80% at 50% -8%, #41216f 0%, #1a1140 42%, #0e0922 100%);
 }
@@ -51,7 +75,10 @@ body::before {
 body::after {
   content: "";
   position: fixed;
-  inset: 0;
+  top: -30px;
+  left: -20px;
+  right: -20px;
+  bottom: -180px;
   z-index: -1;
   pointer-events: none;
   background:

@@ -362,7 +362,11 @@ class AccountManager:
         if not self.db.is_friend(uid, to) or self.db.is_blocked(uid, to):
             await self._send(ws, {"type": "error", "message": "Je kunt alleen vrienden een bericht sturen."})
             return
-        msg = self.db.dm_send(uid, to, data.get("text") or "")
+        msg = self.db.dm_send(
+            uid, to, data.get("text") or "",
+            voice_id=data.get("voice_id") or None,
+            voice_dur=int(data.get("voice_dur") or 0),
+        )
         if msg is None:
             return
         # Social badge: your very first message.
@@ -374,9 +378,10 @@ class AccountManager:
         # Real push when the recipient has no live connection (app closed).
         if not self.online(to):
             sender = self.db.get_user(uid)
+            preview = "Spraakbericht" if msg.get("voice_id") else msg["text"][:120]
             asyncio.create_task(push.notify(
                 to, "Pen Neer",
-                f"{sender['name'] if sender else 'Iemand'}: {msg['text'][:120]}",
+                f"{sender['name'] if sender else 'Iemand'}: {preview}",
                 tag=f"dm-{uid}",
             ))
 

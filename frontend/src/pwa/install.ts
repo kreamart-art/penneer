@@ -37,6 +37,12 @@ export function isIosInAppBrowser(): boolean {
   return isIos() && /FBAN|FBAV|Instagram|Snapchat|Line|Twitter|Pinterest/i.test(navigator.userAgent);
 }
 
+/** Chrome on iOS: same WebKit + share-sheet route, but the entry point is the
+ *  three-dots menu > Delen instead of Safari's toolbar share icon. */
+export function isIosChrome(): boolean {
+  return isIos() && /CriOS/i.test(navigator.userAgent);
+}
+
 export function onInstallChange(cb: () => void): () => void {
   listeners.add(cb);
   return () => listeners.delete(cb);

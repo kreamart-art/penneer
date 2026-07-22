@@ -4,6 +4,8 @@
 import { useEffect, useRef, useState } from "react";
 import { MessageCircle, Send, X } from "lucide-react";
 import type { GameApi } from "../net/socket";
+import { MicButton } from "./MicButton";
+import { VoiceNote } from "./VoiceNote";
 import { useT } from "../i18n/i18n";
 import { colors, font, withAlpha } from "../theme/tokens";
 
@@ -64,6 +66,22 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
   const [draft, setDraft] = useState("");
   const chat = game.state.chat;
   const myId = game.state.playerId;
+  const roomCode = game.state.room?.code ?? "";
+
+  // Upload a memo to this room, then post it as a chat message.
+  const uploadVoice = async (blob: Blob, mime: string): Promise<string | null> => {
+    try {
+      const res = await fetch(`/api/voice/${roomCode}?player=${encodeURIComponent(myId ?? "")}`, {
+        method: "POST",
+        headers: { "Content-Type": mime },
+        body: blob,
+      });
+      if (!res.ok) return null;
+      return (await res.json()).id as string;
+    } catch {
+      return null;
+    }
+  };
   const listRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const lastTypingRef = useRef(0);
@@ -208,7 +226,7 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
                   <div
                     style={{
                       maxWidth: "82%",
-                      padding: "8px 11px",
+                      padding: m.voice_id ? "7px 10px" : "8px 11px",
                       borderRadius: 14,
                       borderTopRightRadius: mine ? 4 : 14,
                       borderTopLeftRadius: mine ? 14 : 4,
@@ -222,7 +240,11 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
                       whiteSpace: "pre-wrap",
                     }}
                   >
-                    {m.text}
+                    {m.voice_id ? (
+                      <VoiceNote src={`/api/voice/${roomCode}/${m.voice_id}`} duration={m.voice_dur ?? 0} mine={mine} />
+                    ) : (
+                      m.text
+                    )}
                   </div>
                 </div>
               );
@@ -274,27 +296,30 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
               outline: "none",
             }}
           />
-          <button
-            type="submit"
-            aria-label={t("chatSend")}
-            disabled={!draft.trim()}
-            style={{
-              flexShrink: 0,
-              width: 44,
-              height: 44,
-              borderRadius: "50%",
-              border: "none",
-              cursor: draft.trim() ? "pointer" : "default",
-              background: draft.trim() ? colors.gold : withAlpha(colors.gold, 0.25),
-              color: colors.bg0,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              transition: "background .15s",
-            }}
-          >
-            <Send size={18} />
-          </button>
+          {draft.trim() ? (
+            <button
+              type="submit"
+              aria-label={t("chatSend")}
+              style={{
+                flexShrink: 0,
+                width: 44,
+                height: 44,
+                borderRadius: "50%",
+                border: "none",
+                cursor: "pointer",
+                background: colors.gold,
+                color: colors.bg0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                transition: "background .15s",
+              }}
+            >
+              <Send size={18} />
+            </button>
+          ) : (
+            <MicButton upload={uploadVoice} onSent={(id, dur) => game.sendChat("", { id, dur })} />
+          )}
         </form>
       </div>
     </div>

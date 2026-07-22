@@ -4,6 +4,8 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import { ArrowLeft, Award, Bell, Camera, Check, Copy, LogOut, MessageCircle, MoreVertical, Plus, Settings as SettingsIcon, Share2, Smile, Star, Swords, Trash2, Trophy, UserPlus, Users, X, ZoomIn, ZoomOut } from "lucide-react";
 import { Avatar, RANK_RING } from "../components/Avatar";
 import { Button } from "../components/Button";
+import { MicButton } from "../components/MicButton";
+import { VoiceNote } from "../components/VoiceNote";
 import { MusicToggle } from "../components/MusicToggle";
 import { Toggle } from "../components/Toggle";
 import { Screen, Card } from "../components/Layout";
@@ -267,6 +269,22 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
     setText("");
   };
 
+  // Upload a memo (Bearer-authed), then send it as a DM.
+  const uploadVoice = async (blob: Blob, mime: string): Promise<string | null> => {
+    try {
+      const token = localStorage.getItem("penneer.accountToken") || "";
+      const res = await fetch("/api/dm/voice", {
+        method: "POST",
+        headers: { "Content-Type": mime, Authorization: `Bearer ${token}` },
+        body: blob,
+      });
+      if (!res.ok) return null;
+      return (await res.json()).id as string;
+    } catch {
+      return null;
+    }
+  };
+
   const fmt = (ts: number) => {
     const d = new Date(ts * 1000);
     return `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
@@ -295,8 +313,12 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
             const mine = m.from_user === me;
             return (
               <div key={m.id} style={{ alignSelf: mine ? "flex-end" : "flex-start", maxWidth: "78%" }}>
-                <div style={{ padding: "9px 12px", borderRadius: mine ? "14px 14px 4px 14px" : "14px 14px 14px 4px", background: mine ? withAlpha(colors.gold, 0.18) : withAlpha("#000000", 0.3), border: `1px solid ${mine ? withAlpha(colors.gold, 0.4) : colors.hairline}`, fontFamily: font.ui, fontSize: 14, color: colors.ink, lineHeight: 1.45, wordBreak: "break-word" }}>
-                  {m.text}
+                <div style={{ padding: m.voice_id ? "7px 10px" : "9px 12px", borderRadius: mine ? "14px 14px 4px 14px" : "14px 14px 14px 4px", background: mine ? withAlpha(colors.gold, 0.18) : withAlpha("#000000", 0.3), border: `1px solid ${mine ? withAlpha(colors.gold, 0.4) : colors.hairline}`, fontFamily: font.ui, fontSize: 14, color: colors.ink, lineHeight: 1.45, wordBreak: "break-word" }}>
+                  {m.voice_id ? (
+                    <VoiceNote src={`/api/dm/voice/${m.voice_id}`} duration={m.voice_dur ?? 0} mine={mine} />
+                  ) : (
+                    m.text
+                  )}
                 </div>
                 <div style={{ fontFamily: font.ui, fontSize: 10, color: colors.faint, marginTop: 2, textAlign: mine ? "right" : "left" }}>{fmt(m.created_at)}</div>
               </div>
@@ -313,7 +335,11 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
             onKeyDown={(e) => { if (e.key === "Enter") sendNow(); }}
             style={{ flex: 1, minWidth: 0, fontFamily: font.ui, fontSize: 15, color: colors.ink, background: withAlpha("#000000", 0.3), border: `1.5px solid ${colors.panelBorder}`, borderRadius: 12, padding: "11px 13px" }}
           />
-          <Button variant="gold" disabled={!text.trim()} onClick={sendNow}>{t("chatSend")}</Button>
+          {text.trim() ? (
+            <Button variant="gold" onClick={sendNow}>{t("chatSend")}</Button>
+          ) : (
+            <MicButton upload={uploadVoice} onSent={(id, dur) => game.dmSend(partnerId, "", { id, dur })} />
+          )}
         </div>
       </div>
     </div>
@@ -1293,7 +1319,7 @@ function InboxTab({ game }: { game: GameApi }) {
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontFamily: font.ui, fontWeight: 600, fontSize: 14, color: colors.ink }}>{th.user.name}</div>
               <div style={{ fontFamily: font.ui, fontSize: 12.5, color: th.unread > 0 ? colors.ink : colors.faint, fontWeight: th.unread > 0 ? 600 : 400, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {th.last_from_me ? `${t("chatYou")}: ` : ""}{th.last_text}
+                {th.last_from_me ? `${t("chatYou")}: ` : ""}{th.last_voice ? t("voiceMemo") : th.last_text}
               </div>
             </div>
             {th.unread > 0 && (
