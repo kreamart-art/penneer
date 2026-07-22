@@ -64,19 +64,29 @@ def starts_with(text: str, letter: str) -> bool:
     return False
 
 
+def letter_pool(hard_letters: bool = False) -> list[str]:
+    """The letters in play under the current settings (Q/X/Y only when hard)."""
+    return list(FULL_LETTER_POOL if hard_letters else LETTER_POOL)
+
+
+def pool_exhausted(used_letters: list[str], hard_letters: bool = False) -> bool:
+    """True once every letter of the current pool has been drawn."""
+    used = set(used_letters)
+    return all(c in used for c in letter_pool(hard_letters))
+
+
 def pick_letter(
     used_letters: list[str], hard_letters: bool = False, rng: random.Random | None = None
 ) -> str:
-    """Pick a random letter not yet used this game.
+    """Pick a random letter not yet used in this room.
 
     With hard_letters off, Q/X/Y are excluded. If the pool is exhausted, reset
-    (letters do not repeat until exhausted).
+    (letters do not repeat until every letter has been drawn).
     """
     rng = rng or random
-    pool = FULL_LETTER_POOL if hard_letters else LETTER_POOL
-    available = [c for c in pool if c not in used_letters]
+    available = [c for c in letter_pool(hard_letters) if c not in used_letters]
     if not available:
-        available = list(pool)
+        available = letter_pool(hard_letters)
     return rng.choice(available)
 
 

@@ -1,6 +1,7 @@
 // Reveal — the roulette. Active player drives the Buzzer (Spin -> STOP); others
 // watch. On lock everyone sees the big letter, with a satisfying lock sound.
 import { useEffect, useRef } from "react";
+import { AlphabetStrip } from "../components/AlphabetStrip";
 import { Avatar } from "../components/Avatar";
 import { Buzzer } from "../components/Buzzer";
 import { Reel } from "../components/Reel";
@@ -38,6 +39,7 @@ export function Reveal({ game }: { game: GameApi }) {
 
   return (
     <Screen top={<TopBar code={room.code} roundNo={room.round_no} totalRounds={room.settings.rounds} connected={game.state.status === "open"} onLeave={game.leaveRoom} game={game} />}>
+      <AlphabetStrip used={room.used_letters} hard={room.settings.hard_letters} lockedLetter={letter} />
       <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 26 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           {active && <Avatar name={active.name} color={active.color} size={40} crown userId={active.user_id} hasAvatar={active.has_avatar} avatarVer={active.avatar_ver} />}

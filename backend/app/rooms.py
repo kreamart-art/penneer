@@ -557,7 +557,9 @@ class RoomManager:
 
     async def _really_start(self, room: Room) -> None:
         room.round_no = 0
-        room.used_letters = []
+        # used_letters is deliberately NOT reset: the alphabet rule is
+        # room-lifetime — letters never repeat across potjes in the same room
+        # until the whole pool has been drawn (reset lives in _lock_letter).
         room.history = []
         room.ready_ids = []
         room.scores = {p.id: 0 for p in self.playing_players(room)}
@@ -616,6 +618,11 @@ class RoomManager:
             return
         letter = game.pick_letter(room.used_letters, room.settings.hard_letters)
         room.used_letters.append(letter)
+        # Alphabet rule: once every letter of the pool has been drawn (across
+        # rounds AND potjes in this room), the alphabet resets so all letters
+        # can be drawn again. Eager, so the strip on the client resets too.
+        if game.pool_exhausted(room.used_letters, room.settings.hard_letters):
+            room.used_letters = []
         rnd = room.current_round
         rnd.letter = letter
         await self.broadcast(room, {"type": "letter_locked", "letter": letter})
@@ -947,7 +954,8 @@ class RoomManager:
 
     def _reset_for_new_game(self, room: Room) -> None:
         room.round_no = 0
-        room.used_letters = []
+        # used_letters survives rematches on purpose (room-lifetime alphabet
+        # rule); see _lock_letter for the exhaustion reset.
         room.history = []
         room.active_player_id = None
         room.timer.ends_at = None
