@@ -1,7 +1,7 @@
 // Hub — profile, friends, inbox and leaderboard in one tabbed screen.
 // Reached from the Landing. A profile is optional: guests see the create form.
 import { Fragment, useEffect, useRef, useState } from "react";
-import { ArrowLeft, Award, Bell, Camera, Check, Copy, Lock, LogOut, MessageCircle, MoreVertical, Plus, Settings as SettingsIcon, Share2, ShoppingCart, Smile, Sparkles, Star, Swords, Trash2, Trophy, UserPlus, Users, X, ZoomIn, ZoomOut } from "lucide-react";
+import { ArrowLeft, Award, Bell, Camera, Check, Copy, Lock, LogOut, MessageCircle, MoreVertical, Pencil, Plus, Settings as SettingsIcon, Share2, ShoppingCart, Smile, Sparkles, Star, Swords, Trash2, Trophy, UserPlus, Users, X, ZoomIn, ZoomOut } from "lucide-react";
 import { Avatar, RANK_RING } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { MicButton } from "../components/MicButton";
@@ -360,6 +360,7 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
   const [editFile, setEditFile] = useState<File | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
+  const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
   const [clubOpen, setClubOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const colorInputRef = useRef<HTMLInputElement | null>(null);
@@ -397,6 +398,17 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
         body: JSON.stringify({ id }),
       });
       game.send({ type: "account_get" }); // refresh avatar_ver + avatar_preset
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function removeAvatar() {
+    setBusy(true);
+    try {
+      const token = localStorage.getItem("penneer.accountToken");
+      await fetch("/api/avatar", { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+      game.send({ type: "account_get" }); // server fell back to the default preset
     } finally {
       setBusy(false);
     }
@@ -505,10 +517,22 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
         </button>
       </div>
 
-      {/* identiteit */}
+      {/* identiteit + level: one section. The avatar itself is the edit entry:
+          tapping it opens the change/remove menu (pencil badge as affordance). */}
       <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <Avatar name={account.name} color={account.color} size={64} userId={account.id} hasAvatar={account.has_avatar} avatarVer={account.avatar_ver} />
+          <button
+            onClick={() => { sound.uiTap(); setAvatarMenuOpen(true); }}
+            disabled={busy}
+            aria-label={t("avatarMenuTitle")}
+            className="pressable"
+            style={{ position: "relative", background: "transparent", border: "none", padding: 0, cursor: "pointer", flexShrink: 0 }}
+          >
+            <Avatar name={account.name} color={account.color} size={64} userId={account.id} hasAvatar={account.has_avatar} avatarVer={account.avatar_ver} />
+            <span style={{ position: "absolute", right: -3, bottom: -3, width: 22, height: 22, borderRadius: 8, display: "grid", placeItems: "center", background: colors.gold, color: colors.bg0, boxShadow: "0 2px 8px rgba(0,0,0,.4)" }}>
+              <Pencil size={12} />
+            </span>
+          </button>
           <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1 }}>
             <div style={{ display: "flex", gap: 8 }}>
               <input style={{ ...inputStyle, flex: 1, padding: "8px 11px" }} value={name} maxLength={20} onChange={(e) => setName(e.target.value)} />
@@ -557,30 +581,23 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
             </div>
           </div>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*"
-            style={{ display: "none" }}
-            onChange={(e) => {
-              if (e.target.files?.[0]) setEditFile(e.target.files[0]);
-              e.target.value = ""; // same file re-selectable
-            }}
-          />
-          <Button variant="ghost" full onClick={() => fileRef.current?.click()} disabled={busy}>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-              <Camera size={15} /> {busy ? t("photoBusy") : t("uploadPhoto")}
-            </span>
-          </Button>
-        </div>
+        {/* photo picking still runs through this hidden input; the visible
+            entry point is the avatar-tap menu. */}
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          style={{ display: "none" }}
+          onChange={(e) => {
+            if (e.target.files?.[0]) setEditFile(e.target.files[0]);
+            e.target.value = ""; // same file re-selectable
+          }}
+        />
 
-        {/* Preset avatars live on their own page (keeps the profile short). */}
-        <Button variant="ghost" full onClick={() => setAvatarPickerOpen(true)}>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-            <Smile size={15} /> {t("chooseAvatar")}
-          </span>
-        </Button>
+        <div style={{ borderTop: `1px solid ${colors.hairline}`, paddingTop: 14, display: "flex", flexDirection: "column", gap: 14 }}>
+          <LevelBar level={account.level} />
+          <StatGrid stats={account.stats} />
+        </div>
       </Card>
 
       {editFile && (
@@ -593,11 +610,15 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
         />
       )}
 
-      {/* level + rang + stats */}
-      <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        <LevelBar level={account.level} />
-        <StatGrid stats={account.stats} />
-      </Card>
+      {avatarMenuOpen && (
+        <AvatarMenu
+          hasCustomPhoto={!!account.has_avatar && !account.avatar_preset}
+          onPhoto={() => { setAvatarMenuOpen(false); fileRef.current?.click(); }}
+          onPreset={() => { setAvatarMenuOpen(false); setAvatarPickerOpen(true); }}
+          onRemove={() => { setAvatarMenuOpen(false); removeAvatar(); }}
+          onClose={() => setAvatarMenuOpen(false)}
+        />
+      )}
 
       {/* club */}
       <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -891,6 +912,69 @@ function AvatarGrid({
           </button>
         );
       })}
+    </div>
+  );
+}
+
+/** Tap-your-avatar menu: change it (photo or preset) or remove a custom photo.
+ *  The question lives on the avatar itself; options mirror the old buttons. */
+function AvatarMenu({
+  hasCustomPhoto,
+  onPhoto,
+  onPreset,
+  onRemove,
+  onClose,
+}: {
+  hasCustomPhoto: boolean;
+  onPhoto: () => void;
+  onPreset: () => void;
+  onRemove: () => void;
+  onClose: () => void;
+}) {
+  const { t } = useT();
+  const row: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+    width: "100%",
+    padding: "13px 14px",
+    borderRadius: 12,
+    border: `1px solid ${colors.panelBorder}`,
+    background: withAlpha("#000000", 0.22),
+    color: colors.ink,
+    fontFamily: font.ui,
+    fontSize: 14.5,
+    fontWeight: 600,
+    cursor: "pointer",
+    textAlign: "left" as const,
+  };
+  return (
+    <div
+      onClick={onClose}
+      style={{ position: "fixed", inset: 0, zIndex: 85, background: "rgba(6,3,18,.72)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)", display: "grid", placeItems: "center", padding: 22 }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="pop-in"
+        style={{ width: "100%", maxWidth: 340, display: "flex", flexDirection: "column", gap: 10, padding: "22px 18px 16px", borderRadius: 22, background: "linear-gradient(180deg, #241738, #160D30)", border: `1px solid ${withAlpha(colors.gold, 0.4)}`, boxShadow: "0 24px 70px rgba(0,0,0,.6)", textAlign: "center" }}
+      >
+        <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 18, color: colors.ink }}>{t("avatarMenuTitle")}</span>
+        <p style={{ margin: "0 0 4px", fontFamily: font.ui, fontSize: 13, color: colors.sub, lineHeight: 1.5 }}>{t("avatarMenuQuestion")}</p>
+        <button onClick={onPhoto} className="pressable" style={row}>
+          <Camera size={17} color={colors.gold} /> {t("uploadPhoto")}
+        </button>
+        <button onClick={onPreset} className="pressable" style={row}>
+          <Smile size={17} color={colors.gold} /> {t("chooseAvatar")}
+        </button>
+        {hasCustomPhoto && (
+          <button onClick={onRemove} className="pressable" style={{ ...row, color: colors.red, border: `1px solid ${withAlpha(colors.red, 0.4)}` }}>
+            <Trash2 size={17} /> {t("removePhoto")}
+          </button>
+        )}
+        <button onClick={onClose} style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, fontFamily: font.ui, fontSize: 13.5, padding: "6px 4px 2px" }}>
+          {t("avatarMenuCancel")}
+        </button>
+      </div>
     </div>
   );
 }

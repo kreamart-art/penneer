@@ -128,6 +128,9 @@ async def delete_avatar(request: Request) -> Response:
     if uid is None:
         return Response(status_code=401)
     db.clear_avatar(uid)
+    # Nobody goes avatar-less (the v1.16 invariant): removing a custom photo
+    # immediately falls back to the account's default preset.
+    db.ensure_avatar(uid)
     return Response(status_code=204)
 
 
