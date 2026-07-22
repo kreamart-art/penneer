@@ -74,6 +74,35 @@ def public_key() -> str:
     return keys()[1]
 
 
+_priv_for_push: Optional[str] = None
+
+
+def _private_key_for_pywebpush() -> str:
+    """pywebpush's bundled py_vapid parses `vapid_private_key` by base64-decoding
+    it as DER, WITHOUT recognising PEM armor, so handing it our stored PEM raised
+    'ASN.1 parsing error: invalid length' and no VAPID JWT was ever signed (push
+    silently never sent). Convert PEM -> DER -> urlsafe-b64 (no padding) once, the
+    form py_vapid accepts. An already-DER-b64 env key is passed through."""
+    global _priv_for_push
+    if _priv_for_push:
+        return _priv_for_push
+    import base64
+    from cryptography.hazmat.primitives import serialization
+
+    priv = keys()[0]
+    if "BEGIN" in priv:
+        key = serialization.load_pem_private_key(priv.encode(), password=None)
+        der = key.private_bytes(
+            serialization.Encoding.DER,
+            serialization.PrivateFormat.PKCS8,
+            serialization.NoEncryption(),
+        )
+        _priv_for_push = base64.urlsafe_b64encode(der).decode().rstrip("=")
+    else:
+        _priv_for_push = priv
+    return _priv_for_push
+
+
 def available() -> bool:
     try:
         import pywebpush  # noqa: F401
@@ -113,7 +142,7 @@ async def notify(user_id: str, title: str, body: str, tag: str = "penneer") -> N
     subs = db.push_subs_of(user_id)
     if not subs:
         return
-    private_key, _ = keys()
+    private_key = _private_key_for_pywebpush()
     payload = json.dumps({"title": title, "body": body, "tag": tag, "url": "/"})
     loop = asyncio.get_running_loop()
     for sub in subs:
