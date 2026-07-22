@@ -443,7 +443,7 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
   }
 
   if (settingsOpen) {
-    return <ProfileSettings game={game} email={email} setEmail={setEmail} onBack={() => setSettingsOpen(false)} />;
+    return <ProfileSettings game={game} email={email} setEmail={setEmail} onShowShop={onShowShop} onBack={() => setSettingsOpen(false)} />;
   }
 
   if (avatarPickerOpen) {
@@ -648,9 +648,6 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
       {/* titel-kiezer */}
       <TitlePicker game={game} />
 
-      {/* Draai-knop-skin (shop 'buzzers' pack) */}
-      <BuzzerPicker game={game} onShowShop={onShowShop} />
-
       {/* laatste potjes */}
       <HistoryCard game={game} meId={account.id} />
 
@@ -699,12 +696,16 @@ function BuzzerPicker({ game, onShowShop }: { game: GameApi; onShowShop: () => v
         className="pressable"
         style={{
           position: "relative",
+          width: "100%",
+          minWidth: 0,
           aspectRatio: "1 / 1",
+          overflow: "hidden",
           borderRadius: 14,
           border: `2px solid ${isActive ? colors.gold : colors.panelBorder}`,
           background: withAlpha("#000000", 0.22),
           cursor: "pointer",
           padding: 6,
+          boxSizing: "border-box",
           boxShadow: isActive ? `0 0 12px ${withAlpha(colors.gold, 0.5)}` : "none",
         }}
       >
@@ -1106,11 +1107,13 @@ function ProfileSettings({
   game,
   email,
   setEmail,
+  onShowShop,
   onBack,
 }: {
   game: GameApi;
   email: string;
   setEmail: (v: string) => void;
+  onShowShop: () => void;
   onBack: () => void;
 }) {
   const { t } = useT();
@@ -1132,6 +1135,9 @@ function ProfileSettings({
         </div>
         <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.faint, lineHeight: 1.5 }}>{t("lenientHint")}</p>
       </Card>
+
+      {/* Draai-knop-skin (shop 'buzzers' pack) */}
+      <BuzzerPicker game={game} onShowShop={onShowShop} />
 
       {/* e-mail koppelen */}
       <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
