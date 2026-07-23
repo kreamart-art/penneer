@@ -14,6 +14,7 @@ import { Shop } from "./screens/Shop";
 import { Training } from "./screens/Training";
 import { Daily } from "./screens/Daily";
 import { BadgeToasts } from "./components/BadgeToasts";
+import { BuzzerRewardPopup } from "./components/BuzzerRewardPopup";
 import { InviteBanner } from "./components/InviteBanner";
 import { localNotify } from "./components/NotifyNudge";
 import { ensurePushSubscription } from "./pwa/push";
@@ -331,6 +332,7 @@ export default function App() {
         </div>
       )}
       {inRoom && <BadgeToasts game={game} />}
+      {game.state.account && !inGame && <BuzzerRewardPopup game={game} />}
       {paypalFlash && (
         <div
           onClick={() => setPaypalFlash(null)}

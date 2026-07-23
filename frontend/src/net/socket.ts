@@ -67,6 +67,14 @@ export interface DmThreadSummary {
   user: PublicUser;
 }
 
+export interface BuzzerReward {
+  skin: string;
+  level: number;
+  name: string; // i18n key (buzzReward_*)
+  unlocked: boolean; // level milestone reached
+  claimed: boolean; // victory popup acknowledged
+}
+
 export interface Account {
   id: string;
   name: string;
@@ -79,6 +87,7 @@ export interface Account {
   premium_avatars: boolean; // bought the premium avatar pack (av19..av36)
   buzzer_skins: boolean; // bought the buzzer-skin pack (bz01..bz05)
   buzzer_skin: string | null; // chosen skin id, null = default red buzzer
+  buzzer_rewards: BuzzerReward[]; // level-milestone skins + unlock/claim state
   stats: AccountStats;
   level: LevelInfo;
   badges: Badge[];
@@ -712,6 +721,7 @@ export interface GameApi {
   loadClub: (period: "month" | "all") => void;
   setLenient: (on: boolean) => void;
   setBuzzerSkin: (skin: string | null) => void;
+  claimBuzzerReward: (skin: string, equip: boolean) => void;
   rematch: () => void;
   clearJoin: () => void;
   drainToasts: () => void;
@@ -932,6 +942,7 @@ export function useGame(): GameApi {
     loadClub: (period) => send({ type: "club_get", period }),
     setLenient: (on) => send({ type: "set_lenient", on }),
     setBuzzerSkin: (skin) => send({ type: "set_buzzer_skin", skin }),
+    claimBuzzerReward: (skin, equip) => send({ type: "claim_buzzer_reward", skin, equip }),
     rematch: () => send({ type: "rematch" }),
     clearJoin: () => dispatch({ type: "clearJoin" }),
     drainToasts: () => dispatch({ type: "drainToasts" }),

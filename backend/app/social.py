@@ -17,7 +17,7 @@ import time
 from typing import Any, Optional
 
 from . import daily, missions, push, titles
-from .db import get_db
+from .db import get_db, LEVEL_BUZZERS, BUZZER_SKIN_IDS, LEVEL_FOR_BUZZER
 from .models import PLAYER_COLORS
 
 BASE_URL = os.environ.get("PENNEER_BASE_URL", "https://penneer.artnomad.nl")
@@ -113,6 +113,15 @@ class AccountManager:
             "online": self.online(user["id"]),
         }
 
+    def _allowed_buzzers(self, user: dict, level: int) -> set:
+        """Skins this account may select: the paid pack (if owned) plus every
+        level-reward skin whose milestone the account has reached."""
+        allowed = set()
+        if user.get("buzzer_skins"):
+            allowed |= set(BUZZER_SKIN_IDS)
+        allowed |= {skin for lvl, skin, _ in LEVEL_BUZZERS if level >= lvl}
+        return allowed
+
     async def _account_payload(self, ws: Any, user_id: str) -> dict:
         user = self.db.get_user(user_id)
         if user is None:
@@ -134,6 +143,12 @@ class AccountManager:
                 "premium_avatars": bool(user.get("premium_avatars")),
                 "buzzer_skins": bool(user.get("buzzer_skins")),
                 "buzzer_skin": user.get("buzzer_skin"),
+                "buzzer_rewards": [
+                    {"skin": skin, "level": lvl, "name": key,
+                     "unlocked": level["level"] >= lvl,
+                     "claimed": skin in self.db.level_rewards_claimed(user_id)}
+                    for lvl, skin, key in LEVEL_BUZZERS
+                ],
                 "stats": stats,
                 "level": level,
                 "badges": badges,
@@ -181,6 +196,7 @@ class AccountManager:
             "club_get": self.club_get,
             "set_lenient": self.set_lenient,
             "set_buzzer_skin": self.set_buzzer_skin,
+            "claim_buzzer_reward": self.claim_buzzer_reward,
         }.get(mtype)
         if handler is None:
             return False
@@ -636,7 +652,29 @@ class AccountManager:
         if not uid:
             return
         skin = data.get("skin")
-        self.db.set_buzzer_skin(uid, skin if isinstance(skin, str) and skin else None)
+        skin = skin if isinstance(skin, str) and skin else None
+        user = self.db.get_user(uid)
+        level = _level_of(self.db.stats_of(uid))["level"]
+        self.db.set_buzzer_skin(uid, skin, self._allowed_buzzers(user, level))
+        await self._send(ws, await self._account_payload(ws, uid))
+
+    async def claim_buzzer_reward(self, ws: Any, data: dict) -> None:
+        """Acknowledge a level-reward buzzer (the victory popup's Claim button).
+        Only marks a reward the account has actually reached; optionally selects
+        it as the active buzzer right away."""
+        uid = self.user_of(ws)
+        if not uid:
+            return
+        skin = data.get("skin")
+        if not isinstance(skin, str) or skin not in LEVEL_FOR_BUZZER:
+            return
+        level = _level_of(self.db.stats_of(uid))["level"]
+        if level < LEVEL_FOR_BUZZER[skin]:
+            return  # not actually reached; ignore
+        self.db.claim_level_reward(uid, skin)
+        if data.get("equip"):
+            user = self.db.get_user(uid)
+            self.db.set_buzzer_skin(uid, skin, self._allowed_buzzers(user, level))
         await self._send(ws, await self._account_payload(ws, uid))
 
     async def _push_account(self, user_id: str) -> None:

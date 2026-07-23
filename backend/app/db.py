@@ -189,6 +189,15 @@ CREATE TABLE IF NOT EXISTS club_members (
     PRIMARY KEY (club_id, user_id)
 );
 CREATE INDEX IF NOT EXISTS idx_club_members_user ON club_members(user_id);
+-- Level-reward buzzer skins: which milestone skins a player has CLAIMED (the
+-- victory-popup acknowledgement). A skin is USABLE once the level is reached;
+-- this table only records the claim so the popup shows exactly once.
+CREATE TABLE IF NOT EXISTS level_rewards (
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    reward TEXT NOT NULL,
+    claimed_at REAL NOT NULL,
+    PRIMARY KEY (user_id, reward)
+);
 -- Dagelijkse missies: progress per account per day per mission key. Rewards
 -- auto-claim on completion (users.bonus_xp), so there is no claimed column.
 CREATE TABLE IF NOT EXISTS mission_progress (
@@ -244,7 +253,21 @@ ALL_PRESET_IDS = PRESET_IDS + PREMIUM_PRESET_IDS
 
 # Buzzer skins (shop 'buzzers' pack): art in frontend/public/buzzers/bzNN.webp.
 # The default red buzzer is not an id here; NULL buzzer_skin = default.
-BUZZER_SKIN_IDS = [f"bz{i:02d}" for i in range(1, 6)]
+BUZZER_SKIN_IDS = [f"bz{i:02d}" for i in range(1, 6)]  # the paid pack (bz01..05)
+# Level-reward buzzer skins: (level threshold, skin id, name key for i18n).
+# Reached by LEVELLING UP, never bought. Ordered by level.
+LEVEL_BUZZERS = [
+    (10, "bz06", "buzzReward_gold"),
+    (20, "bz07", "buzzReward_diamond"),
+    (30, "bz08", "buzzReward_royal"),
+    (40, "bz09", "buzzReward_celestial"),
+    (50, "bz10", "buzzReward_obsidian"),
+    (75, "bz11", "buzzReward_prismatic"),
+    (100, "bz12", "buzzReward_eternal"),
+]
+LEVEL_BUZZER_IDS = [b[1] for b in LEVEL_BUZZERS]
+LEVEL_FOR_BUZZER = {skin: lvl for lvl, skin, _ in LEVEL_BUZZERS}
+ALL_BUZZER_IDS = BUZZER_SKIN_IDS + LEVEL_BUZZER_IDS
 _preset_cache: dict[str, Optional[bytes]] = {}
 
 
@@ -1285,16 +1308,30 @@ class Database:
             rows = self._q("SELECT buzzer_skins FROM users WHERE id=?", (user_id,))
         return bool(rows and rows[0]["buzzer_skins"])
 
-    def set_buzzer_skin(self, user_id: str, skin: Optional[str]) -> bool:
-        """Pick a buzzer skin (must own the pack), or None to go back to the
-        default red buzzer (always allowed)."""
+    def set_buzzer_skin(self, user_id: str, skin: Optional[str], allowed: set) -> bool:
+        """Pick a buzzer skin the caller has verified is allowed (pack ownership
+        for bz01..05, level reached for the reward skins), or None to go back to
+        the default red buzzer (always allowed)."""
         if not skin:
             self._exec("UPDATE users SET buzzer_skin=NULL WHERE id=?", (user_id,))
             return True
-        if skin not in BUZZER_SKIN_IDS or not self.is_buzzers_unlocked(user_id):
+        if skin not in allowed:
             return False
         self._exec("UPDATE users SET buzzer_skin=? WHERE id=?", (skin, user_id))
         return True
+
+    # ---- level-reward buzzer skins (unlocked by levelling up) --------------
+
+    def level_rewards_claimed(self, user_id: str) -> set:
+        with self._lock:
+            rows = self._q("SELECT reward FROM level_rewards WHERE user_id=?", (user_id,))
+        return {r["reward"] for r in rows}
+
+    def claim_level_reward(self, user_id: str, reward: str) -> None:
+        self._exec(
+            "INSERT OR IGNORE INTO level_rewards (user_id, reward, claimed_at) VALUES (?,?,?)",
+            (user_id, reward, time.time()),
+        )
 
     def _new_ai_code(self) -> str:
         # Human-friendly, unambiguous alphabet (no O/0/I/1), grouped for reading.

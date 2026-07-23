@@ -675,24 +675,30 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
 // rank); locked ones show their requirement and can't be picked.
 /** Pick your Draai-buzzer skin (bought in the shop). The default red one is
  *  always free; the pack skins are locked behind the 'buzzers' unlock. */
-function BuzzerPicker({ game, onShowShop }: { game: GameApi; onShowShop: () => void }) {
-  const { t } = useT();
-  const account = game.state.account!;
-  const owned = !!account.buzzer_skins;
-  const active = account.buzzer_skin ?? null;
-  const skins = ["bz01", "bz02", "bz03", "bz04", "bz05"];
-
-  const tile = (id: string | null, locked: boolean) => {
-    const isActive = active === id;
-    return (
+/** One selectable buzzer tile. `lockLabel` shows instead of the shop-lock icon
+ *  for level rewards ("Level 30"); `caption` shows a reward name under it. */
+function BuzzerTile({
+  id,
+  active,
+  locked,
+  lockLabel,
+  caption,
+  onClick,
+  label,
+}: {
+  id: string | null;
+  active: boolean;
+  locked: boolean;
+  lockLabel?: string;
+  caption?: string;
+  onClick: () => void;
+  label: string;
+}) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
       <button
-        key={id ?? "default"}
-        onClick={() => {
-          sound.uiTap();
-          if (locked) onShowShop();
-          else game.setBuzzerSkin(id);
-        }}
-        aria-label={id ?? t("buzzDefault")}
+        onClick={() => { sound.uiTap(); onClick(); }}
+        aria-label={label}
         className="pressable"
         style={{
           position: "relative",
@@ -701,41 +707,89 @@ function BuzzerPicker({ game, onShowShop }: { game: GameApi; onShowShop: () => v
           aspectRatio: "1 / 1",
           overflow: "hidden",
           borderRadius: 14,
-          border: `2px solid ${isActive ? colors.gold : colors.panelBorder}`,
+          border: `2px solid ${active ? colors.gold : colors.panelBorder}`,
           background: withAlpha("#000000", 0.22),
           cursor: "pointer",
           padding: 6,
           boxSizing: "border-box",
-          boxShadow: isActive ? `0 0 12px ${withAlpha(colors.gold, 0.5)}` : "none",
+          boxShadow: active ? `0 0 12px ${withAlpha(colors.gold, 0.5)}` : "none",
         }}
       >
         <img
           src={id ? `/buzzers/${id}.webp` : "/buzzer.webp"}
           alt=""
           loading="lazy"
-          style={{ width: "100%", height: "100%", objectFit: "contain", display: "block", opacity: locked ? 0.35 : 1, filter: locked ? "grayscale(0.6)" : "none" }}
+          style={{ width: "100%", height: "100%", objectFit: "contain", display: "block", opacity: locked ? 0.32 : 1, filter: locked ? "grayscale(0.55)" : "none" }}
         />
         {locked && (
-          <span style={{ position: "absolute", right: 5, bottom: 5, width: 20, height: 20, borderRadius: 7, display: "grid", placeItems: "center", background: withAlpha("#000000", 0.55), color: colors.gold }}>
-            <Lock size={12} />
-          </span>
+          lockLabel ? (
+            <span style={{ position: "absolute", left: 0, right: 0, bottom: 5, textAlign: "center", fontFamily: font.ui, fontSize: 10.5, fontWeight: 800, letterSpacing: 0.3, color: colors.gold, textShadow: "0 1px 4px rgba(0,0,0,.8)" }}>
+              {lockLabel}
+            </span>
+          ) : (
+            <span style={{ position: "absolute", right: 5, bottom: 5, width: 20, height: 20, borderRadius: 7, display: "grid", placeItems: "center", background: withAlpha("#000000", 0.55), color: colors.gold }}>
+              <Lock size={12} />
+            </span>
+          )
         )}
       </button>
-    );
-  };
+      {caption && (
+        <span style={{ fontFamily: font.ui, fontSize: 9.5, fontWeight: 600, color: locked ? colors.faint : colors.sub, textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {caption}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function BuzzerPicker({ game, onShowShop }: { game: GameApi; onShowShop: () => void }) {
+  const { t } = useT();
+  const account = game.state.account!;
+  const owned = !!account.buzzer_skins;
+  const active = account.buzzer_skin ?? null;
+  const packSkins = ["bz01", "bz02", "bz03", "bz04", "bz05"];
+  const rewards = account.buzzer_rewards ?? [];
 
   return (
-    <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <CircleDot size={15} color={colors.gold} />
-        <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint, flex: 1 }}>{t("buzzPickTitle")}</span>
-      </div>
-      <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.sub, lineHeight: 1.5 }}>{owned ? t("buzzPickHint") : t("buzzLockedHint")}</p>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
-        {tile(null, false)}
-        {skins.map((id) => tile(id, !owned))}
-      </div>
-    </Card>
+    <>
+      {/* paid pack */}
+      <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <CircleDot size={15} color={colors.gold} />
+          <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint, flex: 1 }}>{t("buzzPickTitle")}</span>
+        </div>
+        <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.sub, lineHeight: 1.5 }}>{owned ? t("buzzPickHint") : t("buzzLockedHint")}</p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+          <BuzzerTile id={null} active={active === null} locked={false} label={t("buzzDefault")} onClick={() => game.setBuzzerSkin(null)} />
+          {packSkins.map((id) => (
+            <BuzzerTile key={id} id={id} active={active === id} locked={!owned} label={id} onClick={() => (owned ? game.setBuzzerSkin(id) : onShowShop())} />
+          ))}
+        </div>
+      </Card>
+
+      {/* level rewards */}
+      <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <Star size={15} color={colors.gold} />
+          <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint, flex: 1 }}>{t("buzzRewardsTitle")}</span>
+        </div>
+        <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.sub, lineHeight: 1.5 }}>{t("buzzRewardsHint")}</p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+          {rewards.map((r) => (
+            <BuzzerTile
+              key={r.skin}
+              id={r.skin}
+              active={active === r.skin}
+              locked={!r.unlocked}
+              lockLabel={t("buzzLevelLocked", { n: r.level })}
+              caption={t(r.name)}
+              label={t(r.name)}
+              onClick={() => r.unlocked && game.setBuzzerSkin(r.skin)}
+            />
+          ))}
+        </div>
+      </Card>
+    </>
   );
 }
 
