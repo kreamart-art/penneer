@@ -35,15 +35,27 @@ body,
   margin: 0;
 }
 
-/* The canvas itself carries the gradient: the root element's background paints
-   the ENTIRE viewport (safe areas, toolbar strips, overscroll), so any sliver
-   the fixed layers do not cover still shows the exact same image. Sized to one
-   viewport-height and anchored top; everything past it is the flat end colour. */
+/* THE background, boring on purpose. After three rounds of fixed-layer fixes
+   the iPhone still showed a band above the home indicator, so the fixed
+   pseudo-layers are GONE entirely: everything (gradient, corner glows, paper
+   grain) is painted as a plain multi-layer background on the root element.
+   The canvas paints every physical pixel (safe areas included), the gradient
+   tile is one large-viewport tall and anchored top, and past it everything is
+   the flat end colour #0e0922. Nothing is position:fixed, so there is no
+   compositor edge left that ANY engine can get wrong. On scroll the top glow
+   scrolls away naturally; deep content was already flat dark. */
 html {
   background-color: #0e0922;
-  background-image: radial-gradient(135% 95% at 50% -6%, #41216f 0%, #1a1140 46%, #0e0922 82%);
-  background-repeat: no-repeat;
-  background-size: 100% 100vh;
+  background-image:
+    radial-gradient(60% 38% at -8% 12%, rgba(122, 103, 255, 0.1), transparent 70%),
+    radial-gradient(55% 34% at 108% 4%, rgba(255, 86, 74, 0.05), transparent 70%),
+    radial-gradient(50% 36% at 106% -4%, rgba(255, 194, 61, 0.05), transparent 70%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
+    radial-gradient(135% 95% at 50% -6%, #41216f 0%, #1a1140 46%, #0e0922 82%);
+  background-repeat: no-repeat, no-repeat, no-repeat, repeat, no-repeat;
+  background-position: top, top, top, top left, top;
+  background-size: 100% 100vh, 100% 100vh, 100% 100vh, 160px 160px, 100% 100vh;
+  background-size: 100% 100lvh, 100% 100lvh, 100% 100lvh, 160px 160px, 100% 100lvh;
 }
 
 body {
@@ -61,49 +73,6 @@ html,
 body {
   overflow-x: hidden;
   overflow-x: clip;
-}
-
-/* Fixed full-screen background gradient. `height: 100vh` is the iOS trick: on
-   iPhone `vh` is the TALLEST viewport (toolbars retracted), so the layer always
-   over-covers the visible area and the home-indicator safe area (with
-   viewport-fit=cover). The gradient reaches its end colour #0e0922 by 82% and
-   holds it, so the whole bottom is one flat colour (= the html base) with no
-   band. No negative offsets to guess at. */
-body::before {
-  content: "";
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: calc(100vh + 80px);
-  height: calc(100lvh + env(safe-area-inset-bottom, 0px) + 60px);
-  z-index: -1;
-  background: radial-gradient(135% 95% at 50% -6%, #41216f 0%, #1a1140 46%, #0e0922 82%) top / 100% 100vh no-repeat #0e0922;
-}
-
-/* Premium finish on top of the gradient (still behind all content): soft ink
-   clouds high in the corners and a whisper of paper grain. Deliberately NO
-   vignette and NO bottom-corner clouds: anything that darkened or tinted the
-   bottom edge below the flat #0e0922 base showed up on iPhone as a band
-   "sticking out" (the fixed layer ends at 100vh, just above the home-indicator
-   safe area, and the html #0e0922 base shows below it — a darker vignette row
-   sandwiched between two equal darks reads as a band). The bottom edge is now
-   pure gradient → #0e0922 == the base, so no band is possible. */
-body::after {
-  content: "";
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: calc(100vh + 80px);
-  height: calc(100lvh + env(safe-area-inset-bottom, 0px) + 60px);
-  z-index: -1;
-  pointer-events: none;
-  background:
-    radial-gradient(60% 38% at -8% 12%, rgba(122, 103, 255, 0.1), transparent 70%),
-    radial-gradient(55% 34% at 108% 4%, rgba(255, 86, 74, 0.05), transparent 70%),
-    radial-gradient(50% 36% at 106% -4%, rgba(255, 194, 61, 0.05), transparent 70%),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
 }
 
 /* Inputs reset to the arcade look. */
