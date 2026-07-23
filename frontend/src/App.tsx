@@ -332,7 +332,18 @@ export default function App() {
         </div>
       )}
       {inRoom && <BadgeToasts game={game} />}
-      {game.state.account && !inGame && <BuzzerRewardPopup game={game} />}
+      {/* Reward popup ONLY on the main landing page (never over the intro, a
+          sub-screen, or an active game): match the Landing's render condition. */}
+      {game.state.account &&
+        introDone &&
+        !!lang &&
+        !inRoom &&
+        !showRules &&
+        !showDaily &&
+        !showTraining &&
+        !showShop &&
+        !showHub &&
+        !showSettings && <BuzzerRewardPopup game={game} />}
       {paypalFlash && (
         <div
           onClick={() => setPaypalFlash(null)}
