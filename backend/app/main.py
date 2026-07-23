@@ -477,7 +477,7 @@ async def shop_paypal_capture(request: Request) -> JSONResponse:
     custom = result.get("custom_id") or ""
     buyer, _, product = custom.partition("|")
     product = product or "ai"
-    if product not in ("ai", "avatars", "buzzers"):
+    if product not in ("ai", "avatars", "buzzers", "coins"):
         product = "ai"
 
     # Amount + currency must match what we sell for THIS product — never trust
@@ -489,6 +489,9 @@ async def shop_paypal_capture(request: Request) -> JSONResponse:
     if not buyer or not db.get_user(buyer):
         buyer = uid
 
+    if product == "coins":
+        bal = db.fulfil_coins(order_id, buyer, paypal.price(product), paypal.currency())
+        return JSONResponse({"ok": True, "coins": bal} if bal is not None else {"ok": True, "already": True})
     code = db.fulfil_purchase(order_id, buyer, paypal.price(product), paypal.currency(), product=product)
     if code is None:
         # Lost a race; the winning request already fulfilled it.

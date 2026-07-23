@@ -5,7 +5,6 @@ import { Logo } from "../components/Logo";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { NotifyNudge } from "../components/NotifyNudge";
-import { MusicToggle } from "../components/MusicToggle";
 import { ProfilePrompt, profilePromptSeen } from "../components/ProfilePrompt";
 import { InstallPrompt, installPromptSeen, type InstallVariant } from "../components/InstallPrompt";
 import { canInstall, isIos, isIosChrome, isIosInAppBrowser, isStandalone, onInstallChange } from "../pwa/install";
@@ -184,7 +183,17 @@ export function Landing({
           )}
         </button>
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          <MusicToggle />
+          {account && (
+            <button
+              onClick={() => { sound.uiTap(); onShowShop(); }}
+              aria-label={t("coinsTitle")}
+              className="pressable"
+              style={{ display: "inline-flex", alignItems: "center", gap: 5, background: withAlpha(colors.gold, 0.12), border: `1px solid ${withAlpha(colors.gold, 0.4)}`, borderRadius: 999, cursor: "pointer", padding: "3px 10px 3px 4px", marginRight: 2 }}
+            >
+              <img src="/coin.webp" alt="" width={22} height={22} style={{ display: "block" }} />
+              <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 14, color: colors.gold }}>{account.coins ?? 0}</span>
+            </button>
+          )}
           <button
             onClick={() => {
               sound.uiTap();

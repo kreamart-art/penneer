@@ -128,6 +128,10 @@ class AccountManager:
             return {"type": "account", "account": None}
         stats = self.db.stats_of(user_id)
         level = _level_of(stats)
+        # Coins: earn 1 per level reached (retroactive), then surface balance +
+        # how many are new since the last coin popup was seen.
+        coins = self.db.credit_level_coins(user_id, level["level"])
+        coins_pending = max(0, level["level"] - user.get("coins_seen_level", 0))
         badges = self.db.badges_of(user_id)
         unlocked = set(titles.unlocked_for(stats, badges, level["level"]))
         chosen = user.get("title")
@@ -149,6 +153,9 @@ class AccountManager:
                      "claimed": skin in self.db.level_rewards_claimed(user_id)}
                     for lvl, skin, key in LEVEL_BUZZERS
                 ],
+                "coins": coins,
+                "coins_pending": coins_pending,
+                "coins_pack_price": self.db.BUZZER_PACK_COINS,
                 "stats": stats,
                 "level": level,
                 "badges": badges,
@@ -197,6 +204,8 @@ class AccountManager:
             "set_lenient": self.set_lenient,
             "set_buzzer_skin": self.set_buzzer_skin,
             "claim_buzzer_reward": self.claim_buzzer_reward,
+            "buy_buzzer_pack_coins": self.buy_buzzer_pack_coins,
+            "ack_coin_reward": self.ack_coin_reward,
         }.get(mtype)
         if handler is None:
             return False
@@ -675,6 +684,27 @@ class AccountManager:
         if data.get("equip"):
             user = self.db.get_user(uid)
             self.db.set_buzzer_skin(uid, skin, self._allowed_buzzers(user, level))
+        await self._send(ws, await self._account_payload(ws, uid))
+
+    async def buy_buzzer_pack_coins(self, ws: Any, data: dict) -> None:
+        """Spend coins to unlock the country buzzer pack."""
+        uid = self.user_of(ws)
+        if not uid:
+            return
+        result = self.db.buy_buzzer_pack_coins(uid)
+        await self._send(ws, {"type": "coins_result", "ok": result == "ok", "reason": result})
+        await self._send(ws, await self._account_payload(ws, uid))
+
+    async def ack_coin_reward(self, ws: Any, data: dict) -> None:
+        """The coin victory popup was seen up to the given level."""
+        uid = self.user_of(ws)
+        if not uid:
+            return
+        try:
+            lvl = int(data.get("level") or 0)
+        except (TypeError, ValueError):
+            return
+        self.db.ack_coin_reward(uid, lvl)
         await self._send(ws, await self._account_payload(ws, uid))
 
     async def _push_account(self, user_id: str) -> None:

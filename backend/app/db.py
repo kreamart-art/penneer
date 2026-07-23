@@ -337,6 +337,13 @@ class Database:
         if "title" not in cols:
             self._conn.execute("ALTER TABLE users ADD COLUMN title TEXT")
             self._conn.commit()
+        # Coins currency: balance, the highest level already CREDITED (+1/level),
+        # and the highest level whose coin-reward popup was acknowledged.
+        if "coins" not in cols:
+            self._conn.execute("ALTER TABLE users ADD COLUMN coins INTEGER NOT NULL DEFAULT 0")
+            self._conn.execute("ALTER TABLE users ADD COLUMN coins_level INTEGER NOT NULL DEFAULT 0")
+            self._conn.execute("ALTER TABLE users ADD COLUMN coins_seen_level INTEGER NOT NULL DEFAULT 0")
+            self._conn.commit()
         # Premium avatar pack (av19..av36) bought in the shop.
         if "premium_avatars" not in cols:
             self._conn.execute("ALTER TABLE users ADD COLUMN premium_avatars INTEGER NOT NULL DEFAULT 0")
@@ -441,7 +448,7 @@ class Database:
         with self._lock:
             rows = self._q(
                 "SELECT id, name, email, color, avatar_ver, avatar IS NOT NULL AS has_avatar, "
-                "avatar_preset, ai_unlocked, premium_avatars, buzzer_skins, buzzer_skin, title, lenient_spelling, created_at "
+                "avatar_preset, ai_unlocked, premium_avatars, buzzer_skins, buzzer_skin, title, lenient_spelling, coins, coins_level, coins_seen_level, created_at "
                 "FROM users WHERE id=?",
                 (user_id,),
             )
@@ -1333,6 +1340,61 @@ class Database:
             (user_id, reward, time.time()),
         )
 
+    # ---- coins currency ----------------------------------------------------
+
+    COINS_PER_LEVEL = 1        # earned per level reached
+    BUZZER_PACK_COINS = 25     # cost of the country buzzer pack in coins
+    COINS_PER_PACK = 100       # coins granted per PayPal coin purchase
+
+    def coins_of(self, user_id: str) -> int:
+        with self._lock:
+            rows = self._q("SELECT coins FROM users WHERE id=?", (user_id,))
+        return int(rows[0]["coins"]) if rows else 0
+
+    def credit_level_coins(self, user_id: str, level: int) -> int:
+        """Grant COINS_PER_LEVEL for every level reached since the last credit
+        (retroactive on first run). Idempotent per level. Returns new balance."""
+        with self._lock:
+            rows = self._q("SELECT coins, coins_level FROM users WHERE id=?", (user_id,))
+            if not rows:
+                return 0
+            credited = rows[0]["coins_level"]
+            bal = rows[0]["coins"]
+            if level > credited:
+                bal += (level - credited) * self.COINS_PER_LEVEL
+                self._exec("UPDATE users SET coins=?, coins_level=? WHERE id=?", (bal, level, user_id))
+        return bal
+
+    def add_coins(self, user_id: str, n: int) -> int:
+        with self._lock:
+            self._exec("UPDATE users SET coins=coins+? WHERE id=?", (int(n), user_id))
+            rows = self._q("SELECT coins FROM users WHERE id=?", (user_id,))
+        return int(rows[0]["coins"]) if rows else 0
+
+    def ack_coin_reward(self, user_id: str, level: int) -> None:
+        """Mark the coin-reward popup shown up to `level`."""
+        self._exec(
+            "UPDATE users SET coins_seen_level=? WHERE id=? AND coins_seen_level < ?",
+            (level, user_id, level),
+        )
+
+    def buy_buzzer_pack_coins(self, user_id: str) -> str:
+        """Spend coins to unlock the country buzzer pack. Returns
+        'ok' | 'already' | 'insufficient'."""
+        with self._lock:
+            rows = self._q("SELECT coins, buzzer_skins FROM users WHERE id=?", (user_id,))
+            if not rows:
+                return "insufficient"
+            if rows[0]["buzzer_skins"]:
+                return "already"
+            if rows[0]["coins"] < self.BUZZER_PACK_COINS:
+                return "insufficient"
+            self._exec(
+                "UPDATE users SET coins=coins-?, buzzer_skins=1 WHERE id=?",
+                (self.BUZZER_PACK_COINS, user_id),
+            )
+        return "ok"
+
     def _new_ai_code(self) -> str:
         # Human-friendly, unambiguous alphabet (no O/0/I/1), grouped for reading.
         alpha = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
@@ -1440,6 +1502,24 @@ class Database:
             )
             self._exec(f"UPDATE users SET {col}=1 WHERE id=?", (user_id,))
         return code
+
+    def fulfil_coins(self, order_id: str, user_id: str, amount: str, currency: str) -> Optional[int]:
+        """Record a captured coin purchase and add COINS_PER_PACK, exactly once.
+        Returns the new balance, or None if this order was already fulfilled."""
+        if not order_id or not user_id:
+            return None
+        now = time.time()
+        with self._lock:
+            cur = self._exec(
+                "INSERT OR IGNORE INTO purchases (order_id, provider, product, user_id, amount, currency, code, email, created_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?)",
+                (order_id, "paypal", "coins", user_id, amount, currency, None, None, now),
+            )
+            if cur.rowcount == 0:
+                return None  # already fulfilled
+            self._exec("UPDATE users SET coins=coins+? WHERE id=?", (self.COINS_PER_PACK, user_id))
+            rows = self._q("SELECT coins FROM users WHERE id=?", (user_id,))
+        return int(rows[0]["coins"]) if rows else None
 
 
 # Module-level singleton, created lazily so tests can use their own path.

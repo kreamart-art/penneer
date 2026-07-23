@@ -26,6 +26,7 @@ interface ShopStatus {
   ai_price?: string;
   avatars_price?: string;
   buzzers_price?: string;
+  coins_price?: string;
   price?: string; // legacy (= ai_price)
 }
 
@@ -43,7 +44,7 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
   const buzzersOwned = !!account?.buzzer_skins;
   const [status, setStatus] = useState<ShopStatus | null>(null);
   const [code, setCode] = useState("");
-  const [buying, setBuying] = useState<"ai" | "avatars" | "buzzers" | null>(null);
+  const [buying, setBuying] = useState<"ai" | "avatars" | "buzzers" | "coins" | null>(null);
   const shopResult = game.state.shopResult;
 
   useEffect(() => {
@@ -60,7 +61,7 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
   // Clear a stale redeem result when leaving the screen.
   useEffect(() => () => game.clearShopResult(), []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const startPaypal = async (product: "ai" | "avatars" | "buzzers") => {
+  const startPaypal = async (product: "ai" | "avatars" | "buzzers" | "coins") => {
     setBuying(product);
     try {
       const token = localStorage.getItem("penneer.accountToken") || "";
@@ -117,6 +118,33 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
       }
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        {/* ---- Coins (the currency) ---- */}
+        <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <img src="/coin.webp" alt="" width={46} height={46} style={{ flexShrink: 0 }} />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>{t("shopCoinsTitle")}</div>
+              <div style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint }}>{t("shopCoinsTag")}</div>
+            </div>
+            {account && (
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 4, fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.gold }}>
+                {account.coins ?? 0}<img src="/coin.webp" alt="" width={18} height={18} />
+              </div>
+            )}
+          </div>
+          <img src="/coins-stack.webp" alt="" style={{ width: "62%", maxWidth: 220, alignSelf: "center", display: "block" }} />
+          <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13.5, color: colors.sub, lineHeight: 1.55 }}>{t("shopCoinsBody")}</p>
+          {!account ? (
+            <div style={{ textAlign: "center", padding: "6px 0 2px", fontFamily: font.ui, fontSize: 13, color: colors.faint, lineHeight: 1.5 }}>{t("shopNeedProfile")}</div>
+          ) : status?.enabled ? (
+            <Button variant="gold" full disabled={buying !== null} onClick={() => startPaypal("coins")}>
+              {buying === "coins" ? t("shopOpeningPaypal") : `${t("shopCoinsBuy")} · ${money(status.coins_price, status.currency)}`}
+            </Button>
+          ) : (
+            <div style={{ textAlign: "center", padding: "4px 0 2px", fontFamily: font.ui, fontSize: 12.5, color: colors.faint, lineHeight: 1.5 }}>{t("shopPaypalSoon")}</div>
+          )}
+        </Card>
+
         {/* ---- AI referee ---- */}
         <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -202,8 +230,10 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
               <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>{t("shopBuzzTitle")}</div>
               <div style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint }}>{t("shopBuzzTag")}</div>
             </div>
-            {status?.enabled && !buzzersOwned && (
-              <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 18, color: colors.gold }}>{money(status.buzzers_price, status.currency)}</div>
+            {!buzzersOwned && account && (
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 4, fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.gold }}>
+                {account.coins_pack_price ?? 25}<img src="/coin.webp" alt="" width={18} height={18} />
+              </div>
             )}
           </div>
 
@@ -223,12 +253,16 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
             <div style={{ textAlign: "center", padding: "6px 0 2px", fontFamily: font.ui, fontSize: 13.5, color: colors.green }}>{t("shopBuzzActive")}</div>
           ) : !account ? (
             <div style={{ textAlign: "center", padding: "6px 0 2px", fontFamily: font.ui, fontSize: 13, color: colors.faint, lineHeight: 1.5 }}>{t("shopNeedProfile")}</div>
-          ) : status?.enabled ? (
-            <Button variant="gold" full disabled={buying !== null} onClick={() => startPaypal("buzzers")}>
-              {buying === "buzzers" ? t("shopOpeningPaypal") : `${t("shopBuyPaypal")} · ${money(status.buzzers_price, status.currency)}`}
+          ) : (account.coins ?? 0) >= (account.coins_pack_price ?? 25) ? (
+            <Button variant="gold" full onClick={() => { game.buyPackCoins(); }}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                {t("shopBuzzBuyCoins", { n: account.coins_pack_price ?? 25 })}<img src="/coin.webp" alt="" width={17} height={17} />
+              </span>
             </Button>
           ) : (
-            <div style={{ textAlign: "center", padding: "4px 0 2px", fontFamily: font.ui, fontSize: 12.5, color: colors.faint, lineHeight: 1.5 }}>{t("shopPaypalSoon")}</div>
+            <div style={{ textAlign: "center", padding: "4px 0 2px", fontFamily: font.ui, fontSize: 12.5, color: colors.faint, lineHeight: 1.5 }}>
+              {t("shopBuzzNeedCoins", { n: account.coins_pack_price ?? 25, have: account.coins ?? 0 })}
+            </div>
           )}
         </Card>
 

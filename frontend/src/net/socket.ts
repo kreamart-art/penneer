@@ -88,6 +88,9 @@ export interface Account {
   buzzer_skins: boolean; // bought the buzzer-skin pack (bz01..bz05)
   buzzer_skin: string | null; // chosen skin id, null = default red buzzer
   buzzer_rewards: BuzzerReward[]; // level-milestone skins + unlock/claim state
+  coins: number; // currency balance
+  coins_pending: number; // new coins since the last coin popup was seen
+  coins_pack_price: number; // coins to buy the country buzzer pack
   stats: AccountStats;
   level: LevelInfo;
   badges: Badge[];
@@ -345,6 +348,7 @@ type ServerMessage =
   | { type: "game_over"; scores: Record<string, number>; winner_id: string | null }
   | { type: "admin_ok"; is_admin: boolean; ai: AdminAi; recovery_codes: RecoveryCode[]; ai_codes: AiCodeInfo; avatar_codes?: AiCodeInfo; buzzer_codes?: AiCodeInfo }
   | { type: "shop_result"; ok: boolean; reason: string }
+  | { type: "coins_result"; ok: boolean; reason: string }
   | { type: "chat"; message: ChatMessage }
   | { type: "chat_history"; messages: ChatMessage[] }
   | { type: "account"; account: Account | null; token?: string; deleted?: boolean }
@@ -549,6 +553,10 @@ function reducer(state: ClientState, action: Action): ClientState {
       return { ...state, isAdmin: msg.is_admin, adminAi: msg.ai, recoveryCodes: msg.recovery_codes, aiCodes: msg.ai_codes, avatarCodes: msg.avatar_codes ?? state.avatarCodes, buzzerCodes: msg.buzzer_codes ?? state.buzzerCodes };
     case "shop_result":
       return { ...state, shopResult: { ok: msg.ok, reason: msg.reason } };
+    case "coins_result":
+      // The account payload that follows reflects the new balance / unlock; the
+      // buy button is gated client-side, so no separate message is needed.
+      return state;
     case "account": {
       if (msg.token) saveAccountToken(msg.token);
       if (msg.deleted) saveAccountToken(null);
@@ -722,6 +730,8 @@ export interface GameApi {
   setLenient: (on: boolean) => void;
   setBuzzerSkin: (skin: string | null) => void;
   claimBuzzerReward: (skin: string, equip: boolean) => void;
+  buyPackCoins: () => void;
+  ackCoinReward: (level: number) => void;
   rematch: () => void;
   clearJoin: () => void;
   drainToasts: () => void;
@@ -943,6 +953,8 @@ export function useGame(): GameApi {
     setLenient: (on) => send({ type: "set_lenient", on }),
     setBuzzerSkin: (skin) => send({ type: "set_buzzer_skin", skin }),
     claimBuzzerReward: (skin, equip) => send({ type: "claim_buzzer_reward", skin, equip }),
+    buyPackCoins: () => send({ type: "buy_buzzer_pack_coins" }),
+    ackCoinReward: (level) => send({ type: "ack_coin_reward", level }),
     rematch: () => send({ type: "rematch" }),
     clearJoin: () => dispatch({ type: "clearJoin" }),
     drainToasts: () => dispatch({ type: "drainToasts" }),
