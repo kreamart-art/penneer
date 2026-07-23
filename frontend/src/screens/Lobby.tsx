@@ -203,7 +203,7 @@ export function Lobby({ game }: { game: GameApi }) {
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {[...players, ...spectators].map((p) => (
               <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <Avatar name={p.name} color={p.color} size={38} crown={p.is_host} dim={!p.connected || p.is_spectator} userId={p.user_id} hasAvatar={p.has_avatar} avatarVer={p.avatar_ver} rank={p.rank} />
+                <Avatar name={p.name} color={p.color} size={38} crown={p.is_host} dim={!p.connected || p.is_spectator} userId={p.user_id} hasAvatar={p.has_avatar} avatarVer={p.avatar_ver} rank={p.rank} frame={p.frame} />
                 <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
                   <span style={{ fontFamily: font.ui, fontWeight: 600, fontSize: 15, color: colors.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {p.name}

@@ -17,7 +17,7 @@ import time
 from typing import Any, Optional
 
 from . import daily, missions, push, titles
-from .db import get_db, LEVEL_BUZZERS, BUZZER_SKIN_IDS, LEVEL_FOR_BUZZER
+from .db import get_db, LEVEL_BUZZERS, BUZZER_SKIN_IDS, LEVEL_FOR_BUZZER, LEVEL_FRAMES, LEVEL_FOR_FRAME
 from .models import PLAYER_COLORS
 
 BASE_URL = os.environ.get("PENNEER_BASE_URL", "https://penneer.artnomad.nl")
@@ -122,6 +122,11 @@ class AccountManager:
         allowed |= {skin for lvl, skin, _ in LEVEL_BUZZERS if level >= lvl}
         return allowed
 
+    def _allowed_frames(self, level: int) -> set:
+        """Avatar frames this account may select: every level-reward frame whose
+        milestone the account has reached."""
+        return {fid for lvl, fid, _ in LEVEL_FRAMES if level >= lvl}
+
     async def _account_payload(self, ws: Any, user_id: str) -> dict:
         user = self.db.get_user(user_id)
         if user is None:
@@ -152,6 +157,12 @@ class AccountManager:
                      "unlocked": level["level"] >= lvl,
                      "claimed": skin in self.db.level_rewards_claimed(user_id)}
                     for lvl, skin, key in LEVEL_BUZZERS
+                ],
+                "avatar_frame": user.get("avatar_frame"),
+                "frame_rewards": [
+                    {"frame": fid, "level": lvl, "name": key,
+                     "unlocked": level["level"] >= lvl}
+                    for lvl, fid, key in LEVEL_FRAMES
                 ],
                 "coins": coins,
                 "coins_pending": coins_pending,
@@ -203,6 +214,7 @@ class AccountManager:
             "club_get": self.club_get,
             "set_lenient": self.set_lenient,
             "set_buzzer_skin": self.set_buzzer_skin,
+            "set_avatar_frame": self.set_avatar_frame,
             "claim_buzzer_reward": self.claim_buzzer_reward,
             "buy_buzzer_pack_coins": self.buy_buzzer_pack_coins,
             "ack_coin_reward": self.ack_coin_reward,
@@ -665,6 +677,16 @@ class AccountManager:
         user = self.db.get_user(uid)
         level = _level_of(self.db.stats_of(uid))["level"]
         self.db.set_buzzer_skin(uid, skin, self._allowed_buzzers(user, level))
+        await self._send(ws, await self._account_payload(ws, uid))
+
+    async def set_avatar_frame(self, ws: Any, data: dict) -> None:
+        uid = self.user_of(ws)
+        if not uid:
+            return
+        frame = data.get("frame")
+        frame = frame if isinstance(frame, str) and frame else None
+        level = _level_of(self.db.stats_of(uid))["level"]
+        self.db.set_avatar_frame(uid, frame, self._allowed_frames(level))
         await self._send(ws, await self._account_payload(ws, uid))
 
     async def claim_buzzer_reward(self, ws: Any, data: dict) -> None:

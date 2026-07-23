@@ -293,11 +293,12 @@ class RoomManager:
             player.color = account["color"]
         player.has_avatar = bool(account.get("has_avatar"))
         player.avatar_ver = account.get("avatar_ver", 0)
-        # Rank ring + chosen title in the room, from the account's current state.
+        # Rank ring + chosen title + avatar frame, from the account's current state.
         lvl = _level_of(get_db().stats_of(account["id"]))
         player.level = lvl["level"]
         player.rank = lvl["rank"]
         player.title = get_db().get_title(account["id"])
+        player.frame = get_db().get_avatar_frame(account["id"])
 
     async def create_room(self, ws: Any, name: str, account: Optional[dict] = None) -> tuple[Room, Player]:
         code = self._gen_code()

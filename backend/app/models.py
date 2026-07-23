@@ -58,6 +58,8 @@ class Player:
     # Chosen cosmetic title key (shown under the name in place of the rank when
     # set); None -> the client falls back to the rank label.
     title: Optional[str] = None
+    # Chosen avatar-frame id (level reward), drawn around the avatar; None = none.
+    frame: Optional[str] = None
     has_avatar: bool = False
     avatar_ver: int = 0
 
@@ -74,6 +76,7 @@ class Player:
             "level": self.level,
             "rank": self.rank,
             "title": self.title,
+            "frame": self.frame,
             "has_avatar": self.has_avatar,
             "avatar_ver": self.avatar_ver,
         }

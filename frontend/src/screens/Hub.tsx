@@ -528,7 +528,7 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
             className="pressable"
             style={{ position: "relative", background: "transparent", border: "none", padding: 0, cursor: "pointer", flexShrink: 0 }}
           >
-            <Avatar name={account.name} color={account.color} size={64} userId={account.id} hasAvatar={account.has_avatar} avatarVer={account.avatar_ver} />
+            <Avatar name={account.name} color={account.color} size={64} userId={account.id} hasAvatar={account.has_avatar} avatarVer={account.avatar_ver} frame={account.avatar_frame} />
             <span style={{ position: "absolute", right: -3, bottom: -3, width: 22, height: 22, borderRadius: 8, display: "grid", placeItems: "center", background: colors.gold, color: colors.bg0, boxShadow: "0 2px 8px rgba(0,0,0,.4)" }}>
               <Pencil size={12} />
             </span>
@@ -790,6 +790,79 @@ function BuzzerPicker({ game, onShowShop }: { game: GameApi; onShowShop: () => v
         </div>
       </Card>
     </>
+  );
+}
+
+// One avatar-frame choice: previews the actual avatar inside the frame.
+function FrameTile({
+  active, locked, lockLabel, caption, label, onClick, children,
+}: {
+  active: boolean; locked: boolean; lockLabel?: string; caption?: string; label: string; onClick: () => void; children: React.ReactNode;
+}) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
+      <button
+        onClick={() => { sound.uiTap(); onClick(); }}
+        aria-label={label}
+        className="pressable"
+        style={{
+          position: "relative", width: "100%", minWidth: 0, aspectRatio: "1 / 1",
+          overflow: "hidden", borderRadius: 14,
+          border: `2px solid ${active ? colors.gold : colors.panelBorder}`,
+          background: withAlpha("#000000", 0.22), cursor: "pointer",
+          display: "grid", placeItems: "center", boxSizing: "border-box",
+          boxShadow: active ? `0 0 12px ${withAlpha(colors.gold, 0.5)}` : "none",
+        }}
+      >
+        <div style={{ opacity: locked ? 0.4 : 1, filter: locked ? "grayscale(0.5)" : "none" }}>{children}</div>
+        {locked && (
+          lockLabel ? (
+            <span style={{ position: "absolute", left: 0, right: 0, bottom: 5, textAlign: "center", fontFamily: font.ui, fontSize: 10.5, fontWeight: 800, letterSpacing: 0.3, color: colors.gold, textShadow: "0 1px 4px rgba(0,0,0,.8)" }}>{lockLabel}</span>
+          ) : (
+            <span style={{ position: "absolute", right: 5, bottom: 5, width: 20, height: 20, borderRadius: 7, display: "grid", placeItems: "center", background: withAlpha("#000000", 0.55), color: colors.gold }}><Lock size={12} /></span>
+          )
+        )}
+      </button>
+      {caption && (
+        <span style={{ fontFamily: font.ui, fontSize: 9.5, fontWeight: 600, color: locked ? colors.faint : colors.sub, textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{caption}</span>
+      )}
+    </div>
+  );
+}
+
+// Avatar-frame picker (level rewards) — lives in Profielinstellingen.
+function FramePicker({ game }: { game: GameApi }) {
+  const { t } = useT();
+  const account = game.state.account!;
+  const active = account.avatar_frame ?? null;
+  const rewards = account.frame_rewards ?? [];
+  const av = { name: account.name, color: account.color, userId: account.id, hasAvatar: account.has_avatar, avatarVer: account.avatar_ver };
+  return (
+    <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <Sparkles size={15} color={colors.gold} />
+        <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint, flex: 1 }}>{t("framePickTitle")}</span>
+      </div>
+      <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.sub, lineHeight: 1.5 }}>{t("framePickHint")}</p>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+        <FrameTile active={active === null} locked={false} caption={t("frameNone")} label={t("frameNone")} onClick={() => game.setAvatarFrame(null)}>
+          <Avatar {...av} size={52} />
+        </FrameTile>
+        {rewards.map((r) => (
+          <FrameTile
+            key={r.frame}
+            active={active === r.frame}
+            locked={!r.unlocked}
+            lockLabel={t("frameLevelLocked", { n: r.level })}
+            caption={t(r.name)}
+            label={t(r.name)}
+            onClick={() => r.unlocked && game.setAvatarFrame(r.frame)}
+          >
+            <Avatar {...av} size={52} frame={r.frame} />
+          </FrameTile>
+        ))}
+      </div>
+    </Card>
   );
 }
 
@@ -1192,6 +1265,9 @@ function ProfileSettings({
 
       {/* Draai-knop-skin (shop 'buzzers' pack) */}
       <BuzzerPicker game={game} onShowShop={onShowShop} />
+
+      {/* Avatar-frame (level-beloning) */}
+      <FramePicker game={game} />
 
       {/* e-mail koppelen */}
       <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>

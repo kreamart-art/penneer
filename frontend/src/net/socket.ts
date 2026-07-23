@@ -20,6 +20,7 @@ export interface Player {
   level: number; // 0 for guests
   rank: string | null; // rank key for the avatar ring + title
   title?: string | null; // chosen cosmetic title key (shown instead of rank)
+  frame?: string | null; // chosen avatar-frame id (level reward), drawn around the avatar
 }
 
 // ---- accounts + social ------------------------------------------------------
@@ -75,6 +76,13 @@ export interface BuzzerReward {
   claimed: boolean; // victory popup acknowledged
 }
 
+export interface FrameReward {
+  frame: string; // frame id (fr01..) -> /frames/{frame}.webp
+  level: number;
+  name: string; // i18n key (frameReward_*)
+  unlocked: boolean; // level milestone reached
+}
+
 export interface Account {
   id: string;
   name: string;
@@ -88,6 +96,8 @@ export interface Account {
   buzzer_skins: boolean; // bought the buzzer-skin pack (bz01..bz05)
   buzzer_skin: string | null; // chosen skin id, null = default red buzzer
   buzzer_rewards: BuzzerReward[]; // level-milestone skins + unlock/claim state
+  avatar_frame: string | null; // chosen avatar-frame id, null = no frame
+  frame_rewards: FrameReward[]; // level-milestone avatar frames + unlock state
   coins: number; // currency balance
   coins_pending: number; // new coins since the last coin popup was seen
   coins_pack_price: number; // coins to buy the country buzzer pack
@@ -729,6 +739,7 @@ export interface GameApi {
   loadClub: (period: "month" | "all") => void;
   setLenient: (on: boolean) => void;
   setBuzzerSkin: (skin: string | null) => void;
+  setAvatarFrame: (frame: string | null) => void;
   claimBuzzerReward: (skin: string, equip: boolean) => void;
   buyPackCoins: () => void;
   ackCoinReward: (level: number) => void;
@@ -952,6 +963,7 @@ export function useGame(): GameApi {
     loadClub: (period) => send({ type: "club_get", period }),
     setLenient: (on) => send({ type: "set_lenient", on }),
     setBuzzerSkin: (skin) => send({ type: "set_buzzer_skin", skin }),
+    setAvatarFrame: (frame) => send({ type: "set_avatar_frame", frame }),
     claimBuzzerReward: (skin, equip) => send({ type: "claim_buzzer_reward", skin, equip }),
     buyPackCoins: () => send({ type: "buy_buzzer_pack_coins" }),
     ackCoinReward: (level) => send({ type: "ack_coin_reward", level }),

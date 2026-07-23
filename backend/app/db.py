@@ -268,6 +268,15 @@ LEVEL_BUZZERS = [
 LEVEL_BUZZER_IDS = [b[1] for b in LEVEL_BUZZERS]
 LEVEL_FOR_BUZZER = {skin: lvl for lvl, skin, _ in LEVEL_BUZZERS}
 ALL_BUZZER_IDS = BUZZER_SKIN_IDS + LEVEL_BUZZER_IDS
+
+# Avatar frames: a decorative frame drawn around your avatar, earned by
+# LEVELLING UP (never bought). (level threshold, frame id, name key for i18n).
+# NULL avatar_frame = no frame. Art lives in frontend/public/frames/{id}.webp.
+LEVEL_FRAMES = [
+    (10, "fr01", "frameReward_gold"),
+]
+LEVEL_FRAME_IDS = [f[1] for f in LEVEL_FRAMES]
+LEVEL_FOR_FRAME = {fid: lvl for lvl, fid, _ in LEVEL_FRAMES}
 _preset_cache: dict[str, Optional[bytes]] = {}
 
 
@@ -363,6 +372,10 @@ class Database:
             self._conn.execute("ALTER TABLE users ADD COLUMN buzzer_skins INTEGER NOT NULL DEFAULT 0")
             self._conn.execute("ALTER TABLE users ADD COLUMN buzzer_skin TEXT")
             self._conn.commit()
+        # Avatar frame: the chosen level-reward frame around the avatar (NULL = none).
+        if "avatar_frame" not in cols:
+            self._conn.execute("ALTER TABLE users ADD COLUMN avatar_frame TEXT")
+            self._conn.commit()
         # Preset artwork changed (v9 = the v8 body-width algorithm plus hand-tuned
         # per-avatar overrides, from per-avatar user feedback: av02 less zoom so
         # her shoulders are back, av06/13/14 nudged down, av15 down + recentered,
@@ -448,7 +461,7 @@ class Database:
         with self._lock:
             rows = self._q(
                 "SELECT id, name, email, color, avatar_ver, avatar IS NOT NULL AS has_avatar, "
-                "avatar_preset, ai_unlocked, premium_avatars, buzzer_skins, buzzer_skin, title, lenient_spelling, coins, coins_level, coins_seen_level, created_at "
+                "avatar_preset, ai_unlocked, premium_avatars, buzzer_skins, buzzer_skin, avatar_frame, title, lenient_spelling, coins, coins_level, coins_seen_level, created_at "
                 "FROM users WHERE id=?",
                 (user_id,),
             )
@@ -1325,6 +1338,26 @@ class Database:
         if skin not in allowed:
             return False
         self._exec("UPDATE users SET buzzer_skin=? WHERE id=?", (skin, user_id))
+        return True
+
+    # ---- avatar frames (unlocked by levelling up) --------------------------
+
+    def get_avatar_frame(self, user_id: str) -> Optional[str]:
+        if not user_id:
+            return None
+        with self._lock:
+            rows = self._q("SELECT avatar_frame FROM users WHERE id=?", (user_id,))
+        return rows[0]["avatar_frame"] if rows else None
+
+    def set_avatar_frame(self, user_id: str, frame: Optional[str], allowed: set) -> bool:
+        """Pick a frame the caller has verified is allowed (level reached), or
+        None for no frame (always allowed)."""
+        if not frame:
+            self._exec("UPDATE users SET avatar_frame=NULL WHERE id=?", (user_id,))
+            return True
+        if frame not in allowed:
+            return False
+        self._exec("UPDATE users SET avatar_frame=? WHERE id=?", (frame, user_id))
         return True
 
     # ---- level-reward buzzer skins (unlocked by levelling up) --------------
