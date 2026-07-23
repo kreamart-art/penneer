@@ -131,7 +131,7 @@ class AccountManager:
         # Coins: earn 1 per level reached (retroactive), then surface balance +
         # how many are new since the last coin popup was seen.
         coins = self.db.credit_level_coins(user_id, level["level"])
-        coins_pending = max(0, level["level"] - user.get("coins_seen_level", 0))
+        coins_pending = self.db.coins_owed(level["level"]) - self.db.coins_owed(user.get("coins_seen_level", 0))
         badges = self.db.badges_of(user_id)
         unlocked = set(titles.unlocked_for(stats, badges, level["level"]))
         chosen = user.get("title")

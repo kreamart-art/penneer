@@ -1342,9 +1342,16 @@ class Database:
 
     # ---- coins currency ----------------------------------------------------
 
-    COINS_PER_LEVEL = 1        # earned per level reached
+    COINS_PER_TIER = 5         # earned each time you cross LEVELS_PER_TIER levels
+    LEVELS_PER_TIER = 10       # coins land every 10 levels, like the buzzer rewards
     BUZZER_PACK_COINS = 25     # cost of the country buzzer pack in coins
     COINS_PER_PACK = 100       # coins granted per PayPal coin purchase
+
+    @classmethod
+    def coins_owed(cls, level: int) -> int:
+        """Total coins earned by reaching `level`: COINS_PER_TIER for every full
+        LEVELS_PER_TIER levels (5 per 10). Milestone-based, like the draaiknoppen."""
+        return (max(0, int(level)) // cls.LEVELS_PER_TIER) * cls.COINS_PER_TIER
 
     def coins_of(self, user_id: str) -> int:
         with self._lock:
@@ -1352,8 +1359,8 @@ class Database:
         return int(rows[0]["coins"]) if rows else 0
 
     def credit_level_coins(self, user_id: str, level: int) -> int:
-        """Grant COINS_PER_LEVEL for every level reached since the last credit
-        (retroactive on first run). Idempotent per level. Returns new balance."""
+        """Grant coins for every 10-level tier crossed since the last credit
+        (retroactive on first run). Idempotent. Returns new balance."""
         with self._lock:
             rows = self._q("SELECT coins, coins_level FROM users WHERE id=?", (user_id,))
             if not rows:
@@ -1361,7 +1368,7 @@ class Database:
             credited = rows[0]["coins_level"]
             bal = rows[0]["coins"]
             if level > credited:
-                bal += (level - credited) * self.COINS_PER_LEVEL
+                bal += self.coins_owed(level) - self.coins_owed(credited)
                 self._exec("UPDATE users SET coins=?, coins_level=? WHERE id=?", (bal, level, user_id))
         return bal
 
