@@ -1342,16 +1342,19 @@ class Database:
 
     # ---- coins currency ----------------------------------------------------
 
-    COINS_PER_TIER = 5         # earned each time you cross LEVELS_PER_TIER levels
-    LEVELS_PER_TIER = 10       # coins land every 10 levels, like the buzzer rewards
+    COINS_PER_LEVEL = 1        # earned for every level reached
+    COINS_PER_TIER = 5         # milestone BONUS on top, each LEVELS_PER_TIER levels
+    LEVELS_PER_TIER = 10       # milestone every 10 levels, like the draaiknoppen
     BUZZER_PACK_COINS = 25     # cost of the country buzzer pack in coins
     COINS_PER_PACK = 100       # coins granted per PayPal coin purchase
 
     @classmethod
     def coins_owed(cls, level: int) -> int:
-        """Total coins earned by reaching `level`: COINS_PER_TIER for every full
-        LEVELS_PER_TIER levels (5 per 10). Milestone-based, like the draaiknoppen."""
-        return (max(0, int(level)) // cls.LEVELS_PER_TIER) * cls.COINS_PER_TIER
+        """Total coins earned by reaching `level`: 1 per level PLUS a
+        COINS_PER_TIER bonus for every full LEVELS_PER_TIER levels (the milestone
+        bonus, like the draaiknoppen). Level 10 = 10 + 5 = 15."""
+        level = max(0, int(level))
+        return level * cls.COINS_PER_LEVEL + (level // cls.LEVELS_PER_TIER) * cls.COINS_PER_TIER
 
     def coins_of(self, user_id: str) -> int:
         with self._lock:
