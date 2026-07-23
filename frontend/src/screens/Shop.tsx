@@ -1,33 +1,42 @@
-// Shop — reached via the cart icon on the Landing. Sells two things, each
-// unlocked per account (never admin), tied to your profile:
-//   1. the AI referee for your own rooms
-//   2. the premium avatar pack (av19..av36)
-//   3. the buzzer-skin pack (bz01..bz05, more skins coming)
-// Two ways to unlock either: pay with PayPal, or redeem a code the owner handed
-// out (the code carries which product it unlocks). A profile is required.
+// Shop — reached via the cart icon on the Landing. Coin-driven:
+//   - buy COINS with PayPal, in bundles (10 / 30 / 50 / 100)
+//   - spend coins on single Draai-knoppen (bz01..bz05) and on avatar packs
+//   - the AI referee is still bought with PayPal
+// Coins are also earned by levelling (1/level + 5 per 10 levels). A code the
+// owner handed out still unlocks the AI. A profile is required to own anything.
 import { useEffect, useState } from "react";
-import { ArrowLeft, Bot, Check, CircleDot, ShoppingCart, Sparkles, Ticket } from "lucide-react";
+import { ArrowLeft, Bot, Check, ShoppingCart, Ticket } from "lucide-react";
 import { Screen, Card } from "../components/Layout";
 import { Button } from "../components/Button";
 import { MusicToggle } from "../components/MusicToggle";
+import { sound } from "../sound/sound";
 import type { GameApi } from "../net/socket";
 import { useT } from "../i18n/i18n";
 import { colors, font, withAlpha } from "../theme/tokens";
 
-// Preview thumbnails for the premium pack (first six of av19..av36).
-const AVATAR_PREVIEW = [19, 20, 24, 27, 28, 34].map((n) => `av${n}`);
 const AVATAR_ART_VERSION = 9;
-// Preview thumbnails for the buzzer-skin pack.
-const BUZZER_PREVIEW = ["bz01", "bz02", "bz03", "bz04", "bz05"];
+// The five single Draai-knoppen for sale, with their country-name i18n keys.
+const BUZZERS_FOR_SALE = [
+  { id: "bz01", name: "shopBuzzNl" },
+  { id: "bz02", name: "shopBuzzIt" },
+  { id: "bz03", name: "shopBuzzSu" },
+  { id: "bz04", name: "shopBuzzJm" },
+  { id: "bz05", name: "shopBuzzBr" },
+];
+// The two avatar packs (nine each), with three preview thumbnails apiece.
+const AVATAR_PACKS = [
+  { id: "avpack1", name: "shopAvPack1", preview: [19, 22, 25] },
+  { id: "avpack2", name: "shopAvPack2", preview: [28, 31, 34] },
+];
 
+interface Bundle { product: string; coins: number; price: string }
 interface ShopStatus {
   enabled: boolean;
   currency: string;
   ai_price?: string;
-  avatars_price?: string;
-  buzzers_price?: string;
-  coins_price?: string;
   price?: string; // legacy (= ai_price)
+  bundles?: Bundle[];
+  coin_prices?: Record<string, number>;
 }
 
 function money(value: string | undefined, currency: string): string {
@@ -36,32 +45,72 @@ function money(value: string | undefined, currency: string): string {
   return `${sym}${value.replace(".", ",")}`;
 }
 
+// A coin amount with the coin icon, e.g. "8 [coin]".
+function Coins({ n, color = colors.gold, size = 16 }: { n: number; color?: string; size?: number }) {
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontFamily: font.display, fontWeight: 700, fontSize: size - 1, color }}>
+      {n}<img src="/coin.webp" alt="" width={size} height={size} style={{ display: "block" }} />
+    </span>
+  );
+}
+
+// One coin-bought item (a buzzer or an avatar pack): art, title, and a price
+// pill you tap to buy (dimmed when you can't afford it; green when owned).
+function CoinItem({ title, owned, price, coins, onBuy, children }: {
+  title: string; owned: boolean; price: number; coins: number; onBuy: () => void; children: React.ReactNode;
+}) {
+  const { t } = useT();
+  const affordable = coins >= price;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: 10, borderRadius: 16, background: withAlpha("#000000", 0.22), border: `1px solid ${owned ? withAlpha(colors.green, 0.5) : colors.panelBorder}` }}>
+      <div style={{ width: "100%", aspectRatio: "1 / 1", display: "grid", placeItems: "center", overflow: "hidden" }}>{children}</div>
+      <span style={{ fontFamily: font.ui, fontSize: 12.5, fontWeight: 600, color: colors.ink, textAlign: "center", lineHeight: 1.2 }}>{title}</span>
+      {owned ? (
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontFamily: font.ui, fontSize: 12.5, fontWeight: 700, color: colors.green }}>
+          <Check size={14} /> {t("shopItemOwned")}
+        </span>
+      ) : (
+        <button
+          onClick={() => { if (affordable) { sound.uiTap(); onBuy(); } }}
+          disabled={!affordable}
+          aria-label={`${t("shopItemBuy")} ${title}`}
+          className={affordable ? "pressable" : undefined}
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 14px", borderRadius: 999,
+            background: affordable ? withAlpha(colors.gold, 0.16) : withAlpha("#000000", 0.3),
+            border: `1px solid ${affordable ? withAlpha(colors.gold, 0.5) : colors.panelBorder}`,
+            cursor: affordable ? "pointer" : "default",
+          }}
+        >
+          <Coins n={price} color={affordable ? colors.gold : colors.faint} size={15} />
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
   const { t } = useT();
   const account = game.state.account;
   const aiActive = !!account?.ai_unlocked || !!game.state.room?.ai_referee || !!game.state.adminAi?.enabled;
-  const avatarsOwned = !!account?.premium_avatars;
-  const buzzersOwned = !!account?.buzzer_skins;
+  const owned = new Set(account?.owned_items ?? []);
+  const coins = account?.coins ?? 0;
   const [status, setStatus] = useState<ShopStatus | null>(null);
   const [code, setCode] = useState("");
-  const [buying, setBuying] = useState<"ai" | "avatars" | "buzzers" | "coins" | null>(null);
+  const [buying, setBuying] = useState<string | null>(null);
   const shopResult = game.state.shopResult;
+  const prices = status?.coin_prices ?? {};
 
   useEffect(() => {
     let alive = true;
-    fetch("/api/shop/status")
-      .then((r) => r.json())
-      .then((s) => alive && setStatus(s))
-      .catch(() => {});
-    return () => {
-      alive = false;
-    };
+    fetch("/api/shop/status").then((r) => r.json()).then((s) => alive && setStatus(s)).catch(() => {});
+    return () => { alive = false; };
   }, []);
 
   // Clear a stale redeem result when leaving the screen.
   useEffect(() => () => game.clearShopResult(), []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const startPaypal = async (product: "ai" | "avatars" | "buzzers" | "coins") => {
+  const startPaypal = async (product: string) => {
     setBuying(product);
     try {
       const token = localStorage.getItem("penneer.accountToken") || "";
@@ -71,35 +120,22 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
         body: JSON.stringify({ product }),
       });
       const data = await res.json();
-      if (res.ok && data.approve_url) {
-        window.location.href = data.approve_url; // off to PayPal, back via ?paypal=return
-        return;
-      }
-    } catch {
-      /* fall through to re-enable the button */
-    }
+      if (res.ok && data.approve_url) { window.location.href = data.approve_url; return; }
+    } catch { /* fall through */ }
     setBuying(null);
   };
 
-  const redeem = () => {
-    game.redeemAiCode(code);
-    setCode("");
-  };
+  const redeem = () => { game.redeemAiCode(code); setCode(""); };
 
   const resultMsg = shopResult
     ? shopResult.ok
-      ? shopResult.reason === "already"
-        ? t("shopAlready")
-        : t("shopRedeemDone")
-      : shopResult.reason === "used"
-        ? t("shopCodeUsed")
-        : shopResult.reason === "auth"
-          ? t("shopNeedProfile")
-          : t("shopCodeInvalid")
+      ? shopResult.reason === "already" ? t("shopAlready") : t("shopRedeemDone")
+      : shopResult.reason === "used" ? t("shopCodeUsed")
+        : shopResult.reason === "auth" ? t("shopNeedProfile") : t("shopCodeInvalid")
     : null;
 
-  // The redeem box is useful as long as at least one product is still locked.
-  const showRedeem = !!account && (!aiActive || !avatarsOwned || !buzzersOwned);
+  const buzzPrice = prices.bz01 ?? 8;
+  const packPrice = prices.avpack1 ?? 40;
 
   return (
     <Screen
@@ -111,41 +147,82 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
           <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>
             <ShoppingCart size={17} color={colors.gold} /> {t("shopTitle")}
           </span>
-          <div style={{ marginLeft: "auto" }}>
-            <MusicToggle />
-          </div>
+          {account && (
+            <span style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 12px 4px 8px", borderRadius: 999, background: withAlpha(colors.gold, 0.12), border: `1px solid ${withAlpha(colors.gold, 0.4)}` }}>
+              <img src="/coin.webp" alt="" width={20} height={20} style={{ display: "block" }} />
+              <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15, color: colors.gold }}>{coins}</span>
+            </span>
+          )}
+          <div style={{ marginLeft: account ? 6 : "auto" }}><MusicToggle /></div>
         </div>
       }
     >
-      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        {/* ---- Coins (the currency) ---- */}
-        <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <img src="/coin.webp" alt="" width={46} height={46} style={{ flexShrink: 0 }} />
-            <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>{t("shopCoinsTitle")}</div>
-              <div style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint }}>{t("shopCoinsTag")}</div>
-            </div>
-            {account && (
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 4, fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.gold }}>
-                {account.coins ?? 0}<img src="/coin.webp" alt="" width={18} height={18} />
-              </div>
-            )}
-          </div>
-          <img src="/coins-stack.webp" alt="" style={{ width: "62%", maxWidth: 220, alignSelf: "center", display: "block" }} />
-          <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13.5, color: colors.sub, lineHeight: 1.55 }}>{t("shopCoinsBody")}</p>
-          {!account ? (
-            <div style={{ textAlign: "center", padding: "6px 0 2px", fontFamily: font.ui, fontSize: 13, color: colors.faint, lineHeight: 1.5 }}>{t("shopNeedProfile")}</div>
-          ) : status?.enabled ? (
-            <Button variant="gold" full disabled={buying !== null} onClick={() => startPaypal("coins")}>
-              {buying === "coins" ? t("shopOpeningPaypal") : `${t("shopCoinsBuy")} · ${money(status.coins_price, status.currency)}`}
-            </Button>
-          ) : (
-            <div style={{ textAlign: "center", padding: "4px 0 2px", fontFamily: font.ui, fontSize: 12.5, color: colors.faint, lineHeight: 1.5 }}>{t("shopPaypalSoon")}</div>
-          )}
-        </Card>
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        {!account && (
+          <Card><p style={{ margin: 0, textAlign: "center", fontFamily: font.ui, fontSize: 13.5, color: colors.faint, lineHeight: 1.5 }}>{t("shopNeedProfile")}</p></Card>
+        )}
 
-        {/* ---- AI referee ---- */}
+        {/* ---- Coins kopen (PayPal bundles) ---- */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div>
+            <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink }}>{t("shopCoinsHeader")}</div>
+            <div style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint }}>{t("shopCoinsLead")}</div>
+          </div>
+          {status && !status.enabled ? (
+            <Card><p style={{ margin: 0, textAlign: "center", fontFamily: font.ui, fontSize: 12.5, color: colors.faint, lineHeight: 1.5 }}>{t("shopPaypalSoon")}</p></Card>
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
+              {(status?.bundles ?? []).map((b, i) => (
+                <div key={b.product} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "14px 10px", borderRadius: 16, background: withAlpha("#000000", 0.22), border: `1px solid ${i === 3 ? withAlpha(colors.gold, 0.55) : colors.panelBorder}`, position: "relative" }}>
+                  {i === 3 && <span style={{ position: "absolute", top: 8, right: 8, fontFamily: font.ui, fontSize: 9.5, fontWeight: 800, letterSpacing: 0.4, textTransform: "uppercase", color: colors.gold }}>{t("shopBestValue")}</span>}
+                  <img src="/coins-stack.webp" alt="" style={{ width: 66, height: 66, objectFit: "contain", display: "block" }} />
+                  <Coins n={b.coins} size={19} />
+                  <Button variant="gold" full disabled={!account || buying !== null} onClick={() => startPaypal(b.product)}>
+                    {buying === b.product ? t("shopOpeningPaypal") : money(b.price, status?.currency ?? "EUR")}
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ---- Draai-knoppen (coins, single) ---- */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div>
+            <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink }}>{t("shopBuzzHeader")}</div>
+            <div style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint }}>{t("shopBuzzLead")}</div>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+            {BUZZERS_FOR_SALE.map((bz) => (
+              <CoinItem key={bz.id} title={t(bz.name)} owned={owned.has(bz.id)} price={prices[bz.id] ?? buzzPrice} coins={coins} onBuy={() => game.buyItemCoins(bz.id)}>
+                <img src={`/buzzers/${bz.id}.webp`} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
+              </CoinItem>
+            ))}
+          </div>
+        </div>
+
+        {/* ---- Avatar-packs (coins) ---- */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div>
+            <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink }}>{t("shopAvatarsHeader")}</div>
+            <div style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint }}>{t("shopAvatarsLead")}</div>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
+            {AVATAR_PACKS.map((pk) => (
+              <CoinItem key={pk.id} title={t(pk.name)} owned={owned.has(pk.id)} price={prices[pk.id] ?? packPrice} coins={coins} onBuy={() => game.buyItemCoins(pk.id)}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 4, width: "100%" }}>
+                  {pk.preview.map((n) => (
+                    <div key={n} style={{ aspectRatio: "1 / 1", borderRadius: 8, overflow: "hidden", border: `1px solid ${colors.panelBorder}` }}>
+                      <img src={`/avatars/av${n}.jpg?v=${AVATAR_ART_VERSION}`} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                    </div>
+                  ))}
+                </div>
+              </CoinItem>
+            ))}
+          </div>
+        </div>
+
+        {/* ---- AI referee (PayPal) ---- */}
         <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <span style={{ width: 52, height: 52, borderRadius: 16, display: "grid", placeItems: "center", background: withAlpha(colors.gold, 0.14), border: `1px solid ${withAlpha(colors.gold, 0.45)}`, color: colors.gold }}>
@@ -167,12 +244,9 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
               </span>
             ))}
           </div>
-
           {aiActive ? (
             <div style={{ textAlign: "center", padding: "10px 0 2px", fontFamily: font.ui, fontSize: 13.5, color: colors.green }}>{t("shopAiActive")}</div>
-          ) : !account ? (
-            <div style={{ textAlign: "center", padding: "8px 0 2px", fontFamily: font.ui, fontSize: 13, color: colors.faint, lineHeight: 1.5 }}>{t("shopNeedProfile")}</div>
-          ) : status?.enabled ? (
+          ) : !account ? null : status?.enabled ? (
             <Button variant="gold" full disabled={buying !== null} onClick={() => startPaypal("ai")}>
               {buying === "ai" ? t("shopOpeningPaypal") : `${t("shopBuyPaypal")} · ${money(status.ai_price ?? status.price, status.currency)}`}
             </Button>
@@ -181,93 +255,8 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
           )}
         </Card>
 
-        {/* ---- Premium avatars ---- */}
-        <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <span style={{ width: 52, height: 52, borderRadius: 16, display: "grid", placeItems: "center", background: withAlpha(colors.violet, 0.16), border: `1px solid ${withAlpha(colors.violet, 0.5)}`, color: colors.violet }}>
-              <Sparkles size={24} />
-            </span>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>{t("shopAvatarsTitle")}</div>
-              <div style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint }}>{t("shopAvatarsTag")}</div>
-            </div>
-            {status?.enabled && !avatarsOwned && (
-              <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 18, color: colors.gold }}>{money(status.avatars_price, status.currency)}</div>
-            )}
-          </div>
-
-          {/* preview strip */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 6 }}>
-            {AVATAR_PREVIEW.map((id) => (
-              <div key={id} style={{ aspectRatio: "1 / 1", borderRadius: 10, overflow: "hidden", border: `1px solid ${colors.panelBorder}` }}>
-                <img src={`/avatars/${id}.jpg?v=${AVATAR_ART_VERSION}`} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-              </div>
-            ))}
-          </div>
-
-          <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13.5, color: colors.sub, lineHeight: 1.55 }}>{t("shopAvatarsBody")}</p>
-
-          {avatarsOwned ? (
-            <div style={{ textAlign: "center", padding: "6px 0 2px", fontFamily: font.ui, fontSize: 13.5, color: colors.green }}>{t("shopAvatarsActive")}</div>
-          ) : !account ? (
-            <div style={{ textAlign: "center", padding: "6px 0 2px", fontFamily: font.ui, fontSize: 13, color: colors.faint, lineHeight: 1.5 }}>{t("shopNeedProfile")}</div>
-          ) : status?.enabled ? (
-            <Button variant="gold" full disabled={buying !== null} onClick={() => startPaypal("avatars")}>
-              {buying === "avatars" ? t("shopOpeningPaypal") : `${t("shopBuyPaypal")} · ${money(status.avatars_price, status.currency)}`}
-            </Button>
-          ) : (
-            <div style={{ textAlign: "center", padding: "4px 0 2px", fontFamily: font.ui, fontSize: 12.5, color: colors.faint, lineHeight: 1.5 }}>{t("shopPaypalSoon")}</div>
-          )}
-        </Card>
-
-        {/* ---- Buzzer skins ---- */}
-        <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <span style={{ width: 52, height: 52, borderRadius: 16, display: "grid", placeItems: "center", background: withAlpha(colors.red, 0.14), border: `1px solid ${withAlpha(colors.red, 0.45)}`, color: colors.red }}>
-              <CircleDot size={24} />
-            </span>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>{t("shopBuzzTitle")}</div>
-              <div style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint }}>{t("shopBuzzTag")}</div>
-            </div>
-            {!buzzersOwned && account && (
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 4, fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.gold }}>
-                {account.coins_pack_price ?? 25}<img src="/coin.webp" alt="" width={18} height={18} />
-              </div>
-            )}
-          </div>
-
-          {/* preview strip: the five skins */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 6 }}>
-            {BUZZER_PREVIEW.map((id) => (
-              <div key={id} style={{ aspectRatio: "1 / 1", display: "grid", placeItems: "center" }}>
-                <img src={`/buzzers/${id}.webp`} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
-              </div>
-            ))}
-          </div>
-
-          <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13.5, color: colors.sub, lineHeight: 1.55 }}>{t("shopBuzzBody")}</p>
-          <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, fontStyle: "italic", color: colors.gold }}>{t("shopBuzzMore")}</p>
-
-          {buzzersOwned ? (
-            <div style={{ textAlign: "center", padding: "6px 0 2px", fontFamily: font.ui, fontSize: 13.5, color: colors.green }}>{t("shopBuzzActive")}</div>
-          ) : !account ? (
-            <div style={{ textAlign: "center", padding: "6px 0 2px", fontFamily: font.ui, fontSize: 13, color: colors.faint, lineHeight: 1.5 }}>{t("shopNeedProfile")}</div>
-          ) : (account.coins ?? 0) >= (account.coins_pack_price ?? 25) ? (
-            <Button variant="gold" full onClick={() => { game.buyPackCoins(); }}>
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                {t("shopBuzzBuyCoins", { n: account.coins_pack_price ?? 25 })}<img src="/coin.webp" alt="" width={17} height={17} />
-              </span>
-            </Button>
-          ) : (
-            <div style={{ textAlign: "center", padding: "4px 0 2px", fontFamily: font.ui, fontSize: 12.5, color: colors.faint, lineHeight: 1.5 }}>
-              {t("shopBuzzNeedCoins", { n: account.coins_pack_price ?? 25, have: account.coins ?? 0 })}
-            </div>
-          )}
-        </Card>
-
-        {/* Redeem a code — works for either product (the code carries which). */}
-        {showRedeem && (
+        {/* Redeem an AI code. */}
+        {!!account && !aiActive && (
           <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontFamily: font.ui, fontSize: 13, fontWeight: 600, letterSpacing: 0.4, textTransform: "uppercase", color: colors.faint }}>
               <Ticket size={15} /> {t("shopHaveCode")}
@@ -282,15 +271,11 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
               />
               <Button variant="primary" disabled={!code.trim()} onClick={redeem}>{t("shopRedeem")}</Button>
             </div>
-            {resultMsg && (
-              <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13, color: shopResult?.ok ? colors.green : colors.red }}>{resultMsg}</p>
-            )}
+            {resultMsg && <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13, color: shopResult?.ok ? colors.green : colors.red }}>{resultMsg}</p>}
           </Card>
         )}
 
-        <p style={{ margin: 0, textAlign: "center", fontFamily: font.ui, fontSize: 12.5, color: colors.faint, lineHeight: 1.5 }}>
-          {t("shopFootnotePaid")}
-        </p>
+        <p style={{ margin: 0, textAlign: "center", fontFamily: font.ui, fontSize: 12.5, color: colors.faint, lineHeight: 1.5 }}>{t("shopFootnotePaid")}</p>
       </div>
     </Screen>
   );

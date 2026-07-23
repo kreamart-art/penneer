@@ -116,9 +116,8 @@ class AccountManager:
     def _allowed_buzzers(self, user: dict, level: int) -> set:
         """Skins this account may select: the paid pack (if owned) plus every
         level-reward skin whose milestone the account has reached."""
-        allowed = set()
-        if user.get("buzzer_skins"):
-            allowed |= set(BUZZER_SKIN_IDS)
+        owned = self.db.owned_items_of(user["id"])
+        allowed = {s for s in BUZZER_SKIN_IDS if s in owned}
         allowed |= {skin for lvl, skin, _ in LEVEL_BUZZERS if level >= lvl}
         return allowed
 
@@ -151,6 +150,7 @@ class AccountManager:
                 "ai_unlocked": bool(user.get("ai_unlocked")),
                 "premium_avatars": bool(user.get("premium_avatars")),
                 "buzzer_skins": bool(user.get("buzzer_skins")),
+                "owned_items": sorted(self.db.owned_items_of(user_id)),
                 "buzzer_skin": user.get("buzzer_skin"),
                 "buzzer_rewards": [
                     {"skin": skin, "level": lvl, "name": key,
@@ -216,7 +216,7 @@ class AccountManager:
             "set_buzzer_skin": self.set_buzzer_skin,
             "set_avatar_frame": self.set_avatar_frame,
             "claim_buzzer_reward": self.claim_buzzer_reward,
-            "buy_buzzer_pack_coins": self.buy_buzzer_pack_coins,
+            "buy_item_coins": self.buy_item_coins,
             "ack_coin_reward": self.ack_coin_reward,
         }.get(mtype)
         if handler is None:
@@ -708,13 +708,14 @@ class AccountManager:
             self.db.set_buzzer_skin(uid, skin, self._allowed_buzzers(user, level))
         await self._send(ws, await self._account_payload(ws, uid))
 
-    async def buy_buzzer_pack_coins(self, ws: Any, data: dict) -> None:
-        """Spend coins to unlock the country buzzer pack."""
+    async def buy_item_coins(self, ws: Any, data: dict) -> None:
+        """Spend coins to buy a shop item (a single buzzer skin or an avatar pack)."""
         uid = self.user_of(ws)
         if not uid:
             return
-        result = self.db.buy_buzzer_pack_coins(uid)
-        await self._send(ws, {"type": "coins_result", "ok": result == "ok", "reason": result})
+        item = data.get("item")
+        result = self.db.buy_item_coins(uid, item) if isinstance(item, str) else "invalid"
+        await self._send(ws, {"type": "coins_result", "ok": result == "ok", "reason": result, "item": item})
         await self._send(ws, await self._account_payload(ws, uid))
 
     async def ack_coin_reward(self, ws: Any, data: dict) -> None:

@@ -48,13 +48,17 @@ def _secret() -> str:
     return (os.environ.get("PAYPAL_SECRET") or "").strip()
 
 
-# The shop's products: what each sells + its price env + default + description.
+# PayPal products: the AI referee, plus the coin bundles. Cosmetics (buzzers,
+# avatar packs) are bought with COINS now, not PayPal, so they are not here.
 PRODUCTS = {
     "ai": {"env": "PENNEER_PRICE", "default": "3.99", "desc": "Pen Neer AI-scheidsrechter"},
-    "avatars": {"env": "PENNEER_AVATARS_PRICE", "default": "2.99", "desc": "Pen Neer Premium avatars"},
-    "buzzers": {"env": "PENNEER_BUZZERS_PRICE", "default": "2.99", "desc": "Pen Neer knoppen-pack"},
-    "coins": {"env": "PENNEER_COINS_PRICE", "default": "2.99", "desc": "Pen Neer coins"},
+    "coins10": {"env": "PENNEER_COINS10_PRICE", "default": "0.99", "desc": "Pen Neer 10 coins"},
+    "coins30": {"env": "PENNEER_COINS30_PRICE", "default": "2.49", "desc": "Pen Neer 30 coins"},
+    "coins50": {"env": "PENNEER_COINS50_PRICE", "default": "3.99", "desc": "Pen Neer 50 coins"},
+    "coins100": {"env": "PENNEER_COINS100_PRICE", "default": "6.99", "desc": "Pen Neer 100 coins"},
 }
+# Coin bundle product ids in display order, with the coins each grants.
+COIN_BUNDLES = [("coins10", 10), ("coins30", 30), ("coins50", 50), ("coins100", 100)]
 
 
 def price(product: str = "ai") -> str:
@@ -79,11 +83,10 @@ def status() -> dict:
         "enabled": configured(),
         "price": price("ai"),  # kept for older clients
         "ai_price": price("ai"),
-        "avatars_price": price("avatars"),
-        "buzzers_price": price("buzzers"),
-        "coins_price": price("coins"),
         "currency": currency(),
         "env": _env(),
+        # coin bundles: [{product, coins, price}] in display order
+        "bundles": [{"product": pid, "coins": n, "price": price(pid)} for pid, n in COIN_BUNDLES],
     }
 
 

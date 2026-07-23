@@ -416,8 +416,9 @@ async def push_unsubscribe(request: Request) -> Response:
 
 @app.get("/api/shop/status")
 async def shop_status() -> JSONResponse:
-    """What the shop UI needs to render: whether PayPal is live + the price."""
-    return JSONResponse(paypal.status())
+    """What the shop UI needs to render: PayPal availability + coin bundle prices
+    + the coin cost of each buyable item."""
+    return JSONResponse({**paypal.status(), "coin_prices": get_db().COIN_PRICES})
 
 
 @app.post("/api/shop/paypal/create")
@@ -477,7 +478,7 @@ async def shop_paypal_capture(request: Request) -> JSONResponse:
     custom = result.get("custom_id") or ""
     buyer, _, product = custom.partition("|")
     product = product or "ai"
-    if product not in ("ai", "avatars", "buzzers", "coins"):
+    if product not in paypal.PRODUCTS:
         product = "ai"
 
     # Amount + currency must match what we sell for THIS product — never trust
@@ -489,8 +490,8 @@ async def shop_paypal_capture(request: Request) -> JSONResponse:
     if not buyer or not db.get_user(buyer):
         buyer = uid
 
-    if product == "coins":
-        bal = db.fulfil_coins(order_id, buyer, paypal.price(product), paypal.currency())
+    if product in db.COIN_BUNDLES:  # a coin bundle -> credit its coins
+        bal = db.fulfil_coins(order_id, buyer, paypal.price(product), paypal.currency(), product=product)
         return JSONResponse({"ok": True, "coins": bal} if bal is not None else {"ok": True, "already": True})
     code = db.fulfil_purchase(order_id, buyer, paypal.price(product), paypal.currency(), product=product)
     if code is None:

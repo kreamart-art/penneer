@@ -125,6 +125,16 @@ CREATE TABLE IF NOT EXISTS purchases (
     email TEXT,
     created_at REAL NOT NULL
 );
+-- Coin-bought cosmetics, one row per (user, item). item = a buzzer skin id
+-- (bz01..05) or an avatar pack id (avpack1/avpack2). Level-reward buzzers and
+-- frames are NOT here (those are gated by level, not owned). Legacy full-pack
+-- owners (users.buzzer_skins / premium_avatars) are folded in at read time.
+CREATE TABLE IF NOT EXISTS owned_items (
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    item TEXT NOT NULL,
+    bought_at REAL NOT NULL,
+    PRIMARY KEY (user_id, item)
+);
 -- Web-push subscriptions: one row per browser/device endpoint. The endpoint is
 -- the identity; a user can have several (phone + laptop).
 CREATE TABLE IF NOT EXISTS push_subs (
@@ -250,6 +260,12 @@ PRESET_IDS = [f"av{i:02d}" for i in range(1, 19)]
 # the free defaults; picking one requires the unlock (set_avatar_preset gates).
 PREMIUM_PRESET_IDS = [f"av{i:02d}" for i in range(19, 37)]
 ALL_PRESET_IDS = PRESET_IDS + PREMIUM_PRESET_IDS
+# The premium avatars are sold as two separate coin packs of nine.
+AVATAR_PACKS = {
+    "avpack1": [f"av{i:02d}" for i in range(19, 28)],  # av19..av27
+    "avpack2": [f"av{i:02d}" for i in range(28, 37)],  # av28..av36
+}
+PACK_FOR_PRESET = {pid: pack for pack, ids in AVATAR_PACKS.items() for pid in ids}
 
 # Buzzer skins (shop 'buzzers' pack): art in frontend/public/buzzers/bzNN.webp.
 # The default red buzzer is not an id here; NULL buzzer_skin = default.
@@ -533,11 +549,11 @@ class Database:
 
     def set_avatar_preset(self, user_id: str, preset_id: str) -> bool:
         """Store a built-in preset avatar as this account's photo. Premium pack
-        presets (av19..av36) require the shop unlock; without it, refused."""
+        presets (av19..av36) require owning the pack they belong to; refused otherwise."""
         data = preset_bytes(preset_id)
         if not data:
             return False
-        if preset_id in PREMIUM_PRESET_IDS and not self.is_premium_avatars_unlocked(user_id):
+        if preset_id in PREMIUM_PRESET_IDS and PACK_FOR_PRESET.get(preset_id) not in self.owned_items_of(user_id):
             return False
         with self._lock:
             self._exec(
@@ -1378,8 +1394,17 @@ class Database:
     COINS_PER_LEVEL = 1        # earned for every level reached
     COINS_PER_TIER = 5         # milestone BONUS on top, each LEVELS_PER_TIER levels
     LEVELS_PER_TIER = 10       # milestone every 10 levels, like the draaiknoppen
-    BUZZER_PACK_COINS = 25     # cost of the country buzzer pack in coins
-    COINS_PER_PACK = 100       # coins granted per PayPal coin purchase
+    BUZZER_PACK_COINS = 25     # legacy (the old all-in-one country pack)
+    COINS_PER_PACK = 100       # legacy single coin bundle
+
+    # Coin PRICES of shop items (buy_item_coins): each country buzzer sells on its
+    # own (cheap, reachable early); the premium avatars sell as two packs (pricier).
+    COIN_PRICES = {
+        "bz01": 8, "bz02": 8, "bz03": 8, "bz04": 8, "bz05": 8,
+        "avpack1": 40, "avpack2": 40,
+    }
+    # PayPal coin BUNDLES: product id -> coins granted (price via env, see paypal.py).
+    COIN_BUNDLES = {"coins10": 10, "coins30": 30, "coins50": 50, "coins100": 100}
 
     @classmethod
     def coins_owed(cls, level: int) -> int:
@@ -1393,6 +1418,51 @@ class Database:
         with self._lock:
             rows = self._q("SELECT coins FROM users WHERE id=?", (user_id,))
         return int(rows[0]["coins"]) if rows else 0
+
+    # ---- coin-bought items (buzzers sold singly + avatar packs) -------------
+
+    def owned_items_of(self, user_id: str) -> set:
+        """Set of coin-bought item ids the account owns, folding in the legacy
+        all-in-one unlocks: buzzer_skins -> every country buzzer, premium_avatars
+        -> both avatar packs."""
+        if not user_id:
+            return set()
+        with self._lock:
+            rows = self._q("SELECT item FROM owned_items WHERE user_id=?", (user_id,))
+            legacy = self._q("SELECT buzzer_skins, premium_avatars FROM users WHERE id=?", (user_id,))
+        owned = {r["item"] for r in rows}
+        if legacy:
+            if legacy[0]["buzzer_skins"]:
+                owned |= set(BUZZER_SKIN_IDS)
+            if legacy[0]["premium_avatars"]:
+                owned |= set(AVATAR_PACKS.keys())
+        return owned
+
+    def buy_item_coins(self, user_id: str, item: str) -> str:
+        """Spend coins to buy a shop item (a buzzer skin or an avatar pack).
+        Returns 'ok' | 'already' | 'insufficient' | 'invalid'."""
+        price = self.COIN_PRICES.get(item)
+        if price is None:
+            return "invalid"
+        with self._lock:  # self._lock is non-reentrant: check ownership inline, never via owned_items_of
+            rows = self._q("SELECT coins, buzzer_skins, premium_avatars FROM users WHERE id=?", (user_id,))
+            if not rows:
+                return "invalid"
+            owned = {r["item"] for r in self._q("SELECT item FROM owned_items WHERE user_id=?", (user_id,))}
+            if rows[0]["buzzer_skins"]:
+                owned |= set(BUZZER_SKIN_IDS)
+            if rows[0]["premium_avatars"]:
+                owned |= set(AVATAR_PACKS.keys())
+            if item in owned:
+                return "already"
+            if rows[0]["coins"] < price:
+                return "insufficient"
+            self._exec("UPDATE users SET coins=coins-? WHERE id=?", (price, user_id))
+            self._exec(
+                "INSERT OR IGNORE INTO owned_items (user_id, item, bought_at) VALUES (?,?,?)",
+                (user_id, item, time.time()),
+            )
+        return "ok"
 
     def credit_level_coins(self, user_id: str, level: int) -> int:
         """Grant coins for every 10-level tier crossed since the last credit
@@ -1546,21 +1616,22 @@ class Database:
             self._exec(f"UPDATE users SET {col}=1 WHERE id=?", (user_id,))
         return code
 
-    def fulfil_coins(self, order_id: str, user_id: str, amount: str, currency: str) -> Optional[int]:
-        """Record a captured coin purchase and add COINS_PER_PACK, exactly once.
-        Returns the new balance, or None if this order was already fulfilled."""
+    def fulfil_coins(self, order_id: str, user_id: str, amount: str, currency: str, product: str = "coins100") -> Optional[int]:
+        """Record a captured coin-bundle purchase and add that bundle's coins,
+        exactly once. Returns the new balance, or None if already fulfilled."""
         if not order_id or not user_id:
             return None
+        coins = self.COIN_BUNDLES.get(product, self.COINS_PER_PACK)
         now = time.time()
         with self._lock:
             cur = self._exec(
                 "INSERT OR IGNORE INTO purchases (order_id, provider, product, user_id, amount, currency, code, email, created_at) "
                 "VALUES (?,?,?,?,?,?,?,?,?)",
-                (order_id, "paypal", "coins", user_id, amount, currency, None, None, now),
+                (order_id, "paypal", product, user_id, amount, currency, None, None, now),
             )
             if cur.rowcount == 0:
                 return None  # already fulfilled
-            self._exec("UPDATE users SET coins=coins+? WHERE id=?", (self.COINS_PER_PACK, user_id))
+            self._exec("UPDATE users SET coins=coins+? WHERE id=?", (coins, user_id))
             rows = self._q("SELECT coins FROM users WHERE id=?", (user_id,))
         return int(rows[0]["coins"]) if rows else None
 

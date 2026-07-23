@@ -33,6 +33,10 @@ type Tab = "profile" | "friends" | "inbox" | "leaderboard";
 const AVATAR_PRESETS = Array.from({ length: 18 }, (_, i) => `av${String(i + 1).padStart(2, "0")}`);
 // Premium pack (av19..av36), shown locked in the picker until bought in the shop.
 const PREMIUM_AVATAR_PRESETS = Array.from({ length: 18 }, (_, i) => `av${String(i + 19).padStart(2, "0")}`);
+// Which coin pack each premium preset belongs to (av19..27 = pack 1, av28..36 = pack 2).
+const PACK_OF_PRESET: Record<string, string> = Object.fromEntries(
+  PREMIUM_AVATAR_PRESETS.map((id, i) => [id, i < 9 ? "avpack1" : "avpack2"]),
+);
 // Bump whenever the preset artwork changes (matches db.PRESET_ART_VERSION) so the
 // picker's static images cache-bust instead of serving the stale ones.
 const AVATAR_ART_VERSION = 9;
@@ -450,7 +454,7 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
     return (
       <AvatarPickerScreen
         current={account.avatar_preset}
-        premiumOwned={!!account.premium_avatars}
+        ownedItems={account.owned_items ?? []}
         busy={busy}
         onBack={() => setAvatarPickerOpen(false)}
         onShowShop={onShowShop}
@@ -745,25 +749,27 @@ function BuzzerTile({
 function BuzzerPicker({ game, onShowShop }: { game: GameApi; onShowShop: () => void }) {
   const { t } = useT();
   const account = game.state.account!;
-  const owned = !!account.buzzer_skins;
+  const ownedItems = new Set(account.owned_items ?? []);
+  const anyOwned = ["bz01", "bz02", "bz03", "bz04", "bz05"].some((id) => ownedItems.has(id));
   const active = account.buzzer_skin ?? null;
   const packSkins = ["bz01", "bz02", "bz03", "bz04", "bz05"];
   const rewards = account.buzzer_rewards ?? [];
 
   return (
     <>
-      {/* paid pack */}
+      {/* bought single skins */}
       <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <CircleDot size={15} color={colors.gold} />
           <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint, flex: 1 }}>{t("buzzPickTitle")}</span>
         </div>
-        <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.sub, lineHeight: 1.5 }}>{owned ? t("buzzPickHint") : t("buzzLockedHint")}</p>
+        <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.sub, lineHeight: 1.5 }}>{anyOwned ? t("buzzPickHint") : t("buzzLockedHint")}</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
           <BuzzerTile id={null} active={active === null} locked={false} label={t("buzzDefault")} onClick={() => game.setBuzzerSkin(null)} />
-          {packSkins.map((id) => (
-            <BuzzerTile key={id} id={id} active={active === id} locked={!owned} label={id} onClick={() => (owned ? game.setBuzzerSkin(id) : onShowShop())} />
-          ))}
+          {packSkins.map((id) => {
+            const has = ownedItems.has(id);
+            return <BuzzerTile key={id} id={id} active={active === id} locked={!has} label={id} onClick={() => (has ? game.setBuzzerSkin(id) : onShowShop())} />;
+          })}
         </div>
       </Card>
 
@@ -1059,19 +1065,20 @@ function AvatarGrid({
   ids,
   current,
   busy,
-  locked,
+  isLocked,
   onPick,
 }: {
   ids: string[];
   current: string | null;
   busy: boolean;
-  locked?: boolean;
+  isLocked?: (id: string) => boolean;
   onPick: (id: string) => void;
 }) {
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
       {ids.map((id) => {
         const active = current === id;
+        const locked = isLocked?.(id) ?? false;
         return (
           <button
             key={id}
@@ -1174,20 +1181,23 @@ function AvatarMenu({
 
 function AvatarPickerScreen({
   current,
-  premiumOwned,
+  ownedItems,
   busy,
   onBack,
   onShowShop,
   onPick,
 }: {
   current: string | null;
-  premiumOwned: boolean;
+  ownedItems: string[];
   busy: boolean;
   onBack: () => void;
   onShowShop: () => void;
   onPick: (id: string) => void;
 }) {
   const { t } = useT();
+  const ownedPacks = new Set(ownedItems);
+  const canPick = (id: string) => ownedPacks.has(PACK_OF_PRESET[id]);
+  const allPremiumOwned = ownedPacks.has("avpack1") && ownedPacks.has("avpack2");
   return (
     <>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -1210,10 +1220,10 @@ function AvatarPickerScreen({
           ids={PREMIUM_AVATAR_PRESETS}
           current={current}
           busy={busy}
-          locked={!premiumOwned}
-          onPick={(id) => (premiumOwned ? onPick(id) : onShowShop())}
+          isLocked={(id) => !canPick(id)}
+          onPick={(id) => (canPick(id) ? onPick(id) : onShowShop())}
         />
-        {!premiumOwned && (
+        {!allPremiumOwned && (
           <>
             <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.faint, lineHeight: 1.5 }}>{t("pickerPremiumLocked")}</p>
             <Button variant="gold" full onClick={onShowShop}>

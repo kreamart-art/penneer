@@ -100,7 +100,8 @@ export interface Account {
   frame_rewards: FrameReward[]; // level-milestone avatar frames + unlock state
   coins: number; // currency balance
   coins_pending: number; // new coins since the last coin popup was seen
-  coins_pack_price: number; // coins to buy the country buzzer pack
+  coins_pack_price: number; // legacy (old all-in-one country pack cost)
+  owned_items: string[]; // coin-bought items owned: buzzer ids (bz01..05) + avatar packs (avpack1/2)
   stats: AccountStats;
   level: LevelInfo;
   badges: Badge[];
@@ -358,7 +359,7 @@ type ServerMessage =
   | { type: "game_over"; scores: Record<string, number>; winner_id: string | null }
   | { type: "admin_ok"; is_admin: boolean; ai: AdminAi; recovery_codes: RecoveryCode[]; ai_codes: AiCodeInfo; avatar_codes?: AiCodeInfo; buzzer_codes?: AiCodeInfo }
   | { type: "shop_result"; ok: boolean; reason: string }
-  | { type: "coins_result"; ok: boolean; reason: string }
+  | { type: "coins_result"; ok: boolean; reason: string; item?: string }
   | { type: "chat"; message: ChatMessage }
   | { type: "chat_history"; messages: ChatMessage[] }
   | { type: "account"; account: Account | null; token?: string; deleted?: boolean }
@@ -741,7 +742,7 @@ export interface GameApi {
   setBuzzerSkin: (skin: string | null) => void;
   setAvatarFrame: (frame: string | null) => void;
   claimBuzzerReward: (skin: string, equip: boolean) => void;
-  buyPackCoins: () => void;
+  buyItemCoins: (item: string) => void;
   ackCoinReward: (level: number) => void;
   rematch: () => void;
   clearJoin: () => void;
@@ -965,7 +966,7 @@ export function useGame(): GameApi {
     setBuzzerSkin: (skin) => send({ type: "set_buzzer_skin", skin }),
     setAvatarFrame: (frame) => send({ type: "set_avatar_frame", frame }),
     claimBuzzerReward: (skin, equip) => send({ type: "claim_buzzer_reward", skin, equip }),
-    buyPackCoins: () => send({ type: "buy_buzzer_pack_coins" }),
+    buyItemCoins: (item) => send({ type: "buy_item_coins", item }),
     ackCoinReward: (level) => send({ type: "ack_coin_reward", level }),
     rematch: () => send({ type: "rematch" }),
     clearJoin: () => dispatch({ type: "clearJoin" }),
