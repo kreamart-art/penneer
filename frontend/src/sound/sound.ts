@@ -126,6 +126,10 @@ const FILES: Record<string, string> = {
   invite: "invite",
   error: "error",
   uiTap: "ui-tap",
+  // Artnomad typewriter intro (same files as Kings/Ezelen): a key-strike per
+  // typed character and a carriage bell at the end of the line.
+  twKey: "tw-key",
+  twBell: "tw-bell",
 };
 const buffers: Record<string, AudioBuffer | null | undefined> = {};
 
@@ -387,6 +391,8 @@ export const sound = {
   }),
   error: () => sfx("error", () => sweep(220, 110, 0, 0.2, "sawtooth", 0.16)),
   uiTap: () => sfx("uiTap", () => tone(1000, 0, 0.025, "square", 0.05)),
+  twKey: () => sfx("twKey", () => tone(1400, 0, 0.02, "square", 0.07)),
+  twBell: () => sfx("twBell", () => tone(1568, 0, 0.35, "triangle", 0.14)),
   tick: () => sfx("tick", () => tone(1200, 0, 0.05, "square", 0.08)),
   win: () => sfx("win", () => {
     [523, 659, 784, 1046].forEach((f, i) => tone(f, i * 0.1, 0.3, "triangle", 0.18));

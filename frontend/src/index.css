@@ -35,10 +35,15 @@ body,
   margin: 0;
 }
 
-/* Solid base = the gradient's END colour. Any sliver the fixed layer might not
-   cover is #0e0922 on #0e0922, so a seam is physically impossible. */
+/* The canvas itself carries the gradient: the root element's background paints
+   the ENTIRE viewport (safe areas, toolbar strips, overscroll), so any sliver
+   the fixed layers do not cover still shows the exact same image. Sized to one
+   viewport-height and anchored top; everything past it is the flat end colour. */
 html {
-  background: #0e0922;
+  background-color: #0e0922;
+  background-image: radial-gradient(135% 95% at 50% -6%, #41216f 0%, #1a1140 46%, #0e0922 82%);
+  background-repeat: no-repeat;
+  background-size: 100% 100vh;
 }
 
 body {
@@ -70,10 +75,10 @@ body::before {
   top: 0;
   left: 0;
   right: 0;
-  height: 100vh;
-  min-height: 100dvh;
+  height: calc(100vh + 80px);
+  height: calc(100lvh + env(safe-area-inset-bottom, 0px) + 60px);
   z-index: -1;
-  background: radial-gradient(135% 95% at 50% -6%, #41216f 0%, #1a1140 46%, #0e0922 82%);
+  background: radial-gradient(135% 95% at 50% -6%, #41216f 0%, #1a1140 46%, #0e0922 82%) top / 100% 100vh no-repeat #0e0922;
 }
 
 /* Premium finish on top of the gradient (still behind all content): soft ink
@@ -90,8 +95,8 @@ body::after {
   top: 0;
   left: 0;
   right: 0;
-  height: 100vh;
-  min-height: 100dvh;
+  height: calc(100vh + 80px);
+  height: calc(100lvh + env(safe-area-inset-bottom, 0px) + 60px);
   z-index: -1;
   pointer-events: none;
   background:
@@ -325,6 +330,16 @@ input:focus {
   animation: letter-out 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s both;
 }
 
+/* Typewriter intro caret. */
+@keyframes caret-blink {
+  0%, 45% { opacity: 1; }
+  50%, 95% { opacity: 0; }
+  100% { opacity: 1; }
+}
+.caret-blink {
+  animation: caret-blink 1.1s steps(1) infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .reveal-rise,
   .shimmer-bar,
@@ -337,7 +352,8 @@ input:focus {
   .avatar-glow,
   .confetti-piece,
   .pop-in,
-  .letter-out {
+  .letter-out,
+  .caret-blink {
     animation: none;
   }
   .pressable {
