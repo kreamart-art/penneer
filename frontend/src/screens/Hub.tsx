@@ -1,7 +1,7 @@
 // Hub — profile, friends, inbox and leaderboard in one tabbed screen.
 // Reached from the Landing. A profile is optional: guests see the create form.
 import { Fragment, useEffect, useRef, useState } from "react";
-import { ArrowLeft, Award, Bell, Camera, Check, CircleDot, Copy, Lock, LogOut, MessageCircle, MoreVertical, Pencil, Plus, Settings as SettingsIcon, Share2, ShoppingCart, Smile, Sparkles, Star, Swords, Trash2, Trophy, UserPlus, Users, X, ZoomIn, ZoomOut } from "lucide-react";
+import { ArrowLeft, Award, Bell, Camera, Check, CircleDot, Copy, Lock, LogOut, MessageCircle, MoreVertical, Pencil, Plus, Search, Send, Settings as SettingsIcon, Share2, ShoppingCart, Smile, Sparkles, Star, Swords, Trash2, Trophy, UserPlus, Users, X, ZoomIn, ZoomOut } from "lucide-react";
 import { Avatar, RANK_RING } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { MicButton } from "../components/MicButton";
@@ -27,7 +27,7 @@ const inputStyle: React.CSSProperties = {
   padding: "11px 13px",
 };
 
-type Tab = "profile" | "friends" | "inbox" | "leaderboard";
+type Tab = "profile" | "friends" | "inbox" | "leaderboard" | "club" | "title";
 
 // Built-in illustrated avatars, mirrored server-side (backend/app/avatars).
 const AVATAR_PRESETS = Array.from({ length: 18 }, (_, i) => `av${String(i + 1).padStart(2, "0")}`);
@@ -45,12 +45,51 @@ export function Hub({ game, onBack, onShowShop, onChallenge }: { game: GameApi; 
   const { t } = useT();
   const [tab, setTab] = useState<Tab>("profile");
   const account = game.state.account;
+  // Profielinstellingen + delen leven nu in de bovenbalk (naast de muziekknop),
+  // dus hun state hangt op Hub-niveau i.p.v. in de ProfileTab.
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [email, setEmail] = useState("");
+  const [sharing, setSharing] = useState(false);
+
+  const shareCard = async () => {
+    if (!account || sharing) return;
+    setSharing(true);
+    try {
+      const lvl = account.level;
+      const winPct = account.stats.games > 0 ? `${Math.round((account.stats.wins / account.stats.games) * 100)}%` : "0%";
+      const blob = await makeProfileCard({
+        name: account.name,
+        color: account.color,
+        avatarUrl: account.has_avatar ? `/api/avatar/${account.id}?v=${account.avatar_ver}` : null,
+        ringColor: RANK_RING[lvl.rank] ?? null,
+        rankTitle: t(`rank_${lvl.rank}`),
+        levelText: t("profileCardLevel", { n: lvl.level }),
+        stats: [
+          [t("statGames"), String(account.stats.games)],
+          [t("statWins"), String(account.stats.wins)],
+          [t("statWinPct"), winPct],
+          [t("statPoints"), String(account.stats.points)],
+        ],
+        badgesLine: t("profileCardBadges", { n: account.badges.length }),
+        footer: t("footer"),
+      });
+      if (blob) await shareOrDownload(blob, "penneer-profiel.png");
+    } finally {
+      setSharing(false);
+    }
+  };
+
+  useEffect(() => {
+    if (settingsOpen && account) game.refreshBlocked();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settingsOpen]);
 
   useEffect(() => {
     if (!account) return;
     if (tab === "profile") game.refreshBlocked();
     if (tab === "friends") game.refreshFriends();
     if (tab === "inbox") game.refreshInbox();
+    if (tab === "club") game.loadClub("month");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, !!account]);
   useEffect(() => {
@@ -63,31 +102,47 @@ export function Hub({ game, onBack, onShowShop, onChallenge }: { game: GameApi; 
     { key: "friends", label: t("friendsTab"), icon: <Users size={15} /> },
     { key: "inbox", label: t("inboxTab"), icon: <Bell size={15} />, badge: (game.state.inbox.length || account?.inbox_count || 0) + (account?.dm_unread || 0) },
     { key: "leaderboard", label: t("leaderboardTab"), icon: <Trophy size={15} /> },
+    { key: "club", label: t("clubTab"), icon: <Users size={15} /> },
+    { key: "title", label: t("titleTab"), icon: <Star size={15} /> },
   ];
+
+  const topIconBtn: React.CSSProperties = { background: "transparent", border: "none", cursor: "pointer", color: colors.sub, display: "flex", padding: 6 };
+
+  // Profielinstellingen open its own full screen.
+  if (settingsOpen && account) {
+    return <ProfileSettings game={game} email={email} setEmail={setEmail} onShowShop={onShowShop} onBack={() => setSettingsOpen(false)} />;
+  }
 
   return (
     <Screen
       top={
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", paddingTop: "calc(14px + env(safe-area-inset-top))" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "14px 14px 14px 18px", paddingTop: "calc(14px + env(safe-area-inset-top))" }}>
           <button onClick={onBack} aria-label={t("back")} style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 2 }}>
             <ArrowLeft size={20} />
           </button>
-          <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>{t("profile")}</span>
-          <div style={{ marginLeft: "auto" }}>
-            <MusicToggle />
-          </div>
+          <span style={{ flex: 1, fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>{t("profile")}</span>
+          {account && (
+            <>
+              <button onClick={shareCard} disabled={sharing} aria-label={t("shareProfile")} title={t("shareProfile")} style={{ ...topIconBtn, opacity: sharing ? 0.5 : 1 }}>
+                <Share2 size={18} />
+              </button>
+              <button onClick={() => { sound.uiTap(); setSettingsOpen(true); }} aria-label={t("profileSettings")} title={t("profileSettings")} style={topIconBtn}>
+                <SettingsIcon size={18} />
+              </button>
+            </>
+          )}
+          <MusicToggle />
         </div>
       }
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        {/* tabs */}
-        <div style={{ display: "flex", gap: 6 }}>
+        {/* tabs — wrap onto multiple rows so all labels stay readable */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6 }}>
           {tabs.map(({ key, label, icon, badge }) => (
             <button
               key={key}
               onClick={() => { sound.uiTap(); setTab(key); }}
               style={{
-                flex: 1,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -118,6 +173,8 @@ export function Hub({ game, onBack, onShowShop, onChallenge }: { game: GameApi; 
         {tab === "friends" && <FriendsTab game={game} onChallenge={onChallenge} />}
         {tab === "inbox" && <InboxTab game={game} />}
         {tab === "leaderboard" && <LeaderboardTab game={game} />}
+        {tab === "club" && <ClubTab game={game} />}
+        {tab === "title" && (account ? <TitlePicker game={game} /> : <ProfileTab game={game} onShowShop={onShowShop} />)}
       </div>
 
       {/* Open DM conversation (profile-to-profile, outside any room). */}
@@ -358,24 +415,16 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
   const { t } = useT();
   const account = game.state.account;
   const [name, setName] = useState(account?.name ?? "");
-  const [email, setEmail] = useState("");
   const [loginEmail, setLoginEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [editFile, setEditFile] = useState<File | null>(null);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
-  const [clubOpen, setClubOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const colorInputRef = useRef<HTMLInputElement | null>(null);
   const colorDebounce = useRef<number | undefined>(undefined);
-  const [sharing, setSharing] = useState(false);
 
   useEffect(() => setName(account?.name ?? ""), [account?.name]);
-  useEffect(() => {
-    if (settingsOpen && account) game.refreshBlocked();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settingsOpen]);
 
   async function uploadBlob(blob: Blob) {
     setBusy(true);
@@ -446,10 +495,6 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
     );
   }
 
-  if (settingsOpen) {
-    return <ProfileSettings game={game} email={email} setEmail={setEmail} onShowShop={onShowShop} onBack={() => setSettingsOpen(false)} />;
-  }
-
   if (avatarPickerOpen) {
     return (
       <AvatarPickerScreen
@@ -466,60 +511,8 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
     );
   }
 
-  if (clubOpen) {
-    return <ClubScreen game={game} onBack={() => setClubOpen(false)} />;
-  }
-
-  const shareCard = async () => {
-    setSharing(true);
-    try {
-      const lvl = account.level;
-      const winPct = account.stats.games > 0 ? `${Math.round((account.stats.wins / account.stats.games) * 100)}%` : "0%";
-      const blob = await makeProfileCard({
-        name: account.name,
-        color: account.color,
-        avatarUrl: account.has_avatar ? `/api/avatar/${account.id}?v=${account.avatar_ver}` : null,
-        ringColor: RANK_RING[lvl.rank] ?? null,
-        rankTitle: t(`rank_${lvl.rank}`),
-        levelText: t("profileCardLevel", { n: lvl.level }),
-        stats: [
-          [t("statGames"), String(account.stats.games)],
-          [t("statWins"), String(account.stats.wins)],
-          [t("statWinPct"), winPct],
-          [t("statPoints"), String(account.stats.points)],
-        ],
-        badgesLine: t("profileCardBadges", { n: account.badges.length }),
-        footer: t("footer"),
-      });
-      if (blob) await shareOrDownload(blob, "penneer-profiel.png");
-    } finally {
-      setSharing(false);
-    }
-  };
-
-  const iconBtn: React.CSSProperties = {
-    background: "transparent",
-    border: `1px solid ${colors.hairline}`,
-    borderRadius: 10,
-    width: 36,
-    height: 36,
-    display: "grid",
-    placeItems: "center",
-    cursor: "pointer",
-    color: colors.sub,
-  };
-
   return (
     <Fragment key="mine">
-      {/* acties rechtsboven: delen + profielinstellingen als icoontjes */}
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: 6, margin: "-6px 0 -8px" }}>
-        <button onClick={shareCard} disabled={sharing} aria-label={t("shareProfile")} title={t("shareProfile")} style={{ ...iconBtn, opacity: sharing ? 0.5 : 1 }}>
-          <Share2 size={17} />
-        </button>
-        <button onClick={() => setSettingsOpen(true)} aria-label={t("profileSettings")} title={t("profileSettings")} style={iconBtn}>
-          <SettingsIcon size={17} />
-        </button>
-      </div>
 
       {/* identiteit + level: one section. The avatar itself is the edit entry:
           tapping it opens the change/remove menu (pencil badge as affordance). */}
@@ -624,33 +617,7 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
         />
       )}
 
-      {/* club */}
-      <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Users size={15} color={colors.gold} />
-          <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint, flex: 1 }}>{t("clubTitle")}</span>
-        </div>
-        {account.club ? (
-          <button
-            onClick={() => { sound.uiTap(); setClubOpen(true); }}
-            style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderRadius: 12, cursor: "pointer", background: withAlpha(colors.gold, 0.1), border: `1px solid ${withAlpha(colors.gold, 0.35)}`, textAlign: "left", width: "100%" }}
-          >
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15, color: colors.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{account.club.name}</div>
-              <div style={{ fontFamily: font.ui, fontSize: 12, color: colors.sub }}>{t("clubMembersN", { n: account.club.member_count })}</div>
-            </div>
-            <span style={{ fontFamily: font.ui, fontSize: 12.5, fontWeight: 700, color: colors.gold }}>{t("clubOpen")}</span>
-          </button>
-        ) : (
-          <>
-            <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.sub, lineHeight: 1.5 }}>{t("clubIntro")}</p>
-            <Button variant="gold" full onClick={() => { sound.uiTap(); setClubOpen(true); }}>{t("clubMakeOrJoin")}</Button>
-          </>
-        )}
-      </Card>
-
-      {/* titel-kiezer */}
-      <TitlePicker game={game} />
+      {/* club en titel zijn nu eigen tabs; laatste potjes + prestaties blijven hier */}
 
       {/* laatste potjes */}
       <HistoryCard game={game} meId={account.id} />
@@ -931,7 +898,7 @@ function TitlePicker({ game }: { game: GameApi }) {
 // Club screen — a friend group with its own leaderboard. Its own page (like the
 // avatar picker) so the profile tab stays short. Two states: in a club (name,
 // share code, season/all-time ranked members, leave) or not (create / join).
-function ClubScreen({ game, onBack }: { game: GameApi; onBack: () => void }) {
+function ClubScreen({ game, onBack, embedded }: { game: GameApi; onBack?: () => void; embedded?: boolean }) {
   const { t } = useT();
   const account = game.state.account;
   const board = game.state.club;
@@ -957,11 +924,12 @@ function ClubScreen({ game, onBack }: { game: GameApi; onBack: () => void }) {
       </span>
     </div>
   );
+  // Embedded (as the Club tab) skips its own Screen/header; the Hub provides those.
+  const wrap = (body: React.ReactNode) => (embedded ? <Fragment key="club">{body}</Fragment> : <Screen top={header}>{body}</Screen>);
 
   // ---- not in a club: create or join ----
   if (!club) {
-    return (
-      <Screen top={header}>
+    return wrap(
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13.5, color: colors.sub, lineHeight: 1.55 }}>{t("clubIntroLong")}</p>
@@ -985,7 +953,6 @@ function ClubScreen({ game, onBack }: { game: GameApi; onBack: () => void }) {
             <Button variant="primary" full disabled={code.length < 6} onClick={() => { sound.uiTap(); game.joinClub(code); }}>{t("clubJoinBtn")}</Button>
           </Card>
         </div>
-      </Screen>
     );
   }
 
@@ -996,8 +963,7 @@ function ClubScreen({ game, onBack }: { game: GameApi; onBack: () => void }) {
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1500);
   };
-  return (
-    <Screen top={header}>
+  return wrap(
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <Card style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "center" }}>
           <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 22, color: colors.ink, textAlign: "center" }}>{club.name}</span>
@@ -1039,6 +1005,9 @@ function ClubScreen({ game, onBack }: { game: GameApi; onBack: () => void }) {
           })}
         </Card>
 
+        {/* nodig vrienden uit voor de club (echte inbox-uitnodiging) */}
+        <InviteToClub game={game} memberIds={new Set(members.map((m) => m.id))} />
+
         {confirmLeave ? (
           <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13, color: colors.sub, lineHeight: 1.5 }}>{club.is_owner ? t("clubLeaveOwnerWarn") : t("clubLeaveWarn")}</p>
@@ -1056,7 +1025,56 @@ function ClubScreen({ game, onBack }: { game: GameApi; onBack: () => void }) {
           </button>
         )}
       </div>
-    </Screen>
+  );
+}
+
+// Tab wrapper: the club content without its own Screen/header.
+function ClubTab({ game }: { game: GameApi }) {
+  const { t } = useT();
+  const account = game.state.account;
+  if (!account) return <Card><p style={{ margin: 0, textAlign: "center", fontFamily: font.ui, fontSize: 13.5, color: colors.faint, lineHeight: 1.5 }}>{t("makeProfileHint")}</p></Card>;
+  return <ClubScreen game={game} embedded />;
+}
+
+// Invite accepted friends who are not already in the club — a real inbox invite.
+function InviteToClub({ game, memberIds }: { game: GameApi; memberIds: Set<string> }) {
+  const { t } = useT();
+  const [sent, setSent] = useState<Record<string, boolean>>({});
+  const [q, setQ] = useState("");
+  useEffect(() => { game.refreshFriends(); /* eslint-disable-next-line */ }, []);
+  const candidates = game.state.friends.filter((f) => f.status === "accepted" && !memberIds.has(f.id));
+  if (candidates.length === 0) return null;
+  const searchable = candidates.length > 3;
+  const shown = q.trim() ? candidates.filter((f) => f.name.toLowerCase().includes(q.trim().toLowerCase())) : candidates;
+  return (
+    <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <span style={{ flex: 1, display: "inline-flex", alignItems: "center", gap: 6, fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase", color: colors.faint }}>
+          <UserPlus size={14} /> {t("clubInviteTitle")}
+        </span>
+        {searchable && (
+          <div style={{ display: "flex", alignItems: "center", gap: 6, flex: "0 1 150px", background: withAlpha("#000000", 0.25), border: `1px solid ${colors.panelBorder}`, borderRadius: 999, padding: "5px 10px" }}>
+            <Search size={13} color={colors.faint} style={{ flexShrink: 0 }} />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("searchName")} style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", color: colors.ink, fontFamily: font.ui, fontSize: 12.5 }} />
+          </div>
+        )}
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: searchable ? 150 : undefined, overflowY: searchable ? "auto" : undefined, paddingRight: searchable ? 4 : 0 }}>
+        {shown.map((f) => (
+          <div key={f.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <Avatar name={f.name} color={f.color} size={30} userId={f.id} hasAvatar={f.has_avatar} avatarVer={f.avatar_ver} />
+            <span style={{ flex: 1, fontFamily: font.ui, fontWeight: 600, fontSize: 13.5, color: colors.ink, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
+            {sent[f.id] ? (
+              <span style={{ fontFamily: font.ui, fontSize: 12, color: colors.green }}>{t("inviteSentShort")}</span>
+            ) : (
+              <button onClick={() => { sound.uiTap(); game.clubInvite(f.id); setSent((s) => ({ ...s, [f.id]: true })); }} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 11px", borderRadius: 9, border: "none", background: colors.gold, color: colors.bg0, fontFamily: font.ui, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+                <Send size={12} /> {t("clubInviteBtn")}
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+    </Card>
   );
 }
 
@@ -1698,7 +1716,7 @@ function InboxTab({ game }: { game: GameApi }) {
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontFamily: font.ui, fontWeight: 700, fontSize: 13.5, color: colors.ink }}>{item.from_name}</div>
               <div style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.sub }}>
-                {item.type === "friend_request" ? t("pendingIn") : item.type === "challenge" ? t("challengedYou") : `${t("invitedYouTo")} ${item.room_code}`}
+                {item.type === "friend_request" ? t("pendingIn") : item.type === "challenge" ? t("challengedYou") : item.type === "club_invite" ? t("clubInvitedYou") : `${t("invitedYouTo")} ${item.room_code}`}
               </div>
             </div>
             {item.type === "friend_request" ? (

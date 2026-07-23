@@ -212,6 +212,7 @@ class AccountManager:
             "club_join": self.club_join,
             "club_leave": self.club_leave,
             "club_get": self.club_get,
+            "club_invite": self.club_invite,
             "set_lenient": self.set_lenient,
             "set_buzzer_skin": self.set_buzzer_skin,
             "set_avatar_frame": self.set_avatar_frame,
@@ -541,11 +542,40 @@ class AccountManager:
         uid = self.user_of(ws)
         if not uid:
             return
-        room = self.db.resolve_invite(uid, data.get("invite_id") or "", bool(data.get("accept")))
+        res = self.db.resolve_invite(uid, data.get("invite_id") or "", bool(data.get("accept")))
         await self._push_inbox(uid)
-        if room:
+        if not res:
+            return
+        if res["kind"] == "club_invite":
+            club, _err = self.db.join_club(uid, res["code"])
+            if club:
+                await self._push_account(uid)  # account.club now set -> Club tab updates
+        else:
             # The client joins the room itself with its own name/avatar.
-            await self._send(ws, {"type": "invite_accepted", "room_code": room})
+            await self._send(ws, {"type": "invite_accepted", "room_code": res["code"]})
+
+    async def club_invite(self, ws: Any, data: dict) -> None:
+        """Invite a friend to my club: drops a club_invite in their inbox (one tap
+        to join). Friends only, and you must be in a club."""
+        uid = self.user_of(ws)
+        if not uid:
+            return
+        to = data.get("user_id") or ""
+        club = self.db.club_of(uid)
+        if not club:
+            await self._send(ws, {"type": "error", "message": "Je zit niet in een club."})
+            return
+        if not self.db.is_friend(uid, to) or self.db.is_blocked(uid, to):
+            await self._send(ws, {"type": "error", "message": "Je kunt alleen vrienden uitnodigen."})
+            return
+        inv = self.db.create_invite(uid, to, club["code"], "club_invite")
+        if inv:
+            await self._push_inbox(to)
+            if not self.online(to):
+                me = self.db.get_user(uid)
+                naam = me["name"] if me else "Iemand"
+                asyncio.create_task(push.notify(to, "Pen Neer", f"{naam} nodigt je uit voor club {club['name']}", tag="club-invite"))
+        await self._send(ws, {"type": "invite_sent", "to_user": to})
 
     @staticmethod
     def _month_start(dt: "datetime.datetime") -> float:

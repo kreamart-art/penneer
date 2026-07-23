@@ -149,7 +149,7 @@ export interface Friend extends PublicUser {
 }
 
 export interface InboxItem {
-  type: "invite" | "challenge" | "friend_request";
+  type: "invite" | "challenge" | "friend_request" | "club_invite";
   id?: string; // invite id
   room_code?: string;
   from_id: string;
@@ -745,6 +745,7 @@ export interface GameApi {
   loadLeaderboard: (period: "all" | "week" | "month") => void;
   createClub: (name: string) => void;
   joinClub: (code: string) => void;
+  clubInvite: (userId: string) => void;
   leaveClub: () => void;
   loadClub: (period: "month" | "all") => void;
   setLenient: (on: boolean) => void;
@@ -970,6 +971,7 @@ export function useGame(): GameApi {
     loadLeaderboard: (period) => send({ type: "leaderboard_get", period }),
     createClub: (name) => send({ type: "club_create", name }),
     joinClub: (code) => send({ type: "club_join", code }),
+    clubInvite: (userId) => send({ type: "club_invite", user_id: userId }),
     leaveClub: () => send({ type: "club_leave" }),
     loadClub: (period) => send({ type: "club_get", period }),
     setLenient: (on) => send({ type: "set_lenient", on }),

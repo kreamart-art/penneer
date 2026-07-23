@@ -789,11 +789,12 @@ class Database:
         items.sort(key=lambda x: -x["created_at"])
         return items
 
-    def resolve_invite(self, user_id: str, invite_id: str, accept: bool) -> Optional[str]:
-        """Mark an invite handled. Returns the room code on accept."""
+    def resolve_invite(self, user_id: str, invite_id: str, accept: bool) -> Optional[dict]:
+        """Mark an invite handled. Returns {'kind','code'} on accept (code is the
+        room code, or the club code for a club_invite), None otherwise."""
         with self._lock:
             rows = self._q(
-                "SELECT room_code FROM invites WHERE id=? AND to_user=? AND status='pending'",
+                "SELECT room_code, kind FROM invites WHERE id=? AND to_user=? AND status='pending'",
                 (invite_id, user_id),
             )
             if not rows:
@@ -802,7 +803,7 @@ class Database:
                 "UPDATE invites SET status=? WHERE id=?",
                 ("accepted" if accept else "declined", invite_id),
             )
-            return rows[0]["room_code"] if accept else None
+            return {"kind": rows[0]["kind"], "code": rows[0]["room_code"]} if accept else None
 
     # ---- games / stats / badges --------------------------------------------
 
