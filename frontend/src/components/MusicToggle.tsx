@@ -6,7 +6,7 @@ import { Music } from "lucide-react";
 import { sound } from "../sound/sound";
 import { colors, withAlpha } from "../theme/tokens";
 
-export function MusicToggle({ size = 20 }: { size?: number }) {
+export function MusicToggle({ size = 20, padding = 4 }: { size?: number; padding?: number }) {
   const [muted, setMuted] = useState(sound.isMusicMuted());
   const toggle = () => {
     sound.toggleMusicMuted();
@@ -24,7 +24,7 @@ export function MusicToggle({ size = 20 }: { size?: number }) {
         cursor: "pointer",
         color: muted ? colors.faint : colors.gold,
         display: "flex",
-        padding: 4,
+        padding,
         lineHeight: 0,
       }}
     >

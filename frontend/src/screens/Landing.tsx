@@ -5,6 +5,7 @@ import { Logo } from "../components/Logo";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { NotifyNudge } from "../components/NotifyNudge";
+import { MusicToggle } from "../components/MusicToggle";
 import { ProfilePrompt, profilePromptSeen } from "../components/ProfilePrompt";
 import { InstallPrompt, installPromptSeen, type InstallVariant } from "../components/InstallPrompt";
 import { canInstall, isIos, isIosChrome, isIosInAppBrowser, isStandalone, onInstallChange } from "../pwa/install";
@@ -156,7 +157,7 @@ export function Landing({
 
   return (
     <Screen>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 4 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", paddingTop: 4 }}>
         <button
           onClick={onShowHub}
           aria-label={t("profile")}
@@ -182,7 +183,9 @@ export function Landing({
             </span>
           )}
         </button>
-        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+        {/* right cluster is a column so the music mute note sits UNDER the gear */}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 3 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
           {account && (
             <button
               onClick={() => { sound.uiTap(); onShowShop(); }}
@@ -227,6 +230,8 @@ export function Landing({
           >
             <SettingsIcon size={24} />
           </button>
+          </div>
+          <MusicToggle size={24} padding={9} />
         </div>
       </div>
       <LandingFX />
