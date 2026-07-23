@@ -831,9 +831,9 @@ class AccountManager:
             def bump(key: str, inc: int) -> None:
                 if key not in active or inc <= 0:
                     return
-                target, reward = missions.spec(key)
-                if self.db.mission_bump(uid, day, key, inc, target, reward):
-                    missions_done.append({"key": key, "reward": reward})
+                target, reward, coins = missions.spec(key)
+                if self.db.mission_bump(uid, day, key, inc, target, reward, coins):
+                    missions_done.append({"key": key, "reward": reward, "coins": coins})
             bump("play_game", 1)
             bump("win_game", 1 if p["is_winner"] else 0)
             bump("unique5", p.get("uniques", 0))

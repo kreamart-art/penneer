@@ -52,13 +52,13 @@ def _secret() -> str:
 # avatar packs) are bought with COINS now, not PayPal, so they are not here.
 PRODUCTS = {
     "ai": {"env": "PENNEER_PRICE", "default": "3.99", "desc": "Pen Neer AI-scheidsrechter"},
-    "coins10": {"env": "PENNEER_COINS10_PRICE", "default": "0.99", "desc": "Pen Neer 10 coins"},
-    "coins30": {"env": "PENNEER_COINS30_PRICE", "default": "2.49", "desc": "Pen Neer 30 coins"},
-    "coins50": {"env": "PENNEER_COINS50_PRICE", "default": "3.99", "desc": "Pen Neer 50 coins"},
-    "coins100": {"env": "PENNEER_COINS100_PRICE", "default": "6.99", "desc": "Pen Neer 100 coins"},
+    "coins100": {"env": "PENNEER_COINS100_PRICE", "default": "0.99", "desc": "Pen Neer 100 coins"},
+    "coins300": {"env": "PENNEER_COINS300_PRICE", "default": "2.49", "desc": "Pen Neer 300 coins"},
+    "coins500": {"env": "PENNEER_COINS500_PRICE", "default": "3.99", "desc": "Pen Neer 500 coins"},
+    "coins1000": {"env": "PENNEER_COINS1000_PRICE", "default": "6.99", "desc": "Pen Neer 1000 coins"},
 }
 # Coin bundle product ids in display order, with the coins each grants.
-COIN_BUNDLES = [("coins10", 10), ("coins30", 30), ("coins50", 50), ("coins100", 100)]
+COIN_BUNDLES = [("coins100", 100), ("coins300", 300), ("coins500", 500), ("coins1000", 1000)]
 
 
 def price(product: str = "ai") -> str:

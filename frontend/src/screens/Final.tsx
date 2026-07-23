@@ -283,7 +283,7 @@ function Ceremony({ summary }: { summary: MatchSummary }) {
         <div className="pop-in" style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center" }}>
           {summary.missions_done.map((m) => (
             <span key={m.key} style={{ ...chip, color: colors.green, background: withAlpha(colors.green, 0.12), border: `1px solid ${withAlpha(colors.green, 0.45)}` }}>
-              <Target size={13} /> {t(`mission_${m.key}`)} · +{m.reward} XP
+              <Target size={13} /> {t(`mission_${m.key}`)} · +{m.coins}<img src="/coin.webp" alt="" width={13} height={13} style={{ display: "inline-block", verticalAlign: "-2px", marginLeft: 2 }} />
             </span>
           ))}
         </div>

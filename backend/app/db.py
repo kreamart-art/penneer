@@ -865,9 +865,9 @@ class Database:
 
     # ---- dagelijkse missies ----------------------------------------------------
 
-    def mission_bump(self, user_id: str, day: str, key: str, inc: int, target: int, reward: int) -> bool:
+    def mission_bump(self, user_id: str, day: str, key: str, inc: int, target: int, reward: int, coins: int = 0) -> bool:
         """Add progress to a mission; True exactly when THIS bump completes it
-        (the reward lands on users.bonus_xp right here, auto-claim)."""
+        (the XP reward + coins land here, auto-claim)."""
         if inc <= 0:
             return False
         with self._lock:
@@ -888,7 +888,7 @@ class Database:
                 (prog, done, day, user_id, key),
             )
             if done:
-                self._exec("UPDATE users SET bonus_xp = bonus_xp + ? WHERE id=?", (reward, user_id))
+                self._exec("UPDATE users SET bonus_xp = bonus_xp + ?, coins = coins + ? WHERE id=?", (reward, coins, user_id))
         return bool(done)
 
     def mission_state(self, user_id: str, day: str) -> dict:
@@ -1391,8 +1391,8 @@ class Database:
 
     # ---- coins currency ----------------------------------------------------
 
-    COINS_PER_LEVEL = 1        # earned for every level reached
-    COINS_PER_TIER = 5         # milestone BONUS on top, each LEVELS_PER_TIER levels
+    COINS_PER_LEVEL = 10       # earned for every level reached
+    COINS_PER_TIER = 50        # milestone BONUS on top, each LEVELS_PER_TIER levels
     LEVELS_PER_TIER = 10       # milestone every 10 levels, like the draaiknoppen
     BUZZER_PACK_COINS = 25     # legacy (the old all-in-one country pack)
     COINS_PER_PACK = 100       # legacy single coin bundle
@@ -1400,11 +1400,11 @@ class Database:
     # Coin PRICES of shop items (buy_item_coins): each country buzzer sells on its
     # own (cheap, reachable early); the premium avatars sell as two packs (pricier).
     COIN_PRICES = {
-        "bz01": 8, "bz02": 8, "bz03": 8, "bz04": 8, "bz05": 8,
-        "avpack1": 40, "avpack2": 40,
+        "bz01": 80, "bz02": 80, "bz03": 80, "bz04": 80, "bz05": 80,
+        "avpack1": 400, "avpack2": 400,
     }
     # PayPal coin BUNDLES: product id -> coins granted (price via env, see paypal.py).
-    COIN_BUNDLES = {"coins10": 10, "coins30": 30, "coins50": 50, "coins100": 100}
+    COIN_BUNDLES = {"coins100": 100, "coins300": 300, "coins500": 500, "coins1000": 1000}
 
     @classmethod
     def coins_owed(cls, level: int) -> int:

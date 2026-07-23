@@ -323,7 +323,7 @@ export interface MatchSummary {
   level_before: LevelInfo;
   level_after: LevelInfo;
   badges: string[];
-  missions_done: { key: string; reward: number }[];
+  missions_done: { key: string; reward: number; coins: number }[];
 }
 
 type Action =
@@ -379,7 +379,7 @@ type ServerMessage =
   | { type: "invite_sent"; to_user: string }
   | { type: "invite_accepted"; room_code: string }
   | { type: "badge_earned"; player_id: string | null; name: string; badge: string }
-  | { type: "match_summary"; won: boolean; xp_gained: number; level_before: LevelInfo; level_after: LevelInfo; badges: string[]; missions_done: { key: string; reward: number }[] }
+  | { type: "match_summary"; won: boolean; xp_gained: number; level_before: LevelInfo; level_after: LevelInfo; badges: string[]; missions_done: { key: string; reward: number; coins: number }[] }
   | { type: "chat_typing"; player_id: string; name: string; typing: boolean }
   | { type: "error"; message: string };
 

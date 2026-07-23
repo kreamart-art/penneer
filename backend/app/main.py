@@ -329,9 +329,9 @@ async def daily_submit(request: Request) -> JSONResponse:
         active = missions.active_keys(day)
         for key, inc in (("daily_play", 1), ("daily30", 1 if score >= 30 else 0)):
             if key in active and inc > 0:
-                target, reward = missions.spec(key)
-                if db.mission_bump(uid, day, key, inc, target, reward):
-                    missions_done.append({"key": key, "reward": reward})
+                target, reward, coins = missions.spec(key)
+                if db.mission_bump(uid, day, key, inc, target, reward, coins):
+                    missions_done.append({"key": key, "reward": reward, "coins": coins})
     return JSONResponse({**_daily_result_payload(db, uid, day, score, breakdown, ranked, time_ms), "already": False, "missions_done": missions_done})
 
 
