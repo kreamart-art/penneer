@@ -2,7 +2,7 @@
 // no-timer, rounds, categories + deelcode, hard letters, max players, spectators),
 // testbots, and per-device language + sound toggles.
 import { useEffect, useRef, useState } from "react";
-import { Check, Copy, Minus, Plus, Send, UserPlus, X } from "lucide-react";
+import { Check, Copy, Minus, Plus, Search, Send, UserPlus, X } from "lucide-react";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { Chip } from "../components/Chip";
@@ -43,6 +43,7 @@ function InviteFriends({ game }: { game: GameApi }) {
   const account = game.state.account;
   const room = game.state.room!;
   const [sent, setSent] = useState<Record<string, boolean>>({});
+  const [q, setQ] = useState("");
 
   useEffect(() => {
     if (account) game.refreshFriends();
@@ -53,14 +54,34 @@ function InviteFriends({ game }: { game: GameApi }) {
   const inRoom = new Set(room.players.map((p) => p.user_id).filter(Boolean));
   const candidates = game.state.friends.filter((f) => f.status === "accepted" && !inRoom.has(f.id));
   if (candidates.length === 0) return null;
+  // Search only earns its place once there are more than three to scroll through.
+  const searchable = candidates.length > 3;
+  const shown = q.trim() ? candidates.filter((f) => f.name.toLowerCase().includes(q.trim().toLowerCase())) : candidates;
 
   return (
     <Card>
-      <div style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
-        <UserPlus size={13} /> {t("inviteFriends")}
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
+        <span style={{ flex: 1, fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint, display: "flex", alignItems: "center", gap: 6 }}>
+          <UserPlus size={13} /> {t("inviteFriends")}
+        </span>
+        {searchable && (
+          <div style={{ display: "flex", alignItems: "center", gap: 6, flex: "0 1 160px", background: withAlpha("#000000", 0.25), border: `1px solid ${colors.panelBorder}`, borderRadius: 999, padding: "5px 10px" }}>
+            <Search size={13} color={colors.faint} style={{ flexShrink: 0 }} />
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder={t("searchName")}
+              style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", color: colors.ink, fontFamily: font.ui, fontSize: 12.5 }}
+            />
+          </div>
+        )}
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {candidates.map((f) => (
+      {/* Cap the height to about three rows so a long friend list scrolls. */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: searchable ? 150 : undefined, overflowY: searchable ? "auto" : undefined, paddingRight: searchable ? 4 : 0 }}>
+        {shown.length === 0 && (
+          <span style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint, padding: "4px 0" }}>{t("searchNoMatch")}</span>
+        )}
+        {shown.map((f) => (
           <div key={f.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{ position: "relative" }}>
               <Avatar name={f.name} color={f.color} size={32} userId={f.id} hasAvatar={f.has_avatar} avatarVer={f.avatar_ver} />

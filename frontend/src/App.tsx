@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useGame } from "./net/socket";
 import { useT } from "./i18n/i18n";
 import { sound } from "./sound/sound";
+import { colors } from "./theme/tokens";
 import { Intro } from "./screens/Intro";
 import { LanguagePage } from "./screens/LanguagePage";
 import { Rules } from "./screens/Rules";
@@ -16,6 +17,7 @@ import { Daily } from "./screens/Daily";
 import { BadgeToasts } from "./components/BadgeToasts";
 import { BuzzerRewardPopup } from "./components/BuzzerRewardPopup";
 import { InviteBanner } from "./components/InviteBanner";
+import { DmBanner } from "./components/DmBanner";
 import { localNotify } from "./components/NotifyNudge";
 import { ensurePushSubscription } from "./pwa/push";
 import type { InboxItem } from "./net/socket";
@@ -224,6 +226,24 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inbox]);
 
+  // Load friends once logged in, so an incoming DM banner can name its sender
+  // (DMs only come from friends) even before you open the friends tab.
+  useEffect(() => {
+    if (accountId) game.refreshFriends();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accountId]);
+
+  // Sound + local notification when an incoming DM flashes its slide-down banner.
+  const dmBanner = game.state.dmBanner;
+  useEffect(() => {
+    if (!dmBanner) return;
+    sound.invite();
+    const sender = game.state.friends.find((f) => f.id === dmBanner.from_user);
+    const name = sender?.name ?? "";
+    localNotify("Pen Neer", `${name}: ${dmBanner.voice_id ? t("dmVoiceNotif") : dmBanner.text}`.trim());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dmBanner?.id]);
+
   // Auto-dismiss the PayPal flash after a few seconds.
   useEffect(() => {
     if (!paypalFlash) return;
@@ -384,6 +404,27 @@ export default function App() {
           onClose={() => setBannerInvite(null)}
         />
       )}
+      {dmBanner && (() => {
+        const friend = game.state.friends.find((f) => f.id === dmBanner.from_user);
+        const thread = game.state.dmThreads.find((th) => th.partner === dmBanner.from_user)?.user;
+        const sender = friend
+          ? { id: friend.id, name: friend.name, color: friend.color, has_avatar: friend.has_avatar, avatar_ver: friend.avatar_ver }
+          : thread
+            ? { id: thread.id, name: thread.name, color: thread.color, has_avatar: thread.has_avatar, avatar_ver: thread.avatar_ver }
+            : { id: dmBanner.from_user, name: "?", color: colors.gold };
+        return (
+          <DmBanner
+            dm={dmBanner}
+            sender={sender}
+            onReply={() => {
+              game.dmOpen(dmBanner.from_user);
+              setShowHub(true);
+              game.clearDmBanner();
+            }}
+            onClose={() => game.clearDmBanner()}
+          />
+        );
+      })()}
     </>
   );
 }

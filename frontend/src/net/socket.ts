@@ -307,6 +307,7 @@ export interface ClientState {
   dmThreads: DmThreadSummary[];
   dmOpenWith: string | null; // partner user_id of the open thread
   dmMessages: DmMessage[];
+  dmBanner: DmMessage | null; // an incoming DM to flash as a slide-down banner (not in that thread)
   loginLinkSent: boolean;
   // Set when the server accepted an invite: the app auto-joins this room.
   joinRoomCode: string | null;
@@ -337,6 +338,7 @@ type Action =
   | { type: "drainToasts" }
   | { type: "clearLoginSent" }
   | { type: "clearShopResult" }
+  | { type: "clearDmBanner" }
   | { type: "dmClose" }
   | { type: "msg"; msg: ServerMessage };
 
@@ -466,6 +468,7 @@ const initialState: ClientState = {
   dmThreads: [],
   dmOpenWith: null,
   dmMessages: [],
+  dmBanner: null,
   loginLinkSent: false,
   joinRoomCode: null,
   badgeToasts: [],
@@ -501,6 +504,9 @@ function reducer(state: ClientState, action: Action): ClientState {
   }
   if (action.type === "clearShopResult") {
     return { ...state, shopResult: null };
+  }
+  if (action.type === "clearDmBanner") {
+    return { ...state, dmBanner: null };
   }
   if (action.type === "dmClose") {
     return { ...state, dmOpenWith: null, dmMessages: [] };
@@ -613,10 +619,12 @@ function reducer(state: ClientState, action: Action): ClientState {
       const account = state.account && incoming && !openMatches
         ? { ...state.account, dm_unread: state.account.dm_unread + 1 }
         : state.account;
-      return { ...state, dmMessages, dmThreads: found ? dmThreads : state.dmThreads, account };
+      // Flash an incoming DM (from someone, thread not open) as a slide-down banner.
+      const dmBanner = incoming && !openMatches ? m : state.dmBanner;
+      return { ...state, dmMessages, dmThreads: found ? dmThreads : state.dmThreads, account, dmBanner };
     }
     case "dm_thread":
-      return { ...state, dmOpenWith: msg.user_id, dmMessages: msg.messages };
+      return { ...state, dmOpenWith: msg.user_id, dmMessages: msg.messages, dmBanner: null };
     case "dm_threads":
       return { ...state, dmThreads: msg.threads };
     case "leaderboard":
@@ -723,6 +731,7 @@ export interface GameApi {
   dmSend: (user_id: string, text: string, voice?: { id: string; dur: number }) => void;
   dmOpen: (user_id: string) => void;
   dmClose: () => void;
+  clearDmBanner: () => void;
   dmRefreshThreads: () => void;
   refreshFriends: () => void;
   friendRequest: (user_id: string) => void;
@@ -947,6 +956,7 @@ export function useGame(): GameApi {
     },
     dmOpen: (user_id) => send({ type: "dm_thread", user_id }),
     dmClose: () => dispatch({ type: "dmClose" }),
+    clearDmBanner: () => dispatch({ type: "clearDmBanner" }),
     dmRefreshThreads: () => send({ type: "dm_threads" }),
     refreshFriends: () => send({ type: "friends_list" }),
     friendRequest: (user_id) => send({ type: "friend_request", user_id }),

@@ -256,7 +256,7 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
         </Card>
 
         {/* Redeem an AI code. */}
-        {!!account && !aiActive && (
+        {!!account && (
           <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontFamily: font.ui, fontSize: 13, fontWeight: 600, letterSpacing: 0.4, textTransform: "uppercase", color: colors.faint }}>
               <Ticket size={15} /> {t("shopHaveCode")}
