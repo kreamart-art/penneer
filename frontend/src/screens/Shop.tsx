@@ -24,6 +24,9 @@ const BUZZERS_FOR_SALE = [
   { id: "bz05", name: "shopBuzzBr" },
   { id: "bz13", name: "shopBuzzEs" },
   { id: "bz14", name: "shopBuzzCw" },
+  { id: "bz15", name: "shopBuzzDe" },
+  { id: "bz16", name: "shopBuzzBe" },
+  { id: "bz17", name: "shopBuzzFr" },
 ];
 // The two avatar packs (nine each), with three preview thumbnails apiece.
 const AVATAR_PACKS = [

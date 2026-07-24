@@ -299,7 +299,7 @@ PACK_FOR_PRESET = {pid: pack for pack, ids in AVATAR_PACKS.items() for pid in id
 
 # Buzzer skins (shop 'buzzers' pack): art in frontend/public/buzzers/bzNN.webp.
 # The default red buzzer is not an id here; NULL buzzer_skin = default.
-BUZZER_SKIN_IDS = [f"bz{i:02d}" for i in range(1, 6)] + ["bz13", "bz14"]  # coin-bought country skins (bz01..05 [04=Jamaica,05=Brazil] + Spain bz13 + Curacao bz14; bz06..12 are level rewards)
+BUZZER_SKIN_IDS = [f"bz{i:02d}" for i in range(1, 6)] + ["bz13", "bz14", "bz15", "bz16", "bz17"]  # coin-bought country skins (bz01..05 [04=Jamaica,05=Brazil] + Spain bz13 + Curacao bz14 + Germany bz15 + Belgium bz16 + France bz17; bz06..12 are level rewards)
 # Level-reward buzzer skins: (level threshold, skin id, name key for i18n).
 # Reached by LEVELLING UP, never bought. Ordered by level.
 LEVEL_BUZZERS = [
@@ -1498,6 +1498,7 @@ class Database:
     # own (cheap, reachable early); the premium avatars sell as two packs (pricier).
     COIN_PRICES = {
         "bz01": 80, "bz02": 80, "bz03": 80, "bz04": 80, "bz05": 80, "bz13": 80, "bz14": 80,
+        "bz15": 80, "bz16": 80, "bz17": 80,
         "avpack1": 400, "avpack2": 400,
     }
     # PayPal coin BUNDLES: product id -> coins granted (price via env, see paypal.py).
