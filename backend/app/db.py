@@ -251,6 +251,28 @@ def _hash(secret: str) -> str:
     return hashlib.sha256(secret.encode()).hexdigest()
 
 
+MIN_PASSWORD_LEN = 6
+_PBKDF2_ITERS = 200_000
+
+
+def _hash_password(password: str) -> str:
+    """Salted PBKDF2-HMAC-SHA256 (stdlib), stored as pbkdf2$iters$salt$hash."""
+    salt = secrets.token_bytes(16)
+    dk = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, _PBKDF2_ITERS)
+    return f"pbkdf2${_PBKDF2_ITERS}${salt.hex()}${dk.hex()}"
+
+
+def _verify_password(stored: str, password: str) -> bool:
+    try:
+        scheme, iters_s, salt_hex, hash_hex = (stored or "").split("$")
+        if scheme != "pbkdf2":
+            return False
+        dk = hashlib.pbkdf2_hmac("sha256", password.encode(), bytes.fromhex(salt_hex), int(iters_s))
+        return secrets.compare_digest(dk.hex(), hash_hex)
+    except Exception:
+        return False
+
+
 def _new_id() -> str:
     return secrets.token_hex(12)
 
@@ -399,6 +421,12 @@ class Database:
         # Avatar frame: the chosen level-reward frame around the avatar (NULL = none).
         if "avatar_frame" not in cols:
             self._conn.execute("ALTER TABLE users ADD COLUMN avatar_frame TEXT")
+            self._conn.commit()
+        # Email + password login: a salted PBKDF2 hash (NULL until the user sets
+        # one). Lets returning players log in on a new device without the magic
+        # link (which some in-app browsers cannot open).
+        if "password_hash" not in cols:
+            self._conn.execute("ALTER TABLE users ADD COLUMN password_hash TEXT")
             self._conn.commit()
         # Preset artwork changed (v9 = the v8 body-width algorithm plus hand-tuned
         # per-avatar overrides, from per-avatar user feedback: av02 less zoom so
@@ -613,6 +641,39 @@ class Database:
                 return True
             except sqlite3.IntegrityError:
                 return False  # e-mail already linked to another account
+
+    def set_password(self, user_id: str, password: str) -> bool:
+        """Set/replace the account password. False if it is too short."""
+        if not password or len(password) < MIN_PASSWORD_LEN:
+            return False
+        with self._lock:
+            self._exec("UPDATE users SET password_hash=? WHERE id=?", (_hash_password(password), user_id))
+        return True
+
+    def has_password(self, user_id: str) -> bool:
+        with self._lock:
+            rows = self._q("SELECT password_hash FROM users WHERE id=?", (user_id,))
+        return bool(rows and rows[0]["password_hash"])
+
+    def login_with_password(self, email: str, password: str) -> Optional[dict]:
+        """Verify email + password -> fresh device token, or None on mismatch."""
+        email = (email or "").strip().lower()
+        if not email or not password:
+            return None
+        with self._lock:
+            rows = self._q("SELECT id, password_hash FROM users WHERE email=?", (email,))
+            if not rows or not rows[0]["password_hash"]:
+                return None
+            if not _verify_password(rows[0]["password_hash"], password):
+                return None
+            uid = rows[0]["id"]
+            token = secrets.token_hex(TOKEN_BYTES)
+            now = time.time()
+            self._exec(
+                "INSERT INTO tokens (token_hash, user_id, created_at, last_seen) VALUES (?,?,?,?)",
+                (_hash(token), uid, now, now),
+            )
+        return {"user_id": uid, "token": token}
 
     def start_login(self, email: str) -> Optional[tuple[str, str]]:
         """Request a magic-link code for the account behind this email.

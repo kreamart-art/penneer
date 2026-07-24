@@ -416,6 +416,7 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
   const account = game.state.account;
   const [name, setName] = useState(account?.name ?? "");
   const [loginEmail, setLoginEmail] = useState("");
+  const [loginPass, setLoginPass] = useState("");
   const [busy, setBusy] = useState(false);
   const [editFile, setEditFile] = useState<File | null>(null);
   const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
@@ -479,16 +480,23 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
           </Button>
         </Card>
         <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <span style={{ fontFamily: font.ui, fontWeight: 600, fontSize: 14, color: colors.ink }}>{t("loginOtherTitle")}</span>
+          <span style={{ fontFamily: font.ui, fontWeight: 600, fontSize: 14, color: colors.ink }}>{t("loginTitle")}</span>
+          <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.faint, lineHeight: 1.5 }}>{t("loginHint")}</p>
+          <input style={inputStyle} type="email" autoComplete="email" placeholder={t("emailPlaceholder")} value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} />
+          <input style={inputStyle} type="password" autoComplete="current-password" placeholder={t("passwordPlaceholder")} value={loginPass} onChange={(e) => setLoginPass(e.target.value)} />
+          <Button variant="gold" full disabled={!loginEmail.includes("@") || loginPass.length < 1} onClick={() => game.passwordLogin(loginEmail, loginPass)}>
+            {t("login")}
+          </Button>
           {game.state.loginLinkSent ? (
-            <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13, color: colors.green, lineHeight: 1.5 }}>{t("linkSent")}</p>
+            <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.green, textAlign: "center" }}>{t("linkSent")}</p>
           ) : (
-            <div style={{ display: "flex", gap: 8 }}>
-              <input style={{ ...inputStyle, flex: 1 }} type="email" placeholder={t("emailPlaceholder")} value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} />
-              <Button variant="ghost" disabled={!loginEmail.includes("@")} onClick={() => game.requestLogin(loginEmail)}>
-                {t("sendLink")}
-              </Button>
-            </div>
+            <button
+              onClick={() => loginEmail.includes("@") && game.requestLogin(loginEmail)}
+              disabled={!loginEmail.includes("@")}
+              style={{ background: "transparent", border: "none", cursor: loginEmail.includes("@") ? "pointer" : "default", color: colors.faint, fontFamily: font.ui, fontSize: 12.5, padding: 4, textDecoration: "underline", opacity: loginEmail.includes("@") ? 1 : 0.5 }}
+            >
+              {t("forgotPassword")}
+            </button>
           )}
         </Card>
       </Fragment>
@@ -1273,6 +1281,7 @@ function ProfileSettings({
 }) {
   const { t } = useT();
   const account = game.state.account!;
+  const [pw, setPw] = useState("");
   // Own Screen wrapper (safe-area + padding + scroll) because the Hub renders
   // this at the top level, not nested inside its tab Screen.
   const header = (
@@ -1319,6 +1328,26 @@ function ProfileSettings({
             </div>
           </>
         )}
+      </Card>
+
+      {/* wachtwoord instellen / wijzigen */}
+      <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <span style={{ fontFamily: font.ui, fontWeight: 600, fontSize: 14, color: colors.ink }}>{t("passwordTitle")}</span>
+        {account.has_password ? (
+          <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13, color: colors.sub }}>
+            {t("passwordActive")} <span style={{ color: colors.green }}>&#10003;</span>
+          </p>
+        ) : (
+          <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.faint, lineHeight: 1.5 }}>
+            {account.email ? t("passwordSetHint") : t("passwordNeedEmailHint")}
+          </p>
+        )}
+        <div style={{ display: "flex", gap: 8 }}>
+          <input style={{ ...inputStyle, flex: 1 }} type="password" autoComplete="new-password" placeholder={t("passwordPlaceholder")} value={pw} onChange={(e) => setPw(e.target.value)} />
+          <Button variant="ghost" disabled={pw.length < 6} onClick={() => { game.setPassword(pw); setPw(""); }}>
+            {account.has_password ? t("passwordChangeBtn") : t("passwordSetBtn")}
+          </Button>
+        </div>
       </Card>
 
       {/* geblokkeerd */}

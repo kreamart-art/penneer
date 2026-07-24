@@ -146,6 +146,7 @@ class AccountManager:
             "account": {
                 **self._public(user),
                 "email": user.get("email"),
+                "has_password": self.db.has_password(user_id),
                 "avatar_preset": user.get("avatar_preset"),
                 "ai_unlocked": bool(user.get("ai_unlocked")),
                 "premium_avatars": bool(user.get("premium_avatars")),
@@ -190,6 +191,8 @@ class AccountManager:
             "account_update": self.account_update,
             "account_delete": self.account_delete,
             "account_link_email": self.account_link_email,
+            "account_set_password": self.account_set_password,
+            "account_password_login": self.account_password_login,
             "account_request_login": self.account_request_login,
             "account_redeem": self.account_redeem,
             "shop_redeem": self.shop_redeem,
@@ -292,6 +295,29 @@ class AccountManager:
             await self._send(ws, {"type": "error", "message": "Dit e-mailadres is ongeldig of al gekoppeld."})
             return
         await self._send(ws, await self._account_payload(ws, uid))
+
+    async def account_set_password(self, ws: Any, data: dict) -> None:
+        """Set/replace the password for the logged-in account."""
+        uid = self.user_of(ws)
+        if not uid:
+            return
+        if not self.db.set_password(uid, data.get("password") or ""):
+            await self._send(ws, {"type": "error", "message": "Wachtwoord moet minstens 6 tekens zijn."})
+            return
+        await self._send(ws, await self._account_payload(ws, uid))
+
+    async def account_password_login(self, ws: Any, data: dict) -> None:
+        """Log in with e-mail + password (no magic link needed)."""
+        res = self.db.login_with_password(data.get("email") or "", data.get("password") or "")
+        if res is None:
+            await self._send(ws, {"type": "error", "message": "Onjuiste e-mail of wachtwoord."})
+            return
+        self.db.ensure_avatar(res["user_id"])
+        self.bind(ws, res["user_id"])
+        payload = await self._account_payload(ws, res["user_id"])
+        payload["token"] = res["token"]
+        await self._send(ws, payload)
+        await self._notify_friends_presence(res["user_id"])
 
     async def account_request_login(self, ws: Any, data: dict) -> None:
         res = self.db.start_login(data.get("email") or "")

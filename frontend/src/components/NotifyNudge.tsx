@@ -1,11 +1,12 @@
-// One-time banner asking to enable notifications, shown once you're on the
-// app. Local notifications fire while the tab is hidden (chat, invites);
-// real push with the app closed is a later step.
-import { useState } from "react";
-import { Bell } from "lucide-react";
+// A slide-down banner from the top asking to enable notifications — the same
+// shell as InviteBanner / DmBanner, but it STAYS until the person dismisses it
+// (no 15s auto-dismiss), because it is a one-time onboarding nudge, not a
+// transient event. Rendered on the main page, so it never covers gameplay.
+import { useEffect, useState } from "react";
+import { Bell, X } from "lucide-react";
 import { useT } from "../i18n/i18n";
 import { ensurePushSubscription } from "../pwa/push";
-import { colors, font, radius, withAlpha } from "../theme/tokens";
+import { colors, font, withAlpha } from "../theme/tokens";
 
 const ASKED_KEY = "penneer.notifAsked";
 
@@ -22,10 +23,19 @@ export function NotifyNudge() {
       return true;
     }
   });
+  const [shown, setShown] = useState(false);
+
+  // Slide it in once we know it's showing. No auto-dismiss timer: it lingers at
+  // the top until the person turns notifications on or taps it away.
+  useEffect(() => {
+    if (hidden) return;
+    const raf = requestAnimationFrame(() => setShown(true));
+    return () => cancelAnimationFrame(raf);
+  }, [hidden]);
 
   if (hidden) return null;
 
-  const done = () => {
+  const dismiss = () => {
     try {
       localStorage.setItem(ASKED_KEY, "1");
     } catch {
@@ -34,39 +44,76 @@ export function NotifyNudge() {
     setHidden(true);
   };
 
+  const enable = () => {
+    Notification.requestPermission()
+      .then((perm) => {
+        // Granted: also register for REAL push (works with the app closed).
+        if (perm === "granted") void ensurePushSubscription();
+      })
+      .finally(dismiss);
+  };
+
   return (
     <div
       style={{
+        position: "fixed",
+        left: 0,
+        right: 0,
+        top: 0,
+        zIndex: 89, // just under InviteBanner (90) / DmBanner (91)
         display: "flex",
-        alignItems: "center",
-        gap: 12,
-        padding: "12px 14px",
-        borderRadius: radius.card,
-        background: withAlpha(colors.gold, 0.08),
-        border: `1px solid ${withAlpha(colors.gold, 0.3)}`,
+        justifyContent: "center",
+        padding: "calc(8px + env(safe-area-inset-top)) 10px 0",
+        pointerEvents: "none",
+        transform: shown ? "translateY(0)" : "translateY(-130%)",
+        transition: "transform .38s cubic-bezier(.2,1,.3,1)",
       }}
     >
-      <Bell size={18} color={colors.gold} style={{ flexShrink: 0 }} />
-      <p style={{ margin: 0, flex: 1, fontFamily: font.ui, fontSize: 13, color: colors.sub, lineHeight: 1.45 }}>{t("notifText")}</p>
-      <div style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
-        <button
-          onClick={() => {
-            Notification.requestPermission()
-              .then((perm) => {
-                // Granted: also register for REAL push (works with the app closed).
-                if (perm === "granted") void ensurePushSubscription();
-              })
-              .finally(done);
+      <div
+        style={{
+          pointerEvents: "auto",
+          width: "100%",
+          maxWidth: 440,
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          padding: "9px 10px 9px 12px",
+          borderRadius: 16,
+          background: "linear-gradient(180deg, #241738, #180F30)",
+          border: `1px solid ${withAlpha(colors.gold, 0.5)}`,
+          boxShadow: `0 14px 40px rgba(0,0,0,.55), 0 0 22px ${withAlpha(colors.gold, 0.18)}`,
+        }}
+      >
+        <span
+          style={{
+            flexShrink: 0,
+            width: 38,
+            height: 38,
+            borderRadius: 12,
+            display: "grid",
+            placeItems: "center",
+            background: withAlpha(colors.gold, 0.14),
+            border: `1px solid ${withAlpha(colors.gold, 0.4)}`,
           }}
-          style={{ padding: "8px 12px", borderRadius: 10, border: "none", cursor: "pointer", background: colors.gold, color: colors.bg0, fontFamily: font.ui, fontWeight: 700, fontSize: 12 }}
+        >
+          <Bell size={18} color={colors.gold} />
+        </span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontFamily: font.ui, fontWeight: 700, fontSize: 13.5, color: colors.ink }}>{t("notifTitle")}</div>
+          <div style={{ fontFamily: font.ui, fontSize: 12, color: colors.sub, lineHeight: 1.35 }}>{t("notifText")}</div>
+        </div>
+        <button
+          onClick={enable}
+          style={{ flexShrink: 0, padding: "8px 13px", borderRadius: 10, border: "none", background: colors.gold, color: colors.bg0, fontFamily: font.ui, fontWeight: 700, fontSize: 12.5, cursor: "pointer" }}
         >
           {t("notifEnable")}
         </button>
         <button
-          onClick={done}
-          style={{ padding: "4px 6px", borderRadius: 8, border: "none", cursor: "pointer", background: "transparent", color: colors.faint, fontFamily: font.ui, fontSize: 12 }}
+          onClick={dismiss}
+          aria-label={t("notifLater")}
+          style={{ flexShrink: 0, width: 34, height: 34, display: "grid", placeItems: "center", borderRadius: 10, border: `1px solid ${colors.hairline}`, background: "transparent", color: colors.faint, cursor: "pointer" }}
         >
-          {t("notifLater")}
+          <X size={16} />
         </button>
       </div>
     </div>

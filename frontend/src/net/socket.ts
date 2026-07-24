@@ -90,6 +90,7 @@ export interface Account {
   has_avatar: boolean;
   avatar_ver: number;
   email: string | null;
+  has_password: boolean; // set a password to log in with e-mail + password
   avatar_preset: string | null; // chosen preset id (null = custom photo)
   ai_unlocked: boolean; // bought the AI referee for this account
   premium_avatars: boolean; // bought the premium avatar pack (av19..av36)
@@ -723,6 +724,8 @@ export interface GameApi {
   deleteAccount: () => void;
   logoutAccount: () => void;
   linkEmail: (email: string) => void;
+  setPassword: (password: string) => void;
+  passwordLogin: (email: string, password: string) => void;
   requestLogin: (email: string) => void;
   clearLoginSent: () => void;
   searchUsers: (query: string) => void;
@@ -945,6 +948,8 @@ export function useGame(): GameApi {
       dispatch({ type: "accountLogout" });
     },
     linkEmail: (email) => send({ type: "account_link_email", email }),
+    setPassword: (password) => send({ type: "account_set_password", password }),
+    passwordLogin: (email, password) => send({ type: "account_password_login", email: email.trim(), password }),
     requestLogin: (email) => send({ type: "account_request_login", email }),
     clearLoginSent: () => dispatch({ type: "clearLoginSent" }),
     searchUsers: (query) => send({ type: "user_search", query }),
