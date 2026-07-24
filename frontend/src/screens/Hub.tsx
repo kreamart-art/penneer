@@ -1,7 +1,7 @@
 // Hub — profile, friends, inbox and leaderboard in one tabbed screen.
 // Reached from the Landing. A profile is optional: guests see the create form.
 import { Fragment, useEffect, useRef, useState } from "react";
-import { ArrowLeft, Award, Bell, Camera, Check, CircleDot, Copy, Lock, LogOut, MessageCircle, MoreVertical, Pencil, Plus, Search, Send, Settings as SettingsIcon, Share2, ShoppingCart, Smile, Sparkles, Star, Swords, Trash2, Trophy, UserPlus, Users, X, ZoomIn, ZoomOut } from "lucide-react";
+import { ArrowLeft, Award, Bell, Camera, Check, CircleDot, Copy, Lock, LogOut, MessageCircle, MoreVertical, Pencil, Plus, Search, Send, Settings as SettingsIcon, Share2, Shield, ShoppingCart, Smile, Sparkles, Star, Swords, Trash2, Trophy, UserPlus, Users, X, ZoomIn, ZoomOut } from "lucide-react";
 import { Avatar, RANK_RING } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { MicButton } from "../components/MicButton";
@@ -13,6 +13,7 @@ import type { AccountStats, Friend, GameApi, InboxItem, LevelInfo } from "../net
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { makeProfileCard, shareOrDownload } from "../util/shareCard";
+import { ClubEmblem, CLUB_EMBLEM_IDS } from "../components/ClubEmblem";
 import { reelTheme } from "../theme/reelSkins";
 import { colors, font, playerColors, radius, withAlpha } from "../theme/tokens";
 
@@ -1051,6 +1052,7 @@ function ClubScreen({ game, onBack, embedded }: { game: GameApi; onBack?: () => 
   return wrap(
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <Card style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "center" }}>
+          <ClubEmblem id={club.emblem} size={76} />
           <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 22, color: colors.ink, textAlign: "center" }}>{club.name}</span>
           <span style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.sub }}>{t("clubMembersN", { n: club.member_count })}</span>
           <button onClick={shareCode} style={{ display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer", background: withAlpha(colors.gold, 0.12), border: `1px solid ${withAlpha(colors.gold, 0.4)}`, borderRadius: 999, padding: "7px 14px" }}>
@@ -1059,6 +1061,38 @@ function ClubScreen({ game, onBack, embedded }: { game: GameApi; onBack?: () => 
             {copied ? <Check size={15} color={colors.green} /> : <Copy size={15} color={colors.sub} />}
           </button>
         </Card>
+
+        {club.is_owner && (
+          <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Shield size={15} color={colors.gold} />
+              <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint, flex: 1 }}>{t("clubEmblemTitle")}</span>
+            </div>
+            <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.sub, lineHeight: 1.5 }}>{t("clubEmblemHint")}</p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8 }}>
+              {[null, ...CLUB_EMBLEM_IDS].map((id) => {
+                const active = (club.emblem ?? null) === id;
+                return (
+                  <button
+                    key={id ?? "default"}
+                    onClick={() => { sound.uiTap(); game.setClubEmblem(id); }}
+                    aria-label={id ?? t("clubEmblemDefault")}
+                    className="pressable"
+                    style={{
+                      aspectRatio: "1 / 1", minWidth: 0, padding: 4, borderRadius: 12, cursor: "pointer",
+                      display: "grid", placeItems: "center", boxSizing: "border-box",
+                      border: `2px solid ${active ? colors.gold : colors.panelBorder}`,
+                      background: withAlpha("#000000", 0.22),
+                      boxShadow: active ? `0 0 12px ${withAlpha(colors.gold, 0.5)}` : "none",
+                    }}
+                  >
+                    <ClubEmblem id={id} size={40} />
+                  </button>
+                );
+              })}
+            </div>
+          </Card>
+        )}
 
         <div style={{ display: "flex", gap: 8 }}>
           {(["month", "all"] as const).map((p) => (

@@ -320,6 +320,10 @@ ALL_BUZZER_IDS = BUZZER_SKIN_IDS + LEVEL_BUZZER_IDS
 # during their turn, which is the status play. NULL reel_skin = default gold.
 REEL_SKIN_IDS = ["rs01", "rs02", "rs03", "rs04", "rs05", "rs06", "rs07", "rs08", "rs09"]
 
+# Club emblems: art in frontend/public/emblems/emNN.webp. Free — the club OWNER
+# picks one and every member wears it. NULL emblem = the default pen mark.
+CLUB_EMBLEM_IDS = [f"em{i:02d}" for i in range(1, 10)]
+
 # Avatar frames: a decorative frame drawn around your avatar, earned by
 # LEVELLING UP (never bought). (level threshold, frame id, name key for i18n).
 # NULL avatar_frame = no frame. Art lives in frontend/public/frames/{id}.webp.
@@ -430,6 +434,11 @@ class Database:
         # Reel skin: the chosen roulette theme (NULL = default gold).
         if "reel_skin" not in cols:
             self._conn.execute("ALTER TABLE users ADD COLUMN reel_skin TEXT")
+            self._conn.commit()
+        # Club emblem: the badge the owner picked for the club (NULL = default).
+        ccols = {r["name"] for r in self._conn.execute("PRAGMA table_info(clubs)").fetchall()}
+        if ccols and "emblem" not in ccols:
+            self._conn.execute("ALTER TABLE clubs ADD COLUMN emblem TEXT")
             self._conn.commit()
         # Email + password login: a salted PBKDF2 hash (NULL until the user sets
         # one). Lets returning players log in on a new device without the magic
@@ -987,7 +996,7 @@ class Database:
         with self._lock:
             rows = self._q(
                 """
-                SELECT c.id, c.name, c.code, c.owner_id,
+                SELECT c.id, c.name, c.code, c.owner_id, c.emblem,
                        (SELECT COUNT(*) FROM club_members m WHERE m.club_id=c.id) AS member_count
                 FROM club_members cm JOIN clubs c ON c.id = cm.club_id
                 WHERE cm.user_id = ? LIMIT 1
@@ -997,7 +1006,19 @@ class Database:
         if not rows:
             return None
         r = dict(rows[0])
-        return {"id": r["id"], "name": r["name"], "code": r["code"], "member_count": int(r["member_count"]), "is_owner": r["owner_id"] == user_id}
+        return {"id": r["id"], "name": r["name"], "code": r["code"], "emblem": r["emblem"],
+                "member_count": int(r["member_count"]), "is_owner": r["owner_id"] == user_id}
+
+    def set_club_emblem(self, user_id: str, emblem: Optional[str]) -> bool:
+        """Pick the club badge. Only the OWNER may change it; None = default."""
+        if emblem is not None and emblem not in CLUB_EMBLEM_IDS:
+            return False
+        with self._lock:
+            rows = self._q("SELECT id FROM clubs WHERE owner_id=?", (user_id,))
+            if not rows:
+                return False
+            self._exec("UPDATE clubs SET emblem=? WHERE id=?", (emblem, rows[0]["id"]))
+        return True
 
     def _gen_club_code(self) -> str:
         alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # no ambiguous chars

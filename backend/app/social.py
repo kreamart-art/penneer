@@ -222,6 +222,7 @@ class AccountManager:
             "club_leave": self.club_leave,
             "club_get": self.club_get,
             "club_invite": self.club_invite,
+            "club_set_emblem": self.club_set_emblem,
             "set_lenient": self.set_lenient,
             "set_buzzer_skin": self.set_buzzer_skin,
             "set_reel_skin": self.set_reel_skin,
@@ -717,6 +718,19 @@ class AccountManager:
         self.db.leave_club(uid)
         await self._send(ws, await self._account_payload(ws, uid))
         await self._send(ws, {"type": "club", "club": None, "period": "month", "members": []})
+
+    async def club_set_emblem(self, ws: Any, data: dict) -> None:
+        """The club owner picks the badge every member wears."""
+        uid = self.user_of(ws)
+        if not uid:
+            return
+        em = data.get("emblem")
+        em = em if isinstance(em, str) and em else None
+        if not self.db.set_club_emblem(uid, em):
+            await self._send(ws, {"type": "error", "message": "Alleen de eigenaar kan het embleem kiezen."})
+            return
+        await self._send(ws, await self._account_payload(ws, uid))
+        await self._send(ws, self._club_payload(uid, data.get("period") or "month"))
 
     async def club_get(self, ws: Any, data: dict) -> None:
         uid = self.user_of(ws)

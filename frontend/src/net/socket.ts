@@ -129,6 +129,7 @@ export interface ClubSummary {
   id: string;
   name: string;
   code: string;
+  emblem: string | null; // chosen club badge (emNN), null = the default mark
   member_count: number;
   is_owner: boolean;
 }
@@ -751,6 +752,7 @@ export interface GameApi {
   createClub: (name: string) => void;
   joinClub: (code: string) => void;
   clubInvite: (userId: string) => void;
+  setClubEmblem: (emblem: string | null) => void;
   leaveClub: () => void;
   loadClub: (period: "month" | "all") => void;
   setLenient: (on: boolean) => void;
@@ -981,6 +983,7 @@ export function useGame(): GameApi {
     joinClub: (code) => send({ type: "club_join", code }),
     clubInvite: (userId) => send({ type: "club_invite", user_id: userId }),
     leaveClub: () => send({ type: "club_leave" }),
+    setClubEmblem: (emblem) => send({ type: "club_set_emblem", emblem }),
     loadClub: (period) => send({ type: "club_get", period }),
     setLenient: (on) => send({ type: "set_lenient", on }),
     setBuzzerSkin: (skin) => send({ type: "set_buzzer_skin", skin }),
