@@ -36,6 +36,10 @@ const REELS_FOR_SALE = [
   { id: "rs03", name: "reelIjs" },
   { id: "rs04", name: "reelCasino" },
   { id: "rs05", name: "reelSmaragd" },
+  { id: "rs06", name: "reelRoyal" },
+  { id: "rs07", name: "reelCandy" },
+  { id: "rs08", name: "reelToxic" },
+  { id: "rs09", name: "reelMiddernacht" },
 ];
 // The two avatar packs (nine each), with three preview thumbnails apiece.
 const AVATAR_PACKS = [

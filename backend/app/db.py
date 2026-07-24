@@ -318,7 +318,7 @@ ALL_BUZZER_IDS = BUZZER_SKIN_IDS + LEVEL_BUZZER_IDS
 # Reel skins (shop 'rol-skins'): CSS themes for the letter roulette, drawn in
 # code (no art files). The whole ROOM sees the active spelleider's reel skin
 # during their turn, which is the status play. NULL reel_skin = default gold.
-REEL_SKIN_IDS = ["rs01", "rs02", "rs03", "rs04", "rs05"]
+REEL_SKIN_IDS = ["rs01", "rs02", "rs03", "rs04", "rs05", "rs06", "rs07", "rs08", "rs09"]
 
 # Avatar frames: a decorative frame drawn around your avatar, earned by
 # LEVELLING UP (never bought). (level threshold, frame id, name key for i18n).
@@ -1529,6 +1529,7 @@ class Database:
         "bz01": 80, "bz02": 80, "bz03": 80, "bz04": 80, "bz05": 80, "bz13": 80, "bz14": 80,
         "bz15": 80, "bz16": 80, "bz17": 80,
         "rs01": 100, "rs02": 100, "rs03": 100, "rs04": 100, "rs05": 100,
+        "rs06": 100, "rs07": 100, "rs08": 100, "rs09": 100,
         "avpack1": 400, "avpack2": 400,
     }
     # PayPal coin BUNDLES: product id -> coins granted (price via env, see paypal.py).

@@ -820,8 +820,11 @@ function ReelTile({ id, active, locked, label, onClick }: {
   );
 }
 
-const REEL_PICKER_IDS = ["rs01", "rs02", "rs03", "rs04", "rs05"];
-const REEL_NAME_KEYS: Record<string, string> = { rs01: "reelNeon", rs02: "reelVuur", rs03: "reelIjs", rs04: "reelCasino", rs05: "reelSmaragd" };
+const REEL_PICKER_IDS = ["rs01", "rs02", "rs03", "rs04", "rs05", "rs06", "rs07", "rs08", "rs09"];
+const REEL_NAME_KEYS: Record<string, string> = {
+  rs01: "reelNeon", rs02: "reelVuur", rs03: "reelIjs", rs04: "reelCasino", rs05: "reelSmaragd",
+  rs06: "reelRoyal", rs07: "reelCandy", rs08: "reelToxic", rs09: "reelMiddernacht",
+};
 
 function ReelPicker({ game, onShowShop }: { game: GameApi; onShowShop: () => void }) {
   const { t } = useT();

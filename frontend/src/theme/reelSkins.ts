@@ -55,6 +55,34 @@ export const REEL_SKINS: Record<string, ReelTheme> = {
     letter: "#7DF5BB",
     fade: "3,19,11",
   },
+  rs06: { // Royal — purple velvet with a gold letter
+    bg: "linear-gradient(180deg, #2a0f5c 0%, #130630 100%)",
+    border: "#A96BFF",
+    glow: "#A96BFF",
+    letter: "#FFD66E",
+    fade: "12,4,30",
+  },
+  rs07: { // Candy — hot pink
+    bg: "linear-gradient(180deg, #4a0f33 0%, #22061a 100%)",
+    border: "#FF5FA8",
+    glow: "#FF5FA8",
+    letter: "#FFA3CE",
+    fade: "26,4,18",
+  },
+  rs08: { // Toxic — radioactive lime
+    bg: "linear-gradient(180deg, #263a06 0%, #101c02 100%)",
+    border: "#B6FF2E",
+    glow: "#B6FF2E",
+    letter: "#D8FF7A",
+    fade: "13,20,2",
+  },
+  rs09: { // Middernacht — near-black with silver-white
+    bg: "linear-gradient(180deg, #1b1b26 0%, #050508 100%)",
+    border: "#E8E8F2",
+    glow: "#AEB6D0",
+    letter: "#F5F5FB",
+    fade: "4,4,7",
+  },
 };
 
 export const REEL_SKIN_IDS = Object.keys(REEL_SKINS);
