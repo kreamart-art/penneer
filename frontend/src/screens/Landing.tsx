@@ -235,8 +235,8 @@ export function Landing({
         </div>
       </div>
       <LandingFX />
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 26 }}>
-        <div className="reveal-rise" style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: 18, padding: "6px 0" }}>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-start", gap: 16, paddingTop: 4 }}>
+        <div className="reveal-rise" style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: 10, padding: "0" }}>
           {/* Hero light: breathing radial glow + slow rays + rising dust, all
               behind the logo/title (zIndex layering, transform-only motion). */}
           {/* overflow hidden keeps the dust inside the hero box (and any wide
@@ -266,7 +266,7 @@ export function Landing({
               />
             ))}
           </div>
-          <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 18 }}>
+          <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
             {/* The logo IS the light source: breathing glow + slowly rotating
                 rays centered on the coin, logo floating on top of them. */}
             <div style={{ position: "relative", display: "grid", placeItems: "center" }}>
@@ -275,8 +275,8 @@ export function Landing({
                 className="breath-glow"
                 style={{
                   position: "absolute",
-                  width: 340,
-                  height: 340,
+                  width: 300,
+                  height: 300,
                   borderRadius: "50%",
                   background: `radial-gradient(circle, ${withAlpha(colors.gold, 0.15)} 0%, ${withAlpha(colors.violet, 0.12)} 38%, transparent 68%)`,
                 }}
@@ -286,8 +286,8 @@ export function Landing({
                 className="hero-rays"
                 style={{
                   position: "absolute",
-                  width: 300,
-                  height: 300,
+                  width: 264,
+                  height: 264,
                   borderRadius: "50%",
                   background: `repeating-conic-gradient(${withAlpha(colors.gold, 0.045)} 0deg 7deg, transparent 7deg 27deg)`,
                   WebkitMaskImage: "radial-gradient(circle, black 20%, transparent 62%)",
@@ -295,7 +295,7 @@ export function Landing({
                 }}
               />
               <div style={{ position: "relative", zIndex: 1, animation: "float-soft 4s ease-in-out infinite" }}>
-                <Logo size={150} />
+                <Logo size={128} />
               </div>
             </div>
             <h1
@@ -323,7 +323,7 @@ export function Landing({
                 fontFamily: font.ui,
                 fontWeight: 500,
                 fontSize: 15,
-                lineHeight: 1.65,
+                lineHeight: 1.5,
                 letterSpacing: 0.3,
                 color: "#CFC6E8",
                 maxWidth: 300,
