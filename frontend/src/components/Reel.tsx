@@ -1,8 +1,11 @@
 // The slot machine — the centerpiece (§8). Recessed dark tile, top/bottom fade
 // strips, huge gold letter. States: idle (dim "?"), spinning (blurred flicker +
 // gold glow), locked (gold border + outer halo + strong text glow, pop on lock).
+// A reel SKIN swaps the colors (tile, border, glow, letter); the whole room
+// sees the active spelleider's skin.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { sound } from "../sound/sound";
+import { reelTheme } from "../theme/reelSkins";
 import { colors, font, withAlpha } from "../theme/tokens";
 
 const STD_POOL = "ABCDEFGHIJKLMNOPRSTUVWZ".split("");
@@ -15,9 +18,10 @@ interface Props {
   letter: string; // the locked letter (authoritative)
   exclude?: string[]; // letters already used this game (drop from the roulette)
   hard?: boolean; // include Q/X/Y
+  skin?: string | null; // the active player's reel theme (everyone sees it)
 }
 
-export function Reel({ state, letter, exclude = [], hard = false }: Props) {
+export function Reel({ state, letter, exclude = [], hard = false, skin = null }: Props) {
   const [flick, setFlick] = useState("A");
   const idxRef = useRef(0);
 
@@ -43,6 +47,10 @@ export function Reel({ state, letter, exclude = [], hard = false }: Props) {
   const display = state === "locked" ? letter : state === "spinning" ? flick : "?";
   const isLocked = state === "locked";
   const isSpin = state === "spinning";
+  const th = reelTheme(skin);
+  // Skinned reels show their color on the border even before lock, so the
+  // theme reads at a glance; the default reel keeps its subtle idle border.
+  const idleBorder = skin ? withAlpha(th.border, 0.45) : colors.panelBorder;
 
   return (
     <div
@@ -51,11 +59,11 @@ export function Reel({ state, letter, exclude = [], hard = false }: Props) {
         width: 168,
         height: 196,
         borderRadius: 22,
-        background: "linear-gradient(180deg, #2a1c52 0%, #160d33 100%)",
-        border: `2px solid ${isLocked ? colors.gold : colors.panelBorder}`,
+        background: th.bg,
+        border: `2px solid ${isLocked ? th.border : idleBorder}`,
         boxShadow: isLocked
-          ? `0 0 0 1px ${withAlpha(colors.gold, 0.4)}, 0 0 40px ${withAlpha(
-              colors.gold,
+          ? `0 0 0 1px ${withAlpha(th.border, 0.4)}, 0 0 40px ${withAlpha(
+              th.glow,
               0.55
             )}, inset 0 8px 26px rgba(0,0,0,.65)`
           : "inset 0 8px 26px rgba(0,0,0,.65), 0 16px 40px rgba(0,0,0,.4)",
@@ -73,7 +81,7 @@ export function Reel({ state, letter, exclude = [], hard = false }: Props) {
           left: 0,
           right: 0,
           height: 46,
-          background: "linear-gradient(180deg, rgba(8,4,20,.92), rgba(8,4,20,0))",
+          background: `linear-gradient(180deg, rgba(${th.fade},.92), rgba(${th.fade},0))`,
           zIndex: 2,
           pointerEvents: "none",
         }}
@@ -86,7 +94,7 @@ export function Reel({ state, letter, exclude = [], hard = false }: Props) {
           left: 0,
           right: 0,
           height: 46,
-          background: "linear-gradient(0deg, rgba(8,4,20,.92), rgba(8,4,20,0))",
+          background: `linear-gradient(0deg, rgba(${th.fade},.92), rgba(${th.fade},0))`,
           zIndex: 2,
           pointerEvents: "none",
         }}
@@ -98,12 +106,12 @@ export function Reel({ state, letter, exclude = [], hard = false }: Props) {
           fontWeight: 700,
           fontSize: 116,
           lineHeight: 1,
-          color: state === "idle" ? withAlpha(colors.faint, 0.5) : colors.gold,
+          color: state === "idle" ? withAlpha(colors.faint, 0.5) : th.letter,
           filter: isSpin ? "blur(1.5px)" : "none",
           textShadow: isLocked
-            ? `0 0 30px ${withAlpha(colors.gold, 0.9)}, 0 0 60px ${withAlpha(colors.gold, 0.5)}`
+            ? `0 0 30px ${withAlpha(th.glow, 0.9)}, 0 0 60px ${withAlpha(th.glow, 0.5)}`
             : isSpin
-              ? `0 0 22px ${withAlpha(colors.gold, 0.5)}`
+              ? `0 0 22px ${withAlpha(th.glow, 0.5)}`
               : "none",
           animation: isSpin
             ? "reel-flick .12s linear infinite"

@@ -17,7 +17,7 @@ import time
 from typing import Any, Optional
 
 from . import daily, missions, push, titles
-from .db import get_db, LEVEL_BUZZERS, BUZZER_SKIN_IDS, LEVEL_FOR_BUZZER, LEVEL_FRAMES, LEVEL_FOR_FRAME
+from .db import get_db, LEVEL_BUZZERS, BUZZER_SKIN_IDS, LEVEL_FOR_BUZZER, LEVEL_FRAMES, LEVEL_FOR_FRAME, REEL_SKIN_IDS
 from .models import PLAYER_COLORS
 
 BASE_URL = os.environ.get("PENNEER_BASE_URL", "https://penneer.artnomad.nl")
@@ -126,6 +126,11 @@ class AccountManager:
         milestone the account has reached."""
         return {fid for lvl, fid, _ in LEVEL_FRAMES if level >= lvl}
 
+    def _allowed_reels(self, user: dict) -> set:
+        """Reel themes this account may select: the coin-bought ones."""
+        owned = self.db.owned_items_of(user["id"])
+        return {s for s in REEL_SKIN_IDS if s in owned}
+
     async def _account_payload(self, ws: Any, user_id: str) -> dict:
         user = self.db.get_user(user_id)
         if user is None:
@@ -160,6 +165,7 @@ class AccountManager:
                     for lvl, skin, key in LEVEL_BUZZERS
                 ],
                 "avatar_frame": user.get("avatar_frame"),
+                "reel_skin": user.get("reel_skin"),
                 "frame_rewards": [
                     {"frame": fid, "level": lvl, "name": key,
                      "unlocked": level["level"] >= lvl}
@@ -218,6 +224,7 @@ class AccountManager:
             "club_invite": self.club_invite,
             "set_lenient": self.set_lenient,
             "set_buzzer_skin": self.set_buzzer_skin,
+            "set_reel_skin": self.set_reel_skin,
             "set_avatar_frame": self.set_avatar_frame,
             "claim_buzzer_reward": self.claim_buzzer_reward,
             "buy_item_coins": self.buy_item_coins,
@@ -733,6 +740,16 @@ class AccountManager:
         user = self.db.get_user(uid)
         level = _level_of(self.db.stats_of(uid))["level"]
         self.db.set_buzzer_skin(uid, skin, self._allowed_buzzers(user, level))
+        await self._send(ws, await self._account_payload(ws, uid))
+
+    async def set_reel_skin(self, ws: Any, data: dict) -> None:
+        uid = self.user_of(ws)
+        if not uid:
+            return
+        skin = data.get("skin")
+        skin = skin if isinstance(skin, str) and skin else None
+        user = self.db.get_user(uid)
+        self.db.set_reel_skin(uid, skin, self._allowed_reels(user))
         await self._send(ws, await self._account_payload(ws, uid))
 
     async def set_avatar_frame(self, ws: Any, data: dict) -> None:

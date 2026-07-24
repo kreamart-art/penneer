@@ -299,6 +299,7 @@ class RoomManager:
         player.rank = lvl["rank"]
         player.title = get_db().get_title(account["id"])
         player.frame = get_db().get_avatar_frame(account["id"])
+        player.reel_skin = get_db().get_reel_skin(account["id"])
 
     async def create_room(self, ws: Any, name: str, account: Optional[dict] = None) -> tuple[Room, Player]:
         code = self._gen_code()

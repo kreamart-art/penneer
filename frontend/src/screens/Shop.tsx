@@ -12,6 +12,7 @@ import { MusicToggle } from "../components/MusicToggle";
 import { sound } from "../sound/sound";
 import type { GameApi } from "../net/socket";
 import { useT } from "../i18n/i18n";
+import { reelTheme } from "../theme/reelSkins";
 import { colors, font, withAlpha } from "../theme/tokens";
 
 const AVATAR_ART_VERSION = 9;
@@ -27,6 +28,14 @@ const BUZZERS_FOR_SALE = [
   { id: "bz15", name: "shopBuzzDe" },
   { id: "bz16", name: "shopBuzzBe" },
   { id: "bz17", name: "shopBuzzFr" },
+];
+// Reel themes (the letter roulette): drawn in code, so the tile IS the preview.
+const REELS_FOR_SALE = [
+  { id: "rs01", name: "reelNeon" },
+  { id: "rs02", name: "reelVuur" },
+  { id: "rs03", name: "reelIjs" },
+  { id: "rs04", name: "reelCasino" },
+  { id: "rs05", name: "reelSmaragd" },
 ];
 // The two avatar packs (nine each), with three preview thumbnails apiece.
 const AVATAR_PACKS = [
@@ -90,6 +99,24 @@ function CoinItem({ title, owned, price, coins, onBuy, children }: {
           <Coins n={price} color={affordable ? colors.gold : colors.faint} size={15} />
         </button>
       )}
+    </div>
+  );
+}
+
+// A mini reel in the given theme — the shop preview for a rol-skin (the real
+// reel is code-drawn, so the preview is too).
+function ReelSwatch({ id }: { id: string }) {
+  const th = reelTheme(id);
+  return (
+    <div
+      style={{
+        width: "70%", aspectRatio: "6 / 7", borderRadius: 12,
+        background: th.bg, border: `2px solid ${th.border}`,
+        boxShadow: `0 0 14px ${withAlpha(th.glow, 0.45)}, inset 0 4px 12px rgba(0,0,0,.6)`,
+        display: "grid", placeItems: "center",
+      }}
+    >
+      <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 34, lineHeight: 1, color: th.letter, textShadow: `0 0 12px ${withAlpha(th.glow, 0.8)}` }}>A</span>
     </div>
   );
 }
@@ -201,6 +228,21 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
             {BUZZERS_FOR_SALE.map((bz) => (
               <CoinItem key={bz.id} title={t(bz.name)} owned={owned.has(bz.id)} price={prices[bz.id] ?? buzzPrice} coins={coins} onBuy={() => game.buyItemCoins(bz.id)}>
                 <img src={`/buzzers/${bz.id}.webp`} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
+              </CoinItem>
+            ))}
+          </div>
+        </div>
+
+        {/* ---- Rol-skins (coins, single) ---- */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div>
+            <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink }}>{t("shopReelsHeader")}</div>
+            <div style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint }}>{t("shopReelsLead")}</div>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+            {REELS_FOR_SALE.map((rs) => (
+              <CoinItem key={rs.id} title={t(rs.name)} owned={owned.has(rs.id)} price={prices[rs.id] ?? 100} coins={coins} onBuy={() => game.buyItemCoins(rs.id)}>
+                <ReelSwatch id={rs.id} />
               </CoinItem>
             ))}
           </div>

@@ -60,6 +60,9 @@ class Player:
     title: Optional[str] = None
     # Chosen avatar-frame id (level reward), drawn around the avatar; None = none.
     frame: Optional[str] = None
+    # Chosen reel theme; the whole room sees this on the roulette during this
+    # player's spelleider turn. None = the default gold reel.
+    reel_skin: Optional[str] = None
     has_avatar: bool = False
     avatar_ver: int = 0
 
@@ -77,6 +80,7 @@ class Player:
             "rank": self.rank,
             "title": self.title,
             "frame": self.frame,
+            "reel_skin": self.reel_skin,
             "has_avatar": self.has_avatar,
             "avatar_ver": self.avatar_ver,
         }

@@ -13,6 +13,7 @@ import type { AccountStats, Friend, GameApi, InboxItem, LevelInfo } from "../net
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { makeProfileCard, shareOrDownload } from "../util/shareCard";
+import { reelTheme } from "../theme/reelSkins";
 import { colors, font, playerColors, radius, withAlpha } from "../theme/tokens";
 
 const inputStyle: React.CSSProperties = {
@@ -774,6 +775,79 @@ function BuzzerPicker({ game, onShowShop }: { game: GameApi; onShowShop: () => v
   );
 }
 
+// One reel-theme choice: a mini themed reel with the letter A (the real reel is
+// code-drawn, so the preview is too).
+function ReelTile({ id, active, locked, label, onClick }: {
+  id: string | null; active: boolean; locked: boolean; label: string; onClick: () => void;
+}) {
+  const th = reelTheme(id);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
+      <button
+        onClick={() => { sound.uiTap(); onClick(); }}
+        aria-label={label}
+        className="pressable"
+        style={{
+          position: "relative", width: "100%", minWidth: 0, aspectRatio: "1 / 1",
+          overflow: "hidden", borderRadius: 14,
+          border: `2px solid ${active ? colors.gold : colors.panelBorder}`,
+          background: withAlpha("#000000", 0.22), cursor: "pointer",
+          display: "grid", placeItems: "center", boxSizing: "border-box",
+          boxShadow: active ? `0 0 12px ${withAlpha(colors.gold, 0.5)}` : "none",
+        }}
+      >
+        <div
+          style={{
+            width: "62%", aspectRatio: "6 / 7", borderRadius: 10,
+            background: th.bg, border: `2px solid ${th.border}`,
+            boxShadow: `0 0 10px ${withAlpha(th.glow, 0.4)}, inset 0 3px 9px rgba(0,0,0,.6)`,
+            display: "grid", placeItems: "center",
+            opacity: locked ? 0.35 : 1, filter: locked ? "grayscale(0.5)" : "none",
+          }}
+        >
+          <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 26, lineHeight: 1, color: th.letter, textShadow: `0 0 10px ${withAlpha(th.glow, 0.8)}` }}>A</span>
+        </div>
+        {locked && (
+          <span style={{ position: "absolute", right: 5, bottom: 5, width: 20, height: 20, borderRadius: 7, display: "grid", placeItems: "center", background: withAlpha("#000000", 0.55), color: colors.gold }}>
+            <Lock size={12} />
+          </span>
+        )}
+      </button>
+      <span style={{ fontFamily: font.ui, fontSize: 9.5, fontWeight: 600, color: locked ? colors.faint : colors.sub, textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        {label}
+      </span>
+    </div>
+  );
+}
+
+const REEL_PICKER_IDS = ["rs01", "rs02", "rs03", "rs04", "rs05"];
+const REEL_NAME_KEYS: Record<string, string> = { rs01: "reelNeon", rs02: "reelVuur", rs03: "reelIjs", rs04: "reelCasino", rs05: "reelSmaragd" };
+
+function ReelPicker({ game, onShowShop }: { game: GameApi; onShowShop: () => void }) {
+  const { t } = useT();
+  const account = game.state.account!;
+  const ownedItems = new Set(account.owned_items ?? []);
+  const anyOwned = REEL_PICKER_IDS.some((id) => ownedItems.has(id));
+  const active = account.reel_skin ?? null;
+
+  return (
+    <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <CircleDot size={15} color={colors.gold} />
+        <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint, flex: 1 }}>{t("reelPickTitle")}</span>
+      </div>
+      <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.sub, lineHeight: 1.5 }}>{anyOwned ? t("reelPickHint") : t("reelLockedHint")}</p>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+        <ReelTile id={null} active={active === null} locked={false} label={t("reelDefault")} onClick={() => game.setReelSkin(null)} />
+        {REEL_PICKER_IDS.map((id) => {
+          const has = ownedItems.has(id);
+          return <ReelTile key={id} id={id} active={active === id} locked={!has} label={t(REEL_NAME_KEYS[id])} onClick={() => (has ? game.setReelSkin(id) : onShowShop())} />;
+        })}
+      </div>
+    </Card>
+  );
+}
+
 // One avatar-frame choice: previews the actual avatar inside the frame.
 function FrameTile({
   active, locked, lockLabel, caption, label, onClick, children,
@@ -1306,6 +1380,8 @@ function ProfileSettings({
 
       {/* Draai-knop-skin (shop 'buzzers' pack) */}
       <BuzzerPicker game={game} onShowShop={onShowShop} />
+
+      <ReelPicker game={game} onShowShop={onShowShop} />
 
       {/* Avatar-frame (level-beloning) */}
       <FramePicker game={game} />

@@ -21,6 +21,7 @@ export interface Player {
   rank: string | null; // rank key for the avatar ring + title
   title?: string | null; // chosen cosmetic title key (shown instead of rank)
   frame?: string | null; // chosen avatar-frame id (level reward), drawn around the avatar
+  reel_skin?: string | null; // chosen reel theme; the room sees it on their spin turn
 }
 
 // ---- accounts + social ------------------------------------------------------
@@ -99,6 +100,7 @@ export interface Account {
   buzzer_rewards: BuzzerReward[]; // level-milestone skins + unlock/claim state
   avatar_frame: string | null; // chosen avatar-frame id, null = no frame
   frame_rewards: FrameReward[]; // level-milestone avatar frames + unlock state
+  reel_skin: string | null; // chosen reel theme id, null = default gold reel
   coins: number; // currency balance
   coins_pending: number; // new coins since the last coin popup was seen
   coins_pack_price: number; // legacy (old all-in-one country pack cost)
@@ -753,6 +755,7 @@ export interface GameApi {
   loadClub: (period: "month" | "all") => void;
   setLenient: (on: boolean) => void;
   setBuzzerSkin: (skin: string | null) => void;
+  setReelSkin: (skin: string | null) => void;
   setAvatarFrame: (frame: string | null) => void;
   claimBuzzerReward: (skin: string, equip: boolean) => void;
   buyItemCoins: (item: string) => void;
@@ -981,6 +984,7 @@ export function useGame(): GameApi {
     loadClub: (period) => send({ type: "club_get", period }),
     setLenient: (on) => send({ type: "set_lenient", on }),
     setBuzzerSkin: (skin) => send({ type: "set_buzzer_skin", skin }),
+    setReelSkin: (skin) => send({ type: "set_reel_skin", skin }),
     setAvatarFrame: (frame) => send({ type: "set_avatar_frame", frame }),
     claimBuzzerReward: (skin, equip) => send({ type: "claim_buzzer_reward", skin, equip }),
     buyItemCoins: (item) => send({ type: "buy_item_coins", item }),

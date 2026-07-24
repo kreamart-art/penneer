@@ -315,6 +315,11 @@ LEVEL_BUZZER_IDS = [b[1] for b in LEVEL_BUZZERS]
 LEVEL_FOR_BUZZER = {skin: lvl for lvl, skin, _ in LEVEL_BUZZERS}
 ALL_BUZZER_IDS = BUZZER_SKIN_IDS + LEVEL_BUZZER_IDS
 
+# Reel skins (shop 'rol-skins'): CSS themes for the letter roulette, drawn in
+# code (no art files). The whole ROOM sees the active spelleider's reel skin
+# during their turn, which is the status play. NULL reel_skin = default gold.
+REEL_SKIN_IDS = ["rs01", "rs02", "rs03", "rs04", "rs05"]
+
 # Avatar frames: a decorative frame drawn around your avatar, earned by
 # LEVELLING UP (never bought). (level threshold, frame id, name key for i18n).
 # NULL avatar_frame = no frame. Art lives in frontend/public/frames/{id}.webp.
@@ -422,6 +427,10 @@ class Database:
         if "avatar_frame" not in cols:
             self._conn.execute("ALTER TABLE users ADD COLUMN avatar_frame TEXT")
             self._conn.commit()
+        # Reel skin: the chosen roulette theme (NULL = default gold).
+        if "reel_skin" not in cols:
+            self._conn.execute("ALTER TABLE users ADD COLUMN reel_skin TEXT")
+            self._conn.commit()
         # Email + password login: a salted PBKDF2 hash (NULL until the user sets
         # one). Lets returning players log in on a new device without the magic
         # link (which some in-app browsers cannot open).
@@ -513,7 +522,7 @@ class Database:
         with self._lock:
             rows = self._q(
                 "SELECT id, name, email, color, avatar_ver, avatar IS NOT NULL AS has_avatar, "
-                "avatar_preset, ai_unlocked, premium_avatars, buzzer_skins, buzzer_skin, avatar_frame, title, lenient_spelling, coins, coins_level, coins_seen_level, created_at "
+                "avatar_preset, ai_unlocked, premium_avatars, buzzer_skins, buzzer_skin, avatar_frame, reel_skin, title, lenient_spelling, coins, coins_level, coins_seen_level, created_at "
                 "FROM users WHERE id=?",
                 (user_id,),
             )
@@ -1453,6 +1462,26 @@ class Database:
         self._exec("UPDATE users SET buzzer_skin=? WHERE id=?", (skin, user_id))
         return True
 
+    # ---- reel skins (bought with coins) ------------------------------------
+
+    def get_reel_skin(self, user_id: str) -> Optional[str]:
+        if not user_id:
+            return None
+        with self._lock:
+            rows = self._q("SELECT reel_skin FROM users WHERE id=?", (user_id,))
+        return rows[0]["reel_skin"] if rows else None
+
+    def set_reel_skin(self, user_id: str, skin: Optional[str], allowed: set) -> bool:
+        """Pick a reel theme the caller has verified is owned, or None for the
+        default gold roulette (always allowed)."""
+        if not skin:
+            self._exec("UPDATE users SET reel_skin=NULL WHERE id=?", (user_id,))
+            return True
+        if skin not in allowed:
+            return False
+        self._exec("UPDATE users SET reel_skin=? WHERE id=?", (skin, user_id))
+        return True
+
     # ---- avatar frames (unlocked by levelling up) --------------------------
 
     def get_avatar_frame(self, user_id: str) -> Optional[str]:
@@ -1499,6 +1528,7 @@ class Database:
     COIN_PRICES = {
         "bz01": 80, "bz02": 80, "bz03": 80, "bz04": 80, "bz05": 80, "bz13": 80, "bz14": 80,
         "bz15": 80, "bz16": 80, "bz17": 80,
+        "rs01": 100, "rs02": 100, "rs03": 100, "rs04": 100, "rs05": 100,
         "avpack1": 400, "avpack2": 400,
     }
     # PayPal coin BUNDLES: product id -> coins granted (price via env, see paypal.py).
