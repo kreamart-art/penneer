@@ -1273,15 +1273,19 @@ function ProfileSettings({
 }) {
   const { t } = useT();
   const account = game.state.account!;
+  // Own Screen wrapper (safe-area + padding + scroll) because the Hub renders
+  // this at the top level, not nested inside its tab Screen.
+  const header = (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", paddingTop: "calc(14px + env(safe-area-inset-top))" }}>
+      <button onClick={onBack} aria-label={t("back")} style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 2 }}>
+        <ArrowLeft size={20} />
+      </button>
+      <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>{t("profileSettings")}</span>
+    </div>
+  );
   return (
-    <>
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <button onClick={onBack} aria-label={t("back")} style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 2 }}>
-          <ArrowLeft size={18} />
-        </button>
-        <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink }}>{t("profileSettings")}</span>
-      </div>
-
+    <Screen top={header}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       {/* soepele spelling (dyslexie-hulp) voor Oefenen + Dagronde */}
       <Card style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -1348,7 +1352,8 @@ function ProfileSettings({
           {t("deleteAccount")}
         </button>
       </div>
-    </>
+      </div>
+    </Screen>
   );
 }
 
