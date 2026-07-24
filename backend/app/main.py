@@ -524,9 +524,16 @@ STATIC_DIR = Path(os.environ.get("PENNEER_STATIC", "static"))
 if STATIC_DIR.is_dir():
     app.mount("/assets", StaticFiles(directory=STATIC_DIR / "assets"), name="assets")
 
+    # The app shell + service worker must always revalidate, so a new deploy
+    # reaches installed PWAs immediately instead of stranding them on a stale
+    # cached shell whose (now-deleted) asset hashes 404 into a black screen.
+    _NO_CACHE = {"Cache-Control": "no-cache"}
+
     @app.get("/{full_path:path}")
     async def spa(full_path: str) -> FileResponse:
         candidate = STATIC_DIR / full_path
         if full_path and candidate.is_file():
+            if full_path == "sw.js" or full_path == "index.html" or full_path.endswith(".webmanifest"):
+                return FileResponse(candidate, headers=_NO_CACHE)
             return FileResponse(candidate)
-        return FileResponse(STATIC_DIR / "index.html")
+        return FileResponse(STATIC_DIR / "index.html", headers=_NO_CACHE)

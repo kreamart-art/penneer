@@ -2,6 +2,46 @@
 <html lang="nl">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      // Self-heal backstop: if a hashed asset (JS/CSS) fails to load — e.g. a
+      // stale service-worker cache points at a deploy whose files no longer
+      // exist — wipe the SW + caches and reload ONCE. Only fires for a genuinely
+      // broken shell (a real load error), so active players are never touched.
+      // Runs first so the listener is up before any asset starts loading.
+      (function () {
+        window.addEventListener(
+          "error",
+          function (ev) {
+            var el = ev && ev.target;
+            if (!el || !el.tagName) return;
+            var src = el.src || el.href || "";
+            if (!/^(SCRIPT|LINK)$/.test(el.tagName) || src.indexOf("/assets/") === -1) return;
+            try {
+              if (sessionStorage.getItem("pn-healed")) return;
+              sessionStorage.setItem("pn-healed", "1");
+            } catch (_) {}
+            var done = function () {
+              try { location.reload(); } catch (_) {}
+            };
+            Promise.resolve()
+              .then(function () {
+                if ("serviceWorker" in navigator)
+                  return navigator.serviceWorker.getRegistrations().then(function (rs) {
+                    return Promise.all(rs.map(function (r) { return r.unregister(); }));
+                  });
+              })
+              .then(function () {
+                if (window.caches)
+                  return caches.keys().then(function (ks) {
+                    return Promise.all(ks.map(function (k) { return caches.delete(k); }));
+                  });
+              })
+              .then(done, done);
+          },
+          true
+        );
+      })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Pen Neer</title>
     <meta name="description" content="Draai de letter, ren tegen de klok. Een spel van Artnomad." />
