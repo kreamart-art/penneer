@@ -436,6 +436,8 @@ const nl: Dict = {
   // lobby
   roomcode: "Roomcode",
   codeHint: "De anderen vullen deze code in op hun eigen telefoon.",
+  shareCode: "Deel code",
+  shareCodeMsg: "Kopieer deze code om in mijn Pen Neer room te komen.",
   inRoom: "In de room",
   startGame: "Start het spel",
   waitHost: "Wachten tot de host start.",
@@ -969,6 +971,8 @@ const en: Dict = {
   skip: "Skip",
   roomcode: "Room code",
   codeHint: "The others enter this code on their own phone.",
+  shareCode: "Share code",
+  shareCodeMsg: "Copy this code to join my Pen Neer room.",
   inRoom: "In the room",
   startGame: "Start the game",
   waitHost: "Waiting for the host to start.",

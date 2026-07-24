@@ -2,7 +2,7 @@
 // no-timer, rounds, categories + deelcode, hard letters, max players, spectators),
 // testbots, and per-device language + sound toggles.
 import { useEffect, useRef, useState } from "react";
-import { Check, Copy, Minus, Plus, Search, Send, UserPlus, X } from "lucide-react";
+import { Check, Copy, Minus, Plus, Search, Send, Share2, UserPlus, X } from "lucide-react";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { Chip } from "../components/Chip";
@@ -138,6 +138,29 @@ export function Lobby({ game }: { game: GameApi }) {
     setTimeout(() => setCopied(false), 1400);
   };
 
+  // Share just the code + a short message via the native share sheet (WhatsApp
+  // etc.). Deliberately NO url: people with the app installed should copy the
+  // code into the app, not be sent to the website.
+  const shareCode = async () => {
+    const text = `${room.code}\n\n${t("shareCodeMsg")}`;
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({ text });
+      } catch {
+        /* user cancelled the share sheet */
+      }
+      return;
+    }
+    // Desktop (no share sheet): copy the code + message to the clipboard.
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      /* ignore */
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1400);
+  };
+
   const toggleCategory = (key: string) => {
     if (!isHost) return;
     const has = settings.categories.includes(key);
@@ -213,6 +236,13 @@ export function Lobby({ game }: { game: GameApi }) {
             <span style={{ color: copied ? colors.green : colors.faint }}>{copied ? <Check size={22} /> : <Copy size={20} />}</span>
           </button>
           <p style={{ margin: "6px 0 0", fontFamily: font.ui, fontSize: 13, color: colors.sub }}>{t("codeHint")}</p>
+          <div style={{ marginTop: 12 }}>
+            <Button variant="gold" onClick={shareCode}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                <Share2 size={17} /> {t("shareCode")}
+              </span>
+            </Button>
+          </div>
         </Card>
 
         {/* Players */}
