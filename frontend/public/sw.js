@@ -10,7 +10,7 @@
 //    briefly-stale shell can still boot from cache instead of going black.
 //  - Every activation purges ALL old caches (drops any poisoned shell).
 // Never touches the WebSocket or the API.
-const CACHE = "penneer-v7";
+const CACHE = "penneer-v8"; // v8: bust cached buzzer art after bz04/bz05 flag upgrade
 
 self.addEventListener("install", () => {
   self.skipWaiting();

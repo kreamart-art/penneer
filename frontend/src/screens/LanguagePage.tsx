@@ -1,5 +1,5 @@
 // Language selection — shown once until a language is chosen (stored locally).
-import { Emblem } from "../components/Emblem";
+import { Logo } from "../components/Logo";
 import { Screen, Card } from "../components/Layout";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
@@ -16,7 +16,7 @@ export function LanguagePage() {
     <Screen>
       <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 22 }}>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-          <Emblem size={84} />
+          <Logo size={92} />
           <h2 style={{ margin: 0, fontFamily: font.display, fontWeight: 700, fontSize: 26, color: colors.ink }}>
             {t("chooseLang")}
           </h2>
