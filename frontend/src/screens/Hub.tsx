@@ -717,9 +717,9 @@ function BuzzerPicker({ game, onShowShop }: { game: GameApi; onShowShop: () => v
   const { t } = useT();
   const account = game.state.account!;
   const ownedItems = new Set(account.owned_items ?? []);
-  const anyOwned = ["bz01", "bz02", "bz03", "bz04", "bz05"].some((id) => ownedItems.has(id));
+  const anyOwned = ["bz01", "bz02", "bz03", "bz04", "bz05", "bz13"].some((id) => ownedItems.has(id));
   const active = account.buzzer_skin ?? null;
-  const packSkins = ["bz01", "bz02", "bz03", "bz04", "bz05"];
+  const packSkins = ["bz01", "bz02", "bz03", "bz04", "bz05", "bz13"];
   const rewards = account.buzzer_rewards ?? [];
 
   return (

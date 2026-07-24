@@ -332,7 +332,26 @@ async def daily_submit(request: Request) -> JSONResponse:
                 target, reward, coins = missions.spec(key)
                 if db.mission_bump(uid, day, key, inc, target, reward, coins):
                     missions_done.append({"key": key, "reward": reward, "coins": coins})
+        # Anti-cheat: offer the one paid retry BEFORE revealing the score. When it
+        # is available we withhold the score/breakdown entirely; the client asks
+        # "retry for N coins?" and only fetches the reveal (/api/daily/result) once
+        # the player declines. So you decide blind — you can't peek then redo.
+        if ranked and not db.daily_retried(uid, day) and db.coins_of(uid) >= db.DAILY_RETRY_COINS:
+            return JSONResponse({"day": day, "retry_available": True, "retry_cost": db.DAILY_RETRY_COINS})
     return JSONResponse({**_daily_result_payload(db, uid, day, score, breakdown, ranked, time_ms), "already": False, "missions_done": missions_done})
+
+
+@app.post("/api/daily/retry")
+async def daily_retry(request: Request) -> JSONResponse:
+    """Spend coins to wipe today's daily attempt for one fresh try (once/day)."""
+    db = get_db()
+    uid = db.auth(_bearer(request))
+    if not uid:
+        return JSONResponse({"error": "auth"}, status_code=401)
+    res = db.daily_retry(uid, daily.today())
+    if res != "ok":
+        return JSONResponse({"error": res}, status_code=402 if res == "insufficient" else 409)
+    return JSONResponse({"ok": True, "coins": db.coins_of(uid)})
 
 
 @app.get("/api/daily/result")

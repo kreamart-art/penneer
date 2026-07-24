@@ -229,6 +229,14 @@ CREATE TABLE IF NOT EXISTS daily_scores (
     created_at REAL NOT NULL,
     PRIMARY KEY (day, user_id)
 );
+-- One paid retry of the daily round per account per day (50 coins). The row's
+-- existence means the retry has been spent, so it can never be bought twice.
+CREATE TABLE IF NOT EXISTS daily_retries (
+    day TEXT NOT NULL,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    used_at REAL NOT NULL,
+    PRIMARY KEY (day, user_id)
+);
 CREATE INDEX IF NOT EXISTS idx_game_players_user ON game_players(user_id);
 CREATE INDEX IF NOT EXISTS idx_games_finished ON games(finished_at);
 CREATE INDEX IF NOT EXISTS idx_invites_to ON invites(to_user, status);
@@ -269,7 +277,7 @@ PACK_FOR_PRESET = {pid: pack for pack, ids in AVATAR_PACKS.items() for pid in id
 
 # Buzzer skins (shop 'buzzers' pack): art in frontend/public/buzzers/bzNN.webp.
 # The default red buzzer is not an id here; NULL buzzer_skin = default.
-BUZZER_SKIN_IDS = [f"bz{i:02d}" for i in range(1, 6)]  # the paid pack (bz01..05)
+BUZZER_SKIN_IDS = [f"bz{i:02d}" for i in range(1, 6)] + ["bz13"]  # coin-bought country skins (bz01..05 + Spain bz13; bz06..12 are level rewards)
 # Level-reward buzzer skins: (level threshold, skin id, name key for i18n).
 # Reached by LEVELLING UP, never bought. Ordered by level.
 LEVEL_BUZZERS = [
@@ -1064,6 +1072,33 @@ class Database:
             rows = self._q("SELECT score, time_ms, words, created_at, lenient FROM daily_scores WHERE day=? AND user_id=?", (day, user_id))
         return dict(rows[0]) if rows else None
 
+    DAILY_RETRY_COINS = 50  # cost of the one paid daily-round retry
+
+    def daily_retried(self, user_id: str, day: str) -> bool:
+        if not user_id:
+            return False
+        with self._lock:
+            return bool(self._q("SELECT 1 FROM daily_retries WHERE day=? AND user_id=?", (day, user_id)))
+
+    def daily_retry(self, user_id: str, day: str) -> str:
+        """Spend DAILY_RETRY_COINS to wipe today's daily attempt for one fresh try.
+        Returns 'ok' | 'no_entry' | 'already' | 'insufficient'. Once per day. The
+        wipe (scores + start anchor) lets the client replay and re-submit."""
+        cost = self.DAILY_RETRY_COINS
+        with self._lock:
+            if not self._q("SELECT 1 FROM daily_scores WHERE day=? AND user_id=?", (day, user_id)):
+                return "no_entry"
+            if self._q("SELECT 1 FROM daily_retries WHERE day=? AND user_id=?", (day, user_id)):
+                return "already"
+            rows = self._q("SELECT coins FROM users WHERE id=?", (user_id,))
+            if not rows or rows[0]["coins"] < cost:
+                return "insufficient"
+            self._exec("UPDATE users SET coins=coins-? WHERE id=?", (cost, user_id))
+            self._exec("DELETE FROM daily_scores WHERE day=? AND user_id=?", (day, user_id))
+            self._exec("DELETE FROM daily_starts WHERE day=? AND user_id=?", (day, user_id))
+            self._exec("INSERT OR IGNORE INTO daily_retries (day, user_id, used_at) VALUES (?,?,?)", (day, user_id, time.time()))
+        return "ok"
+
     def daily_board(self, day: str, limit: int = 25) -> list[dict]:
         with self._lock:
             rows = self._q(
@@ -1401,7 +1436,7 @@ class Database:
     # Coin PRICES of shop items (buy_item_coins): each country buzzer sells on its
     # own (cheap, reachable early); the premium avatars sell as two packs (pricier).
     COIN_PRICES = {
-        "bz01": 80, "bz02": 80, "bz03": 80, "bz04": 80, "bz05": 80,
+        "bz01": 80, "bz02": 80, "bz03": 80, "bz04": 80, "bz05": 80, "bz13": 80,
         "avpack1": 400, "avpack2": 400,
     }
     # PayPal coin BUNDLES: product id -> coins granted (price via env, see paypal.py).

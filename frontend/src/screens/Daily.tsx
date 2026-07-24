@@ -47,6 +47,9 @@ interface DailyResult {
   board: BoardRow[];
   seconds_left: number;
   missions_done?: { key: string; reward: number; coins: number }[];
+  // When present, the score is withheld: offer one paid retry before the reveal.
+  retry_available?: boolean;
+  retry_cost?: number;
 }
 
 const authHeaders = (): Record<string, string> => {
@@ -85,6 +88,7 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [remaining, setRemaining] = useState(60);
   const [result, setResult] = useState<DailyResult | null>(null);
+  const [retryOffer, setRetryOffer] = useState<{ cost: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [nextIn, setNextIn] = useState(0);
@@ -168,6 +172,12 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
         body: JSON.stringify({ answers: answersRef.current }),
       });
       const data: DailyResult = await res.json();
+      // Anti-cheat: if a paid retry is on offer, the server withheld the score.
+      // Ask BEFORE revealing anything, so the choice is made blind.
+      if (data.retry_available) {
+        setRetryOffer({ cost: data.retry_cost ?? 50 });
+        return;
+      }
       try {
         localStorage.setItem(LOCAL_KEY, JSON.stringify({ day: data.day, payload: data }));
       } catch {
@@ -180,6 +190,26 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
     } finally {
       setBusy(false);
     }
+  };
+
+  // Paid daily-round retry (once/day). Shown after submit, before the reveal.
+  const doRetry = async () => {
+    setBusy(true);
+    try {
+      const res = await fetch("/api/daily/retry", { method: "POST", headers: authHeaders() });
+      if (!res.ok) return; // insufficient / already: leave the offer up
+      setRetryOffer(null);
+      game.send({ type: "account_get" }); // refresh the coin balance
+      sound.uiTap();
+      await start(); // wiped server-side -> replays the same letter, fresh clock
+    } finally {
+      setBusy(false);
+    }
+  };
+  const declineRetry = async () => {
+    setRetryOffer(null);
+    sound.results();
+    await viewResult(); // now reveal the (already recorded) score
   };
 
   // The play clock. Ticks every 200ms; auto-submits at zero.
@@ -319,6 +349,18 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
           <p style={{ margin: 0, textAlign: "center", fontFamily: font.ui, fontSize: 12, color: colors.faint }}>{t("dailyListOnly")}</p>
           <Button variant="gold" full disabled={busy} onClick={() => void submit()}>{t("dailyDone")}</Button>
         </div>
+        {retryOffer && (
+          <div style={{ position: "fixed", inset: 0, zIndex: 95, background: "rgba(6,3,18,.82)", backdropFilter: "blur(5px)", WebkitBackdropFilter: "blur(5px)", display: "grid", placeItems: "center", padding: 22 }}>
+            <div className="pop-in" style={{ width: "100%", maxWidth: 340, display: "flex", flexDirection: "column", alignItems: "center", gap: 12, padding: "26px 22px 20px", borderRadius: 24, background: "linear-gradient(180deg, #2a1c48, #160D30)", border: `1px solid ${withAlpha(colors.gold, 0.5)}`, boxShadow: `0 24px 80px rgba(0,0,0,.65)`, textAlign: "center" }}>
+              <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 20, color: colors.gold }}>{t("dailyRetryTitle")}</span>
+              <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13.5, color: colors.sub, lineHeight: 1.55 }}>{t("dailyRetryBody")}</p>
+              <Button variant="gold" full disabled={busy} onClick={() => void doRetry()}>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>{t("dailyRetryYes", { n: retryOffer.cost })}<img src="/coin.webp" alt="" width={17} height={17} /></span>
+              </Button>
+              <button onClick={() => void declineRetry()} disabled={busy} style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, fontFamily: font.ui, fontSize: 13.5, padding: "4px 4px 0" }}>{t("dailyRetryNo")}</button>
+            </div>
+          </div>
+        )}
       </Screen>
     );
   }
