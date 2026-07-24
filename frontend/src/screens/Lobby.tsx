@@ -128,19 +128,10 @@ export function Lobby({ game }: { game: GameApi }) {
     prevCount.current = room.players.length;
   }, [room.players.length]);
 
-  const copyCode = async () => {
-    try {
-      await navigator.clipboard.writeText(room.code);
-    } catch {
-      /* ignore */
-    }
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1400);
-  };
-
   // Share just the code + a short message via the native share sheet (WhatsApp
   // etc.). Deliberately NO url: people with the app installed should copy the
-  // code into the app, not be sent to the website.
+  // code into the app, not be sent to the website. On desktop (no share sheet)
+  // it copies the code + message to the clipboard instead.
   const shareCode = async () => {
     const text = `${room.code}\n\n${t("shareCodeMsg")}`;
     if (typeof navigator !== "undefined" && navigator.share) {
@@ -229,20 +220,13 @@ export function Lobby({ game }: { game: GameApi }) {
         {/* Room code */}
         <Card style={{ textAlign: "center" }}>
           <SectionLabel>{t("roomcode")}</SectionLabel>
-          <button onClick={copyCode} style={{ display: "inline-flex", gap: 8, alignItems: "center", background: "transparent", border: "none", cursor: "pointer" }}>
+          <button onClick={shareCode} aria-label={t("shareCode")} style={{ display: "inline-flex", gap: 8, alignItems: "center", background: "transparent", border: "none", cursor: "pointer" }}>
             <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 56, letterSpacing: 10, color: colors.gold, textShadow: `0 0 28px ${withAlpha(colors.gold, 0.5)}` }}>
               {room.code}
             </span>
-            <span style={{ color: copied ? colors.green : colors.faint }}>{copied ? <Check size={22} /> : <Copy size={20} />}</span>
+            <span style={{ color: copied ? colors.green : colors.faint }}>{copied ? <Check size={22} /> : <Share2 size={21} />}</span>
           </button>
           <p style={{ margin: "6px 0 0", fontFamily: font.ui, fontSize: 13, color: colors.sub }}>{t("codeHint")}</p>
-          <div style={{ marginTop: 12 }}>
-            <Button variant="gold" onClick={shareCode}>
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                <Share2 size={17} /> {t("shareCode")}
-              </span>
-            </Button>
-          </div>
         </Card>
 
         {/* Players */}
