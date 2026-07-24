@@ -64,23 +64,27 @@ export function Buzzer({ label, onPress, disabled, size = 138, skin }: Props) {
           transition: "filter .08s ease",
         }}
       />
-      <span
-        style={{
-          position: "absolute",
-          inset: 0,
-          display: "grid",
-          placeItems: "center",
-          fontFamily: font.display,
-          fontWeight: 800,
-          fontSize: size * 0.19,
-          letterSpacing: 1.5,
-          color: "#FFD66E",
-          textShadow: "0 2px 0 rgba(122,44,8,.9), 0 0 16px rgba(255,170,40,.5), 0 0 4px rgba(0,0,0,.4)",
-          pointerEvents: "none",
-        }}
-      >
-        {label}
-      </span>
+      {/* The baked-in "Draai"/"STOP" label only sits on the default red art; the
+          country/level skins carry their own look, so no text on top of those. */}
+      {!skin && (
+        <span
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "grid",
+            placeItems: "center",
+            fontFamily: font.display,
+            fontWeight: 800,
+            fontSize: size * 0.19,
+            letterSpacing: 1.5,
+            color: "#FFD66E",
+            textShadow: "0 2px 0 rgba(122,44,8,.9), 0 0 16px rgba(255,170,40,.5), 0 0 4px rgba(0,0,0,.4)",
+            pointerEvents: "none",
+          }}
+        >
+          {label}
+        </span>
+      )}
     </button>
   );
 }

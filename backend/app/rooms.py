@@ -1110,33 +1110,71 @@ class RoomManager:
         await self._lock_letter(room)
 
     async def _bot_fill(self, code: str) -> None:
-        """Fill in answers for every bot, then auto-stop if a bot is active."""
+        """Fill in answers for every bot, trickling them in like real players.
+
+        A bot spelleider also has to call "stop" (there is no human to press it),
+        but only in no-timer mode and only after a realistic filling stretch, so
+        the humans actually get time to write. Timed rounds end on their own
+        clock and are never cut short here.
+        """
         import random as _random
 
         rng = _random.Random()
-        # Stagger bot answers so they trickle in like real players.
-        await asyncio.sleep(rng.uniform(0.8, 2.0))
         room = self.rooms.get(code)
         if room is None or room.phase != "fill":
             return
         rnd = room.current_round
         if rnd is None:
             return
+        cats = list(room.settings.categories)
+
+        # Bots trickle in and hit "klaar" at different moments, not all at once.
         for bot in [p for p in self.playing_players(room) if p.is_bot]:
+            await asyncio.sleep(rng.uniform(0.5, 1.6))
+            room = self.rooms.get(code)
+            if room is None or room.phase != "fill":
+                return
             bucket = self.pending.setdefault(code, {}).setdefault(bot.id, {})
-            for cat in room.settings.categories:
+            for cat in cats:
                 bucket[cat] = game.bot_answer(rnd.letter, cat, rng)
             if bot.id not in room.ready_ids:
                 room.ready_ids.append(bot.id)
-        await self.broadcast(room, {"type": "ready_updated", "ready_ids": list(room.ready_ids)})
-        await self.send_state(room)
-        # If a bot is the spelleider it must end the round (essential for 0s).
+            await self.broadcast(room, {"type": "ready_updated", "ready_ids": list(room.ready_ids)})
+            await self.send_state(room)
+
+        room = self.rooms.get(code)
+        if room is None or room.phase != "fill":
+            return
         active = room.get_player(room.active_player_id) if room.active_player_id else None
-        if active and active.is_bot:
-            await asyncio.sleep(rng.uniform(2.5, 4.5))
+        # Only a bot spelleider needs to end the round; a human spelleider presses
+        # stop, and a timed round is ended by its own timer.
+        if not (active and active.is_bot):
+            return
+        if room.settings.round_time and room.settings.round_time > 0:
+            return
+
+        # No-timer: wait a human-like filling stretch scaled to how much there is
+        # to write, but call it the moment every human present is ready, so a
+        # quick table is never kept waiting.
+        budget = rng.uniform(9.0, 13.0) + len(cats) * rng.uniform(2.2, 3.4)
+        waited = 0.0
+        while waited < budget:
+            await asyncio.sleep(0.5)
+            waited += 0.5
             room = self.rooms.get(code)
-            if room and room.phase == "fill" and room.active_player_id == active.id:
-                task = self.timer_tasks.pop(code, None)
-                if task:
-                    task.cancel()
-                await self._end_round(room)
+            if room is None or room.phase != "fill" or room.active_player_id != active.id:
+                return
+            humans = [
+                p for p in self.playing_players(room)
+                if not p.is_bot and p.connected and p.id not in room.sat_out
+            ]
+            if humans and all(h.id in room.ready_ids for h in humans):
+                await asyncio.sleep(rng.uniform(0.6, 1.4))  # a beat, so it feels reactive
+                break
+
+        room = self.rooms.get(code)
+        if room and room.phase == "fill" and room.active_player_id == active.id:
+            task = self.timer_tasks.pop(code, None)
+            if task:
+                task.cancel()
+            await self._end_round(room)

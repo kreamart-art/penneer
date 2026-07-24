@@ -109,6 +109,103 @@ for _cat, _words in RAW.items():
     _BOT_WORDS[_cat] = _by_letter
 
 
+# Real-looking answers for the OPEN categories. Jongen/Meisje/Ding carry no
+# wordlist (any letter-matching word is valid), so without their own banks the
+# bots emitted "letter+suffix" gibberish ("Aaan") that instantly outed them as
+# bots and, worse, still scored green. These give them believable names/things.
+_BOT_JONGEN = [
+    "Aron", "Adam", "Alex", "Abel", "Aiden", "Ahmed",
+    "Bram", "Bas", "Ben", "Boris", "Bart", "Bilal",
+    "Cas", "Chris", "Colin", "Cedric", "Christiaan",
+    "Daan", "David", "Dylan", "Dennis", "Dave", "Damian",
+    "Emiel", "Elias", "Erik", "Ewout", "Evan",
+    "Finn", "Floris", "Frank", "Ferry", "Fedde", "Faas",
+    "Gijs", "Guus", "Giel", "Gerard", "Gio",
+    "Hugo", "Hidde", "Hans", "Henk", "Hamza",
+    "Ivo", "Ivan", "Ismael", "Idris",
+    "Jan", "Jesse", "Job", "Joris", "Julian", "Jayden", "Jack",
+    "Kai", "Kees", "Kevin", "Koen", "Karel", "Kaan",
+    "Lars", "Luuk", "Levi", "Liam", "Lucas", "Lou",
+    "Max", "Mees", "Milan", "Mohammed", "Mark", "Mike",
+    "Noah", "Niels", "Nick", "Nout", "Nathan",
+    "Otis", "Olivier", "Oscar", "Onno", "Omar",
+    "Pieter", "Pim", "Paul", "Peter", "Pepijn",
+    "Ruben", "Rick", "Robin", "Roel", "Ravi", "Rens",
+    "Sem", "Sam", "Stijn", "Sven", "Said", "Senna",
+    "Tim", "Thomas", "Teun", "Tygo", "Tobias", "Tarik",
+    "Ubbo", "Umut", "Ugur",
+    "Victor", "Vince", "Valentijn", "Vigo",
+    "Wout", "Willem", "Wesley", "Wim",
+    "Zack", "Zeb", "Zion", "Ziggy",
+]
+_BOT_MEISJE = [
+    "Anna", "Amber", "Aisha", "Ava", "Anouk", "Amira",
+    "Britt", "Bo", "Bente", "Bibi", "Bella",
+    "Cato", "Chloe", "Charlotte", "Cindy", "Claire",
+    "Demi", "Dana", "Dewi", "Daphne", "Deniz",
+    "Emma", "Eva", "Elin", "Esmee", "Evi", "Elif",
+    "Fleur", "Femke", "Fenna", "Faye", "Fatima",
+    "Gwen", "Gina", "Guusje", "Gaby",
+    "Hannah", "Hedi", "Hailey", "Hind", "Hana",
+    "Isa", "Iris", "Ilse", "Imke", "Ines",
+    "Julia", "Jasmijn", "Jill", "Jolijn", "Jade", "Jana",
+    "Kim", "Kiki", "Kayla", "Kate", "Kaya",
+    "Lisa", "Lynn", "Luna", "Lieke", "Lara", "Layla",
+    "Mila", "Maud", "Mia", "Mette", "Maryam", "Marit",
+    "Noor", "Nina", "Nova", "Nadia", "Naomi",
+    "Olivia", "Ona", "Ouarda",
+    "Pip", "Puck", "Paula", "Priya",
+    "Roos", "Rosa", "Renske", "Rania", "Romy",
+    "Sofie", "Sara", "Saar", "Sophie", "Selin",
+    "Tess", "Tessa", "Tara", "Tinne", "Tirza",
+    "Uma", "Ulrike",
+    "Vera", "Veerle", "Vlinder", "Vajèn",
+    "Wende", "Willemijn", "Wies",
+    "Zoe", "Zara", "Zita", "Zeynep",
+]
+_BOT_DING = [
+    "Auto", "Anker", "Agenda", "Antenne",
+    "Bal", "Bed", "Bank", "Boek", "Bord", "Bezem",
+    "Computer", "Cadeau", "Camera",
+    "Deur", "Doos", "Deken", "Douche",
+    "Emmer", "Ei", "Envelop",
+    "Fiets", "Fles", "Foto", "Fluit", "Fornuis",
+    "Glas", "Gitaar", "Gordijn", "Gsm",
+    "Hamer", "Huis", "Hoed", "Hark",
+    "Iglo", "Inktpot", "Ijskast",
+    "Jas", "Juk", "Jurk", "Jerrycan",
+    "Kast", "Kom", "Kaars", "Klok", "Kussen", "Kruk",
+    "Lamp", "Lepel", "Ladder", "Laken", "Lade",
+    "Mes", "Mand", "Mat", "Muts", "Molen",
+    "Naald", "Net", "Nietmachine",
+    "Oven", "Ordner", "Orgel",
+    "Pen", "Pan", "Potlood", "Poster", "Paraplu",
+    "Radio", "Raam", "Riem", "Rugzak", "Rok",
+    "Stoel", "Sok", "Schaar", "Servet", "Spiegel",
+    "Tafel", "Tas", "Telefoon", "Trui", "Toeter",
+    "Uurwerk", "Ukelele",
+    "Vork", "Vaas", "Vlag", "Vaatdoek", "Viool",
+    "Wiel", "Wekker", "Wasmand", "Wasknijper",
+    "Zak", "Zaag", "Zeep", "Zadel", "Zwaard",
+]
+
+
+def _bank_by_letter(words: list[str]) -> dict[str, list[str]]:
+    out: dict[str, list[str]] = {}
+    for _w in words:
+        _fl = first_letter(_w)
+        if _fl:
+            out.setdefault(_fl, []).append(_w)
+    return out
+
+
+_BOT_OPEN: dict[str, dict[str, list[str]]] = {
+    "Jongen": _bank_by_letter(_BOT_JONGEN),
+    "Meisje": _bank_by_letter(_BOT_MEISJE),
+    "Ding": _bank_by_letter(_BOT_DING),
+}
+
+
 def _plural_variants(key: str) -> set[str]:
     """A few light stems so 'appels' matches 'appel', 'honden' matches 'hond'."""
     out = {key}
@@ -303,18 +400,35 @@ _BOT_SUFFIXES = ["aan", "el", "o", "ie", "us", "and", "er", "ka"]
 
 
 def bot_answer(letter: str, cat: str, rng: random.Random) -> str:
-    """Generate a plausible answer that starts with the letter.
+    """Generate a human-looking answer that (usually) starts with the letter.
 
-    For checked categories the bot plays a REAL word from the list (so green
-    checks and dubbels happen naturally); otherwise a letter+suffix stub. Bots
-    sometimes skip a category (empty) so results look human.
+    The point is to read like a real opponent, mistakes and all:
+    - Open categories (Jongen/Meisje/Ding) draw a real name/thing from the bot
+      banks, so they look like a person typed them, not "Aaan".
+    - Checked categories mostly play a REAL list word (natural greens + dubbels),
+      but now and then a plausible off-list guess, the way a real player writes
+      something that turns out not to count (an orange "?").
+    - Either way bots leave the odd box blank, because people run out of time.
     """
+    L = letter.upper()
+    # People miss some boxes (blanked, ran out of time).
     if rng.random() < 0.12:
         return ""
-    words = _BOT_WORDS.get(cat, {}).get(letter.upper())
+    open_bank = _BOT_OPEN.get(cat)
+    if open_bank is not None:
+        words = open_bank.get(L)
+        # No name for this (hard) letter? Leave it blank rather than emit
+        # gibberish, since an open category greens ANY letter-matching word.
+        return rng.choice(words) if words else ""
+    words = _BOT_WORDS.get(cat, {}).get(L)
     if words:
+        # ~1 in 6 is a plausible guess that isn't on the list, a human "?"
+        # moment rather than a flawless encyclopedia.
+        if rng.random() < 0.16:
+            return L + rng.choice(_BOT_SUFFIXES)
         return rng.choice(words)
-    return letter.upper() + rng.choice(_BOT_SUFFIXES)
+    # Checked category with no list word for this letter: a plausible guess.
+    return L + rng.choice(_BOT_SUFFIXES)
 
 
 def build_answers(
