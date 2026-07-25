@@ -240,7 +240,7 @@ export default function App() {
     sound.invite();
     const sender = game.state.friends.find((f) => f.id === dmBanner.from_user);
     const name = sender?.name ?? "";
-    localNotify("Pen Neer", `${name}: ${dmBanner.voice_id ? t("dmVoiceNotif") : dmBanner.text}`.trim());
+    localNotify("Pen Neer", `${name}: ${dmBanner.emote ? t("emoteTitle") : dmBanner.voice_id ? t("dmVoiceNotif") : dmBanner.text}`.trim());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dmBanner?.id]);
 

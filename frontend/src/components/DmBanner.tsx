@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { MessageCircle, X } from "lucide-react";
 import { Avatar } from "./Avatar";
 import { VoiceNote } from "./VoiceNote";
+import { EMOTE_SRC } from "./emotes";
 import type { DmMessage } from "../net/socket";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
@@ -95,7 +96,11 @@ export function DmBanner({
           <div style={{ display: "flex", alignItems: "center", gap: 5, fontFamily: font.ui, fontWeight: 700, fontSize: 13.5, color: colors.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             <MessageCircle size={13} color={colors.gold} style={{ flexShrink: 0 }} /> {sender.name}
           </div>
-          {dm.voice_id ? (
+          {dm.emote ? (
+            <div style={{ marginTop: 3 }}>
+              <img src={EMOTE_SRC(dm.emote)} alt="" width={44} height={44} style={{ width: 44, height: 44, display: "block", objectFit: "contain" }} />
+            </div>
+          ) : dm.voice_id ? (
             <div style={{ marginTop: 3 }}>
               <VoiceNote src={`/api/dm/voice/${dm.voice_id}`} duration={dm.voice_dur ?? 0} />
             </div>

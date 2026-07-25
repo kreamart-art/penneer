@@ -8,16 +8,16 @@ import { sound } from "../sound/sound";
 import { colors, font, withAlpha } from "../theme/tokens";
 
 export function EmotePicker({
-  owned,
+  unlocked,
   onPick,
   onClose,
 }: {
-  owned: Set<string>;
+  unlocked: Set<string>;   // packs this player may send from (free/earned/bought)
   onPick: (emote: string) => void;
   onClose: () => void;
 }) {
   const { t } = useT();
-  const anyOwned = EMOTE_PACKS.some((p) => owned.has(p.id));
+  const allUnlocked = EMOTE_PACKS.every((p) => unlocked.has(p.id));
 
   return (
     <div
@@ -42,14 +42,14 @@ export function EmotePicker({
         </button>
       </div>
 
-      {!anyOwned && (
+      {!allUnlocked && (
         <p style={{ margin: "0 0 10px", fontFamily: font.ui, fontSize: 12.5, color: colors.sub, lineHeight: 1.5 }}>
           {t("emoteLockedHint")}
         </p>
       )}
 
       {EMOTE_PACKS.map((pack) => {
-        const has = owned.has(pack.id);
+        const has = unlocked.has(pack.id);
         return (
           <div key={pack.id} style={{ marginBottom: 12 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 5 }}>
@@ -57,6 +57,9 @@ export function EmotePicker({
                 {t(pack.name)}
               </span>
               {!has && <Lock size={11} color={colors.faint} />}
+              {!has && (
+                <span style={{ fontFamily: font.ui, fontSize: 10.5, color: colors.faint }}>{t(pack.how)}</span>
+              )}
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 6 }}>
               {pack.emotes.map((id) => (

@@ -57,12 +57,14 @@ export interface DmMessage {
   created_at: number;
   voice_id?: string | null;
   voice_dur?: number;
+  emote?: string | null;   // chat-emote id; replaces text when set
 }
 
 export interface DmThreadSummary {
   partner: string;
   last_text: string;
   last_voice?: boolean;
+  last_emote?: boolean;
   last_from_me: boolean;
   last_at: number;
   unread: number;
@@ -101,6 +103,7 @@ export interface Account {
   avatar_frame: string | null; // chosen avatar-frame id, null = no frame
   frame_rewards: FrameReward[]; // level-milestone avatar frames + unlock state
   reel_skin: string | null; // chosen reel theme id, null = default gold reel
+  emote_packs: string[]; // emote packs unlocked (free + earned + bought)
   coins: number; // currency balance
   coins_pending: number; // new coins since the last coin popup was seen
   coins_pack_price: number; // legacy (old all-in-one country pack cost)
@@ -735,7 +738,7 @@ export interface GameApi {
   searchUsers: (query: string) => void;
   viewProfile: (user_id: string) => void;
   historyGet: () => void;
-  dmSend: (user_id: string, text: string, voice?: { id: string; dur: number }) => void;
+  dmSend: (user_id: string, text: string, voice?: { id: string; dur: number }, emote?: string) => void;
   dmOpen: (user_id: string) => void;
   dmClose: () => void;
   clearDmBanner: () => void;
@@ -962,9 +965,10 @@ export function useGame(): GameApi {
     searchUsers: (query) => send({ type: "user_search", query }),
     viewProfile: (user_id) => send({ type: "profile_view", user_id }),
     historyGet: () => send({ type: "history_get" }),
-    dmSend: (user_id, text, voice) => {
+    dmSend: (user_id, text, voice, emote) => {
       const t = text.trim().slice(0, 500);
-      if (voice) send({ type: "dm_send", user_id, text: t, voice_id: voice.id, voice_dur: voice.dur });
+      if (emote) send({ type: "dm_send", user_id, emote });
+      else if (voice) send({ type: "dm_send", user_id, text: t, voice_id: voice.id, voice_dur: voice.dur });
       else if (t) send({ type: "dm_send", user_id, text: t });
     },
     dmOpen: (user_id) => send({ type: "dm_thread", user_id }),

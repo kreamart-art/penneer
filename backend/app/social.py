@@ -17,7 +17,8 @@ import time
 from typing import Any, Optional
 
 from . import daily, missions, push, titles
-from .db import get_db, LEVEL_BUZZERS, BUZZER_SKIN_IDS, LEVEL_FOR_BUZZER, LEVEL_FRAMES, LEVEL_FOR_FRAME, REEL_SKIN_IDS
+from .db import (get_db, LEVEL_BUZZERS, BUZZER_SKIN_IDS, LEVEL_FOR_BUZZER, LEVEL_FRAMES,
+                 LEVEL_FOR_FRAME, REEL_SKIN_IDS, EMOTE_IDS, PACK_FOR_EMOTE)
 from .models import PLAYER_COLORS
 
 BASE_URL = os.environ.get("PENNEER_BASE_URL", "https://penneer.artnomad.nl")
@@ -166,6 +167,7 @@ class AccountManager:
                 ],
                 "avatar_frame": user.get("avatar_frame"),
                 "reel_skin": user.get("reel_skin"),
+                "emote_packs": sorted(self.db.emote_packs_of(user_id)),
                 "frame_rewards": [
                     {"frame": fid, "level": lvl, "name": key,
                      "unlocked": level["level"] >= lvl}
@@ -438,10 +440,18 @@ class AccountManager:
         if not self.db.is_friend(uid, to) or self.db.is_blocked(uid, to):
             await self._send(ws, {"type": "error", "message": "Je kunt alleen vrienden een bericht sturen."})
             return
+        # Emotes are pack-gated, exactly like in the room chat.
+        emote = data.get("emote")
+        if isinstance(emote, str) and emote in EMOTE_IDS:
+            if PACK_FOR_EMOTE[emote] not in self.db.emote_packs_of(uid):
+                return
+        else:
+            emote = None
         msg = self.db.dm_send(
             uid, to, data.get("text") or "",
             voice_id=data.get("voice_id") or None,
             voice_dur=int(data.get("voice_dur") or 0),
+            emote=emote,
         )
         if msg is None:
             return
@@ -454,7 +464,7 @@ class AccountManager:
         # Real push when the recipient has no live connection (app closed).
         if not self.online(to):
             sender = self.db.get_user(uid)
-            preview = "Spraakbericht" if msg.get("voice_id") else msg["text"][:120]
+            preview = "Emote" if msg.get("emote") else "Spraakbericht" if msg.get("voice_id") else msg["text"][:120]
             asyncio.create_task(push.notify(
                 to, "Pen Neer",
                 f"{sender['name'] if sender else 'Iemand'}: {preview}",

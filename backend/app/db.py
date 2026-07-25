@@ -334,6 +334,16 @@ EMOTE_PACKS = {
 }
 EMOTE_IDS = [e for ids in EMOTE_PACKS.values() for e in ids]
 PACK_FOR_EMOTE = {e: pack for pack, ids in EMOTE_PACKS.items() for e in ids}
+# How each pack unlocks. 'free' is for EVERYONE (guests included) so the feature
+# is visible in every room; the earned ones give a reason to keep playing, and
+# one stays buyable. (kind, threshold)
+EMOTE_PACK_UNLOCK = {
+    "empack1": ("free", 0),           # Blij
+    "empack2": ("wins", 10),          # Feest  — win 10 potjes
+    "empack3": ("daily_streak", 7),   # Verdriet — 7 dagen op rij de Dagronde
+    "empack4": ("coins", 200),        # Sociaal — te koop
+}
+FREE_EMOTE_PACKS = {p for p, (kind, _) in EMOTE_PACK_UNLOCK.items() if kind == "free"}
 
 # Avatar frames: a decorative frame drawn around your avatar, earned by
 # LEVELLING UP (never bought). (level threshold, frame id, name key for i18n).
@@ -445,6 +455,11 @@ class Database:
         # Reel skin: the chosen roulette theme (NULL = default gold).
         if "reel_skin" not in cols:
             self._conn.execute("ALTER TABLE users ADD COLUMN reel_skin TEXT")
+            self._conn.commit()
+        # Emotes in DMs (room chat keeps its message dicts in memory).
+        dcols2 = {r["name"] for r in self._conn.execute("PRAGMA table_info(dms)").fetchall()}
+        if dcols2 and "emote" not in dcols2:
+            self._conn.execute("ALTER TABLE dms ADD COLUMN emote TEXT")
             self._conn.commit()
         # Club emblem: the badge the owner picked for the club (NULL = default).
         ccols = {r["name"] for r in self._conn.execute("PRAGMA table_info(clubs)").fetchall()}
@@ -1376,9 +1391,17 @@ class Database:
         return row[0]["mime"], row[0]["data"]
 
     def dm_send(self, from_user: str, to_user: str, text: str,
-                voice_id: Optional[str] = None, voice_dur: int = 0) -> Optional[dict]:
+                voice_id: Optional[str] = None, voice_dur: int = 0,
+                emote: Optional[str] = None) -> Optional[dict]:
         text = (text or "").strip()[: self.DM_MAX_LEN]
-        if voice_id:
+        if emote:
+            # The caller has already checked the sender owns this emote's pack.
+            if emote not in EMOTE_IDS:
+                return None
+            text = ""
+            voice_id = None
+            voice_dur = 0
+        elif voice_id:
             # The memo must be the sender's own upload; a voice message has no text.
             with self._lock:
                 owned = self._q("SELECT 1 FROM dm_voice WHERE id=? AND user_id=?", (voice_id, from_user))
@@ -1394,18 +1417,19 @@ class Database:
         now = time.time()
         with self._lock:
             self._exec(
-                "INSERT INTO dms (id, from_user, to_user, text, created_at, voice_id, voice_dur) VALUES (?,?,?,?,?,?,?)",
-                (mid, from_user, to_user, text, now, voice_id, voice_dur if voice_id else 0),
+                "INSERT INTO dms (id, from_user, to_user, text, created_at, voice_id, voice_dur, emote) VALUES (?,?,?,?,?,?,?,?)",
+                (mid, from_user, to_user, text, now, voice_id, voice_dur if voice_id else 0, emote),
             )
         return {"id": mid, "from_user": from_user, "to_user": to_user, "text": text,
-                "created_at": now, "voice_id": voice_id, "voice_dur": voice_dur if voice_id else 0}
+                "created_at": now, "voice_id": voice_id, "voice_dur": voice_dur if voice_id else 0,
+                "emote": emote}
 
     def dm_thread(self, user_id: str, other_id: str, limit: int = 60) -> list[dict]:
         """Conversation between two users, oldest first. Marks the incoming
         half as read."""
         with self._lock:
             rows = self._q(
-                "SELECT id, from_user, to_user, text, created_at, voice_id, voice_dur FROM dms "
+                "SELECT id, from_user, to_user, text, created_at, voice_id, voice_dur, emote FROM dms "
                 "WHERE (from_user=? AND to_user=?) OR (from_user=? AND to_user=?) "
                 "ORDER BY created_at DESC LIMIT ?",
                 (user_id, other_id, other_id, user_id, limit),
@@ -1429,7 +1453,7 @@ class Database:
             out = []
             for r in rows:
                 last = self._q(
-                    "SELECT from_user, text, created_at, voice_id FROM dms "
+                    "SELECT from_user, text, created_at, voice_id, emote FROM dms "
                     "WHERE (from_user=? AND to_user=?) OR (from_user=? AND to_user=?) "
                     "ORDER BY created_at DESC LIMIT 1",
                     (user_id, r["partner"], r["partner"], user_id),
@@ -1442,6 +1466,7 @@ class Database:
                     "partner": r["partner"],
                     "last_text": last["text"],
                     "last_voice": bool(last["voice_id"]),
+                    "last_emote": bool(last["emote"]),
                     "last_from_me": last["from_user"] == user_id,
                     "last_at": last["created_at"],
                     "unread": unread,
@@ -1493,6 +1518,43 @@ class Database:
             return False
         self._exec("UPDATE users SET buzzer_skin=? WHERE id=?", (skin, user_id))
         return True
+
+    # ---- chat emotes --------------------------------------------------------
+
+    def daily_streak_of(self, user_id: str) -> int:
+        """Consecutive Dagronde days ending today (0 when today is not played)."""
+        if not user_id:
+            return 0
+        from . import daily
+        days = set(self.daily_days_of(user_id))
+        d = daily.today()
+        streak = 0
+        while d in days:
+            streak += 1
+            d = daily.previous_day(d)
+        return streak
+
+    def emote_packs_of(self, user_id: Optional[str]) -> set:
+        """Emote packs this player may send from: the free one for everyone,
+        plus milestones reached and packs bought."""
+        out = set(FREE_EMOTE_PACKS)
+        if not user_id:
+            return out  # guests still get the free pack
+        owned = self.owned_items_of(user_id)
+        stats = None
+        for pack, (kind, need) in EMOTE_PACK_UNLOCK.items():
+            if kind == "coins":
+                if pack in owned:
+                    out.add(pack)
+            elif kind == "wins":
+                if stats is None:
+                    stats = self.stats_of(user_id)
+                if stats.get("wins", 0) >= need:
+                    out.add(pack)
+            elif kind == "daily_streak":
+                if self.daily_streak_of(user_id) >= need:
+                    out.add(pack)
+        return out
 
     # ---- reel skins (bought with coins) ------------------------------------
 
@@ -1562,7 +1624,7 @@ class Database:
         "bz15": 80, "bz16": 80, "bz17": 80,
         "rs01": 100, "rs02": 100, "rs03": 100, "rs04": 100, "rs05": 100,
         "rs06": 100, "rs07": 100, "rs08": 100, "rs09": 100,
-        "empack1": 200, "empack2": 200, "empack3": 200, "empack4": 200,
+        "empack4": 200,
         "avpack1": 400, "avpack2": 400,
     }
     # PayPal coin BUNDLES: product id -> coins granted (price via env, see paypal.py).

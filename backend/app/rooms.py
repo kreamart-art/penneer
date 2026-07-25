@@ -239,9 +239,9 @@ class RoomManager:
         text = text.strip()[:280]
         emote_id = None
         if isinstance(emote, str) and emote in EMOTE_IDS:
-            # Emote packs are bought, so check ownership server-side; a guest
-            # without an account can never have one.
-            if not p.user_id or PACK_FOR_EMOTE[emote] not in get_db().owned_items_of(p.user_id):
+            # Pack-gated server-side: the free pack works for everyone (guests
+            # included), the rest needs the milestone reached or the pack bought.
+            if PACK_FOR_EMOTE[emote] not in get_db().emote_packs_of(p.user_id):
                 return
             emote_id = emote
             text = ""

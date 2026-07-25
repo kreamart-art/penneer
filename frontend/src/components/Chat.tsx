@@ -7,7 +7,7 @@ import type { GameApi } from "../net/socket";
 import { MicButton } from "./MicButton";
 import { VoiceNote } from "./VoiceNote";
 import { EmotePicker } from "./EmotePicker";
-import { EMOTE_SRC } from "./emotes";
+import { EMOTE_SRC, FREE_EMOTE_PACKS } from "./emotes";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { colors, font, withAlpha } from "../theme/tokens";
@@ -269,7 +269,7 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
         {/* composer */}
         {emotesOpen && (
           <EmotePicker
-            owned={new Set(game.state.account?.owned_items ?? [])}
+            unlocked={new Set(game.state.account?.emote_packs ?? FREE_EMOTE_PACKS)}
             onPick={(id) => { game.sendChat("", undefined, id); setEmotesOpen(false); }}
             onClose={() => setEmotesOpen(false)}
           />

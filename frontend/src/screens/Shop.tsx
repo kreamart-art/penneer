@@ -12,7 +12,7 @@ import { MusicToggle } from "../components/MusicToggle";
 import { sound } from "../sound/sound";
 import type { GameApi } from "../net/socket";
 import { useT } from "../i18n/i18n";
-import { EMOTE_PACKS, EMOTE_SRC } from "../components/emotes";
+import { EMOTE_PACKS_FOR_SALE, EMOTE_SRC } from "../components/emotes";
 import { reelTheme } from "../theme/reelSkins";
 import { colors, font, withAlpha } from "../theme/tokens";
 
@@ -260,7 +260,7 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
             <div style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint }}>{t("shopEmotesLead")}</div>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
-            {EMOTE_PACKS.map((pk) => (
+            {EMOTE_PACKS_FOR_SALE.map((pk) => (
               <CoinItem key={pk.id} title={t(pk.name)} owned={owned.has(pk.id)} price={prices[pk.id] ?? 200} coins={coins} onBuy={() => game.buyItemCoins(pk.id)}>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 2, width: "100%" }}>
                   {pk.emotes.slice(0, 6).map((id) => (

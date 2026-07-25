@@ -6,6 +6,8 @@ import { Avatar, RANK_RING } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { MicButton } from "../components/MicButton";
 import { VoiceNote } from "../components/VoiceNote";
+import { EmotePicker } from "../components/EmotePicker";
+import { EMOTE_SRC, FREE_EMOTE_PACKS } from "../components/emotes";
 import { MusicToggle } from "../components/MusicToggle";
 import { Toggle } from "../components/Toggle";
 import { Screen, Card } from "../components/Layout";
@@ -310,6 +312,7 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
   const messages = game.state.dmMessages;
   const me = game.state.account?.id;
   const [text, setText] = useState("");
+  const [dmEmotesOpen, setDmEmotesOpen] = useState(false);
   const listRef = useRef<HTMLDivElement | null>(null);
   // Partner identity: from threads, friends, or the viewed profile.
   const partner =
@@ -378,8 +381,10 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
             const mine = m.from_user === me;
             return (
               <div key={m.id} style={{ alignSelf: mine ? "flex-end" : "flex-start", maxWidth: "78%" }}>
-                <div style={{ padding: m.voice_id ? "7px 10px" : "9px 12px", borderRadius: mine ? "14px 14px 4px 14px" : "14px 14px 14px 4px", background: mine ? withAlpha(colors.gold, 0.18) : withAlpha("#000000", 0.3), border: `1px solid ${mine ? withAlpha(colors.gold, 0.4) : colors.hairline}`, fontFamily: font.ui, fontSize: 14, color: colors.ink, lineHeight: 1.45, wordBreak: "break-word" }}>
-                  {m.voice_id ? (
+                <div style={{ padding: m.emote ? 4 : m.voice_id ? "7px 10px" : "9px 12px", borderRadius: mine ? "14px 14px 4px 14px" : "14px 14px 14px 4px", background: m.emote ? "transparent" : mine ? withAlpha(colors.gold, 0.18) : withAlpha("#000000", 0.3), border: m.emote ? "1px solid transparent" : `1px solid ${mine ? withAlpha(colors.gold, 0.4) : colors.hairline}`, fontFamily: font.ui, fontSize: 14, color: colors.ink, lineHeight: 1.45, wordBreak: "break-word" }}>
+                  {m.emote ? (
+                    <img src={EMOTE_SRC(m.emote)} alt="" width={84} height={84} style={{ width: 84, height: 84, display: "block", objectFit: "contain" }} />
+                  ) : m.voice_id ? (
                     <VoiceNote src={`/api/dm/voice/${m.voice_id}`} duration={m.voice_dur ?? 0} mine={mine} />
                   ) : (
                     m.text
@@ -391,7 +396,26 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
           })}
         </div>
 
+        {dmEmotesOpen && (
+          <EmotePicker
+            unlocked={new Set(game.state.account?.emote_packs ?? FREE_EMOTE_PACKS)}
+            onPick={(id) => { game.dmSend(partnerId, "", undefined, id); setDmEmotesOpen(false); }}
+            onClose={() => setDmEmotesOpen(false)}
+          />
+        )}
+
         <div style={{ display: "flex", gap: 8, padding: "10px 14px calc(12px + env(safe-area-inset-bottom))" }}>
+          <button
+            type="button"
+            onClick={() => { sound.uiTap(); setDmEmotesOpen((v) => !v); }}
+            aria-label={t("emoteTitle")}
+            style={{ flexShrink: 0, width: 44, height: 44, borderRadius: 12, cursor: "pointer",
+              border: `1.5px solid ${dmEmotesOpen ? withAlpha(colors.gold, 0.5) : colors.panelBorder}`,
+              background: dmEmotesOpen ? withAlpha(colors.gold, 0.14) : withAlpha("#000000", 0.3),
+              color: dmEmotesOpen ? colors.gold : colors.sub, display: "flex", alignItems: "center", justifyContent: "center" }}
+          >
+            <Smile size={20} />
+          </button>
           <input
             value={text}
             maxLength={500}
@@ -1841,7 +1865,7 @@ function InboxTab({ game }: { game: GameApi }) {
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontFamily: font.ui, fontWeight: 600, fontSize: 14, color: colors.ink }}>{th.user.name}</div>
               <div style={{ fontFamily: font.ui, fontSize: 12.5, color: th.unread > 0 ? colors.ink : colors.faint, fontWeight: th.unread > 0 ? 600 : 400, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {th.last_from_me ? `${t("chatYou")}: ` : ""}{th.last_voice ? t("voiceMemo") : th.last_text}
+                {th.last_from_me ? `${t("chatYou")}: ` : ""}{th.last_emote ? t("emoteTitle") : th.last_voice ? t("voiceMemo") : th.last_text}
               </div>
             </div>
             {th.unread > 0 && (
