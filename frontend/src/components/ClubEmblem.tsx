@@ -3,7 +3,9 @@
 // the emblem their owner chose.
 import { Emblem } from "./Emblem";
 
-export const CLUB_EMBLEM_IDS = ["em01", "em02", "em03", "em04", "em05", "em06", "em07", "em08", "em09"];
+// 27 badges, in three themed sheets of nine: heraldry (01-09), casino (10-18)
+// and luck/prizes (19-27).
+export const CLUB_EMBLEM_IDS = Array.from({ length: 27 }, (_, i) => `em${String(i + 1).padStart(2, "0")}`);
 
 export function ClubEmblem({ id, size = 64 }: { id?: string | null; size?: number }) {
   if (!id) return <Emblem size={size} />;

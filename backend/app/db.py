@@ -322,7 +322,7 @@ REEL_SKIN_IDS = ["rs01", "rs02", "rs03", "rs04", "rs05", "rs06", "rs07", "rs08",
 
 # Club emblems: art in frontend/public/emblems/emNN.webp. Free — the club OWNER
 # picks one and every member wears it. NULL emblem = the default pen mark.
-CLUB_EMBLEM_IDS = [f"em{i:02d}" for i in range(1, 10)]
+CLUB_EMBLEM_IDS = [f"em{i:02d}" for i in range(1, 28)]
 
 # Avatar frames: a decorative frame drawn around your avatar, earned by
 # LEVELLING UP (never bought). (level threshold, frame id, name key for i18n).
