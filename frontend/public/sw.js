@@ -10,7 +10,7 @@
 //    briefly-stale shell can still boot from cache instead of going black.
 //  - Every activation purges ALL old caches (drops any poisoned shell).
 // Never touches the WebSocket or the API.
-const CACHE = "penneer-v10"; // v10: bust cached emote art after the real-alpha re-render
+const CACHE = "penneer-v11"; // v11: bust cached emote art after the stray-fragment fix
 
 self.addEventListener("install", () => {
   self.skipWaiting();
