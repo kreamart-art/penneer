@@ -1536,13 +1536,20 @@ class Database:
 
     def emote_packs_of(self, user_id: Optional[str]) -> set:
         """Emote packs this player may send from: the free one for everyone,
-        plus milestones reached and packs bought."""
+        plus milestones reached, packs bought, and packs handed out.
+
+        An owned_items row unlocks ANY pack, whatever its normal unlock rule is,
+        so a manual grant (admin, giveaway, code) works for the earned ones too.
+        """
         out = set(FREE_EMOTE_PACKS)
         if not user_id:
             return out  # guests still get the free pack
         owned = self.owned_items_of(user_id)
+        out |= {p for p in EMOTE_PACK_UNLOCK if p in owned}
         stats = None
         for pack, (kind, need) in EMOTE_PACK_UNLOCK.items():
+            if pack in out:
+                continue
             if kind == "coins":
                 if pack in owned:
                     out.add(pack)
