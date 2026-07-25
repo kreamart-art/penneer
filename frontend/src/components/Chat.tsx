@@ -2,11 +2,14 @@
 // panel. Lets players ask what a word means without leaving the app. Lives in
 // the TopBar, so it's reachable on every in-room screen.
 import { useEffect, useRef, useState } from "react";
-import { MessageCircle, Send, X } from "lucide-react";
+import { MessageCircle, Send, Smile, X } from "lucide-react";
 import type { GameApi } from "../net/socket";
 import { MicButton } from "./MicButton";
 import { VoiceNote } from "./VoiceNote";
+import { EmotePicker } from "./EmotePicker";
+import { EMOTE_SRC } from "./emotes";
 import { useT } from "../i18n/i18n";
+import { sound } from "../sound/sound";
 import { colors, font, withAlpha } from "../theme/tokens";
 
 export function ChatButton({ game }: { game: GameApi }) {
@@ -64,6 +67,7 @@ export function ChatButton({ game }: { game: GameApi }) {
 function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
   const { t } = useT();
   const [draft, setDraft] = useState("");
+  const [emotesOpen, setEmotesOpen] = useState(false);
   const chat = game.state.chat;
   const myId = game.state.playerId;
   const roomCode = game.state.room?.code ?? "";
@@ -226,12 +230,12 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
                   <div
                     style={{
                       maxWidth: "82%",
-                      padding: m.voice_id ? "7px 10px" : "8px 11px",
+                      padding: m.emote ? 4 : m.voice_id ? "7px 10px" : "8px 11px",
                       borderRadius: 14,
                       borderTopRightRadius: mine ? 4 : 14,
                       borderTopLeftRadius: mine ? 14 : 4,
-                      background: mine ? withAlpha(colors.gold, 0.16) : colors.panel,
-                      border: `1px solid ${mine ? withAlpha(colors.gold, 0.3) : colors.panelBorder}`,
+                      background: m.emote ? "transparent" : mine ? withAlpha(colors.gold, 0.16) : colors.panel,
+                      border: m.emote ? "1px solid transparent" : `1px solid ${mine ? withAlpha(colors.gold, 0.3) : colors.panelBorder}`,
                       color: colors.ink,
                       fontFamily: font.ui,
                       fontSize: 14.5,
@@ -240,7 +244,9 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
                       whiteSpace: "pre-wrap",
                     }}
                   >
-                    {m.voice_id ? (
+                    {m.emote ? (
+                      <img src={EMOTE_SRC(m.emote)} alt="" width={84} height={84} style={{ width: 84, height: 84, display: "block", objectFit: "contain" }} />
+                    ) : m.voice_id ? (
                       <VoiceNote src={`/api/voice/${roomCode}/${m.voice_id}`} duration={m.voice_dur ?? 0} mine={mine} />
                     ) : (
                       m.text
@@ -261,6 +267,14 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
         )}
 
         {/* composer */}
+        {emotesOpen && (
+          <EmotePicker
+            owned={new Set(game.state.account?.owned_items ?? [])}
+            onPick={(id) => { game.sendChat("", undefined, id); setEmotesOpen(false); }}
+            onClose={() => setEmotesOpen(false)}
+          />
+        )}
+
         <form
           onSubmit={submit}
           style={{
@@ -271,6 +285,26 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
             borderTop: `1px solid ${colors.hairline}`,
           }}
         >
+          <button
+            type="button"
+            onClick={() => { sound.uiTap(); setEmotesOpen((v) => !v); }}
+            aria-label={t("emoteTitle")}
+            style={{
+              flexShrink: 0,
+              width: 44,
+              height: 44,
+              borderRadius: "50%",
+              border: `1px solid ${emotesOpen ? withAlpha(colors.gold, 0.5) : colors.panelBorder}`,
+              cursor: "pointer",
+              background: emotesOpen ? withAlpha(colors.gold, 0.14) : "rgba(0,0,0,.25)",
+              color: emotesOpen ? colors.gold : colors.sub,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Smile size={20} />
+          </button>
           <input
             ref={inputRef}
             value={draft}

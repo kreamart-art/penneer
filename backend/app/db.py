@@ -324,6 +324,17 @@ REEL_SKIN_IDS = ["rs01", "rs02", "rs03", "rs04", "rs05", "rs06", "rs07", "rs08",
 # picks one and every member wears it. NULL emblem = the default pen mark.
 CLUB_EMBLEM_IDS = [f"em{i:02d}" for i in range(1, 28)]
 
+# Chat emotes: art in frontend/public/emotes/ceNN.webp, sold per PACK (a pack
+# unlocks all of its emotes). Sending one is gated on owning its pack.
+EMOTE_PACKS = {
+    "empack1": [f"ce{i:02d}" for i in range(1, 10)],    # Happy
+    "empack2": [f"ce{i:02d}" for i in range(10, 19)],   # Feest
+    "empack3": [f"ce{i:02d}" for i in range(19, 28)],   # Verdriet
+    "empack4": [f"ce{i:02d}" for i in range(28, 37)],   # Sociaal
+}
+EMOTE_IDS = [e for ids in EMOTE_PACKS.values() for e in ids]
+PACK_FOR_EMOTE = {e: pack for pack, ids in EMOTE_PACKS.items() for e in ids}
+
 # Avatar frames: a decorative frame drawn around your avatar, earned by
 # LEVELLING UP (never bought). (level threshold, frame id, name key for i18n).
 # NULL avatar_frame = no frame. Art lives in frontend/public/frames/{id}.webp.
@@ -1551,6 +1562,7 @@ class Database:
         "bz15": 80, "bz16": 80, "bz17": 80,
         "rs01": 100, "rs02": 100, "rs03": 100, "rs04": 100, "rs05": 100,
         "rs06": 100, "rs07": 100, "rs08": 100, "rs09": 100,
+        "empack1": 200, "empack2": 200, "empack3": 200, "empack4": 200,
         "avpack1": 400, "avpack2": 400,
     }
     # PayPal coin BUNDLES: product id -> coins granted (price via env, see paypal.py).

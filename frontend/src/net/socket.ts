@@ -273,6 +273,7 @@ export interface ChatMessage {
   ts: number;
   voice_id?: string;
   voice_dur?: number;
+  emote?: string;   // chat-emote id (ceNN); replaces text when set
 }
 
 export interface ClientState {
@@ -716,7 +717,7 @@ export interface GameApi {
   adminGenBuzzerCodes: (count: number) => void;
   redeemAiCode: (code: string) => void;
   clearShopResult: () => void;
-  sendChat: (text: string, voice?: { id: string; dur: number }) => void;
+  sendChat: (text: string, voice?: { id: string; dur: number }, emote?: string) => void;
   sendChatTyping: (typing: boolean) => void;
   openChat: () => void;
   closeChat: () => void;
@@ -931,9 +932,10 @@ export function useGame(): GameApi {
       if (c) send({ type: "shop_redeem", code: c });
     },
     clearShopResult: () => dispatch({ type: "clearShopResult" }),
-    sendChat: (text, voice) => {
+    sendChat: (text, voice, emote) => {
       const t = text.trim().slice(0, 280);
-      if (voice) send({ type: "chat_send", text: t, voice_id: voice.id, voice_dur: voice.dur });
+      if (emote) send({ type: "chat_send", emote });
+      else if (voice) send({ type: "chat_send", text: t, voice_id: voice.id, voice_dur: voice.dur });
       else if (t) send({ type: "chat_send", text: t });
     },
     sendChatTyping: (typing) => send({ type: "chat_typing", typing }),

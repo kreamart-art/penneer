@@ -15,7 +15,7 @@ import uuid
 from typing import Any, Optional
 
 from . import ai_referee, game
-from .db import get_db
+from .db import get_db, EMOTE_IDS, PACK_FOR_EMOTE
 from .social import _level_of
 from .models import (
     BOT_NAMES,
@@ -229,14 +229,25 @@ class RoomManager:
         p = room.get_player(player_id)
         if p is None or p.is_bot:
             return
-        # A message is either text or a voice memo (uploaded first over HTTP,
-        # referenced here by id so the blob never travels over the socket).
+        # A message is text, a voice memo (uploaded first over HTTP, referenced
+        # here by id so the blob never travels over the socket), or an emote.
+        emote = payload.get("emote")
         voice_id = payload.get("voice_id")
         text = payload.get("text")
         if not isinstance(text, str):
             text = ""
         text = text.strip()[:280]
-        if isinstance(voice_id, str) and voice_id in room.voice:
+        emote_id = None
+        if isinstance(emote, str) and emote in EMOTE_IDS:
+            # Emote packs are bought, so check ownership server-side; a guest
+            # without an account can never have one.
+            if not p.user_id or PACK_FOR_EMOTE[emote] not in get_db().owned_items_of(p.user_id):
+                return
+            emote_id = emote
+            text = ""
+            voice_id = None
+            voice_dur = 0
+        elif isinstance(voice_id, str) and voice_id in room.voice:
             voice_dur = payload.get("voice_dur")
             voice_dur = int(voice_dur) if isinstance(voice_dur, (int, float)) else 0
             voice_dur = max(0, min(120, voice_dur))
@@ -258,6 +269,8 @@ class RoomManager:
         if voice_id:
             msg["voice_id"] = voice_id
             msg["voice_dur"] = voice_dur
+        if emote_id:
+            msg["emote"] = emote_id
         room.chat.append(msg)
         if len(room.chat) > 60:
             room.chat = room.chat[-60:]
