@@ -16,6 +16,16 @@
   font-style: normal;
   font-display: swap;
 }
+/* The studio's intro face, shared with Kings (and the same idea as Ezelen's
+   Fraunces): the typewriter line is a heavy serif, so every Artnomad game opens
+   the same way. Only the intro uses it. */
+@font-face {
+  font-family: "OwnersBlack";
+  src: url("/fonts/owners-black.otf") format("opentype");
+  font-weight: 900;
+  font-style: normal;
+  font-display: block;
+}
 @font-face {
   font-family: "Early GameBoy";
   src: url("/fonts/early-gameboy.ttf") format("truetype");
@@ -66,8 +76,22 @@ html {
     linear-gradient(180deg, #3b1c66 0%, #301a58 13%, #26154a 27%, #1d123f 42%, #171036 57%, #130d2e 72%, #100b28 87%, #0e0922 100%);
   background-repeat: no-repeat, no-repeat, no-repeat, repeat, no-repeat, no-repeat;
   background-position: top, top, top, top left, top, top;
-  background-size: 100% 100vh, 100% 100vh, 100% 100vh, 160px 160px, 100% 100vh, 100% 100vh;
-  background-size: 100% 100lvh, 100% 100lvh, 100% 100lvh, 160px 160px, 100% 100lvh, 100% 100lvh;
+  /* Sized to the ROOT BOX, not to a viewport unit. lvh/vh are the browser's
+     idea of the viewport, which on iOS is not always the painted area: the tile
+     could end above the bottom of the screen, and past it you saw flat colour
+     instead of the fade. `100%` always spans exactly the element the background
+     is painted for, whatever iOS thinks the viewport is, and min-height below
+     guarantees that element is never shorter than the screen. */
+  background-size: 100% 100%, 100% 100%, 100% 100%, 160px 160px, 100% 100%, 100% 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* The intro is position:fixed, so on that screen the flow content is empty.
+   Without this the root box would collapse and the gradient with it. */
+body {
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 body {

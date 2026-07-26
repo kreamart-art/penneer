@@ -119,50 +119,37 @@ export function Intro({ onDone }: { onDone: () => void }) {
             marginBottom: started ? 26 : 0,
           }}
         >
-          {/* The glow is a real radial behind the mark, not a drop-shadow filter:
-              iOS rasterises a filtered element into its own layer, and over a
-              near-flat dark gradient that layer's rectangle became visible as a
-              blocky halo. A sibling radial has no box to show. */}
-          <div style={{ position: "relative", width: MARK_SIZE, height: MARK_SIZE, display: "grid", placeItems: "center" }}>
-            <div
-              aria-hidden
-              style={{
-                position: "absolute",
-                width: "215%",
-                height: "215%",
-                borderRadius: "50%",
-                background: `radial-gradient(circle, ${withAlpha(colors.violet, 0.2)} 0%, ${withAlpha(colors.violet, 0.09)} 36%, ${withAlpha(colors.violet, 0.025)} 64%, transparent 100%)`,
-                opacity: markIn ? 1 : 0,
-                transition: reduced ? "none" : "opacity 320ms ease-out",
-              }}
-            />
-            <img
-              src="/artnomad.webp"
-              alt=""
-              aria-hidden
-              width={112}
-              height={112}
-              style={{
-                position: "relative",
-                display: "block",
-                width: MARK_SIZE,
-                height: MARK_SIZE,
-                opacity: markIn ? 0.94 : 0,
-                transform: markIn ? "scale(1)" : "scale(0.8)",
-                transition: reduced ? "none" : "opacity 200ms ease-out, transform 260ms cubic-bezier(.2,1.5,.4,1)",
-              }}
-            />
-          </div>
+          {/* No halo at all. A drop-shadow filter showed its layer rectangle on
+              iOS, and a radial stand-in showed its own circle edge: on a dark
+              backdrop any glow that fades to nothing leaves a visible boundary.
+              The white mark carries itself. */}
+          <img
+            src="/artnomad.webp"
+            alt=""
+            aria-hidden
+            width={112}
+            height={112}
+            style={{
+              display: "block",
+              width: MARK_SIZE,
+              height: MARK_SIZE,
+              opacity: markIn ? 0.96 : 0,
+              transform: markIn ? "scale(1)" : "scale(0.8)",
+              transition: reduced ? "none" : "opacity 200ms ease-out, transform 260ms cubic-bezier(.2,1.5,.4,1)",
+            }}
+          />
         </div>
         <span
           style={{
             position: "relative",
             display: "inline-block",
-            fontFamily: font.display,
-            fontWeight: 700,
-            fontSize: "clamp(19px, 5.6vw, 32px)",
+            // The studio intro face, same as Kings; the typewriter line is the
+            // one place every Artnomad game looks identical.
+            fontFamily: "'OwnersBlack', Georgia, serif",
+            fontWeight: 900,
+            fontSize: "clamp(17px, 5.2vw, 29px)",
             lineHeight: 1,
-            letterSpacing: 0.5,
+            letterSpacing: 0.4,
             color: colors.ink,
             whiteSpace: "nowrap",
             textShadow: "0 2px 14px rgba(0,0,0,.5)",
