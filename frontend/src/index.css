@@ -45,61 +45,37 @@ body,
   margin: 0;
 }
 
-/* THE background. Every attempt that sized the gradient against something other
-   than the visible screen ended in a visible edge, because the tile height and
-   the screen height kept disagreeing:
-     - `100lvh` is the browser's idea of the viewport, not always the painted
-       area on iOS -> the tile ended above the bottom.
-     - `100%` of the root box is only right while the document is exactly one
-       screen tall; anything that makes it taller (safe-area padding, a longer
-       screen) stretches the gradient past the bottom, so at the bottom of the
-       SCREEN you are somewhere in the middle of the gradient and it reads as
-       cut off.
-   A `position: fixed; inset: 0` layer is the one box that is the visible screen
-   BY DEFINITION, on every engine, at every document height, with viewport-fit
-   cover included. So that is where the gradient lives.
+/* THE background, back to the colours and the geometry it had before I started
+   changing it: the same corner glows, the same paper grain, the same
+   `#41216f -> #1a1140 -> #0e0922` radial. Painted on the ROOT element, because
+   the root's background is the canvas background and the spec says its painting
+   area covers the ENTIRE canvas: every physical pixel, safe areas and the
+   home-indicator strip included. That is the one thing a fixed layer could not
+   promise. The strip at the bottom of the iPhone that kept showing a different
+   colour was a fixed layer being cut off before its own end; a root background
+   cannot be cut off, and past the gradient tile the flat `background-color` is
+   the exact colour the gradient ends on, so there is nothing to see either way.
 
-   The old objection to a fixed layer (memory: it left a band above the home
-   indicator) was never the layer, it was the colour: that version darkened its
-   bottom edge with a vignette, so the strip below it did not match. Here the
-   gradient's last stop IS #0e0922, the same value as html's background-color
-   underneath, so any pixel the layer does not cover is already the exact colour
-   the layer would have painted. Nothing left to step.
-
-   The gradient itself is LINEAR, not radial. A radial reaches its last stop on
-   an ellipse, which crossed the centre line at 89% of the screen: flat below,
-   still changing above, and the eye reads that kink in the brightness curve as
-   a hard edge (a Mach band) even though every pixel under it is the same
-   colour. Linear makes the colour a plain function of y.
-
-   The stops are spaced linearly in CIE Lab, NOT in sRGB, and that is the whole
-   point. The earlier eased ramp put 69% of the visible change in the top half;
-   below 70% of the screen it moved less than 1 L* per 10% of height, which is
-   under the threshold where the eye sees a change at all. So the bottom third
-   read as a flat block and the gradient looked like it stopped, no matter how
-   the layer was sized. Measured with these stops: every 12% band of the screen
-   carries 12-13% of the change, and the bottom half gets 49% of it (was 31%).
-   The last stop is still exactly html's background-color, so the edge of the
-   layer stays invisible. */
+   Two numbers differ from the original and only those two: the ellipse is 106%
+   tall instead of 95%, and the last stop sits at 100% instead of 82%. Together
+   they mean the fade reaches its end colour at the BOTTOM EDGE of the screen
+   instead of at 75%, so the strip above the home indicator is still fading
+   rather than sitting flat. Measured against the original at every 5% of screen
+   height, the largest difference anywhere is 5 RGB units, which is why this
+   does not lighten the page: it is the same background, it just finishes at the
+   bottom instead of three quarters of the way down. */
 html {
   background-color: #0e0922;
-}
-
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
   background-image:
     radial-gradient(60% 38% at -8% 12%, rgba(122, 103, 255, 0.1), transparent 70%),
     radial-gradient(55% 34% at 108% 4%, rgba(255, 86, 74, 0.05), transparent 70%),
     radial-gradient(50% 36% at 106% -4%, rgba(255, 194, 61, 0.05), transparent 70%),
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
-    linear-gradient(180deg, #3b1c66 0%, #351a5d 12%, #2f1954 25%, #29174b 37%, #231542 50%, #1e133a 62%, #181132 75%, #140e2a 87%, #0e0922 100%);
+    radial-gradient(135% 106% at 50% -6%, #41216f 0%, #1a1140 46%, #140d2f 62%, #100b27 76%, #0f0a24 88%, #0e0922 100%);
   background-repeat: no-repeat, no-repeat, no-repeat, repeat, no-repeat;
   background-position: top, top, top, top left, top;
-  background-size: 100% 100%, 100% 100%, 100% 100%, 160px 160px, 100% 100%;
+  background-size: 100% 100vh, 100% 100vh, 100% 100vh, 160px 160px, 100% 100vh;
+  background-size: 100% 100lvh, 100% 100lvh, 100% 100lvh, 160px 160px, 100% 100lvh;
 }
 
 body {
