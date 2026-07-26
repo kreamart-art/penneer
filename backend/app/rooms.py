@@ -14,9 +14,9 @@ import time
 import uuid
 from typing import Any, Optional
 
-from . import ai_referee, game
+from . import ai_referee, daily, game, missions
 from .db import get_db, EMOTE_IDS, PACK_FOR_EMOTE
-from .social import _level_of
+from .social import _level_of, accounts
 from .models import (
     BOT_NAMES,
     CODE_ALPHABET,
@@ -275,6 +275,15 @@ class RoomManager:
         if len(room.chat) > 60:
             room.chat = room.chat[-60:]
         await self.broadcast(room, {"type": "chat", "message": msg})
+        # Social missions live here: chatting is the only place they can tick.
+        if p.user_id:
+            day = daily.today()
+            done = missions.bump_all(get_db(), p.user_id, day, (
+                ("chat_msg", 1),
+                ("chat_emote", 1 if emote_id else 0),
+            ))
+            if done:
+                await accounts.push_missions(p.user_id, done)
 
     async def chat_typing(self, player_id: str, payload: dict) -> None:
         """Relay a typing signal to everyone else in the room. Best-effort; the

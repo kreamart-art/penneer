@@ -220,6 +220,16 @@ CREATE TABLE IF NOT EXISTS mission_progress (
 );
 -- Dagronde: one ranked entry per account per day. words = the submitted
 -- answers as JSON, kept so the player can re-open their result later.
+-- AI referee verdicts, shared by EVERYONE: the daily is a leaderboard, so the
+-- same word must always score the same. One AI call per unknown word, ever.
+CREATE TABLE IF NOT EXISTS word_verdicts (
+    category TEXT NOT NULL,
+    word TEXT NOT NULL,          -- normalized key
+    lenient INTEGER NOT NULL,    -- judged with soepele spelling on/off
+    valid INTEGER NOT NULL,
+    created_at REAL NOT NULL,
+    PRIMARY KEY (category, word, lenient)
+);
 CREATE TABLE IF NOT EXISTS daily_scores (
     day TEXT NOT NULL,
     user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -331,6 +341,8 @@ EMOTE_PACKS = {
     "empack2": [f"ce{i:02d}" for i in range(10, 19)],   # Feest
     "empack3": [f"ce{i:02d}" for i in range(19, 28)],   # Verdriet
     "empack4": [f"ce{i:02d}" for i in range(28, 37)],   # Sociaal
+    "empack5": [f"ce{i:02d}" for i in range(37, 46)],   # Boos
+    "empack6": [f"ce{i:02d}" for i in range(46, 55)],   # Plagen
 }
 EMOTE_IDS = [e for ids in EMOTE_PACKS.values() for e in ids]
 PACK_FOR_EMOTE = {e: pack for pack, ids in EMOTE_PACKS.items() for e in ids}
@@ -342,6 +354,8 @@ EMOTE_PACK_UNLOCK = {
     "empack2": ("wins", 10),          # Feest  — win 10 potjes
     "empack3": ("daily_streak", 7),   # Verdriet — 7 dagen op rij de Dagronde
     "empack4": ("coins", 200),        # Sociaal — te koop
+    "empack5": ("coins", 200),        # Boos — te koop
+    "empack6": ("games", 50),         # Plagen — speel 50 potjes
 }
 FREE_EMOTE_PACKS = {p for p, (kind, _) in EMOTE_PACK_UNLOCK.items() if kind == "free"}
 
@@ -1553,15 +1567,38 @@ class Database:
             if kind == "coins":
                 if pack in owned:
                     out.add(pack)
-            elif kind == "wins":
+            elif kind in ("wins", "games"):
                 if stats is None:
                     stats = self.stats_of(user_id)
-                if stats.get("wins", 0) >= need:
+                if stats.get(kind, 0) >= need:
                     out.add(pack)
             elif kind == "daily_streak":
                 if self.daily_streak_of(user_id) >= need:
                     out.add(pack)
         return out
+
+    # ---- AI referee word verdicts (shared cache) ---------------------------
+
+    def word_verdicts(self, keys: list, lenient: bool) -> dict:
+        """{(category, word): bool} for the pairs already judged."""
+        if not keys:
+            return {}
+        out = {}
+        with self._lock:
+            for cat, word in keys:
+                rows = self._q(
+                    "SELECT valid FROM word_verdicts WHERE category=? AND word=? AND lenient=?",
+                    (cat, word, 1 if lenient else 0),
+                )
+                if rows:
+                    out[(cat, word)] = bool(rows[0]["valid"])
+        return out
+
+    def set_word_verdict(self, category: str, word: str, lenient: bool, valid: bool) -> None:
+        self._exec(
+            "INSERT OR REPLACE INTO word_verdicts (category, word, lenient, valid, created_at) VALUES (?,?,?,?,?)",
+            (category, word, 1 if lenient else 0, 1 if valid else 0, time.time()),
+        )
 
     # ---- reel skins (bought with coins) ------------------------------------
 
@@ -1631,7 +1668,7 @@ class Database:
         "bz15": 80, "bz16": 80, "bz17": 80,
         "rs01": 100, "rs02": 100, "rs03": 100, "rs04": 100, "rs05": 100,
         "rs06": 100, "rs07": 100, "rs08": 100, "rs09": 100,
-        "empack4": 200,
+        "empack4": 200, "empack5": 200,
         "avpack1": 400, "avpack2": 400,
     }
     # PayPal coin BUNDLES: product id -> coins granted (price via env, see paypal.py).

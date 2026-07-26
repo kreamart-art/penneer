@@ -1,6 +1,6 @@
 // Chat emotes: gold mascot stickers (public/emotes/ceNN.webp).
-// One pack is FREE for everyone (so emotes actually show up in rooms), two are
-// earned with a milestone, one is bought with coins. Keep ids + unlock rules in
+// One pack is FREE for everyone (so emotes actually show up in rooms), three are
+// earned with a milestone, two are bought with coins. Keep ids + unlock rules in
 // step with EMOTE_PACKS / EMOTE_PACK_UNLOCK in backend/app/db.py.
 const range = (from: number, to: number) =>
   Array.from({ length: to - from + 1 }, (_, i) => `ce${String(from + i).padStart(2, "0")}`);
@@ -17,9 +17,11 @@ export const EMOTE_PACKS: EmotePack[] = [
   { id: "empack2", name: "emotePackFeest", how: "emoteHowWins", emotes: range(10, 18) },
   { id: "empack3", name: "emotePackVerdriet", how: "emoteHowStreak", emotes: range(19, 27) },
   { id: "empack4", name: "emotePackSociaal", how: "emoteHowShop", emotes: range(28, 36) },
+  { id: "empack5", name: "emotePackBoos", how: "emoteHowShop", emotes: range(37, 45) },
+  { id: "empack6", name: "emotePackPlagen", how: "emoteHowGames", emotes: range(46, 54) },
 ];
 
-// The only pack you buy; the rest is free or earned.
+// The packs you buy; the rest is free or earned.
 export const EMOTE_PACKS_FOR_SALE = EMOTE_PACKS.filter((p) => p.how === "emoteHowShop");
 // Free for everyone, so guests without an account can emote too.
 export const FREE_EMOTE_PACKS = EMOTE_PACKS.filter((p) => p.how === "emoteHowFree").map((p) => p.id);

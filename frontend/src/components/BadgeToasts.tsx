@@ -1,7 +1,9 @@
 // Small toast for newly earned achievements, shown to the whole room on the
-// final screen (the server broadcasts badge_earned per player).
+// final screen (the server broadcasts badge_earned per player). The same queue
+// also carries daily missions that complete mid-game, which have no summary
+// screen to land on.
 import { useEffect } from "react";
-import { Award } from "lucide-react";
+import { Award, Target } from "lucide-react";
 import type { GameApi } from "../net/socket";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
@@ -42,10 +44,19 @@ export function BadgeToasts({ game }: { game: GameApi }) {
         color: colors.ink,
       }}
     >
-      <Award size={17} color={colors.gold} />
+      {toast.mission ? <Target size={17} color={colors.gold} /> : <Award size={17} color={colors.gold} />}
       <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-        <strong style={{ color: colors.gold }}>{toast.name}</strong> {t("badgeEarned")}{" "}
-        {t(`badge_${toast.badge}`)}
+        {toast.mission ? (
+          <>
+            <strong style={{ color: colors.gold }}>{t("missionDoneChip")}</strong>{" "}
+            {t(`mission_${toast.mission.key}`)}
+          </>
+        ) : (
+          <>
+            <strong style={{ color: colors.gold }}>{toast.name}</strong> {t("badgeEarned")}{" "}
+            {t(`badge_${toast.badge}`)}
+          </>
+        )}
       </span>
     </div>
   );

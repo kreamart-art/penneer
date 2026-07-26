@@ -319,8 +319,9 @@ export interface ClientState {
   loginLinkSent: boolean;
   // Set when the server accepted an invite: the app auto-joins this room.
   joinRoomCode: string | null;
-  // Newly earned badges to toast (drained by the UI).
-  badgeToasts: { player_id: string | null; name: string; badge: string }[];
+  // Newly earned badges to toast (drained by the UI). A `mission` entry is a
+  // daily mission that completed mid-game (chat missions have no summary screen).
+  badgeToasts: { player_id: string | null; name: string; badge: string; mission?: MissionDone }[];
   chatTyping: Record<string, { name: string; ts: number }>; // who is typing now
   // Post-match ceremony data (accounts only), sent by the server at game over.
   matchSummary: MatchSummary | null;
@@ -332,7 +333,13 @@ export interface MatchSummary {
   level_before: LevelInfo;
   level_after: LevelInfo;
   badges: string[];
-  missions_done: { key: string; reward: number; coins: number }[];
+  missions_done: MissionDone[];
+}
+
+export interface MissionDone {
+  key: string;
+  reward: number;
+  coins: number;
 }
 
 type Action =
@@ -389,7 +396,8 @@ type ServerMessage =
   | { type: "invite_sent"; to_user: string }
   | { type: "invite_accepted"; room_code: string }
   | { type: "badge_earned"; player_id: string | null; name: string; badge: string }
-  | { type: "match_summary"; won: boolean; xp_gained: number; level_before: LevelInfo; level_after: LevelInfo; badges: string[]; missions_done: { key: string; reward: number; coins: number }[] }
+  | { type: "match_summary"; won: boolean; xp_gained: number; level_before: LevelInfo; level_after: LevelInfo; badges: string[]; missions_done: MissionDone[] }
+  | { type: "missions_done"; missions_done: MissionDone[] }
   | { type: "chat_typing"; player_id: string; name: string; typing: boolean }
   | { type: "error"; message: string };
 
@@ -652,6 +660,14 @@ function reducer(state: ClientState, action: Action): ClientState {
       return { ...state, joinRoomCode: msg.room_code };
     case "badge_earned":
       return { ...state, badgeToasts: [...state.badgeToasts, { player_id: msg.player_id, name: msg.name, badge: msg.badge }] };
+    case "missions_done":
+      return {
+        ...state,
+        badgeToasts: [
+          ...state.badgeToasts,
+          ...msg.missions_done.map((m) => ({ player_id: null, name: "", badge: "", mission: m })),
+        ],
+      };
     case "match_summary":
       return { ...state, matchSummary: { won: msg.won, xp_gained: msg.xp_gained, level_before: msg.level_before, level_after: msg.level_after, badges: msg.badges, missions_done: msg.missions_done } };
     case "chat_history":

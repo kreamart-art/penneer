@@ -16,7 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import daily, game, missions, paypal, push
+from . import ai_referee, daily, game, missions, paypal, push
 from .db import AVATAR_MAX_BYTES, get_db
 from .ws import manager, router as ws_router
 
@@ -237,6 +237,40 @@ def _daily_streak(db, uid: str, day: str) -> int:
     return streak
 
 
+async def _daily_approvals(db, day: str, answers: dict, lenient: bool, ask_ai: bool) -> set:
+    """(category, normalized word) pairs that count even though the curated list
+    misses them, e.g. 'zwaluw'.
+
+    Verdicts live in a SHARED cache, so the same word always scores the same for
+    everyone on the day board and the AI is asked at most once per word. Cache
+    lookups are free; only genuinely new words cost a call, and the answer is
+    stored for every future player.
+    """
+    letter = daily.letter_for(day)
+    pending: list[tuple[str, str]] = []
+    for cat in daily.categories_for(day):
+        word = str((answers or {}).get(cat) or "").strip()[:40]
+        valid, in_list = game.classify(word, letter, cat)
+        if valid and not in_list:
+            pending.append((cat, word))
+    if not pending:
+        return set()
+    keys = [(cat, game.normalize(w)) for cat, w in pending]
+    cached = db.word_verdicts(keys, lenient)
+    approved = {k for k, ok in cached.items() if ok}
+    unknown = [(cat, w) for (cat, w), k in zip(pending, keys) if k not in cached]
+    if unknown and ask_ai and ai_referee.available():
+        verdicts = await ai_referee.judge(letter, unknown, lenient=lenient)
+        for (cat, w), verdict in zip(unknown, verdicts):
+            if verdict is None:
+                continue  # undecided: don't cache, so it can be retried later
+            key = (cat, game.normalize(w))
+            db.set_word_verdict(cat, key[1], lenient, bool(verdict))
+            if verdict:
+                approved.add(key)
+    return approved
+
+
 def _daily_result_payload(db, uid: str | None, day: str, score: int, breakdown: dict,
                           ranked: bool, time_ms: int) -> dict:
     rank, total = db.daily_rank(uid, day) if uid else (0, db.daily_players_count(day))
@@ -308,11 +342,14 @@ async def daily_submit(request: Request) -> JSONResponse:
             stored = json.loads(entry["words"])
         except Exception:
             stored = {}
-        _, breakdown = daily.score_answers(day, stored, lenient=bool(entry.get("lenient")))
+        len_used = bool(entry.get("lenient"))
+        approved = await _daily_approvals(db, day, stored, len_used, ask_ai=False)
+        _, breakdown = daily.score_answers(day, stored, lenient=len_used, approved=approved)
         return JSONResponse({**_daily_result_payload(db, uid, day, int(entry["score"]), breakdown, True, int(entry["time_ms"])), "already": True})
 
     answers = {str(k)[:24]: str(v)[:40] for k, v in ((body or {}).get("answers") or {}).items()}
-    score, breakdown = daily.score_answers(day, answers, lenient=lenient)
+    approved = await _daily_approvals(db, day, answers, lenient, ask_ai=True)
+    score, breakdown = daily.score_answers(day, answers, lenient=lenient, approved=approved)
     ranked = False
     time_ms = 0
     missions_done: list[dict] = []
@@ -326,12 +363,15 @@ async def daily_submit(request: Request) -> JSONResponse:
             ranked = db.daily_submit(uid, day, score, time_ms, json.dumps(answers)[:4000], now, lenient=lenient)
         # Missions: playing counts (even a late submit), but only today's
         # active missions ever get progress.
-        active = missions.active_keys(day)
-        for key, inc in (("daily_play", 1), ("daily30", 1 if score >= 30 else 0)):
-            if key in active and inc > 0:
-                target, reward, coins = missions.spec(key)
-                if db.mission_bump(uid, day, key, inc, target, reward, coins):
-                    missions_done.append({"key": key, "reward": reward, "coins": coins})
+        cats = daily.categories_for(day)
+        filled = sum(1 for c in cats if (answers.get(c) or "").strip())
+        top = len(cats) * daily.POINTS_PER_WORD
+        missions_done = missions.bump_all(db, uid, day, (
+            ("daily_play", 1),
+            ("daily_full", 1 if cats and filled == len(cats) else 0),
+            ("daily30", 1 if score >= 30 else 0),
+            ("daily_perfect", 1 if score >= top else 0),
+        ))
         # Anti-cheat: offer the one paid retry BEFORE revealing the score. When it
         # is available we withhold the score/breakdown entirely; the client asks
         # "retry for N coins?" and only fetches the reveal (/api/daily/result) once
@@ -367,7 +407,9 @@ async def daily_result(request: Request) -> JSONResponse:
         stored = json.loads(entry["words"])
     except Exception:
         stored = {}
-    _, breakdown = daily.score_answers(day, stored, lenient=bool(entry.get("lenient")))
+    len_used = bool(entry.get("lenient"))
+    approved = await _daily_approvals(db, day, stored, len_used, ask_ai=False)
+    _, breakdown = daily.score_answers(day, stored, lenient=len_used, approved=approved)
     return JSONResponse(_daily_result_payload(db, uid, day, int(entry["score"]), breakdown, True, int(entry["time_ms"])))
 
 

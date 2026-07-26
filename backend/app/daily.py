@@ -3,8 +3,10 @@
 One letter per day, the SAME for everyone (unlike Oefenen, where every player
 gets a different random sequence — the whole point of a daily is comparable
 scores). Deterministic from the date, so every server instance and restart
-agrees without storing anything. Scoring is list-only (no AI, no corrections):
-deterministic and equal for all players, which is what a ranked daily needs.
+agrees without storing anything. Scoring is list-first with no human
+corrections; words the curated list misses are settled once by the AI referee
+and then cached in word_verdicts, so every player on the board is judged by the
+same verdict — which is what a ranked daily needs.
 
 The day rolls over at midnight Dutch time (the player base), not UTC.
 """
@@ -77,16 +79,19 @@ def categories_for(day: str) -> list[str]:
     return cats
 
 
-def score_answers(day: str, answers: dict, lenient: bool = False) -> tuple[int, dict]:
+def score_answers(day: str, answers: dict, lenient: bool = False,
+                  approved: set | None = None) -> tuple[int, dict]:
     """Judge a submission against the day's letter. Returns (score, per-cat).
 
-    Only list words count (10 each): the daily has no correction round and no
-    AI referee, so validity must be fully deterministic. A valid-letter word
-    that is not on the list shows as the familiar orange '?' but scores 0.
+    List words count 10 each. `approved` holds (category, normalized word) pairs
+    the AI referee already OK'd — real words the curated list simply misses, like
+    'zwaluw'. Those count too and show green. Verdicts are cached server-side and
+    shared by everyone, so the day board stays comparable.
 
     With lenient on (a per-account dyslexia aid) a near-miss spelling of a real
     list word counts too, via the same fuzzy match the room option uses.
     """
+    approved = approved or set()
     letter = letter_for(day)
     out: dict[str, dict] = {}
     score = 0
@@ -99,6 +104,8 @@ def score_answers(day: str, answers: dict, lenient: bool = False) -> tuple[int, 
         else:
             in_list = in_list_exact
             canon = game.list_canonical(word, cat) if in_list else None
+        if valid and not in_list and (cat, game.normalize(word)) in approved:
+            in_list = True          # the referee vouched for it
         all_words = game.list_words_for_letter(cat, letter)
         missed = [w for w in all_words if game.normalize(w) != canon]
         if in_list:

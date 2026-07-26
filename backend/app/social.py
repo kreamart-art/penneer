@@ -827,6 +827,12 @@ class AccountManager:
         self.db.ack_coin_reward(uid, lvl)
         await self._send(ws, await self._account_payload(ws, uid))
 
+    async def push_missions(self, user_id: str, done: list[dict]) -> None:
+        """Tell a user a mission completed outside the post-match ceremony (chat
+        missions tick mid-game, where there is no summary screen to carry them)."""
+        if done:
+            await self._push(user_id, {"type": "missions_done", "missions_done": done})
+
     async def _push_account(self, user_id: str) -> None:
         """Send the fresh account payload to every live connection of a user
         (e.g. after an out-of-game badge grant)."""
@@ -901,7 +907,6 @@ class AccountManager:
         before = {p["user_id"]: _level_of(self.db.stats_of(p["user_id"])) for p in players}
         playing_count = len(playing_ids)
         day = daily.today()
-        active = missions.active_keys(day)
         self.db.record_game(room.code, room.round_no, room.settings.lenient_spelling, players)
         for p in players:
             uid = p["user_id"]
@@ -924,18 +929,22 @@ class AccountManager:
             for badge in earned:
                 await notify(uid, badge)
             # Missions: only today's active three ever get progress.
-            missions_done = []
-            def bump(key: str, inc: int) -> None:
-                if key not in active or inc <= 0:
-                    return
-                target, reward, coins = missions.spec(key)
-                if self.db.mission_bump(uid, day, key, inc, target, reward, coins):
-                    missions_done.append({"key": key, "reward": reward, "coins": coins})
-            bump("play_game", 1)
-            bump("win_game", 1 if p["is_winner"] else 0)
-            bump("unique5", p.get("uniques", 0))
-            bump("dubbel3", p.get("dubbels", 0))
-            bump("multi3", 1 if playing_count >= 3 else 0)
+            won = 1 if p["is_winner"] else 0
+            missions_done = missions.bump_all(self.db, uid, day, (
+                ("play_game", 1),
+                ("play2", 1),
+                ("win_game", won),
+                ("unique5", p.get("uniques", 0)),
+                ("unique10", p.get("uniques", 0)),
+                ("dubbel3", p.get("dubbels", 0)),
+                ("dubbel5", p.get("dubbels", 0)),
+                ("multi3", 1 if playing_count >= 3 else 0),
+                ("multi4", 1 if playing_count >= 4 else 0),
+                ("perfect_round", 1 if p["_perfect"] else 0),
+                ("comeback_win", 1 if p["_comeback"] else 0),
+                ("hard_game", 1 if room.settings.hard_letters else 0),
+                ("score80", 1 if p["score"] >= 80 else 0),
+            ))
             # Ceremony payload: exact XP delta (game + mission rewards), level
             # and rank before/after, plus what was earned this match.
             after = _level_of(self.db.stats_of(uid))
