@@ -1,2 +1,2 @@
 // Bump per user-facing release. Shown in Settings > About.
-export const APP_VERSION = "1.47.6";
+export const APP_VERSION = "1.47.7";

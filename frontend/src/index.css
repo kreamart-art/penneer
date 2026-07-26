@@ -91,12 +91,18 @@ body {
 }
 
 /* The app is a single column; sideways scrolling is never intended. Decorative
-   layers (hero glow/rays) may be wider than small phones, so clip the x-axis
-   at the root. `clip` avoids creating a scroll container; `hidden` is the
-   fallback for older WebKit. */
-html,
-body {
-  overflow-x: hidden;
+   layers (hero glow/rays) may be wider than small phones, so the x-axis gets
+   clipped — but on #root, NEVER on html or body.
+   `overflow` on html/body propagates to the viewport, and on iOS that stops the
+   page from extending into the bottom safe area: you get an unpainted strip
+   exactly where the home indicator sits, on every screen. It only showed up on
+   the main page once the layout was compacted, because until then the document
+   was taller than the screen and the scroll container reached past the strip
+   anyway. That is the bug this whole gradient hunt was chasing.
+   `clip` on its own (no `hidden` fallback) keeps #root from becoming a scroll
+   container; a browser too old for `clip` just gets no clipping, which is a far
+   smaller problem than a broken page height. */
+#root {
   overflow-x: clip;
 }
 
