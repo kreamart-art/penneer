@@ -7,8 +7,7 @@ export function Screen({ children, top }: { children: React.ReactNode; top?: Rea
   return (
     <div
       style={{
-        // Fills the App shell's scroll area; the shell owns the viewport height.
-        minHeight: "100%",
+        minHeight: "100dvh",
         // Background comes from the fixed body::before layer (fills safe areas).
         display: "flex",
         flexDirection: "column",
@@ -23,7 +22,8 @@ export function Screen({ children, top }: { children: React.ReactNode; top?: Rea
           width: "100%",
           maxWidth: 460,
           margin: "0 auto",
-          padding: "6px 16px calc(10px + env(safe-area-inset-bottom))",
+          // --nav-h reserves the strip the fixed bottom bar covers (0 when hidden).
+          padding: "6px 16px calc(10px + var(--nav-h, 0px) + env(safe-area-inset-bottom))",
           display: "flex",
           flexDirection: "column",
         }}

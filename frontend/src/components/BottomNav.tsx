@@ -44,18 +44,26 @@ export function BottomNav({
   ];
 
   return (
+    // Anchored to the VIEWPORT, the way SMPL does it. A sticky bar inside a
+    // 100dvh shell floats above the real bottom on iOS, because that shell ends
+    // where the browser thinks the viewport ends, which is above the home
+    // indicator. `position: fixed` + `bottom: 0` sits on the physical edge, and
+    // the safe-area inset becomes padding so the icons still clear the
+    // indicator while the bar's background fills the strip.
     <nav
       style={{
-        position: "sticky",
+        position: "fixed",
+        left: 0,
+        right: 0,
         bottom: 0,
         zIndex: 40,
         display: "grid",
         gridTemplateColumns: "repeat(5, 1fr)",
-        alignItems: "end",
+        alignItems: "center",
         gap: 2,
         padding: "6px 8px",
         paddingBottom: "calc(6px + env(safe-area-inset-bottom))",
-        background: "linear-gradient(180deg, rgba(22,13,48,.86), rgba(14,9,34,.97))",
+        background: "linear-gradient(180deg, rgba(22,13,48,.9), rgba(14,9,34,.98))",
         borderTop: `1px solid ${withAlpha(colors.gold, 0.16)}`,
         backdropFilter: "blur(14px)",
         WebkitBackdropFilter: "blur(14px)",
@@ -78,8 +86,7 @@ export function BottomNav({
               alignItems: "center",
               // Home sits a touch higher and keeps a filled plate, the way the
               // middle action does in this genre.
-              padding: home ? "12px 4px" : "13px 4px",
-              marginTop: home ? -10 : 0,
+              padding: home ? "10px 4px" : "11px 4px",
               borderRadius: 16,
               border: home ? `1px solid ${withAlpha(colors.gold, on ? 0.6 : 0.3)}` : "none",
               background: home ? withAlpha(colors.gold, on ? 0.2 : 0.1) : "transparent",
@@ -89,7 +96,7 @@ export function BottomNav({
           >
             {icon}
             {!!badge && (
-              <span style={{ position: "absolute", top: home ? 4 : 5, right: "50%", marginRight: -20, minWidth: 16, height: 16, padding: "0 4px", borderRadius: 999, background: colors.gold, color: colors.bg0, fontFamily: font.ui, fontSize: 10, fontWeight: 800, lineHeight: "16px", textAlign: "center" }}>
+              <span style={{ position: "absolute", top: 2, right: "50%", marginRight: -18, minWidth: 16, height: 16, padding: "0 4px", borderRadius: 999, background: colors.gold, color: colors.bg0, fontFamily: font.ui, fontSize: 10, fontWeight: 800, lineHeight: "16px", textAlign: "center" }}>
                 {badge > 9 ? "9+" : badge}
               </span>
             )}

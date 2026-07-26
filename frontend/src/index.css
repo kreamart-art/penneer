@@ -45,31 +45,35 @@ body,
   margin: 0;
 }
 
-/* THE background, back to the colours and the geometry it had before I started
-   changing it: the same corner glows, the same paper grain, the same
-   `#41216f -> #1a1140 -> #0e0922` radial. Painted on the ROOT element, because
-   the root's background is the canvas background and the spec says its painting
-   area covers the ENTIRE canvas: every physical pixel, safe areas and the
-   home-indicator strip included. That is the one thing a fixed layer could not
-   promise. The strip at the bottom of the iPhone that kept showing a different
-   colour was a fixed layer being cut off before its own end; a root background
-   cannot be cut off, and past the gradient tile the flat `background-color` is
-   the exact colour the gradient ends on, so there is nothing to see either way.
-
-   The main fade MUST be linear, never radial, and this is the one thing that
-   actually caused the strip at the bottom of the iPhone. A radial's iso-colour
-   lines are ellipses, so the end colour is reached far earlier at the sides
-   than in the centre: measured on the last radial version, the bottom 8% of the
-   screen was already flat at x=0% and x=100% while only the exact centre column
-   reached the bottom edge. That curved flat wedge IS the strip. No stop or size
-   can remove it, because it is the shape.
-
-   A linear gradient makes the colour a plain function of y, so the end colour is
-   reached at y=100% across the full width and there is no flat area anywhere.
-   The stops below are the old radial's centre column sampled at its own stop
-   heights, so the middle of the screen is pixel-identical to what it was and
-   the sides simply lost the ellipse's extra darkening. */
+/* THE background. The main fade MUST be linear, never radial: a radial's
+   iso-colour lines are ellipses, so the end colour is reached far earlier at
+   the sides than in the centre. Measured on the last radial version, the bottom
+   8% of the screen was already flat at x=0% and x=100% while only the exact
+   centre column reached the bottom edge, and that curved flat wedge read as a
+   strip. No stop or size can remove it, because it is the shape. Linear makes
+   the colour a plain function of y, so the end colour lands at y=100% across
+   the full width. The stops are the old radial's centre column sampled at its
+   own stop heights, so the middle of the screen is pixel-identical to what it
+   always was; the sides just lost the ellipse's extra darkening. */
 html {
+  background-color: #0e0922;
+}
+
+/* The backdrop is anchored to the VIEWPORT, exactly like the bottom bar, and
+   for the same reason: `100lvh` is the browser's idea of the viewport and on
+   iOS that ends above the physical bottom, which left an unpainted strip at
+   the home indicator. `position: fixed; inset: 0` is the real screen edge.
+   NOTE: an earlier attempt at this layer got clipped short — the cause was
+   `overflow-x` on html/body (it propagates to the viewport and breaks fixed
+   children on iOS). That is gone now, which is what makes this work.
+   The last gradient stop is html's background-color, so even if a device ever
+   does leave a sliver, it is already the exact colour this layer would paint. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
   background-color: #0e0922;
   background-image:
     radial-gradient(60% 38% at -8% 12%, rgba(122, 103, 255, 0.1), transparent 70%),
@@ -79,8 +83,7 @@ html {
     linear-gradient(180deg, #3c1f69 0%, #1a1140 42.8%, #140d2f 59.7%, #100b27 74.6%, #0f0a24 87.3%, #0e0922 100%);
   background-repeat: no-repeat, no-repeat, no-repeat, repeat, no-repeat;
   background-position: top, top, top, top left, top;
-  background-size: 100% 100vh, 100% 100vh, 100% 100vh, 160px 160px, 100% 100vh;
-  background-size: 100% 100lvh, 100% 100lvh, 100% 100lvh, 160px 160px, 100% 100lvh;
+  background-size: 100% 100%, 100% 100%, 100% 100%, 160px 160px, 100% 100%;
 }
 
 body {

@@ -339,6 +339,9 @@ export default function App() {
       : showHub
       ? showHub
       : "home";
+  useEffect(() => {
+    document.documentElement.style.setProperty("--nav-h", navKey === null ? "0px" : "58px");
+  }, [navKey]);
   const goNav = (key: NavKey) => {
     setShowShop(key === "shop");
     setShowHub(key === "home" || key === "shop" ? null : key);
@@ -346,12 +349,8 @@ export default function App() {
 
   return (
     <>
-      {/* Fixed shell: the screen scrolls INSIDE the free space, so adding the bar
-          never makes the page taller than the phone. */}
-      <div style={{ height: "100dvh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-        <div style={{ flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>{screen}</div>
-        {navKey !== null && <BottomNav game={game} active={navKey} onSelect={goNav} />}
-      </div>
+      {screen}
+      {navKey !== null && <BottomNav game={game} active={navKey} onSelect={goNav} />}
       {penSplash && (
         <div
           style={{
