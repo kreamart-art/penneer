@@ -45,12 +45,16 @@ body,
    compositor edge left that ANY engine can get wrong. On scroll the top glow
    scrolls away naturally; deep content was already flat dark.
 
-   The main gradient EASES into #0e0922 over four stops instead of landing on
-   it at 82% and holding: a linear ramp that stops dead leaves a kink in the
-   brightness curve, and the eye reads that kink as a hard edge (a Mach band)
-   even though the pixels below it are all the same colour. The whole bottom
-   edge of the tile is past the ellipse anyway, so ending at 100% still meets
-   the flat fallback colour seamlessly. */
+   The main backdrop is a LINEAR gradient, not a radial. A radial reaches its
+   last colour stop on an ellipse, and with the previous shape that ellipse
+   crossed the centre line at 89% of the screen: below it the colour was flat,
+   above it still changing, and the eye reads that kink in the brightness curve
+   as a hard edge (a Mach band) even though every pixel under it is the same
+   colour. Pushing the stop to 100% only moved the band, it did not remove it.
+   A linear gradient makes the colour a plain function of y, so the stops can
+   ease out and land on #0e0922 exactly at the bottom edge, where it meets the
+   flat fallback colour with nothing left to step. The top-corner glows keep the
+   light-from-above feel; their alpha is low enough to never band. */
 html {
   background-color: #0e0922;
   background-image:
@@ -58,11 +62,12 @@ html {
     radial-gradient(55% 34% at 108% 4%, rgba(255, 86, 74, 0.05), transparent 70%),
     radial-gradient(50% 36% at 106% -4%, rgba(255, 194, 61, 0.05), transparent 70%),
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
-    radial-gradient(135% 95% at 50% -6%, #41216f 0%, #1a1140 46%, #150e34 58%, #120c2c 70%, #100a27 84%, #0e0922 100%);
-  background-repeat: no-repeat, no-repeat, no-repeat, repeat, no-repeat;
-  background-position: top, top, top, top left, top;
-  background-size: 100% 100vh, 100% 100vh, 100% 100vh, 160px 160px, 100% 100vh;
-  background-size: 100% 100lvh, 100% 100lvh, 100% 100lvh, 160px 160px, 100% 100lvh;
+    radial-gradient(85% 34% at 50% -6%, rgba(104, 52, 172, 0.5) 0%, rgba(104, 52, 172, 0.24) 38%, rgba(104, 52, 172, 0.07) 68%, rgba(104, 52, 172, 0) 100%),
+    linear-gradient(180deg, #3b1c66 0%, #301a58 13%, #26154a 27%, #1d123f 42%, #171036 57%, #130d2e 72%, #100b28 87%, #0e0922 100%);
+  background-repeat: no-repeat, no-repeat, no-repeat, repeat, no-repeat, no-repeat;
+  background-position: top, top, top, top left, top, top;
+  background-size: 100% 100vh, 100% 100vh, 100% 100vh, 160px 160px, 100% 100vh, 100% 100vh;
+  background-size: 100% 100lvh, 100% 100lvh, 100% 100lvh, 160px 160px, 100% 100lvh, 100% 100lvh;
 }
 
 body {

@@ -119,22 +119,40 @@ export function Intro({ onDone }: { onDone: () => void }) {
             marginBottom: started ? 26 : 0,
           }}
         >
-          <img
-            src="/artnomad.webp"
-            alt=""
-            aria-hidden
-            width={112}
-            height={112}
-            style={{
-              display: "block",
-              width: MARK_SIZE,
-              height: MARK_SIZE,
-              opacity: markIn ? 0.92 : 0,
-              transform: markIn ? "scale(1)" : "scale(0.8)",
-              transition: reduced ? "none" : "opacity 200ms ease-out, transform 260ms cubic-bezier(.2,1.5,.4,1)",
-              filter: `drop-shadow(0 0 22px ${withAlpha(colors.violet, 0.75)})`,
-            }}
-          />
+          {/* The glow is a real radial behind the mark, not a drop-shadow filter:
+              iOS rasterises a filtered element into its own layer, and over a
+              near-flat dark gradient that layer's rectangle became visible as a
+              blocky halo. A sibling radial has no box to show. */}
+          <div style={{ position: "relative", width: MARK_SIZE, height: MARK_SIZE, display: "grid", placeItems: "center" }}>
+            <div
+              aria-hidden
+              style={{
+                position: "absolute",
+                width: "215%",
+                height: "215%",
+                borderRadius: "50%",
+                background: `radial-gradient(circle, ${withAlpha(colors.violet, 0.2)} 0%, ${withAlpha(colors.violet, 0.09)} 36%, ${withAlpha(colors.violet, 0.025)} 64%, transparent 100%)`,
+                opacity: markIn ? 1 : 0,
+                transition: reduced ? "none" : "opacity 320ms ease-out",
+              }}
+            />
+            <img
+              src="/artnomad.webp"
+              alt=""
+              aria-hidden
+              width={112}
+              height={112}
+              style={{
+                position: "relative",
+                display: "block",
+                width: MARK_SIZE,
+                height: MARK_SIZE,
+                opacity: markIn ? 0.94 : 0,
+                transform: markIn ? "scale(1)" : "scale(0.8)",
+                transition: reduced ? "none" : "opacity 200ms ease-out, transform 260ms cubic-bezier(.2,1.5,.4,1)",
+              }}
+            />
+          </div>
         </div>
         <span
           style={{
@@ -147,7 +165,7 @@ export function Intro({ onDone }: { onDone: () => void }) {
             letterSpacing: 0.5,
             color: colors.ink,
             whiteSpace: "nowrap",
-            textShadow: `0 0 26px ${withAlpha(colors.violet, 0.7)}, 0 2px 18px rgba(0,0,0,.55)`,
+            textShadow: "0 2px 14px rgba(0,0,0,.5)",
           }}
         >
           {/* invisible full line reserves the width, so the text never shifts */}

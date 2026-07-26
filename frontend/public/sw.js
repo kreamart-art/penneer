@@ -10,7 +10,7 @@
 //    briefly-stale shell can still boot from cache instead of going black.
 //  - Every activation purges ALL old caches (drops any poisoned shell).
 // Never touches the WebSocket or the API.
-const CACHE = "penneer-v11"; // v11: bust cached emote art after the stray-fragment fix
+const CACHE = "penneer-v12"; // v12: artnomad.webp was overwritten (lossless, black under alpha)
 
 self.addEventListener("install", () => {
   self.skipWaiting();

@@ -309,7 +309,7 @@ export function Landing({
                 }}
               />
               <div style={{ position: "relative", zIndex: 1, animation: "float-soft 4s ease-in-out infinite" }}>
-                <Logo size={96} />
+                <Logo size="min(132px, 14.5vh)" />
               </div>
             </div>
             <h1
