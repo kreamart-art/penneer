@@ -242,7 +242,7 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
         scoreText: t("dailyPointsPill", { score: result.score }),
         rankText: result.ranked && result.rank > 0 ? t("dailyRankLine", { rank: result.rank, total: result.total }) : "",
         streakText: result.streak > 1 ? t("dailyStreakLine", { n: result.streak }) : "",
-        footer: "penneer.artnomad.nl",
+        footer: t("footer"),
       });
       if (blob) await shareOrDownload(blob, "penneer-dagronde.png");
     } finally {

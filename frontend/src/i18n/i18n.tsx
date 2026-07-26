@@ -15,7 +15,7 @@ const nl: Dict = {
   host: "host",
   watching: "kijkt",
   back: "Terug",
-  footer: "penneer.artnomad.nl · een spel van Artnomad",
+  footer: "een spel van Artnomad",
   // settings + about
   settingsTitle: "Instellingen",
   settings: "Instellingen",
@@ -605,7 +605,7 @@ const en: Dict = {
   host: "host",
   watching: "watching",
   back: "Back",
-  footer: "penneer.artnomad.nl · a game by Artnomad",
+  footer: "a game by Artnomad",
   settingsTitle: "Settings",
   settings: "Settings",
   language: "Language",

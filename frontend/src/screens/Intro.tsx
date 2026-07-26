@@ -1,8 +1,8 @@
-// The Artnomad typewriter intro (same as Kings/Ezelen): "An Artnomad Game" is
-// typed out with a key-strike per character and a carriage bell at the end,
-// then the app continues. Waits for a tap (which unlocks audio so the strikes
-// actually sound); auto-runs silently after a generous window so it is never a
-// dead end; a second tap skips.
+// The Artnomad typewriter intro (same as Kings/Ezelen): the studio mark lands on
+// the FIRST key-strike, then "An Artnomad Game" is typed out a character at a
+// time with a carriage bell at the end, and the app continues. Waits for a tap
+// (which unlocks audio so the strikes actually sound); auto-runs silently after
+// a generous window so it is never a dead end; a second tap skips.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
@@ -10,10 +10,13 @@ import { colors, font, withAlpha } from "../theme/tokens";
 
 const INTRO_TEXT = "An Artnomad Game";
 const PER_CHAR_MS = 135;
+const MARK_MS = 420; // beat between the logo strike and the first letter
+const MARK_SIZE = "clamp(54px, 15vw, 78px)";
 
 export function Intro({ onDone }: { onDone: () => void }) {
   const { t } = useT();
   const [typed, setTyped] = useState(0);
+  const [markIn, setMarkIn] = useState(false); // the logo's own strike, before the text
   const [started, setStarted] = useState(false);
   const ran = useRef(false);
   const cancelled = useRef(false);
@@ -34,6 +37,7 @@ export function Intro({ onDone }: { onDone: () => void }) {
         sound.primeMusic();
       }
       if (reduced) {
+        setMarkIn(true);
         setTyped(full);
         timers.current.push(window.setTimeout(onDone, 900));
         return;
@@ -51,7 +55,15 @@ export function Intro({ onDone }: { onDone: () => void }) {
           timers.current.push(window.setTimeout(onDone, 1300));
         }
       };
-      timers.current.push(window.setTimeout(step, 350));
+      // Strike one is the logo; the letters follow a beat later.
+      timers.current.push(
+        window.setTimeout(() => {
+          if (cancelled.current) return;
+          setMarkIn(true);
+          if (withSound) sound.twKey();
+          timers.current.push(window.setTimeout(step, MARK_MS));
+        }, 350)
+      );
     },
     [reduced, onDone]
   );
@@ -95,7 +107,35 @@ export function Intro({ onDone }: { onDone: () => void }) {
         padding: "8vw",
       }}
     >
+      {/* Every row keeps its box whether or not it is showing, so the group
+          stays optically centred instead of jumping when the hint disappears. */}
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+        {/* The box is claimed the moment the run starts, in the same frame the
+            tap hint leaves, so the group re-centres once while nothing is drawn
+            there yet. The strike itself is then pure fade + scale: no clipping. */}
+        <div
+          style={{
+            height: started ? MARK_SIZE : 0,
+            marginBottom: started ? 22 : 0,
+          }}
+        >
+          <img
+            src="/artnomad.webp"
+            alt=""
+            aria-hidden
+            width={78}
+            height={78}
+            style={{
+              display: "block",
+              width: MARK_SIZE,
+              height: MARK_SIZE,
+              opacity: markIn ? 0.92 : 0,
+              transform: markIn ? "scale(1)" : "scale(0.8)",
+              transition: reduced ? "none" : "opacity 200ms ease-out, transform 260ms cubic-bezier(.2,1.5,.4,1)",
+              filter: `drop-shadow(0 0 22px ${withAlpha(colors.violet, 0.75)})`,
+            }}
+          />
+        </div>
         <span
           style={{
             position: "relative",
@@ -122,21 +162,21 @@ export function Intro({ onDone }: { onDone: () => void }) {
             </span>
           </span>
         </span>
-        {!started && (
-          <span
-            style={{
-              marginTop: 18,
-              fontFamily: font.ui,
-              fontSize: 11,
-              letterSpacing: "0.25em",
-              textTransform: "uppercase",
-              color: withAlpha(colors.gold, 0.55),
-              animation: reduced ? "none" : "fill-pulse 1.6s ease-in-out infinite",
-            }}
-          >
-            {t("tapToBegin")}
-          </span>
-        )}
+        <span
+          aria-hidden={started}
+          style={{
+            marginTop: 18,
+            fontFamily: font.ui,
+            fontSize: 11,
+            letterSpacing: "0.25em",
+            textTransform: "uppercase",
+            color: withAlpha(colors.gold, 0.55),
+            visibility: started ? "hidden" : "visible",
+            animation: reduced || started ? "none" : "fill-pulse 1.6s ease-in-out infinite",
+          }}
+        >
+          {t("tapToBegin")}
+        </span>
       </div>
     </div>
   );

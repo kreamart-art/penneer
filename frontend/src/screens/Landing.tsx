@@ -232,6 +232,16 @@ export function Landing({
           </button>
           </div>
           <MusicToggle size={24} padding={9} />
+          {/* Icon-only: the rules live one tap away here and in Instellingen,
+              so the main page needs no explaining line at the bottom. */}
+          <button
+            onClick={() => { sound.uiTap(); onShowRules(); }}
+            aria-label={t("howItWorks")}
+            className="pressable glowhover"
+            style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.sub, display: "flex", padding: 9 }}
+          >
+            <HelpCircle size={24} />
+          </button>
         </div>
       </div>
       <LandingFX />
@@ -421,28 +431,6 @@ export function Landing({
         {game.state.error && (
           <p style={{ textAlign: "center", color: colors.red, fontFamily: font.ui, fontSize: 14, margin: 0 }}>{game.state.error}</p>
         )}
-
-        <button
-          onClick={onShowRules}
-          className="pressable reveal-rise"
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-            justifyContent: "center",
-            background: "transparent",
-            border: "none",
-            cursor: "pointer",
-            color: colors.sub,
-            fontFamily: font.ui,
-            fontSize: 13.5,
-            padding: 6,
-            animationDelay: "0.2s",
-          }}
-        >
-          <HelpCircle size={16} />
-          {t("howItWorks")}
-        </button>
 
         <NotifyNudge />
       </div>
