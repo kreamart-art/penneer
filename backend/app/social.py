@@ -499,7 +499,7 @@ class AccountManager:
         # Real push when the recipient has no live connection (app closed).
         if not self.online(to):
             sender = self.db.get_user(uid)
-            preview = "Emote" if msg.get("emote") else "Spraakbericht" if msg.get("voice_id") else msg["text"][:120]
+            preview = "Sticker" if msg.get("emote") else "Spraakbericht" if msg.get("voice_id") else msg["text"][:120]
             asyncio.create_task(push.notify(
                 to, "Pen Neer",
                 f"{sender['name'] if sender else 'Iemand'}: {preview}",
