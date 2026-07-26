@@ -323,7 +323,7 @@ export default function App() {
       />
     );
   } else {
-    screen = <Landing game={game} onShowRules={() => setShowRules(true)} onShowSettings={() => setShowSettings(true)} onShowHub={() => setShowHub("profile")} onShowShop={() => setShowShop(true)} onShowTraining={() => setShowTraining(true)} onShowDaily={() => setShowDaily(true)} />;
+    screen = <Landing game={game} onShowRules={() => setShowRules(true)} onShowSettings={() => setShowSettings(true)} onShowShop={() => setShowShop(true)} onShowTraining={() => setShowTraining(true)} onShowDaily={() => setShowDaily(true)} />;
   }
 
   // Which bar item is lit. Sub-flows that are not bar destinations (rules,
@@ -333,23 +333,21 @@ export default function App() {
       ? null
       : showShop
       ? "shop"
-      : showHub === "leaderboard" || showHub === "friends" || showHub === "inbox"
+      : showHub
       ? showHub
-      : showHub === "profile"
-      ? null           // profile is reached from the avatar, not from the bar
       : "home";
   const goNav = (key: NavKey) => {
     setShowShop(key === "shop");
-    setShowHub(key === "leaderboard" || key === "friends" || key === "inbox" ? key : null);
+    setShowHub(key === "home" || key === "shop" ? null : key);
   };
 
   return (
     <>
-      <div style={{ minHeight: "100dvh", display: "flex", flexDirection: "column" }}>
-        <div style={{ flex: 1, minHeight: 0 }}>{screen}</div>
-        {(navKey !== null || showHub === "profile") && (
-          <BottomNav game={game} active={navKey ?? "home"} onSelect={goNav} />
-        )}
+      {/* Fixed shell: the screen scrolls INSIDE the free space, so adding the bar
+          never makes the page taller than the phone. */}
+      <div style={{ height: "100dvh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <div style={{ flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>{screen}</div>
+        {navKey !== null && <BottomNav game={game} active={navKey} onSelect={goNav} />}
       </div>
       {penSplash && (
         <div

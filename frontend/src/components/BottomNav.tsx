@@ -12,7 +12,7 @@ import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { colors, font, withAlpha } from "../theme/tokens";
 
-export type NavKey = "shop" | "leaderboard" | "home" | "friends" | "inbox";
+export type NavKey = "shop" | "leaderboard" | "home" | "friends" | "inbox" | "profile";
 
 export function BottomNav({
   game,
@@ -28,11 +28,21 @@ export function BottomNav({
   const inbox = (game.state.inbox.length || account?.inbox_count || 0) + (account?.dm_unread || 0);
 
   const items: { key: NavKey; label: string; icon: React.ReactNode; badge?: number }[] = [
-    { key: "shop", label: t("shopTitle"), icon: <ShoppingCart size={22} strokeWidth={2.1} /> },
-    { key: "leaderboard", label: t("leaderboardTab"), icon: <Trophy size={22} strokeWidth={2.1} /> },
-    { key: "home", label: t("navHome"), icon: <Home size={24} strokeWidth={2.2} /> },
-    { key: "friends", label: t("friendsTab"), icon: <Users size={22} strokeWidth={2.1} /> },
-    { key: "inbox", label: t("inboxTab"), icon: <Bell size={22} strokeWidth={2.1} />, badge: inbox },
+    { key: "shop", label: t("shopTitle"), icon: <ShoppingCart size={25} strokeWidth={2.1} /> },
+    { key: "leaderboard", label: t("leaderboardTab"), icon: <Trophy size={25} strokeWidth={2.1} /> },
+    { key: "home", label: t("navHome"), icon: <Home size={27} strokeWidth={2.2} /> },
+    { key: "friends", label: t("friendsTab"), icon: <Users size={25} strokeWidth={2.1} /> },
+    { key: "inbox", label: t("inboxTab"), icon: <Bell size={25} strokeWidth={2.1} />, badge: inbox },
+    // Profile's icon IS the player's avatar, so the bar shows who you are.
+    {
+      key: "profile",
+      label: t("profile"),
+      icon: account ? (
+        <Avatar name={account.name} color={account.color} size={26} userId={account.id} hasAvatar={account.has_avatar} avatarVer={account.avatar_ver} />
+      ) : (
+        <UserRound size={25} strokeWidth={2.1} />
+      ),
+    },
   ];
 
   return (
@@ -42,7 +52,7 @@ export function BottomNav({
         bottom: 0,
         zIndex: 40,
         display: "grid",
-        gridTemplateColumns: "repeat(5, 1fr)",
+        gridTemplateColumns: "repeat(6, 1fr)",
         alignItems: "end",
         gap: 2,
         padding: "6px 8px",
@@ -68,10 +78,9 @@ export function BottomNav({
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
-              gap: 3,
               // Home sits a touch higher and keeps a filled plate, the way the
               // middle action does in this genre.
-              padding: home ? "8px 4px 6px" : "9px 4px 7px",
+              padding: home ? "11px 4px" : "12px 4px",
               marginTop: home ? -10 : 0,
               borderRadius: 16,
               border: home ? `1px solid ${withAlpha(colors.gold, on ? 0.6 : 0.3)}` : "none",
@@ -81,11 +90,8 @@ export function BottomNav({
             }}
           >
             {icon}
-            <span style={{ fontFamily: font.ui, fontSize: 9.5, fontWeight: 700, letterSpacing: 0.2, maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {label}
-            </span>
             {!!badge && (
-              <span style={{ position: "absolute", top: home ? 2 : 4, right: "50%", marginRight: -22, minWidth: 16, height: 16, padding: "0 4px", borderRadius: 999, background: colors.gold, color: colors.bg0, fontFamily: font.ui, fontSize: 10, fontWeight: 800, lineHeight: "16px", textAlign: "center" }}>
+              <span style={{ position: "absolute", top: home ? 4 : 5, right: "50%", marginRight: -20, minWidth: 16, height: 16, padding: "0 4px", borderRadius: 999, background: colors.gold, color: colors.bg0, fontFamily: font.ui, fontSize: 10, fontWeight: 800, lineHeight: "16px", textAlign: "center" }}>
                 {badge > 9 ? "9+" : badge}
               </span>
             )}

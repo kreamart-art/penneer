@@ -7,7 +7,8 @@ export function Screen({ children, top }: { children: React.ReactNode; top?: Rea
   return (
     <div
       style={{
-        minHeight: "100dvh",
+        // Fills the App shell's scroll area; the shell owns the viewport height.
+        minHeight: "100%",
         // Background comes from the fixed body::before layer (fills safe areas).
         display: "flex",
         flexDirection: "column",

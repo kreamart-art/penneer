@@ -2,7 +2,6 @@
 import { useEffect, useState } from "react";
 import { Bot, CalendarDays, Check, GraduationCap, Hash, HelpCircle, Play, Settings as SettingsIcon, Sparkles, Target, X } from "lucide-react";
 import { Logo } from "../components/Logo";
-import { ProfileButton } from "../components/BottomNav";
 import { Button } from "../components/Button";
 import { NotifyNudge } from "../components/NotifyNudge";
 import { MusicToggle } from "../components/MusicToggle";
@@ -31,7 +30,6 @@ export function Landing({
   game,
   onShowRules,
   onShowSettings,
-  onShowHub,
   onShowShop,
   onShowTraining,
   onShowDaily,
@@ -39,7 +37,6 @@ export function Landing({
   game: GameApi;
   onShowRules: () => void;
   onShowSettings: () => void;
-  onShowHub: () => void;
   onShowShop: () => void;
   onShowTraining: () => void;
   onShowDaily: () => void;
@@ -50,7 +47,6 @@ export function Landing({
   const [mode, setMode] = useState<"none" | "join">("none");
   const [showFriends, setShowFriends] = useState(false);
   const account = game.state.account;
-  const inboxCount = game.state.inbox.length || account?.inbox_count || 0;
 
   // First-visit guests (no account, no stored token) get a prominent prompt to
   // make a profile. Returning users with a token skip it (avoids a flash).
@@ -198,15 +194,6 @@ export function Landing({
               </span>
             )}
           </button>
-          {/* The profile IS your avatar; it carries the inbox badge. */}
-          <span style={{ position: "relative", display: "flex" }}>
-            <ProfileButton game={game} onClick={onShowHub} />
-            {inboxCount > 0 && (
-              <span style={{ position: "absolute", top: -3, right: -4, minWidth: 16, height: 16, padding: "0 4px", borderRadius: 999, background: colors.gold, color: colors.bg0, fontFamily: font.ui, fontSize: 10, fontWeight: 800, lineHeight: "16px", textAlign: "center" }}>
-                {inboxCount > 9 ? "9+" : inboxCount}
-              </span>
-            )}
-          </span>
           <button
             onClick={onShowSettings}
             aria-label={t("settings")}
