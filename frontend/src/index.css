@@ -43,7 +43,14 @@ body,
    tile is one large-viewport tall and anchored top, and past it everything is
    the flat end colour #0e0922. Nothing is position:fixed, so there is no
    compositor edge left that ANY engine can get wrong. On scroll the top glow
-   scrolls away naturally; deep content was already flat dark. */
+   scrolls away naturally; deep content was already flat dark.
+
+   The main gradient EASES into #0e0922 over four stops instead of landing on
+   it at 82% and holding: a linear ramp that stops dead leaves a kink in the
+   brightness curve, and the eye reads that kink as a hard edge (a Mach band)
+   even though the pixels below it are all the same colour. The whole bottom
+   edge of the tile is past the ellipse anyway, so ending at 100% still meets
+   the flat fallback colour seamlessly. */
 html {
   background-color: #0e0922;
   background-image:
@@ -51,7 +58,7 @@ html {
     radial-gradient(55% 34% at 108% 4%, rgba(255, 86, 74, 0.05), transparent 70%),
     radial-gradient(50% 36% at 106% -4%, rgba(255, 194, 61, 0.05), transparent 70%),
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
-    radial-gradient(135% 95% at 50% -6%, #41216f 0%, #1a1140 46%, #0e0922 82%);
+    radial-gradient(135% 95% at 50% -6%, #41216f 0%, #1a1140 46%, #150e34 58%, #120c2c 70%, #100a27 84%, #0e0922 100%);
   background-repeat: no-repeat, no-repeat, no-repeat, repeat, no-repeat;
   background-position: top, top, top, top left, top;
   background-size: 100% 100vh, 100% 100vh, 100% 100vh, 160px 160px, 100% 100vh;
@@ -288,6 +295,35 @@ input:focus {
   animation: pop-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
+/* Victory popup. The old card reused .pop-in, which snaps from scale .6 with a
+   hard overshoot while the darkened backdrop appears in a single frame: it hits
+   the eye all at once. This lands in three staggered beats instead. The veil
+   dims and blurs first, the card rises into place with a soft settle, and the
+   reward art arrives last with its own small pop, so the prize is the thing you
+   notice rather than the modal appearing. */
+@keyframes reward-veil {
+  from { opacity: 0; backdrop-filter: blur(0); -webkit-backdrop-filter: blur(0); }
+  to { opacity: 1; backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); }
+}
+@keyframes reward-card {
+  0% { opacity: 0; transform: translateY(30px) scale(0.94); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes reward-art {
+  0% { opacity: 0; transform: scale(0.72); }
+  70% { opacity: 1; transform: scale(1.06); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.reward-veil {
+  animation: reward-veil 320ms ease-out both;
+}
+.reward-card {
+  animation: reward-card 520ms cubic-bezier(0.16, 0.86, 0.3, 1.02) 90ms both;
+}
+.reward-art {
+  animation: reward-art 520ms cubic-bezier(0.34, 1.4, 0.5, 1) 260ms both;
+}
+
 /* Alphabet strip: the drawn letter flares gold, then falls out (dims). The
    resting dim state lives in the chip's inline style; this only decorates. */
 @keyframes letter-out {
@@ -322,7 +358,10 @@ input:focus {
   .confetti-piece,
   .pop-in,
   .letter-out,
-  .caret-blink {
+  .caret-blink,
+  .reward-veil,
+  .reward-card,
+  .reward-art {
     animation: none;
   }
   .pressable {

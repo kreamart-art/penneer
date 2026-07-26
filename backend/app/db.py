@@ -486,6 +486,13 @@ class Database:
         if "password_hash" not in cols:
             self._conn.execute("ALTER TABLE users ADD COLUMN password_hash TEXT")
             self._conn.commit()
+        # Victory popups now cover every earned reward, not just buzzer skins.
+        # Existing accounts would get a stack of them for things they earned long
+        # ago, so the first payload after this migration silently claims whatever
+        # is already unlocked and flips this flag; only NEW unlocks pop.
+        if "rewards_seeded" not in cols:
+            self._conn.execute("ALTER TABLE users ADD COLUMN rewards_seeded INTEGER NOT NULL DEFAULT 0")
+            self._conn.commit()
         # Preset artwork changed (v9 = the v8 body-width algorithm plus hand-tuned
         # per-avatar overrides, from per-avatar user feedback: av02 less zoom so
         # her shoulders are back, av06/13/14 nudged down, av15 down + recentered,
@@ -571,7 +578,7 @@ class Database:
         with self._lock:
             rows = self._q(
                 "SELECT id, name, email, color, avatar_ver, avatar IS NOT NULL AS has_avatar, "
-                "avatar_preset, ai_unlocked, premium_avatars, buzzer_skins, buzzer_skin, avatar_frame, reel_skin, title, lenient_spelling, coins, coins_level, coins_seen_level, created_at "
+                "avatar_preset, ai_unlocked, premium_avatars, buzzer_skins, buzzer_skin, avatar_frame, reel_skin, title, lenient_spelling, coins, coins_level, coins_seen_level, rewards_seeded, created_at "
                 "FROM users WHERE id=?",
                 (user_id,),
             )
@@ -1652,6 +1659,18 @@ class Database:
             "INSERT OR IGNORE INTO level_rewards (user_id, reward, claimed_at) VALUES (?,?,?)",
             (user_id, reward, time.time()),
         )
+
+    def seed_reward_claims(self, user_id: str, rewards) -> None:
+        """One-time backfill: mark everything the account already earned as seen,
+        so the new all-rewards popup does not replay someone's whole history."""
+        now = time.time()
+        with self._lock:
+            self._conn.executemany(
+                "INSERT OR IGNORE INTO level_rewards (user_id, reward, claimed_at) VALUES (?,?,?)",
+                [(user_id, r, now) for r in rewards],
+            )
+            self._conn.execute("UPDATE users SET rewards_seeded=1 WHERE id=?", (user_id,))
+            self._conn.commit()
 
     # ---- coins currency ----------------------------------------------------
 

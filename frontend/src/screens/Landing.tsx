@@ -157,7 +157,11 @@ export function Landing({
 
   return (
     <Screen>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", paddingTop: 4 }}>
+      {/* The icon column on the right is absolutely placed: it is three rows tall
+          and would otherwise push the whole hero down by ~80px, which is the
+          difference between fitting on a small phone and not. It is a narrow
+          strip at the edge, so it never collides with the centred logo. */}
+      <div style={{ position: "relative", display: "flex", justifyContent: "space-between", alignItems: "flex-start", paddingTop: 4 }}>
         <button
           onClick={onShowHub}
           aria-label={t("profile")}
@@ -184,7 +188,7 @@ export function Landing({
           )}
         </button>
         {/* right cluster is a column so the music mute note sits UNDER the gear */}
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 3 }}>
+        <div style={{ position: "absolute", top: 4, right: 0, zIndex: 2, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 3 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
           {account && (
             <button
@@ -245,8 +249,8 @@ export function Landing({
         </div>
       </div>
       <LandingFX />
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-start", gap: 16, paddingTop: 4 }}>
-        <div className="reveal-rise" style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: 10, padding: "0" }}>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 10, paddingTop: 0 }}>
+        <div className="reveal-rise" style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "0" }}>
           {/* Hero light: breathing radial glow + slow rays + rising dust, all
               behind the logo/title (zIndex layering, transform-only motion). */}
           {/* overflow hidden keeps the dust inside the hero box (and any wide
@@ -276,7 +280,7 @@ export function Landing({
               />
             ))}
           </div>
-          <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+          <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
             {/* The logo IS the light source: breathing glow + slowly rotating
                 rays centered on the coin, logo floating on top of them. */}
             <div style={{ position: "relative", display: "grid", placeItems: "center" }}>
@@ -305,7 +309,7 @@ export function Landing({
                 }}
               />
               <div style={{ position: "relative", zIndex: 1, animation: "float-soft 4s ease-in-out infinite" }}>
-                <Logo size={128} />
+                <Logo size={96} />
               </div>
             </div>
             <h1
@@ -317,7 +321,7 @@ export function Landing({
                 // px size than Space Grotesk did to span the same hero width.
                 fontFamily: "'Cybergame', 'Space Grotesk', sans-serif",
                 fontWeight: 400,
-                fontSize: "min(72px, 17.5vw)",
+                fontSize: "min(60px, 15vw)",
                 letterSpacing: "0.14em",
                 whiteSpace: "nowrap",
                 color: colors.ink,
@@ -332,8 +336,8 @@ export function Landing({
                 textAlign: "center",
                 fontFamily: font.ui,
                 fontWeight: 500,
-                fontSize: 15,
-                lineHeight: 1.5,
+                fontSize: 14,
+                lineHeight: 1.35,
                 letterSpacing: 0.3,
                 color: "#CFC6E8",
                 maxWidth: 300,
@@ -349,8 +353,8 @@ export function Landing({
           style={{
             display: "flex",
             flexDirection: "column",
-            gap: 12,
-            padding: 24,
+            gap: 10,
+            padding: 16,
             animationDelay: "0.1s",
             background: "linear-gradient(180deg, rgba(255,255,255,.09), rgba(255,255,255,.028))",
             border: "1px solid rgba(255,255,255,.15)",
@@ -561,7 +565,9 @@ function Tile({
 }) {
   const base: React.CSSProperties = {
     position: "relative",
-    aspectRatio: "1 / 1",
+    // Slightly wider than tall: squares pushed the bottom row off small
+    // phones, and the main page has to fit without scrolling.
+    aspectRatio: "1 / 0.85",
     width: "100%",
     height: "100%",
     borderRadius: radius.card,

@@ -86,6 +86,14 @@ export interface FrameReward {
   unlocked: boolean; // level milestone reached
 }
 
+export interface PendingReward {
+  id: string;                 // claim key (also the frame/pack id)
+  kind: "frame" | "emotes" | "title";
+  name: string;               // i18n key part, resolved per kind
+  art: string | null;         // image to celebrate, null for titles
+  level: number | null;       // the milestone level, when there is one
+}
+
 export interface Account {
   id: string;
   name: string;
@@ -102,6 +110,7 @@ export interface Account {
   buzzer_rewards: BuzzerReward[]; // level-milestone skins + unlock/claim state
   avatar_frame: string | null; // chosen avatar-frame id, null = no frame
   frame_rewards: FrameReward[]; // level-milestone avatar frames + unlock state
+  pending_rewards: PendingReward[]; // earned but not yet celebrated (victory popup)
   reel_skin: string | null; // chosen reel theme id, null = default gold reel
   emote_packs: string[]; // emote packs unlocked (free + earned + bought)
   coins: number; // currency balance
@@ -780,6 +789,7 @@ export interface GameApi {
   setReelSkin: (skin: string | null) => void;
   setAvatarFrame: (frame: string | null) => void;
   claimBuzzerReward: (skin: string, equip: boolean) => void;
+  claimReward: (id: string, equip?: boolean) => void;
   buyItemCoins: (item: string) => void;
   ackCoinReward: (level: number) => void;
   rematch: () => void;
@@ -1012,6 +1022,7 @@ export function useGame(): GameApi {
     setReelSkin: (skin) => send({ type: "set_reel_skin", skin }),
     setAvatarFrame: (frame) => send({ type: "set_avatar_frame", frame }),
     claimBuzzerReward: (skin, equip) => send({ type: "claim_buzzer_reward", skin, equip }),
+    claimReward: (id, equip) => send({ type: "claim_reward", id, equip: !!equip }),
     buyItemCoins: (item) => send({ type: "buy_item_coins", item }),
     ackCoinReward: (level) => send({ type: "ack_coin_reward", level }),
     rematch: () => send({ type: "rematch" }),

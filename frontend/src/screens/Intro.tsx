@@ -11,7 +11,7 @@ import { colors, font, withAlpha } from "../theme/tokens";
 const INTRO_TEXT = "An Artnomad Game";
 const PER_CHAR_MS = 135;
 const MARK_MS = 420; // beat between the logo strike and the first letter
-const MARK_SIZE = "clamp(54px, 15vw, 78px)";
+const MARK_SIZE = "clamp(78px, 22vw, 112px)";
 
 export function Intro({ onDone }: { onDone: () => void }) {
   const { t } = useT();
@@ -116,15 +116,15 @@ export function Intro({ onDone }: { onDone: () => void }) {
         <div
           style={{
             height: started ? MARK_SIZE : 0,
-            marginBottom: started ? 22 : 0,
+            marginBottom: started ? 26 : 0,
           }}
         >
           <img
             src="/artnomad.webp"
             alt=""
             aria-hidden
-            width={78}
-            height={78}
+            width={112}
+            height={112}
             style={{
               display: "block",
               width: MARK_SIZE,

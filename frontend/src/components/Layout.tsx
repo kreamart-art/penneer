@@ -22,14 +22,13 @@ export function Screen({ children, top }: { children: React.ReactNode; top?: Rea
           width: "100%",
           maxWidth: 460,
           margin: "0 auto",
-          padding: "8px 18px 28px",
+          padding: "6px 16px calc(10px + env(safe-area-inset-bottom))",
           display: "flex",
           flexDirection: "column",
         }}
       >
         {children}
       </div>
-      <Footer />
     </div>
   );
 }
@@ -38,6 +37,9 @@ export function Card({ children, style, className }: { children: React.ReactNode
   return <div className={className} style={{ ...panelStyle, padding: 18, ...style }}>{children}</div>;
 }
 
+/** Studio credit line. Not in `Screen` any more: the main page has to fit on one
+ *  phone screen without scrolling, and the credit already lives in Instellingen
+ *  > Over. Kept as a component in case a screen wants it back. */
 export function Footer() {
   const { t } = useT();
   return (

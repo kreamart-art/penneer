@@ -18,7 +18,8 @@ from typing import Any, Optional
 
 from . import daily, missions, push, titles
 from .db import (get_db, LEVEL_BUZZERS, BUZZER_SKIN_IDS, LEVEL_FOR_BUZZER, LEVEL_FRAMES,
-                 LEVEL_FOR_FRAME, REEL_SKIN_IDS, EMOTE_IDS, PACK_FOR_EMOTE)
+                 LEVEL_FOR_FRAME, REEL_SKIN_IDS, EMOTE_IDS, EMOTE_PACKS,
+                 EMOTE_PACK_UNLOCK, PACK_FOR_EMOTE)
 from .models import PLAYER_COLORS
 
 BASE_URL = os.environ.get("PENNEER_BASE_URL", "https://penneer.artnomad.nl")
@@ -132,6 +133,29 @@ class AccountManager:
         owned = self.db.owned_items_of(user["id"])
         return {s for s in REEL_SKIN_IDS if s in owned}
 
+    def _earned_rewards(self, user_id: str, level: int, unlocked_titles: set) -> list[dict]:
+        """Everything this account EARNED by playing, as victory-popup cards.
+
+        Deliberately excludes anything bought (the shop already confirms a
+        purchase) and the free emote pack. `id` doubles as the claim key in
+        level_rewards, so each card pops exactly once.
+        """
+        out: list[dict] = []
+        for lvl, fid, key in LEVEL_FRAMES:
+            if level >= lvl:
+                out.append({"id": fid, "kind": "frame", "name": key, "art": f"/frames/{fid}.webp", "level": lvl})
+        owned = self.db.owned_items_of(user_id)
+        packs = self.db.emote_packs_of(user_id)
+        for pack in EMOTE_PACKS:
+            kind = EMOTE_PACK_UNLOCK.get(pack, ("", 0))[0]
+            if pack in packs and pack not in owned and kind not in ("free", "coins"):
+                out.append({"id": pack, "kind": "emotes", "name": pack,
+                            "art": f"/emotes/{EMOTE_PACKS[pack][0]}.webp", "level": None})
+        for key in titles.ALL_KEYS:
+            if key in unlocked_titles and key != "nieuweling":
+                out.append({"id": f"title:{key}", "kind": "title", "name": key, "art": None, "level": None})
+        return out
+
     async def _account_payload(self, ws: Any, user_id: str) -> dict:
         user = self.db.get_user(user_id)
         if user is None:
@@ -147,6 +171,15 @@ class AccountManager:
         chosen = user.get("title")
         if chosen not in unlocked:  # a title that is no longer valid falls back to rank
             chosen = None
+        # Victory popups for everything earned. On the very first payload after
+        # the migration we bank whatever is already unlocked, so long-time
+        # players are not walked through their entire history.
+        earned = self._earned_rewards(user_id, level["level"], unlocked)
+        if not user.get("rewards_seeded"):
+            self.db.seed_reward_claims(user_id, [e["id"] for e in earned])
+            claimed_rewards = {e["id"] for e in earned}
+        else:
+            claimed_rewards = self.db.level_rewards_claimed(user_id)
         return {
             "type": "account",
             "account": {
@@ -173,6 +206,7 @@ class AccountManager:
                      "unlocked": level["level"] >= lvl}
                     for lvl, fid, key in LEVEL_FRAMES
                 ],
+                "pending_rewards": [e for e in earned if e["id"] not in claimed_rewards],
                 "coins": coins,
                 "coins_pending": coins_pending,
                 "coins_pack_price": self.db.BUZZER_PACK_COINS,
@@ -230,6 +264,7 @@ class AccountManager:
             "set_reel_skin": self.set_reel_skin,
             "set_avatar_frame": self.set_avatar_frame,
             "claim_buzzer_reward": self.claim_buzzer_reward,
+            "claim_reward": self.claim_reward,
             "buy_item_coins": self.buy_item_coins,
             "ack_coin_reward": self.ack_coin_reward,
         }.get(mtype)
@@ -803,6 +838,26 @@ class AccountManager:
         if data.get("equip"):
             user = self.db.get_user(uid)
             self.db.set_buzzer_skin(uid, skin, self._allowed_buzzers(user, level))
+        await self._send(ws, await self._account_payload(ws, uid))
+
+    async def claim_reward(self, ws: Any, data: dict) -> None:
+        """Dismiss a non-buzzer victory card (frame, emote pack, title). Only ids
+        the account has actually earned are accepted, so a claim can never bank a
+        reward that was never unlocked."""
+        uid = self.user_of(ws)
+        if not uid:
+            return
+        rid = data.get("id")
+        if not isinstance(rid, str):
+            return
+        stats = self.db.stats_of(uid)
+        level = _level_of(stats)["level"]
+        unlocked = set(titles.unlocked_for(stats, self.db.badges_of(uid), level))
+        if rid not in {e["id"] for e in self._earned_rewards(uid, level, unlocked)}:
+            return
+        self.db.claim_level_reward(uid, rid)
+        if data.get("equip") and rid in LEVEL_FOR_FRAME:
+            self.db.set_avatar_frame(uid, rid, self._allowed_frames(level))
         await self._send(ws, await self._account_payload(ws, uid))
 
     async def buy_item_coins(self, ws: Any, data: dict) -> None:
