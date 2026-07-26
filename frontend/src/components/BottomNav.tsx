@@ -5,14 +5,14 @@
 // The icons are lucide placeholders on purpose — they get swapped for the
 // studio's own art later, so each item keeps its own slot and label and the art
 // only has to drop into `icon`.
-import { Bell, Home, ShoppingCart, Trophy, UserRound, Users } from "lucide-react";
+import { Home, ShoppingCart, Trophy, UserRound, Users } from "lucide-react";
 import { Avatar } from "./Avatar";
 import type { GameApi } from "../net/socket";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { colors, font, withAlpha } from "../theme/tokens";
 
-export type NavKey = "shop" | "leaderboard" | "home" | "friends" | "inbox" | "profile";
+export type NavKey = "shop" | "leaderboard" | "home" | "friends" | "profile";
 
 export function BottomNav({
   game,
@@ -25,22 +25,20 @@ export function BottomNav({
 }) {
   const { t } = useT();
   const account = game.state.account;
-  const inbox = (game.state.inbox.length || account?.inbox_count || 0) + (account?.dm_unread || 0);
 
   const items: { key: NavKey; label: string; icon: React.ReactNode; badge?: number }[] = [
-    { key: "shop", label: t("shopTitle"), icon: <ShoppingCart size={25} strokeWidth={2.1} /> },
-    { key: "leaderboard", label: t("leaderboardTab"), icon: <Trophy size={25} strokeWidth={2.1} /> },
-    { key: "home", label: t("navHome"), icon: <Home size={27} strokeWidth={2.2} /> },
-    { key: "friends", label: t("friendsTab"), icon: <Users size={25} strokeWidth={2.1} /> },
-    { key: "inbox", label: t("inboxTab"), icon: <Bell size={25} strokeWidth={2.1} />, badge: inbox },
+    { key: "shop", label: t("shopTitle"), icon: <ShoppingCart size={28} strokeWidth={2.1} /> },
+    { key: "leaderboard", label: t("leaderboardTab"), icon: <Trophy size={28} strokeWidth={2.1} /> },
+    { key: "home", label: t("navHome"), icon: <Home size={31} strokeWidth={2.2} /> },
+    { key: "friends", label: t("friendsTab"), icon: <Users size={28} strokeWidth={2.1} /> },
     // Profile's icon IS the player's avatar, so the bar shows who you are.
     {
       key: "profile",
       label: t("profile"),
       icon: account ? (
-        <Avatar name={account.name} color={account.color} size={26} userId={account.id} hasAvatar={account.has_avatar} avatarVer={account.avatar_ver} />
+        <Avatar name={account.name} color={account.color} size={31} userId={account.id} hasAvatar={account.has_avatar} avatarVer={account.avatar_ver} />
       ) : (
-        <UserRound size={25} strokeWidth={2.1} />
+        <UserRound size={28} strokeWidth={2.1} />
       ),
     },
   ];
@@ -52,7 +50,7 @@ export function BottomNav({
         bottom: 0,
         zIndex: 40,
         display: "grid",
-        gridTemplateColumns: "repeat(6, 1fr)",
+        gridTemplateColumns: "repeat(5, 1fr)",
         alignItems: "end",
         gap: 2,
         padding: "6px 8px",
@@ -80,7 +78,7 @@ export function BottomNav({
               alignItems: "center",
               // Home sits a touch higher and keeps a filled plate, the way the
               // middle action does in this genre.
-              padding: home ? "11px 4px" : "12px 4px",
+              padding: home ? "12px 4px" : "13px 4px",
               marginTop: home ? -10 : 0,
               borderRadius: 16,
               border: home ? `1px solid ${withAlpha(colors.gold, on ? 0.6 : 0.3)}` : "none",

@@ -48,9 +48,11 @@ const PACK_OF_PRESET: Record<string, string> = Object.fromEntries(
 // picker's static images cache-bust instead of serving the stale ones.
 const AVATAR_ART_VERSION = 9;
 
-export function Hub({ game, section, onBack, onShowShop, onChallenge }: { game: GameApi; section: HubSection; onBack: () => void; onShowShop: () => void; onChallenge: (userId: string) => void }) {
+export function Hub({ game, section, onBack, onShowShop, onOpenInbox, onChallenge }: { game: GameApi; section: HubSection; onBack: () => void; onShowShop: () => void; onOpenInbox: () => void; onChallenge: (userId: string) => void }) {
   const { t } = useT();
   const tab: Tab = section;
+  const inboxCount =
+    (game.state.inbox.length || game.state.account?.inbox_count || 0) + (game.state.account?.dm_unread || 0);
   const account = game.state.account;
   // Profielinstellingen + delen leven nu in de bovenbalk (naast de muziekknop),
   // dus hun state hangt op Hub-niveau i.p.v. in de ProfileTab.
@@ -121,6 +123,16 @@ export function Hub({ game, section, onBack, onShowShop, onChallenge }: { game: 
           <span style={{ flex: 1, fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>{t(section === "friends" ? "friendsTab" : section === "inbox" ? "inboxTab" : section === "leaderboard" ? "leaderboardTab" : "profile")}</span>
           {account && (
             <>
+              {section === "profile" && (
+                <button onClick={() => { sound.uiTap(); onOpenInbox(); }} aria-label={t("inboxTab")} title={t("inboxTab")} style={{ ...topIconBtn, position: "relative" }}>
+                  <Send size={19} />
+                  {inboxCount > 0 && (
+                    <span style={{ position: "absolute", top: -1, right: -3, minWidth: 16, height: 16, padding: "0 4px", borderRadius: 999, background: colors.gold, color: colors.bg0, fontFamily: font.ui, fontSize: 10, fontWeight: 800, lineHeight: "16px", textAlign: "center" }}>
+                      {inboxCount > 9 ? "9+" : inboxCount}
+                    </span>
+                  )}
+                </button>
+              )}
               <button onClick={shareCard} disabled={sharing} aria-label={t("shareProfile")} title={t("shareProfile")} style={{ ...topIconBtn, opacity: sharing ? 0.5 : 1 }}>
                 <Share2 size={18} />
               </button>

@@ -305,6 +305,7 @@ export default function App() {
           setShowHub(null);
           setShowShop(true);
         }}
+        onOpenInbox={() => setShowHub("inbox")}
         onChallenge={(userId) => {
           pendingChallenge.current = userId;
           game.createRoom(game.state.account?.name ?? "Speler");
@@ -333,6 +334,8 @@ export default function App() {
       ? null
       : showShop
       ? "shop"
+      : showHub === "inbox"
+      ? "profile"       // inbox is opened from the profile, so keep it lit
       : showHub
       ? showHub
       : "home";
