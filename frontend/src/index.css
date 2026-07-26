@@ -45,28 +45,43 @@ body,
   margin: 0;
 }
 
-/* THE background, boring on purpose. After three rounds of fixed-layer fixes
-   the iPhone still showed a band above the home indicator, so the fixed
-   pseudo-layers are GONE entirely: everything (gradient, corner glows, paper
-   grain) is painted as a plain multi-layer background on the root element.
-   The canvas paints every physical pixel (safe areas included), the gradient
-   tile is one large-viewport tall and anchored top, and past it everything is
-   the flat end colour #0e0922. Nothing is position:fixed, so there is no
-   compositor edge left that ANY engine can get wrong. On scroll the top glow
-   scrolls away naturally; deep content was already flat dark.
+/* THE background. Every attempt that sized the gradient against something other
+   than the visible screen ended in a visible edge, because the tile height and
+   the screen height kept disagreeing:
+     - `100lvh` is the browser's idea of the viewport, not always the painted
+       area on iOS -> the tile ended above the bottom.
+     - `100%` of the root box is only right while the document is exactly one
+       screen tall; anything that makes it taller (safe-area padding, a longer
+       screen) stretches the gradient past the bottom, so at the bottom of the
+       SCREEN you are somewhere in the middle of the gradient and it reads as
+       cut off.
+   A `position: fixed; inset: 0` layer is the one box that is the visible screen
+   BY DEFINITION, on every engine, at every document height, with viewport-fit
+   cover included. So that is where the gradient lives.
 
-   The main backdrop is a LINEAR gradient, not a radial. A radial reaches its
-   last colour stop on an ellipse, and with the previous shape that ellipse
-   crossed the centre line at 89% of the screen: below it the colour was flat,
-   above it still changing, and the eye reads that kink in the brightness curve
-   as a hard edge (a Mach band) even though every pixel under it is the same
-   colour. Pushing the stop to 100% only moved the band, it did not remove it.
-   A linear gradient makes the colour a plain function of y, so the stops can
-   ease out and land on #0e0922 exactly at the bottom edge, where it meets the
-   flat fallback colour with nothing left to step. The top-corner glows keep the
-   light-from-above feel; their alpha is low enough to never band. */
+   The old objection to a fixed layer (memory: it left a band above the home
+   indicator) was never the layer, it was the colour: that version darkened its
+   bottom edge with a vignette, so the strip below it did not match. Here the
+   gradient's last stop IS #0e0922, the same value as html's background-color
+   underneath, so any pixel the layer does not cover is already the exact colour
+   the layer would have painted. Nothing left to step.
+
+   The gradient itself is LINEAR, not radial. A radial reaches its last stop on
+   an ellipse, which crossed the centre line at 89% of the screen: flat below,
+   still changing above, and the eye reads that kink in the brightness curve as
+   a hard edge (a Mach band) even though every pixel under it is the same
+   colour. Linear makes the colour a plain function of y, so the eased stops
+   land on the end colour exactly at the bottom edge. */
 html {
   background-color: #0e0922;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
   background-image:
     radial-gradient(60% 38% at -8% 12%, rgba(122, 103, 255, 0.1), transparent 70%),
     radial-gradient(55% 34% at 108% 4%, rgba(255, 86, 74, 0.05), transparent 70%),
@@ -76,22 +91,7 @@ html {
     linear-gradient(180deg, #3b1c66 0%, #301a58 13%, #26154a 27%, #1d123f 42%, #171036 57%, #130d2e 72%, #100b28 87%, #0e0922 100%);
   background-repeat: no-repeat, no-repeat, no-repeat, repeat, no-repeat, no-repeat;
   background-position: top, top, top, top left, top, top;
-  /* Sized to the ROOT BOX, not to a viewport unit. lvh/vh are the browser's
-     idea of the viewport, which on iOS is not always the painted area: the tile
-     could end above the bottom of the screen, and past it you saw flat colour
-     instead of the fade. `100%` always spans exactly the element the background
-     is painted for, whatever iOS thinks the viewport is, and min-height below
-     guarantees that element is never shorter than the screen. */
   background-size: 100% 100%, 100% 100%, 100% 100%, 160px 160px, 100% 100%, 100% 100%;
-  min-height: 100vh;
-  min-height: 100dvh;
-}
-
-/* The intro is position:fixed, so on that screen the flow content is empty.
-   Without this the root box would collapse and the gradient with it. */
-body {
-  min-height: 100vh;
-  min-height: 100dvh;
 }
 
 body {
