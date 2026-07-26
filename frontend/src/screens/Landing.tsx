@@ -1,6 +1,6 @@
 // Landing — emblem, wordmark, tagline, name input, create / join, rules link.
 import { useEffect, useState } from "react";
-import { CalendarDays, Check, GraduationCap, Hash, HelpCircle, Play, Settings as SettingsIcon, ShoppingCart, Sparkles, Target, UserRound, X } from "lucide-react";
+import { Bot, CalendarDays, Check, GraduationCap, Hash, HelpCircle, Play, Settings as SettingsIcon, ShoppingCart, Sparkles, Target, UserRound, X } from "lucide-react";
 import { Logo } from "../components/Logo";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
@@ -48,6 +48,7 @@ export function Landing({
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [mode, setMode] = useState<"none" | "join">("none");
+  const [showFriends, setShowFriends] = useState(false);
   const account = game.state.account;
   const inboxCount = game.state.inbox.length || account?.inbox_count || 0;
 
@@ -144,10 +145,14 @@ export function Landing({
   useEffect(fetchMissions, [account?.id]);
   const missionsOpen = account && missions ? missions.filter((m) => !m.done).length : 0;
 
-  const create = () => {
+  // One entry point for both tiles: friends go through the choice sheet, the
+  // CPU tile creates straight away and flags the room so the lobby offers
+  // computer players there and nowhere else.
+  const createRoom = (cpu: boolean) => {
     sound.unlock();
     sound.uiTap();
-    game.createRoom(effectiveName);
+    setShowFriends(false);
+    game.createRoom(effectiveName, cpu);
   };
   const join = () => {
     sound.unlock();
@@ -380,18 +385,19 @@ export function Landing({
               <Tile
                 primary
                 disabled={!canCreate}
-                onClick={create}
+                onClick={() => {
+                  sound.uiTap();
+                  setShowFriends(true);
+                }}
                 icon={<Play size={34} strokeWidth={2.2} fill="currentColor" />}
-                label={t("createRoom")}
+                label={t("playFriends")}
               />
               <Tile
                 accent={colors.violet}
-                onClick={() => {
-                  sound.uiTap();
-                  setMode("join");
-                }}
-                icon={<Hash size={34} strokeWidth={2.2} />}
-                label={t("joinCta")}
+                disabled={!canCreate}
+                onClick={() => createRoom(true)}
+                icon={<Bot size={34} strokeWidth={2.2} />}
+                label={t("playCpu")}
               />
               <Tile
                 accent={colors.orange}
@@ -439,6 +445,13 @@ export function Landing({
         <NotifyNudge />
       </div>
 
+      {showFriends && (
+        <FriendsSheet
+          onCreate={() => createRoom(false)}
+          onJoin={() => { sound.uiTap(); setShowFriends(false); setMode("join"); }}
+          onClose={() => setShowFriends(false)}
+        />
+      )}
       {showPrompt && !account && <ProfilePrompt game={game} onClose={() => setShowPrompt(false)} />}
       {installVariant && !showPrompt && <InstallPrompt variant={installVariant} onClose={() => setInstallVariant(null)} />}
       {showMissions && (
@@ -450,6 +463,49 @@ export function Landing({
         />
       )}
     </Screen>
+  );
+}
+
+// "Speel met vrienden" asks the one question that tile leaves open: are you the
+// one starting the room, or joining someone else's? Both paths already existed;
+// this only puts the choice in front of them instead of on two separate tiles.
+function FriendsSheet({
+  onCreate,
+  onJoin,
+  onClose,
+}: {
+  onCreate: () => void;
+  onJoin: () => void;
+  onClose: () => void;
+}) {
+  const { t } = useT();
+  return (
+    <div
+      onClick={onClose}
+      style={{ position: "fixed", inset: 0, zIndex: 95, background: "rgba(6,3,18,.78)", backdropFilter: "blur(5px)", WebkitBackdropFilter: "blur(5px)", display: "grid", placeItems: "center", padding: 22 }}
+    >
+      <div
+        className="pop-in"
+        onClick={(e) => e.stopPropagation()}
+        style={{ position: "relative", width: "100%", maxWidth: 340, display: "flex", flexDirection: "column", gap: 12, padding: "24px 20px 18px", borderRadius: 24, background: "linear-gradient(180deg, #2a1c48, #160D30)", border: `1px solid ${withAlpha(colors.gold, 0.45)}`, boxShadow: "0 24px 80px rgba(0,0,0,.6)", textAlign: "center" }}
+      >
+        <button onClick={onClose} aria-label={t("back")} style={{ position: "absolute", top: 12, right: 12, background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 4 }}>
+          <X size={19} />
+        </button>
+        <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 19, color: colors.gold }}>{t("friendsSheetTitle")}</span>
+        <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13.5, color: colors.sub, lineHeight: 1.5 }}>{t("friendsSheetBody")}</p>
+        <Button variant="primary" full onClick={onCreate}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+            <Play size={17} strokeWidth={2.4} fill="currentColor" /> {t("createRoom")}
+          </span>
+        </Button>
+        <Button variant="ghost" full onClick={onJoin}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+            <Hash size={17} strokeWidth={2.4} /> {t("joinCta")}
+          </span>
+        </Button>
+      </div>
+    </div>
   );
 }
 

@@ -266,7 +266,9 @@ export function Lobby({ game }: { game: GameApi }) {
               </div>
             ))}
           </div>
-          {isHost && (
+          {/* Computer players only exist in a room started from "Tegen de
+              computer"; a room made to play with friends never offers them. */}
+          {isHost && room.settings.cpu_game && (
             <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 6 }}>
               <Button variant="ghost" onClick={() => { sound.uiTap(); game.addBot(); }}>
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>

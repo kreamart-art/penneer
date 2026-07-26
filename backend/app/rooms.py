@@ -323,12 +323,16 @@ class RoomManager:
         player.frame = get_db().get_avatar_frame(account["id"])
         player.reel_skin = get_db().get_reel_skin(account["id"])
 
-    async def create_room(self, ws: Any, name: str, account: Optional[dict] = None) -> tuple[Room, Player]:
+    async def create_room(self, ws: Any, name: str, account: Optional[dict] = None,
+                          cpu_game: bool = False) -> tuple[Room, Player]:
         code = self._gen_code()
         pid = _new_id()
         player = Player(id=pid, name=name.strip() or "Speler", color=PLAYER_COLORS[0], is_host=True)
         self._apply_account(player, account)
-        room = Room(code=code, host_id=pid, players=[player], settings=Settings())
+        # `cpu_game` is decided at creation and never changes: the lobby only
+        # offers "add a computer player" in a room that was started for it, so a
+        # normal room with friends never shows that button.
+        room = Room(code=code, host_id=pid, players=[player], settings=Settings(cpu_game=cpu_game))
         room.scores[pid] = 0
         self.rooms[code] = room
         self.pending[code] = {}
@@ -1089,6 +1093,8 @@ class RoomManager:
             return
         if room.host_id != player_id and not self._player_is_admin(player_id):
             return
+        if not room.settings.cpu_game and not self._player_is_admin(player_id):
+            return  # not a computer game: the client never offers this here
         if len(self.playing_players(room)) >= room.settings.max_players:
             await self.error(player_id, "De room is vol.")
             return

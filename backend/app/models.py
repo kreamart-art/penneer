@@ -95,6 +95,7 @@ class Settings:
     max_players: int = 8                        # lobby cap (excludes spectators)
     allow_spectators: bool = True              # admit late joiners as spectators
     lenient_spelling: bool = False             # soepele spelling (dyslexie): near-miss spellings count
+    cpu_game: bool = False                     # started from "tegen de computer": only then may the host add CPU players
 
     def public(self) -> dict:
         return {
@@ -105,6 +106,7 @@ class Settings:
             "max_players": self.max_players,
             "allow_spectators": self.allow_spectators,
             "lenient_spelling": self.lenient_spelling,
+            "cpu_game": self.cpu_game,
         }
 
 

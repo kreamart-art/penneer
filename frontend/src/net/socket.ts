@@ -218,6 +218,7 @@ export interface Settings {
   max_players: number;
   allow_spectators: boolean;
   lenient_spelling: boolean; // soepele spelling (dyslexie): near-miss spellings count
+  cpu_game: boolean; // started from "tegen de computer": only then may the host add CPU players
 }
 
 export interface AnswerView {
@@ -718,7 +719,7 @@ export interface GameApi {
   send: (msg: Record<string, unknown>) => void;
   clearError: () => void;
   // intents
-  createRoom: (name: string) => void;
+  createRoom: (name: string, cpu?: boolean) => void;
   joinRoom: (code: string, name: string) => void;
   updateSettings: (s: Partial<Settings>) => void;
   startGame: () => void;
@@ -901,7 +902,7 @@ export function useGame(): GameApi {
     isSpectator,
     send,
     clearError: () => dispatch({ type: "clearError" }),
-    createRoom: (name) => send({ type: "create_room", name }),
+    createRoom: (name, cpu) => send({ type: "create_room", name, cpu: !!cpu }),
     joinRoom: (code, name) => send({ type: "join_room", code, name }),
     updateSettings: (s) => send({ type: "update_settings", ...s }),
     startGame: () => send({ type: "start_game" }),

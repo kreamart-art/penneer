@@ -35,7 +35,8 @@ async def ws_endpoint(ws: WebSocket) -> None:
 
             # --- pre-identity messages ---
             if mtype == "create_room":
-                _, player = await manager.create_room(ws, data.get("name", ""), _account_of(ws))
+                _, player = await manager.create_room(ws, data.get("name", ""), _account_of(ws),
+                                                      cpu_game=bool(data.get("cpu")))
                 player_id = player.id
                 continue
             if mtype == "join_room":
