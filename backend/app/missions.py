@@ -36,6 +36,7 @@ POOL: dict[str, tuple[int, int, int]] = {
     # --- sociaal --------------------------------------------------------
     "chat_msg": (1, 30, 10),       # stuur een bericht in de chat
     "chat_emote": (1, 30, 10),     # stuur een emote in de chat
+    "duel_play": (1, 40, 15),      # speel een duel uit
 }
 
 # Which bucket a mission belongs to, and how many of a bucket may land on one
@@ -48,7 +49,7 @@ GROUP: dict[str, str] = {
         "hard_game", "score80",
     )},
     **{k: "daily" for k in ("daily_play", "daily_full", "daily30", "daily_perfect")},
-    **{k: "social" for k in ("chat_msg", "chat_emote")},
+    **{k: "social" for k in ("chat_msg", "chat_emote", "duel_play")},
 }
 # Missions that measure the same thing at two levels. Only one of a family may
 # land on a day, otherwise the bigger one hands you the smaller one for free.

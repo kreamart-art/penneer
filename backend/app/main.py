@@ -16,8 +16,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import ai_referee, daily, game, missions, paypal, push
+from . import ai_referee, daily, duel, game, missions, paypal, push
 from .db import AVATAR_MAX_BYTES, get_db
+from .social import accounts
 from .ws import manager, router as ws_router
 
 app = FastAPI(title="Pen Neer")
@@ -36,6 +37,16 @@ app.include_router(ws_router)
 @app.get("/healthz")
 async def healthz() -> dict:
     return {"ok": True}
+
+
+@app.on_event("startup")
+async def _seed_rarity_table() -> None:
+    """Cold start for Duel: fold the stored dagronde answers into the rarity
+    table once, so the very first duel is judged against real player answers
+    instead of an empty table."""
+    n = get_db().answer_seed_from_daily()
+    if n:
+        print(f"[penneer] zeldzaamheidstabel gevuld met {n} dagronde-antwoorden", flush=True)
 
 
 # ---- avatars (HTTP: binary in/out is awkward over the game WebSocket) -------
@@ -411,6 +422,376 @@ async def daily_result(request: Request) -> JSONResponse:
     approved = await _daily_approvals(db, day, stored, len_used, ask_ai=False)
     _, breakdown = daily.score_answers(day, stored, lenient=len_used, approved=approved)
     return JSONResponse(_daily_result_payload(db, uid, day, int(entry["score"]), breakdown, True, int(entry["time_ms"])))
+
+
+# ---- duel (1v1 om beurten, gescoord op zeldzaamheid) -------------------------
+# Zie duel.py voor de spelregels. Hier zit de opslag-, scoring- en meldingslijm:
+# rondes worden één voor één GESERVEERD (de klok loopt server-side), een antwoord
+# wordt meteen beoordeeld tegen de gedeelde woordcache en de zeldzaamheidstabel,
+# en zodra beide spelers klaar zijn valt de uitslag met XP en een melding.
+
+
+def _duel_user_card(db, user_id: str) -> dict:
+    u = db.get_user(user_id) or {}
+    return {
+        "id": user_id,
+        "name": u.get("name") or "?",
+        "color": u.get("color") or "#FFC23D",
+        "has_avatar": bool(u.get("has_avatar")),
+        "avatar_ver": u.get("avatar_ver", 0),
+    }
+
+
+async def _duel_judge(db, category: str, letter: str, word: str, lenient: bool) -> tuple[bool, str]:
+    """(telt mee, canonieke sleutel) voor één antwoord.
+
+    Een woord dat de curatielijst mist gaat één keer langs de AI-scheids en
+    belandt in dezelfde gedeelde verdict-cache als de dagronde, zodat hetzelfde
+    woord voor iedereen hetzelfde oordeel krijgt en de AI nooit twee keer over
+    hetzelfde woord hoeft na te denken.
+    """
+    valid, in_list = game.classify(word, letter, category)
+    if not valid:
+        return False, ""
+    canon = game.list_canonical(word, category, lenient=lenient) or game.normalize(word)
+    if lenient and not in_list:
+        in_list = game.list_canonical(word, category, lenient=True) is not None
+    if in_list:
+        return True, canon
+    key = (category, game.normalize(word))
+    cached = db.word_verdicts([key], lenient)
+    if key in cached:
+        return bool(cached[key]), canon
+    if ai_referee.available():
+        verdicts = await ai_referee.judge(letter, [(category, word)], lenient=lenient)
+        verdict = verdicts[0] if verdicts else None
+        if verdict is not None:
+            db.set_word_verdict(category, key[1], lenient, bool(verdict))
+            return bool(verdict), canon
+    return False, canon
+
+
+def _duel_payload(db, uid: str, d: dict) -> dict:
+    """The duel as THIS player may see it. The opponent's words stay hidden
+    until the duel is settled, otherwise playing second would be free."""
+    rounds = d["rounds"]
+    opponent_id = d["b"] if d["a"] == uid else d["a"]
+    mine = {int(r["idx"]): r for r in db.duel_answers_of(d["id"], uid)}
+    theirs = {int(r["idx"]): r for r in db.duel_answers_of(d["id"], opponent_id)}
+    done = d["status"] != "open"
+    my_done = sum(1 for r in mine.values() if r["answered_at"] is not None)
+    their_done = sum(1 for r in theirs.values() if r["answered_at"] is not None)
+    my_score = sum(int(r["points"]) for r in mine.values())
+    their_score = sum(int(r["points"]) for r in theirs.values())
+
+    detail = []
+    for i, rnd in enumerate(rounds):
+        m, o = mine.get(i), theirs.get(i)
+        detail.append({
+            "idx": i,
+            "letter": rnd["letter"],
+            "category": rnd["category"],
+            "mine": None if not m or m["answered_at"] is None else
+                    {"word": m["word"], "tier": m["tier"], "points": int(m["points"])},
+            # Redacted while the duel is live: the second player must not be
+            # able to read the first player's answers.
+            "theirs": None if not done or not o or o["answered_at"] is None else
+                      {"word": o["word"], "tier": o["tier"], "points": int(o["points"])},
+        })
+
+    # The round this player is on: the first one they have not answered.
+    current = None
+    if not done and my_done < len(rounds):
+        idx = my_done
+        rnd = rounds[idx]
+        served = mine.get(idx, {}).get("served_at")
+        # What the player SEES is the plain 15 seconds. ROUND_GRACE_S is only a
+        # server-side tolerance for a slow submit, never extra thinking time.
+        left = duel.ROUND_S
+        if served is not None:
+            left = max(0.0, duel.ROUND_S - (time.time() - float(served)))
+        current = {"idx": idx, "letter": rnd["letter"], "category": rnd["category"],
+                   "seconds": duel.ROUND_S, "seconds_left": round(left, 1), "served": served is not None}
+
+    winner = None
+    if done:
+        winner = "draw" if not d["winner"] else ("me" if d["winner"] == uid else "them")
+    return {
+        "id": d["id"],
+        "status": d["status"],
+        "i_challenged": d["a"] == uid,
+        "opponent": _duel_user_card(db, opponent_id),
+        "rounds": len(rounds),
+        "my_done": my_done,
+        "their_done": their_done,
+        "my_score": my_score,
+        "their_score": their_score if done else None,
+        "current": current,
+        "detail": detail,
+        "winner": winner,
+        "created_at": d["created_at"],
+        "expires_at": d["expires_at"],
+    }
+
+
+async def _duel_settle(db, d: dict) -> None:
+    """Both players finished (or the clock ran out): score it, pay out, notify.
+
+    The rarity table is only fed HERE, never at answer time, so the two players
+    of one duel are judged against the same snapshot and playing first is not
+    an advantage.
+    """
+    a, b = d["a"], d["b"]
+    ans_a = db.duel_answers_of(d["id"], a)
+    ans_b = db.duel_answers_of(d["id"], b)
+    score_a = sum(int(r["points"]) for r in ans_a)
+    score_b = sum(int(r["points"]) for r in ans_b)
+    res = duel.outcome(score_a, score_b)
+    winner = a if res == "a" else b if res == "b" else None
+    db.duel_finish(d["id"], winner)
+
+    for rows in (ans_a, ans_b):
+        for r in rows:
+            if r["answered_at"] is None or not r["word"]:
+                continue
+            rnd = d["rounds"][int(r["idx"])]
+            db.answer_bump(rnd["category"], rnd["letter"], game.normalize(r["word"]))
+
+    # XP, but only for the first few duels of a day: a second XP tap must not
+    # make the level rewards at 20/30/50 cheaper than they are now.
+    since = time.time() - 24 * 3600
+    for uid, mine_won in ((a, res == "a"), (b, res == "b")):
+        if db.duel_finished_today_count(uid, since) > duel.XP_DUELS_PER_DAY:
+            continue
+        db.add_bonus_xp(uid, duel.xp_for("draw" if res == "draw" else "win" if mine_won else "loss"))
+
+    for uid, other in ((a, b), (b, a)):
+        name = (db.get_user(other) or {}).get("name") or "?"
+        mine = score_a if uid == a else score_b
+        opp = score_b if uid == a else score_a
+        verdict = "Gelijkspel" if res == "draw" else ("Je wint" if mine > opp else "Je verliest")
+        await push.notify(uid, "Pen Neer", f"Duel tegen {name} is klaar. {verdict}: {mine} - {opp}.", tag="duel")
+        await accounts.push_account(uid)
+
+
+async def _duel_sweep(db) -> None:
+    """Settle duels past their 48 hours: whoever played wins by walkover."""
+    now = time.time()
+    for d in db.duel_expired(now):
+        try:
+            d["rounds"] = json.loads(d["rounds"])
+        except Exception:
+            d["rounds"] = []
+        played_a = any(r["answered_at"] is not None for r in db.duel_answers_of(d["id"], d["a"]))
+        played_b = any(r["answered_at"] is not None for r in db.duel_answers_of(d["id"], d["b"]))
+        if played_a == played_b:
+            # Both or neither missed the deadline: settle on the points that
+            # exist (nobody played -> a 0-0 draw, which we just record as done).
+            await _duel_settle(db, d)
+        else:
+            db.duel_finish(d["id"], d["a"] if played_a else d["b"])
+            uid = d["a"] if played_a else d["b"]
+            since = now - 24 * 3600
+            if db.duel_finished_today_count(uid, since) <= duel.XP_DUELS_PER_DAY:
+                db.add_bonus_xp(uid, duel.xp_for("win"))
+            for r in db.duel_answers_of(d["id"], uid):
+                if r["answered_at"] is not None and r["word"]:
+                    rnd = d["rounds"][int(r["idx"])]
+                    db.answer_bump(rnd["category"], rnd["letter"], game.normalize(r["word"]))
+
+
+@app.get("/api/duel/list")
+async def duel_list(request: Request) -> JSONResponse:
+    """My duels (newest first) plus the friends I can challenge."""
+    db = get_db()
+    uid = db.auth(_bearer(request))
+    if not uid:
+        return JSONResponse({"error": "auth"}, status_code=401)
+    await _duel_sweep(db)
+    duels = []
+    for row in db.duels_of(uid, 20):
+        d = dict(row)
+        try:
+            d["rounds"] = json.loads(d["rounds"])
+        except Exception:
+            d["rounds"] = []
+        duels.append(_duel_payload(db, uid, d))
+    friends = [f for f in db.friends_of(uid) if f["status"] == "accepted"]
+    return JSONResponse({
+        "duels": duels,
+        "friends": friends,
+        "pending": db.duel_open_count(uid),
+        "record": db.duel_record(uid),
+        "rounds": duel.ROUNDS,
+        "round_seconds": duel.ROUND_S,
+    })
+
+
+@app.get("/api/duel/info")
+async def duel_info(request: Request) -> JSONResponse:
+    """Tiny poll for the landing tile: how many duels wait for you."""
+    db = get_db()
+    uid = db.auth(_bearer(request))
+    return JSONResponse({"pending": db.duel_open_count(uid) if uid else 0})
+
+
+@app.post("/api/duel/start")
+async def duel_start(request: Request) -> JSONResponse:
+    """Challenge a friend. Both get the same five rounds; the letters follow
+    the pair's own alphabet rule so a rematch never repeats them."""
+    db = get_db()
+    uid = db.auth(_bearer(request))
+    if not uid:
+        return JSONResponse({"error": "auth"}, status_code=401)
+    body = await request.json()
+    other = str((body or {}).get("opponent") or "")
+    if not other or other == uid:
+        return JSONResponse({"error": "opponent"}, status_code=400)
+    if not db.is_friend(uid, other) or db.is_blocked(uid, other):
+        return JSONResponse({"error": "not_friends"}, status_code=403)
+    # One live duel per pair keeps the list readable and stops challenge spam.
+    live = db.duel_open_with(uid, other)
+    if live:
+        return JSONResponse({"error": "already_open", "id": live}, status_code=409)
+    used, combos = db.duel_pair_state(uid, other)
+    rounds, new_used, new_combos = duel.pick_rounds(used, combos)
+    did = db.duel_create(uid, other, rounds, time.time() + duel.EXPIRY_H * 3600)
+    db.duel_pair_set(uid, other, new_used, new_combos)
+    name = (db.get_user(uid) or {}).get("name") or "?"
+    await push.notify(other, "Pen Neer", f"{name} daagt je uit voor een duel.", tag="duel")
+    d = db.duel_get(did)
+    return JSONResponse(_duel_payload(db, uid, d))
+
+
+@app.get("/api/duel/{duel_id}")
+async def duel_get(duel_id: str, request: Request) -> JSONResponse:
+    db = get_db()
+    uid = db.auth(_bearer(request))
+    if not uid:
+        return JSONResponse({"error": "auth"}, status_code=401)
+    await _duel_sweep(db)
+    d = db.duel_get(duel_id)
+    if not d or uid not in (d["a"], d["b"]):
+        return JSONResponse({"error": "not_found"}, status_code=404)
+    return JSONResponse(_duel_payload(db, uid, d))
+
+
+@app.post("/api/duel/{duel_id}/serve")
+async def duel_serve(duel_id: str, request: Request) -> JSONResponse:
+    """Hand out the round this player is on and start ITS clock server-side, so
+    closing the app or reloading never buys extra thinking time."""
+    db = get_db()
+    uid = db.auth(_bearer(request))
+    if not uid:
+        return JSONResponse({"error": "auth"}, status_code=401)
+    d = db.duel_get(duel_id)
+    if not d or uid not in (d["a"], d["b"]):
+        return JSONResponse({"error": "not_found"}, status_code=404)
+    if d["status"] != "open":
+        return JSONResponse({"error": "closed"}, status_code=409)
+    rows = db.duel_answers_of(duel_id, uid)
+    idx = sum(1 for r in rows if r["answered_at"] is not None)
+    if idx >= len(d["rounds"]):
+        return JSONResponse({"error": "done"}, status_code=409)
+    served = db.duel_serve_round(duel_id, uid, idx, time.time())
+    rnd = d["rounds"][idx]
+    left = max(0.0, duel.ROUND_S - (time.time() - served))
+    return JSONResponse({
+        "idx": idx,
+        "letter": rnd["letter"],
+        "category": rnd["category"],
+        "seconds": duel.ROUND_S,
+        "seconds_left": round(left, 1),
+        "total": len(d["rounds"]),
+    })
+
+
+@app.post("/api/duel/{duel_id}/answer")
+async def duel_answer(duel_id: str, request: Request) -> JSONResponse:
+    """Score one round. Rarity is read from the table as it stands right now;
+    this answer only lands in the table once the whole duel is settled."""
+    db = get_db()
+    uid = db.auth(_bearer(request))
+    if not uid:
+        return JSONResponse({"error": "auth"}, status_code=401)
+    d = db.duel_get(duel_id)
+    if not d or uid not in (d["a"], d["b"]):
+        return JSONResponse({"error": "not_found"}, status_code=404)
+    if d["status"] != "open":
+        return JSONResponse({"error": "closed"}, status_code=409)
+    body = await request.json()
+    idx = int((body or {}).get("idx", -1))
+    word = str((body or {}).get("word") or "").strip()[:40]
+    if idx < 0 or idx >= len(d["rounds"]):
+        return JSONResponse({"error": "idx"}, status_code=400)
+    rows = {int(r["idx"]): r for r in db.duel_answers_of(duel_id, uid)}
+    row = rows.get(idx)
+    if row is None:
+        return JSONResponse({"error": "not_served"}, status_code=409)
+    if row["answered_at"] is not None:
+        return JSONResponse({"error": "already"}, status_code=409)
+
+    rnd = d["rounds"][idx]
+    now = time.time()
+    late = now - float(row["served_at"]) > duel.ROUND_S + duel.ROUND_GRACE_S
+    lenient = db.lenient_of(uid)
+    counts_for_score = False
+    canon = ""
+    if word and not late:
+        counts_for_score, canon = await _duel_judge(db, rnd["category"], rnd["letter"], word, lenient)
+    if counts_for_score:
+        freq, total = db.answer_freq(rnd["category"], rnd["letter"])
+        tier, points, share = duel.tier_for(freq.get(canon, 0), total)
+    else:
+        tier, points, share = ("te_laat" if late and word else "mis"), 0, 0.0
+    db.duel_answer_set(duel_id, uid, idx, word, points, tier, share, now)
+
+    # Last round: if the opponent already finished, the duel settles right here.
+    my_done = sum(1 for r in db.duel_answers_of(duel_id, uid) if r["answered_at"] is not None)
+    finished = False
+    if my_done >= len(d["rounds"]):
+        other = d["b"] if d["a"] == uid else d["a"]
+        their_done = sum(1 for r in db.duel_answers_of(duel_id, other) if r["answered_at"] is not None)
+        if their_done >= len(d["rounds"]):
+            await _duel_settle(db, d)
+            finished = True
+        else:
+            name = (db.get_user(uid) or {}).get("name") or "?"
+            await push.notify(other, "Pen Neer", f"{name} heeft gespeeld. Jij bent aan de beurt.", tag="duel")
+        await accounts.push_missions(uid, missions.bump_all(db, uid, daily.today(), (("duel_play", 1),)))
+    d = db.duel_get(duel_id)
+    return JSONResponse({
+        "tier": tier, "points": points, "share": round(share, 4),
+        "word": word, "finished": finished, "duel": _duel_payload(db, uid, d),
+    })
+
+
+@app.post("/api/duel/{duel_id}/rematch")
+async def duel_rematch(duel_id: str, request: Request) -> JSONResponse:
+    """Play the same opponent again. Fresh letters: the pair's alphabet rule
+    means a rematch draws from what they have NOT had yet."""
+    db = get_db()
+    uid = db.auth(_bearer(request))
+    if not uid:
+        return JSONResponse({"error": "auth"}, status_code=401)
+    d = db.duel_get(duel_id)
+    if not d or uid not in (d["a"], d["b"]):
+        return JSONResponse({"error": "not_found"}, status_code=404)
+    if d["status"] == "open":
+        return JSONResponse({"error": "still_open"}, status_code=409)
+    other = d["b"] if d["a"] == uid else d["a"]
+    if not db.is_friend(uid, other) or db.is_blocked(uid, other):
+        return JSONResponse({"error": "not_friends"}, status_code=403)
+    live = db.duel_open_with(uid, other)
+    if live:
+        return JSONResponse({"error": "already_open", "id": live}, status_code=409)
+    used, combos = db.duel_pair_state(uid, other)
+    rounds, new_used, new_combos = duel.pick_rounds(used, combos)
+    did = db.duel_create(uid, other, rounds, time.time() + duel.EXPIRY_H * 3600)
+    db.duel_pair_set(uid, other, new_used, new_combos)
+    name = (db.get_user(uid) or {}).get("name") or "?"
+    await push.notify(other, "Pen Neer", f"{name} wil een herkansing.", tag="duel")
+    return JSONResponse(_duel_payload(db, uid, db.duel_get(did)))
 
 
 # ---- dagelijkse missies ------------------------------------------------------

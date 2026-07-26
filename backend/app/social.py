@@ -893,6 +893,10 @@ class AccountManager:
         (e.g. after an out-of-game badge grant)."""
         await self._push(user_id, await self._account_payload(None, user_id))
 
+    async def push_account(self, user_id: str) -> None:
+        """Public alias: HTTP routes (duel XP) refresh a live client this way."""
+        await self._push_account(user_id)
+
     async def _notify_friends_presence(self, user_id: str) -> None:
         """Tell online friends this user's presence changed."""
         for f in self.db.friends_of(user_id):

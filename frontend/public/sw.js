@@ -10,7 +10,7 @@
 //    briefly-stale shell can still boot from cache instead of going black.
 //  - Every activation purges ALL old caches (drops any poisoned shell).
 // Never touches the WebSocket or the API.
-const CACHE = "penneer-v12"; // v12: artnomad.webp was overwritten (lossless, black under alpha)
+const CACHE = "penneer-v13"; // v13: Duel-scherm erbij (nieuwe route + assets)
 
 self.addEventListener("install", () => {
   self.skipWaiting();

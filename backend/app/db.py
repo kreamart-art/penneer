@@ -12,6 +12,7 @@ comes from PENNEER_DB_PATH (prod: a Coolify persistent volume, e.g.
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import re
 import secrets
@@ -247,6 +248,56 @@ CREATE TABLE IF NOT EXISTS daily_retries (
     used_at REAL NOT NULL,
     PRIMARY KEY (day, user_id)
 );
+-- Duel: 1v1 om beurten. `rounds` is de vaste vragenlijst (JSON
+-- [{letter, category}]), identiek voor beide spelers. a is de uitdager.
+CREATE TABLE IF NOT EXISTS duels (
+    id TEXT PRIMARY KEY,
+    a TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    b TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    rounds TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'open',   -- open | done | expired
+    winner TEXT,                           -- user_id, of NULL bij gelijkspel/verlopen
+    created_at REAL NOT NULL,
+    expires_at REAL NOT NULL,
+    finished_at REAL
+);
+-- Eén rij per speler per ronde. De rij ontstaat zodra de ronde geSERVEERD
+-- wordt (served_at), zodat de klok server-side loopt en niet in de telefoon.
+CREATE TABLE IF NOT EXISTS duel_answers (
+    duel_id TEXT NOT NULL REFERENCES duels(id) ON DELETE CASCADE,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    idx INTEGER NOT NULL,
+    word TEXT NOT NULL DEFAULT '',
+    points INTEGER NOT NULL DEFAULT 0,
+    tier TEXT NOT NULL DEFAULT '',
+    share REAL NOT NULL DEFAULT 0,
+    served_at REAL NOT NULL,
+    answered_at REAL,
+    PRIMARY KEY (duel_id, user_id, idx)
+);
+-- Alfabetregel PER KOPPEL: welke letters dit tweetal al gehad heeft, en de
+-- categorie|letter-combinaties van hun vorige duel. Een herkansing put dus uit
+-- wat er over is van het alfabet, en na een reset komt niet meteen dezelfde
+-- categorie met dezelfde letter terug.
+CREATE TABLE IF NOT EXISTS duel_pairs (
+    a TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    b TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    used_letters TEXT NOT NULL DEFAULT '',
+    last_combos TEXT NOT NULL DEFAULT '[]',
+    PRIMARY KEY (a, b)                     -- canoniek: a < b
+);
+-- Hoe vaak elk antwoord gegeven is per categorie+letter. DIT is de motor van
+-- de zeldzaamheidsscore. Begint leeg (koude start) en wordt gevuld door elk
+-- afgerond duel; hoe meer er gespeeld wordt, hoe scherper het spel scoort.
+CREATE TABLE IF NOT EXISTS answer_freq (
+    category TEXT NOT NULL,
+    letter TEXT NOT NULL,
+    word TEXT NOT NULL,                    -- genormaliseerde sleutel
+    n INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (category, letter, word)
+);
+CREATE INDEX IF NOT EXISTS idx_duels_a ON duels(a, status);
+CREATE INDEX IF NOT EXISTS idx_duels_b ON duels(b, status);
 CREATE INDEX IF NOT EXISTS idx_game_players_user ON game_players(user_id);
 CREATE INDEX IF NOT EXISTS idx_games_finished ON games(finished_at);
 CREATE INDEX IF NOT EXISTS idx_invites_to ON invites(to_user, status);
@@ -1026,6 +1077,11 @@ class Database:
                 self._exec("UPDATE users SET bonus_xp = bonus_xp + ?, coins = coins + ? WHERE id=?", (reward, coins, user_id))
         return bool(done)
 
+    def add_bonus_xp(self, user_id: str, xp: int) -> None:
+        """Bonus XP pot (missions, duels). _xp_of folds it into the level."""
+        if xp > 0:
+            self._exec("UPDATE users SET bonus_xp = bonus_xp + ? WHERE id=?", (xp, user_id))
+
     def mission_state(self, user_id: str, day: str) -> dict:
         with self._lock:
             rows = self._q(
@@ -1280,6 +1336,214 @@ class Database:
     def daily_players_count(self, day: str) -> int:
         with self._lock:
             return int(self._q("SELECT COUNT(*) AS n FROM daily_scores WHERE day=?", (day,))[0]["n"])
+
+    # ---- duel (1v1 om beurten, gescoord op zeldzaamheid) --------------------
+
+    def duel_pair_state(self, u1: str, u2: str) -> tuple[list[str], list[str]]:
+        """(used_letters, last_combos) voor dit koppel; leeg als ze nog nooit
+        tegen elkaar speelden."""
+        a, b = self._pair(u1, u2)
+        with self._lock:
+            rows = self._q("SELECT used_letters, last_combos FROM duel_pairs WHERE a=? AND b=?", (a, b))
+        if not rows:
+            return [], []
+        try:
+            combos = json.loads(rows[0]["last_combos"] or "[]")
+        except Exception:
+            combos = []
+        return list(rows[0]["used_letters"] or ""), [str(c) for c in combos]
+
+    def duel_pair_set(self, u1: str, u2: str, used_letters: list[str], last_combos: list[str]) -> None:
+        a, b = self._pair(u1, u2)
+        self._exec(
+            "INSERT INTO duel_pairs (a, b, used_letters, last_combos) VALUES (?,?,?,?) "
+            "ON CONFLICT(a, b) DO UPDATE SET used_letters=excluded.used_letters, last_combos=excluded.last_combos",
+            (a, b, "".join(used_letters), json.dumps(last_combos)),
+        )
+
+    def duel_create(self, challenger: str, opponent: str, rounds: list[dict], expires_at: float) -> str:
+        did = _new_id()
+        self._exec(
+            "INSERT INTO duels (id, a, b, rounds, created_at, expires_at) VALUES (?,?,?,?,?,?)",
+            (did, challenger, opponent, json.dumps(rounds), time.time(), expires_at),
+        )
+        return did
+
+    def duel_get(self, duel_id: str) -> Optional[dict]:
+        with self._lock:
+            rows = self._q("SELECT * FROM duels WHERE id=?", (duel_id,))
+        if not rows:
+            return None
+        d = dict(rows[0])
+        try:
+            d["rounds"] = json.loads(d["rounds"])
+        except Exception:
+            d["rounds"] = []
+        return d
+
+    def duel_open_count(self, user_id: str) -> int:
+        """Live duels waar HET AAN JOU is: je bent nog niet door je rondes heen.
+
+        Tellen op ANTWOORDEN, niet op rijen: een ronde die alleen geserveerd is
+        (klok loopt, nog niks ingetypt) is nog steeds jouw beurt."""
+        with self._lock:
+            return int(self._q(
+                """
+                SELECT COUNT(*) AS n FROM duels d
+                WHERE d.status='open' AND (d.a=? OR d.b=?)
+                  AND (SELECT COUNT(*) FROM duel_answers x
+                       WHERE x.duel_id=d.id AND x.user_id=? AND x.answered_at IS NOT NULL)
+                      < json_array_length(d.rounds)
+                """,
+                (user_id, user_id, user_id),
+            )[0]["n"])
+
+    def duel_open_with(self, u1: str, u2: str) -> Optional[str]:
+        """The id of a live duel between these two, or None. One at a time keeps
+        the list readable and stops challenge spam."""
+        with self._lock:
+            rows = self._q(
+                "SELECT id FROM duels WHERE status='open' AND ((a=? AND b=?) OR (a=? AND b=?)) LIMIT 1",
+                (u1, u2, u2, u1),
+            )
+        return rows[0]["id"] if rows else None
+
+    def duels_of(self, user_id: str, limit: int = 20) -> list[dict]:
+        """Duels van deze speler, nieuwste eerst, met de tegenstander erbij."""
+        with self._lock:
+            rows = self._q(
+                """
+                SELECT d.*,
+                       u.id AS opp_id, u.name AS opp_name, u.color AS opp_color,
+                       u.avatar_ver AS opp_ver, u.avatar IS NOT NULL AS opp_has_avatar,
+                       (SELECT COUNT(*) FROM duel_answers x WHERE x.duel_id=d.id AND x.user_id=? AND x.answered_at IS NOT NULL) AS mine,
+                       (SELECT COUNT(*) FROM duel_answers x WHERE x.duel_id=d.id AND x.user_id<>? AND x.answered_at IS NOT NULL) AS theirs,
+                       (SELECT COALESCE(SUM(points),0) FROM duel_answers x WHERE x.duel_id=d.id AND x.user_id=?) AS my_score,
+                       (SELECT COALESCE(SUM(points),0) FROM duel_answers x WHERE x.duel_id=d.id AND x.user_id<>?) AS their_score
+                FROM duels d
+                JOIN users u ON u.id = CASE WHEN d.a=? THEN d.b ELSE d.a END
+                WHERE d.a=? OR d.b=?
+                ORDER BY d.created_at DESC LIMIT ?
+                """,
+                (user_id, user_id, user_id, user_id, user_id, user_id, user_id, limit),
+            )
+        return [dict(r) for r in rows]
+
+    def duel_answers_of(self, duel_id: str, user_id: str) -> list[dict]:
+        with self._lock:
+            rows = self._q(
+                "SELECT * FROM duel_answers WHERE duel_id=? AND user_id=? ORDER BY idx",
+                (duel_id, user_id),
+            )
+        return [dict(r) for r in rows]
+
+    def duel_serve_round(self, duel_id: str, user_id: str, idx: int, now: float) -> float:
+        """Stamp (or re-read) when this round was handed out. The clock lives
+        here, not in the phone, so a reload cannot buy extra seconds."""
+        with self._lock:
+            self._exec(
+                "INSERT OR IGNORE INTO duel_answers (duel_id, user_id, idx, served_at) VALUES (?,?,?,?)",
+                (duel_id, user_id, idx, now),
+            )
+            rows = self._q(
+                "SELECT served_at FROM duel_answers WHERE duel_id=? AND user_id=? AND idx=?",
+                (duel_id, user_id, idx),
+            )
+        return float(rows[0]["served_at"])
+
+    def duel_answer_set(self, duel_id: str, user_id: str, idx: int, word: str,
+                        points: int, tier: str, share: float, now: float) -> bool:
+        """Record one answer. False when that round was already answered."""
+        with self._lock:
+            rows = self._q(
+                "SELECT answered_at FROM duel_answers WHERE duel_id=? AND user_id=? AND idx=?",
+                (duel_id, user_id, idx),
+            )
+            if not rows or rows[0]["answered_at"] is not None:
+                return False
+            self._exec(
+                "UPDATE duel_answers SET word=?, points=?, tier=?, share=?, answered_at=? "
+                "WHERE duel_id=? AND user_id=? AND idx=?",
+                (word, points, tier, share, now, duel_id, user_id, idx),
+            )
+        return True
+
+    def duel_finish(self, duel_id: str, winner: Optional[str], status: str = "done") -> None:
+        self._exec(
+            "UPDATE duels SET status=?, winner=?, finished_at=? WHERE id=? AND status='open'",
+            (status, winner, time.time(), duel_id),
+        )
+
+    def duel_expired(self, now: float) -> list[dict]:
+        """Open duels past their deadline (the caller decides the outcome)."""
+        with self._lock:
+            rows = self._q("SELECT * FROM duels WHERE status='open' AND expires_at<?", (now,))
+        return [dict(r) for r in rows]
+
+    def duel_finished_today_count(self, user_id: str, since: float) -> int:
+        with self._lock:
+            return int(self._q(
+                "SELECT COUNT(*) AS n FROM duels WHERE status='done' AND finished_at>=? AND (a=? OR b=?)",
+                (since, user_id, user_id),
+            )[0]["n"])
+
+    def duel_record(self, user_id: str) -> dict:
+        """Win/gelijk/verlies over alle afgeronde duels."""
+        with self._lock:
+            rows = self._q(
+                """
+                SELECT COUNT(*) AS played,
+                       COALESCE(SUM(CASE WHEN winner=? THEN 1 ELSE 0 END),0) AS wins,
+                       COALESCE(SUM(CASE WHEN winner IS NULL THEN 1 ELSE 0 END),0) AS draws
+                FROM duels WHERE status='done' AND (a=? OR b=?)
+                """,
+                (user_id, user_id, user_id),
+            )
+        r = dict(rows[0])
+        r["losses"] = int(r["played"]) - int(r["wins"]) - int(r["draws"])
+        return {k: int(v) for k, v in r.items()}
+
+    def answer_freq(self, category: str, letter: str) -> tuple[dict, int]:
+        """(word -> count, total) for this category+letter. The rarity table."""
+        with self._lock:
+            rows = self._q("SELECT word, n FROM answer_freq WHERE category=? AND letter=?", (category, letter))
+        counts = {r["word"]: int(r["n"]) for r in rows}
+        return counts, sum(counts.values())
+
+    def answer_bump(self, category: str, letter: str, word: str, inc: int = 1) -> None:
+        if not word:
+            return
+        self._exec(
+            "INSERT INTO answer_freq (category, letter, word, n) VALUES (?,?,?,?) "
+            "ON CONFLICT(category, letter, word) DO UPDATE SET n = n + excluded.n",
+            (category, letter, word, inc),
+        )
+
+    def answer_seed_from_daily(self) -> int:
+        """Cold start: fold the stored dagronde submissions into the rarity
+        table. Runs once (guarded by a meta flag) so real answers from real
+        players give the table a floor before the first duel is ever played."""
+        if self.meta_get("answer_freq_seeded"):
+            return 0
+        with self._lock:
+            rows = self._q("SELECT day, words FROM daily_scores")
+        n = 0
+        for r in rows:
+            try:
+                words = json.loads(r["words"] or "{}")
+            except Exception:
+                continue
+            letter = self.daily_letter_get(r["day"])
+            if not letter:
+                continue
+            from .game import normalize  # lazy: keeps db.py import-order free
+            for cat, word in (words or {}).items():
+                key = normalize(str(word or ""))
+                if key:
+                    self.answer_bump(str(cat), letter, key)
+                    n += 1
+        self.meta_set("answer_freq_seeded", "1")
+        return n
 
     def history_of(self, user_id: str, limit: int = 10) -> list[dict]:
         """The user's most recent games, newest first, each with their own

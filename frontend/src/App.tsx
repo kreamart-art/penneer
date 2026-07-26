@@ -14,6 +14,7 @@ import { Hub, type HubSection } from "./screens/Hub";
 import { Shop } from "./screens/Shop";
 import { Training } from "./screens/Training";
 import { Daily } from "./screens/Daily";
+import { Duel } from "./screens/Duel";
 import { BadgeToasts } from "./components/BadgeToasts";
 import { BottomNav, type NavKey } from "./components/BottomNav";
 import { BuzzerRewardPopup } from "./components/BuzzerRewardPopup";
@@ -44,6 +45,7 @@ export default function App() {
   const [showShop, setShowShop] = useState(false);
   const [showTraining, setShowTraining] = useState(false);
   const [showDaily, setShowDaily] = useState(false);
+  const [showDuel, setShowDuel] = useState(false);
   const [bannerInvite, setBannerInvite] = useState<InboxItem | null>(null);
   const [paypalFlash, setPaypalFlash] = useState<"ok" | "cancel" | "fail" | "pending" | null>(null);
   // A challenge creates a room first; once its lobby is up we send the invite.
@@ -291,6 +293,17 @@ export default function App() {
         }}
       />
     );
+  } else if (showDuel) {
+    screen = (
+      <Duel
+        game={game}
+        onBack={() => setShowDuel(false)}
+        onProfile={() => {
+          setShowDuel(false);
+          setShowHub("profile");
+        }}
+      />
+    );
   } else if (showTraining) {
     screen = <Training onBack={() => setShowTraining(false)} lenient={!!game.state.account?.lenient_spelling} />;
   } else if (showShop) {
@@ -324,13 +337,13 @@ export default function App() {
       />
     );
   } else {
-    screen = <Landing game={game} onShowRules={() => setShowRules(true)} onShowSettings={() => setShowSettings(true)} onShowShop={() => setShowShop(true)} onShowTraining={() => setShowTraining(true)} onShowDaily={() => setShowDaily(true)} />;
+    screen = <Landing game={game} onShowRules={() => setShowRules(true)} onShowSettings={() => setShowSettings(true)} onShowShop={() => setShowShop(true)} onShowTraining={() => setShowTraining(true)} onShowDaily={() => setShowDaily(true)} onShowDuel={() => setShowDuel(true)} />;
   }
 
   // Which bar item is lit. Sub-flows that are not bar destinations (rules,
   // dagronde, oefenen, instellingen) hide the bar entirely.
   const navKey: NavKey | null =
-    inRoom || !introDone || !lang || showRules || showDaily || showTraining || showSettings
+    inRoom || !introDone || !lang || showRules || showDaily || showDuel || showTraining || showSettings
       ? null
       : showShop
       ? "shop"
@@ -386,6 +399,7 @@ export default function App() {
         !inRoom &&
         !showRules &&
         !showDaily &&
+        !showDuel &&
         !showTraining &&
         !showShop &&
         !showHub &&

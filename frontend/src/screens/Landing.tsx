@@ -1,6 +1,6 @@
 // Landing — emblem, wordmark, tagline, name input, create / join, rules link.
 import { useEffect, useState } from "react";
-import { Bot, CalendarDays, Check, GraduationCap, Hash, HelpCircle, Play, Settings as SettingsIcon, Sparkles, Target, X } from "lucide-react";
+import { Bot, CalendarDays, Check, GraduationCap, Hash, HelpCircle, Play, Settings as SettingsIcon, Sparkles, Swords, Target, X } from "lucide-react";
 import { Logo } from "../components/Logo";
 import { Button } from "../components/Button";
 import { NotifyNudge } from "../components/NotifyNudge";
@@ -33,6 +33,7 @@ export function Landing({
   onShowShop,
   onShowTraining,
   onShowDaily,
+  onShowDuel,
 }: {
   game: GameApi;
   onShowRules: () => void;
@@ -40,6 +41,7 @@ export function Landing({
   onShowShop: () => void;
   onShowTraining: () => void;
   onShowDaily: () => void;
+  onShowDuel: () => void;
 }) {
   const { t } = useT();
   const [name, setName] = useState("");
@@ -120,6 +122,20 @@ export function Landing({
       })
       .catch(() => {});
   }, []);
+
+  // Gold dot on the Duel tile while a duel is waiting for your move.
+  const [duelPending, setDuelPending] = useState(false);
+  useEffect(() => {
+    if (!account) {
+      setDuelPending(false);
+      return;
+    }
+    const tok = localStorage.getItem("penneer.accountToken");
+    fetch("/api/duel/info", { headers: tok ? { Authorization: `Bearer ${tok}` } : {} })
+      .then((r) => r.json())
+      .then((d) => setDuelPending(!!d.pending))
+      .catch(() => {});
+  }, [account?.id]);
 
   // Today's missions (progress for accounts; guests see them with a nudge).
   // Lives behind the Target icon in the top bar; the badge counts what's open.
@@ -344,7 +360,10 @@ export function Landing({
             // the hero action is the filled gold tile, the rest each get their
             // own accent. The Dagronde tile carries a gold dot until today's
             // round is played.
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gridAutoRows: "1fr", gap: 12 }}>
+            // gridAutoRows stays auto so the wide Duel row sizes to its own
+            // content instead of matching the square rows (which would leave a
+            // big empty band inside it).
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gridAutoRows: "auto", gap: 10 }}>
               <Tile
                 primary
                 disabled={!canCreate}
@@ -352,14 +371,14 @@ export function Landing({
                   sound.uiTap();
                   setShowFriends(true);
                 }}
-                icon={<Play size={34} strokeWidth={2.2} fill="currentColor" />}
+                icon={<Play size={30} strokeWidth={2.2} fill="currentColor" />}
                 label={t("playFriends")}
               />
               <Tile
                 accent={colors.violet}
                 disabled={!canCreate}
                 onClick={() => createRoom(true)}
-                icon={<Bot size={34} strokeWidth={2.2} />}
+                icon={<Bot size={30} strokeWidth={2.2} />}
                 label={t("playCpu")}
               />
               <Tile
@@ -368,7 +387,7 @@ export function Landing({
                   sound.uiTap();
                   onShowDaily();
                 }}
-                icon={<CalendarDays size={34} strokeWidth={2.2} />}
+                icon={<CalendarDays size={30} strokeWidth={2.2} />}
                 label={t("dailyTitle")}
                 badge={dailyPending}
               />
@@ -378,8 +397,22 @@ export function Landing({
                   sound.uiTap();
                   onShowTraining();
                 }}
-                icon={<GraduationCap size={34} strokeWidth={2.2} />}
+                icon={<GraduationCap size={30} strokeWidth={2.2} />}
                 label={t("trainTitle")}
+              />
+              {/* Duel is (nog) een oneven vijfde: hij loopt over beide kolommen
+                  tot Toernooi de zesde slot vult, en dan wordt dit vanzelf een
+                  net 2x3-raster. */}
+              <Tile
+                wide
+                accent={colors.red}
+                onClick={() => {
+                  sound.uiTap();
+                  onShowDuel();
+                }}
+                icon={<Swords size={26} strokeWidth={2.2} />}
+                label={t("duelTitle")}
+                badge={duelPending}
               />
             </div>
           ) : (
@@ -573,6 +606,7 @@ function Tile({
   primary = false,
   disabled = false,
   badge = false,
+  wide = false,
 }: {
   icon: React.ReactNode;
   label: string;
@@ -581,21 +615,25 @@ function Tile({
   primary?: boolean;
   disabled?: boolean;
   badge?: boolean;
+  wide?: boolean;
 }) {
   const base: React.CSSProperties = {
     position: "relative",
-    // Slightly wider than tall: squares pushed the bottom row off small
-    // phones, and the main page has to fit without scrolling.
-    aspectRatio: "1 / 0.85",
+    // Flatter than square. The grid is two columns wide, so a narrower tile
+    // buys nothing: what costs a small phone its bottom row is HEIGHT. A wide
+    // tile spans both columns and lies down instead, so a fifth mode fits
+    // without pushing anything off screen.
+    aspectRatio: wide ? undefined : "1 / 0.72",
     width: "100%",
     height: "100%",
+    gridColumn: wide ? "1 / -1" : undefined,
     borderRadius: radius.card,
     display: "flex",
-    flexDirection: "column",
+    flexDirection: wide ? "row" : "column",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    padding: 12,
+    gap: wide ? 10 : 6,
+    padding: wide ? "13px 12px" : 10,
     cursor: disabled ? "default" : "pointer",
     fontFamily: font.display,
     fontWeight: 700,
@@ -606,8 +644,12 @@ function Tile({
     opacity: disabled ? 0.45 : 1,
     overflow: "hidden",
   };
-  const iconSlot: React.CSSProperties = { height: 46, display: "grid", placeItems: "center", flexShrink: 0 };
-  const labelSlot: React.CSSProperties = { minHeight: 40, display: "flex", alignItems: "center", justifyContent: "center" };
+  const iconSlot: React.CSSProperties = wide
+    ? { display: "grid", placeItems: "center", flexShrink: 0 }
+    : { height: 38, display: "grid", placeItems: "center", flexShrink: 0 };
+  const labelSlot: React.CSSProperties = wide
+    ? { display: "flex", alignItems: "center" }
+    : { minHeight: 34, display: "flex", alignItems: "center", justifyContent: "center" };
   if (primary) {
     return (
       <button
