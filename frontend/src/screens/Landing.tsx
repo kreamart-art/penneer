@@ -1,8 +1,8 @@
 // Landing — emblem, wordmark, tagline, name input, create / join, rules link.
 import { useEffect, useState } from "react";
-import { Bot, CalendarDays, Check, GraduationCap, Hash, HelpCircle, Play, Settings as SettingsIcon, ShoppingCart, Sparkles, Target, UserRound, X } from "lucide-react";
+import { Bot, CalendarDays, Check, GraduationCap, Hash, HelpCircle, Play, Settings as SettingsIcon, Sparkles, Target, X } from "lucide-react";
 import { Logo } from "../components/Logo";
-import { Avatar } from "../components/Avatar";
+import { ProfileButton } from "../components/BottomNav";
 import { Button } from "../components/Button";
 import { NotifyNudge } from "../components/NotifyNudge";
 import { MusicToggle } from "../components/MusicToggle";
@@ -167,45 +167,20 @@ export function Landing({
           difference between fitting on a small phone and not. It is a narrow
           strip at the edge, so it never collides with the centred logo. */}
       <div style={{ position: "relative", display: "flex", justifyContent: "space-between", alignItems: "flex-start", paddingTop: 4 }}>
+        {/* Coins sit where the profile chip used to: the profile moved to the
+            avatar on the right, and the shop is in the bottom bar now. */}
         <button
-          onClick={onShowHub}
-          aria-label={t("profile")}
-          className="pressable avatar-glow"
-          style={{ position: "relative", display: "flex", alignItems: "center", gap: 8, background: withAlpha("#000000", 0.26), border: `1px solid ${withAlpha(colors.gold, 0.32)}`, borderRadius: 999, cursor: "pointer", padding: "5px 13px 5px 5px" }}
+          onClick={() => { sound.uiTap(); onShowShop(); }}
+          aria-label={t("coinsTitle")}
+          className="pressable"
+          style={{ display: "inline-flex", alignItems: "center", gap: 6, background: withAlpha(colors.gold, 0.12), border: `1px solid ${withAlpha(colors.gold, 0.4)}`, borderRadius: 999, cursor: "pointer", padding: "4px 12px 4px 5px" }}
         >
-          {account ? (
-            <>
-              <Avatar name={account.name} color={account.color} size={26} userId={account.id} hasAvatar={account.has_avatar} avatarVer={account.avatar_ver} />
-              <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: colors.ink, maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{account.name}</span>
-            </>
-          ) : (
-            <>
-              <span style={{ width: 26, height: 26, borderRadius: 8, display: "grid", placeItems: "center", background: withAlpha(colors.gold, 0.14), border: `1px solid ${withAlpha(colors.gold, 0.4)}`, color: colors.gold }}>
-                <UserRound size={15} />
-              </span>
-              <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: colors.sub }}>{t("profile")}</span>
-            </>
-          )}
-          {inboxCount > 0 && (
-            <span style={{ position: "absolute", top: -5, right: -5, minWidth: 17, height: 17, padding: "0 5px", borderRadius: 999, background: colors.gold, color: colors.bg0, fontFamily: font.ui, fontSize: 10.5, fontWeight: 800, lineHeight: "17px", textAlign: "center", boxShadow: `0 0 8px ${withAlpha(colors.gold, 0.6)}` }}>
-              {inboxCount > 9 ? "9+" : inboxCount}
-            </span>
-          )}
+          <img src="/coin.webp" alt="" width={24} height={24} style={{ display: "block" }} />
+          <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15, color: colors.gold }}>{account?.coins ?? 0}</span>
         </button>
         {/* right cluster is a column so the music mute note sits UNDER the gear */}
         <div style={{ position: "absolute", top: 4, right: 0, zIndex: 2, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 3 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          {account && (
-            <button
-              onClick={() => { sound.uiTap(); onShowShop(); }}
-              aria-label={t("coinsTitle")}
-              className="pressable"
-              style={{ display: "inline-flex", alignItems: "center", gap: 5, background: withAlpha(colors.gold, 0.12), border: `1px solid ${withAlpha(colors.gold, 0.4)}`, borderRadius: 999, cursor: "pointer", padding: "3px 10px 3px 4px", marginRight: 2 }}
-            >
-              <img src="/coin.webp" alt="" width={22} height={22} style={{ display: "block" }} />
-              <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 14, color: colors.gold }}>{account.coins ?? 0}</span>
-            </button>
-          )}
           <button
             onClick={() => {
               sound.uiTap();
@@ -223,14 +198,15 @@ export function Landing({
               </span>
             )}
           </button>
-          <button
-            onClick={onShowShop}
-            aria-label={t("shopTitle")}
-            className="pressable glowhover"
-            style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.sub, display: "flex", padding: 9 }}
-          >
-            <ShoppingCart size={23} />
-          </button>
+          {/* The profile IS your avatar; it carries the inbox badge. */}
+          <span style={{ position: "relative", display: "flex" }}>
+            <ProfileButton game={game} onClick={onShowHub} />
+            {inboxCount > 0 && (
+              <span style={{ position: "absolute", top: -3, right: -4, minWidth: 16, height: 16, padding: "0 4px", borderRadius: 999, background: colors.gold, color: colors.bg0, fontFamily: font.ui, fontSize: 10, fontWeight: 800, lineHeight: "16px", textAlign: "center" }}>
+                {inboxCount > 9 ? "9+" : inboxCount}
+              </span>
+            )}
+          </span>
           <button
             onClick={onShowSettings}
             aria-label={t("settings")}

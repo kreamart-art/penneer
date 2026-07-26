@@ -1,7 +1,7 @@
 // Hub — profile, friends, inbox and leaderboard in one tabbed screen.
 // Reached from the Landing. A profile is optional: guests see the create form.
 import { Fragment, useEffect, useRef, useState } from "react";
-import { ArrowLeft, Award, Bell, Camera, Check, CircleDot, Copy, Lock, LogOut, MessageCircle, MoreVertical, Pencil, Plus, Search, Send, Settings as SettingsIcon, Share2, Shield, ShoppingCart, Smile, Sparkles, Star, Swords, Trash2, Trophy, UserPlus, Users, X, ZoomIn, ZoomOut } from "lucide-react";
+import { ArrowLeft, Award, Camera, Check, ChevronDown, CircleDot, Copy, Lock, LogOut, MessageCircle, MoreVertical, Pencil, Plus, Search, Send, Settings as SettingsIcon, Share2, Shield, ShoppingCart, Smile, Sparkles, Star, Swords, Trash2, UserPlus, Users, X, ZoomIn, ZoomOut } from "lucide-react";
 import { Avatar, RANK_RING } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { MicButton } from "../components/MicButton";
@@ -31,7 +31,10 @@ const inputStyle: React.CSSProperties = {
   padding: "11px 13px",
 };
 
-type Tab = "profile" | "friends" | "inbox" | "leaderboard" | "club" | "title";
+// The Hub no longer picks its own section: the bottom bar does, and Titel moved
+// into Profielinstellingen, so the in-screen tab strip is gone.
+export type HubSection = "profile" | "friends" | "inbox" | "leaderboard";
+type Tab = HubSection;
 
 // Built-in illustrated avatars, mirrored server-side (backend/app/avatars).
 const AVATAR_PRESETS = Array.from({ length: 18 }, (_, i) => `av${String(i + 1).padStart(2, "0")}`);
@@ -45,9 +48,9 @@ const PACK_OF_PRESET: Record<string, string> = Object.fromEntries(
 // picker's static images cache-bust instead of serving the stale ones.
 const AVATAR_ART_VERSION = 9;
 
-export function Hub({ game, onBack, onShowShop, onChallenge }: { game: GameApi; onBack: () => void; onShowShop: () => void; onChallenge: (userId: string) => void }) {
+export function Hub({ game, section, onBack, onShowShop, onChallenge }: { game: GameApi; section: HubSection; onBack: () => void; onShowShop: () => void; onChallenge: (userId: string) => void }) {
   const { t } = useT();
-  const [tab, setTab] = useState<Tab>("profile");
+  const tab: Tab = section;
   const account = game.state.account;
   // Profielinstellingen + delen leven nu in de bovenbalk (naast de muziekknop),
   // dus hun state hangt op Hub-niveau i.p.v. in de ProfileTab.
@@ -93,22 +96,13 @@ export function Hub({ game, onBack, onShowShop, onChallenge }: { game: GameApi; 
     if (tab === "profile") game.refreshBlocked();
     if (tab === "friends") game.refreshFriends();
     if (tab === "inbox") game.refreshInbox();
-    if (tab === "club") game.loadClub("month");
+    if (tab === "friends") game.loadClub("month");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, !!account]);
   useEffect(() => {
     if (tab === "leaderboard") game.loadLeaderboard("week");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
-
-  const tabs: { key: Tab; label: string; icon: React.ReactNode; badge?: number }[] = [
-    { key: "profile", label: t("profile"), icon: <Award size={15} /> },
-    { key: "friends", label: t("friendsTab"), icon: <Users size={15} /> },
-    { key: "inbox", label: t("inboxTab"), icon: <Bell size={15} />, badge: (game.state.inbox.length || account?.inbox_count || 0) + (account?.dm_unread || 0) },
-    { key: "leaderboard", label: t("leaderboardTab"), icon: <Trophy size={15} /> },
-    { key: "club", label: t("clubTab"), icon: <Users size={15} /> },
-    { key: "title", label: t("titleTab"), icon: <Star size={15} /> },
-  ];
 
   const topIconBtn: React.CSSProperties = { background: "transparent", border: "none", cursor: "pointer", color: colors.sub, display: "flex", padding: 6 };
 
@@ -124,7 +118,7 @@ export function Hub({ game, onBack, onShowShop, onChallenge }: { game: GameApi; 
           <button onClick={onBack} aria-label={t("back")} style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 2 }}>
             <ArrowLeft size={20} />
           </button>
-          <span style={{ flex: 1, fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>{t("profile")}</span>
+          <span style={{ flex: 1, fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>{t(section === "friends" ? "friendsTab" : section === "inbox" ? "inboxTab" : section === "leaderboard" ? "leaderboardTab" : "profile")}</span>
           {account && (
             <>
               <button onClick={shareCard} disabled={sharing} aria-label={t("shareProfile")} title={t("shareProfile")} style={{ ...topIconBtn, opacity: sharing ? 0.5 : 1 }}>
@@ -140,45 +134,15 @@ export function Hub({ game, onBack, onShowShop, onChallenge }: { game: GameApi; 
       }
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        {/* tabs — wrap onto multiple rows so all labels stay readable */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6 }}>
-          {tabs.map(({ key, label, icon, badge }) => (
-            <button
-              key={key}
-              onClick={() => { sound.uiTap(); setTab(key); }}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 5,
-                position: "relative",
-                padding: "9px 4px",
-                borderRadius: radius.button,
-                border: `1px solid ${tab === key ? withAlpha(colors.gold, 0.5) : colors.panelBorder}`,
-                background: tab === key ? withAlpha(colors.gold, 0.12) : "transparent",
-                color: tab === key ? colors.gold : colors.sub,
-                fontFamily: font.ui,
-                fontSize: 12,
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
-            >
-              {icon} {label}
-              {!!badge && (
-                <span style={{ position: "absolute", top: -6, right: -2, minWidth: 16, height: 16, padding: "0 4px", borderRadius: 999, background: colors.gold, color: colors.bg0, fontSize: 10, fontWeight: 800, lineHeight: "16px" }}>
-                  {badge > 9 ? "9+" : badge}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-
         {tab === "profile" && <ProfileTab game={game} onShowShop={onShowShop} />}
-        {tab === "friends" && <FriendsTab game={game} onChallenge={onChallenge} />}
+        {tab === "friends" && (
+          <>
+            <FriendsTab game={game} onChallenge={onChallenge} />
+            <ClubTab game={game} />
+          </>
+        )}
         {tab === "inbox" && <InboxTab game={game} />}
         {tab === "leaderboard" && <LeaderboardTab game={game} />}
-        {tab === "club" && <ClubTab game={game} />}
-        {tab === "title" && (account ? <TitlePicker game={game} /> : <ProfileTab game={game} onShowShop={onShowShop} />)}
       </div>
 
       {/* Open DM conversation (profile-to-profile, outside any room). */}
@@ -747,6 +711,37 @@ function BuzzerTile({
   );
 }
 
+// Profielinstellingen used to be one very long scroll because every picker
+// showed its whole grid at once. Each is a header you open when you actually
+// want to change that thing.
+function PickerCard({
+  icon,
+  title,
+  children,
+  defaultOpen,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  children: React.ReactNode;
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(!!defaultOpen);
+  return (
+    <Card style={{ display: "flex", flexDirection: "column", gap: open ? 10 : 0, padding: 14 }}>
+      <button
+        onClick={() => { sound.uiTap(); setOpen((o) => !o); }}
+        aria-expanded={open}
+        style={{ display: "flex", alignItems: "center", gap: 8, background: "transparent", border: "none", cursor: "pointer", padding: 0, width: "100%", textAlign: "left" }}
+      >
+        {icon}
+        <span style={{ flex: 1, fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint }}>{title}</span>
+        <ChevronDown size={16} color={colors.faint} style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform .2s ease" }} />
+      </button>
+      {open && children}
+    </Card>
+  );
+}
+
 function BuzzerPicker({ game, onShowShop }: { game: GameApi; onShowShop: () => void }) {
   const { t } = useT();
   const account = game.state.account!;
@@ -759,11 +754,7 @@ function BuzzerPicker({ game, onShowShop }: { game: GameApi; onShowShop: () => v
   return (
     <>
       {/* bought single skins */}
-      <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <CircleDot size={15} color={colors.gold} />
-          <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint, flex: 1 }}>{t("buzzPickTitle")}</span>
-        </div>
+      <PickerCard icon={<CircleDot size={15} color={colors.gold} />} title={t("buzzPickTitle")}>
         <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.sub, lineHeight: 1.5 }}>{anyOwned ? t("buzzPickHint") : t("buzzLockedHint")}</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
           <BuzzerTile id={null} active={active === null} locked={false} label={t("buzzDefault")} onClick={() => game.setBuzzerSkin(null)} />
@@ -772,14 +763,10 @@ function BuzzerPicker({ game, onShowShop }: { game: GameApi; onShowShop: () => v
             return <BuzzerTile key={id} id={id} active={active === id} locked={!has} label={id} onClick={() => (has ? game.setBuzzerSkin(id) : onShowShop())} />;
           })}
         </div>
-      </Card>
+      </PickerCard>
 
       {/* level rewards */}
-      <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Star size={15} color={colors.gold} />
-          <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint, flex: 1 }}>{t("buzzRewardsTitle")}</span>
-        </div>
+      <PickerCard icon={<Star size={15} color={colors.gold} />} title={t("buzzRewardsTitle")}>
         <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.sub, lineHeight: 1.5 }}>{t("buzzRewardsHint")}</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
           {rewards.map((r) => (
@@ -795,7 +782,7 @@ function BuzzerPicker({ game, onShowShop }: { game: GameApi; onShowShop: () => v
             />
           ))}
         </div>
-      </Card>
+      </PickerCard>
     </>
   );
 }
@@ -859,11 +846,7 @@ function ReelPicker({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
   const active = account.reel_skin ?? null;
 
   return (
-    <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <CircleDot size={15} color={colors.gold} />
-        <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint, flex: 1 }}>{t("reelPickTitle")}</span>
-      </div>
+    <PickerCard icon={<CircleDot size={15} color={colors.gold} />} title={t("reelPickTitle")}>
       <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.sub, lineHeight: 1.5 }}>{anyOwned ? t("reelPickHint") : t("reelLockedHint")}</p>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
         <ReelTile id={null} active={active === null} locked={false} label={t("reelDefault")} onClick={() => game.setReelSkin(null)} />
@@ -872,7 +855,7 @@ function ReelPicker({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
           return <ReelTile key={id} id={id} active={active === id} locked={!has} label={t(REEL_NAME_KEYS[id])} onClick={() => (has ? game.setReelSkin(id) : onShowShop())} />;
         })}
       </div>
-    </Card>
+    </PickerCard>
   );
 }
 
@@ -921,11 +904,7 @@ function FramePicker({ game }: { game: GameApi }) {
   const rewards = account.frame_rewards ?? [];
   const av = { name: account.name, color: account.color, userId: account.id, hasAvatar: account.has_avatar, avatarVer: account.avatar_ver };
   return (
-    <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <Sparkles size={15} color={colors.gold} />
-        <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint, flex: 1 }}>{t("framePickTitle")}</span>
-      </div>
+    <PickerCard icon={<Sparkles size={15} color={colors.gold} />} title={t("framePickTitle")}>
       <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.sub, lineHeight: 1.5 }}>{t("framePickHint")}</p>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
         <FrameTile active={active === null} locked={false} caption={t("frameNone")} label={t("frameNone")} onClick={() => game.setAvatarFrame(null)}>
@@ -945,7 +924,7 @@ function FramePicker({ game }: { game: GameApi }) {
           </FrameTile>
         ))}
       </div>
-    </Card>
+    </PickerCard>
   );
 }
 
@@ -954,11 +933,7 @@ function TitlePicker({ game }: { game: GameApi }) {
   const account = game.state.account;
   if (!account) return null;
   return (
-    <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <Award size={15} color={colors.gold} />
-        <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint, flex: 1 }}>{t("titlesTitle")}</span>
-      </div>
+    <PickerCard icon={<Award size={15} color={colors.gold} />} title={t("titlesTitle")}>
       <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.sub }}>{t("titlesHint")}</p>
       <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
         {account.titles.map((tt) => {
@@ -1001,7 +976,7 @@ function TitlePicker({ game }: { game: GameApi }) {
           );
         })}
       </div>
-    </Card>
+    </PickerCard>
   );
 }
 
@@ -1447,6 +1422,9 @@ function ProfileSettings({
       {/* Avatar-frame (level-beloning) */}
       <FramePicker game={game} />
 
+      {/* Titel: hoorde bij de tabs, die zijn weg, dus hij staat nu hier */}
+      <TitlePicker game={game} />
+
       {/* e-mail koppelen */}
       <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <span style={{ fontFamily: font.ui, fontWeight: 600, fontSize: 14, color: colors.ink }}>{t("emailTitle")}</span>
@@ -1865,7 +1843,7 @@ function InboxTab({ game }: { game: GameApi }) {
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontFamily: font.ui, fontWeight: 600, fontSize: 14, color: colors.ink }}>{th.user.name}</div>
               <div style={{ fontFamily: font.ui, fontSize: 12.5, color: th.unread > 0 ? colors.ink : colors.faint, fontWeight: th.unread > 0 ? 600 : 400, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {th.last_from_me ? `${t("chatYou")}: ` : ""}{th.last_emote ? t("emoteTitle") : th.last_voice ? t("voiceMemo") : th.last_text}
+                {th.last_from_me ? `${t("chatYou")}: ` : ""}{th.last_emote ? t("stickerOne") : th.last_voice ? t("voiceMemo") : th.last_text}
               </div>
             </div>
             {th.unread > 0 && (

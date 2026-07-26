@@ -10,11 +10,12 @@ import { LanguagePage } from "./screens/LanguagePage";
 import { Rules } from "./screens/Rules";
 import { Settings } from "./screens/Settings";
 import { Landing } from "./screens/Landing";
-import { Hub } from "./screens/Hub";
+import { Hub, type HubSection } from "./screens/Hub";
 import { Shop } from "./screens/Shop";
 import { Training } from "./screens/Training";
 import { Daily } from "./screens/Daily";
 import { BadgeToasts } from "./components/BadgeToasts";
+import { BottomNav, type NavKey } from "./components/BottomNav";
 import { BuzzerRewardPopup } from "./components/BuzzerRewardPopup";
 import { InviteBanner } from "./components/InviteBanner";
 import { DmBanner } from "./components/DmBanner";
@@ -37,7 +38,9 @@ export default function App() {
   const [introDone, setIntroDone] = useState(() => sessionStorage.getItem(INTRO_KEY) === "1");
   const [showRules, setShowRules] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [showHub, setShowHub] = useState(false);
+  // The bottom bar owns which section is open; Hub renders whichever one the
+  // bar points at, so there is no in-screen tab strip any more.
+  const [showHub, setShowHub] = useState<HubSection | null>(null);
   const [showShop, setShowShop] = useState(false);
   const [showTraining, setShowTraining] = useState(false);
   const [showDaily, setShowDaily] = useState(false);
@@ -157,7 +160,7 @@ export default function App() {
   useEffect(() => {
     if (!joinCode) return;
     game.clearJoin();
-    setShowHub(false);
+    setShowHub(null);
     game.joinRoom(joinCode, game.state.account?.name ?? "Speler");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [joinCode]);
@@ -240,7 +243,7 @@ export default function App() {
     sound.invite();
     const sender = game.state.friends.find((f) => f.id === dmBanner.from_user);
     const name = sender?.name ?? "";
-    localNotify("Pen Neer", `${name}: ${dmBanner.emote ? t("emoteTitle") : dmBanner.voice_id ? t("dmVoiceNotif") : dmBanner.text}`.trim());
+    localNotify("Pen Neer", `${name}: ${dmBanner.emote ? t("stickerOne") : dmBanner.voice_id ? t("dmVoiceNotif") : dmBanner.text}`.trim());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dmBanner?.id]);
 
@@ -284,7 +287,7 @@ export default function App() {
         onBack={() => setShowDaily(false)}
         onProfile={() => {
           setShowDaily(false);
-          setShowHub(true);
+          setShowHub("profile");
         }}
       />
     );
@@ -296,9 +299,10 @@ export default function App() {
     screen = (
       <Hub
         game={game}
-        onBack={() => setShowHub(false)}
+        section={showHub}
+        onBack={() => setShowHub(null)}
         onShowShop={() => {
-          setShowHub(false);
+          setShowHub(null);
           setShowShop(true);
         }}
         onChallenge={(userId) => {
@@ -319,12 +323,34 @@ export default function App() {
       />
     );
   } else {
-    screen = <Landing game={game} onShowRules={() => setShowRules(true)} onShowSettings={() => setShowSettings(true)} onShowHub={() => setShowHub(true)} onShowShop={() => setShowShop(true)} onShowTraining={() => setShowTraining(true)} onShowDaily={() => setShowDaily(true)} />;
+    screen = <Landing game={game} onShowRules={() => setShowRules(true)} onShowSettings={() => setShowSettings(true)} onShowHub={() => setShowHub("profile")} onShowShop={() => setShowShop(true)} onShowTraining={() => setShowTraining(true)} onShowDaily={() => setShowDaily(true)} />;
   }
+
+  // Which bar item is lit. Sub-flows that are not bar destinations (rules,
+  // dagronde, oefenen, instellingen) hide the bar entirely.
+  const navKey: NavKey | null =
+    inRoom || !introDone || !lang || showRules || showDaily || showTraining || showSettings
+      ? null
+      : showShop
+      ? "shop"
+      : showHub === "leaderboard" || showHub === "friends" || showHub === "inbox"
+      ? showHub
+      : showHub === "profile"
+      ? null           // profile is reached from the avatar, not from the bar
+      : "home";
+  const goNav = (key: NavKey) => {
+    setShowShop(key === "shop");
+    setShowHub(key === "leaderboard" || key === "friends" || key === "inbox" ? key : null);
+  };
 
   return (
     <>
-      {screen}
+      <div style={{ minHeight: "100dvh", display: "flex", flexDirection: "column" }}>
+        <div style={{ flex: 1, minHeight: 0 }}>{screen}</div>
+        {(navKey !== null || showHub === "profile") && (
+          <BottomNav game={game} active={navKey ?? "home"} onSelect={goNav} />
+        )}
+      </div>
       {penSplash && (
         <div
           style={{
@@ -395,7 +421,7 @@ export default function App() {
           onAccept={() => {
             if (bannerInvite.id) game.inviteRespond(bannerInvite.id, true);
             setBannerInvite(null);
-            setShowHub(false);
+            setShowHub(null);
           }}
           onDecline={() => {
             if (bannerInvite.id) game.inviteRespond(bannerInvite.id, false);
@@ -418,7 +444,7 @@ export default function App() {
             sender={sender}
             onReply={() => {
               game.dmOpen(dmBanner.from_user);
-              setShowHub(true);
+              setShowHub("friends");
               game.clearDmBanner();
             }}
             onClose={() => game.clearDmBanner()}
