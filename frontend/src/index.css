@@ -56,14 +56,19 @@ body,
    cannot be cut off, and past the gradient tile the flat `background-color` is
    the exact colour the gradient ends on, so there is nothing to see either way.
 
-   Two numbers differ from the original and only those two: the ellipse is 106%
-   tall instead of 95%, and the last stop sits at 100% instead of 82%. Together
-   they mean the fade reaches its end colour at the BOTTOM EDGE of the screen
-   instead of at 75%, so the strip above the home indicator is still fading
-   rather than sitting flat. Measured against the original at every 5% of screen
-   height, the largest difference anywhere is 5 RGB units, which is why this
-   does not lighten the page: it is the same background, it just finishes at the
-   bottom instead of three quarters of the way down. */
+   The main fade MUST be linear, never radial, and this is the one thing that
+   actually caused the strip at the bottom of the iPhone. A radial's iso-colour
+   lines are ellipses, so the end colour is reached far earlier at the sides
+   than in the centre: measured on the last radial version, the bottom 8% of the
+   screen was already flat at x=0% and x=100% while only the exact centre column
+   reached the bottom edge. That curved flat wedge IS the strip. No stop or size
+   can remove it, because it is the shape.
+
+   A linear gradient makes the colour a plain function of y, so the end colour is
+   reached at y=100% across the full width and there is no flat area anywhere.
+   The stops below are the old radial's centre column sampled at its own stop
+   heights, so the middle of the screen is pixel-identical to what it was and
+   the sides simply lost the ellipse's extra darkening. */
 html {
   background-color: #0e0922;
   background-image:
@@ -71,7 +76,7 @@ html {
     radial-gradient(55% 34% at 108% 4%, rgba(255, 86, 74, 0.05), transparent 70%),
     radial-gradient(50% 36% at 106% -4%, rgba(255, 194, 61, 0.05), transparent 70%),
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
-    radial-gradient(135% 106% at 50% -6%, #41216f 0%, #1a1140 46%, #140d2f 62%, #100b27 76%, #0f0a24 88%, #0e0922 100%);
+    linear-gradient(180deg, #3c1f69 0%, #1a1140 42.8%, #140d2f 59.7%, #100b27 74.6%, #0f0a24 87.3%, #0e0922 100%);
   background-repeat: no-repeat, no-repeat, no-repeat, repeat, no-repeat;
   background-position: top, top, top, top left, top;
   background-size: 100% 100vh, 100% 100vh, 100% 100vh, 160px 160px, 100% 100vh;
