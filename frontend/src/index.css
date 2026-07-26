@@ -70,8 +70,17 @@ body,
    an ellipse, which crossed the centre line at 89% of the screen: flat below,
    still changing above, and the eye reads that kink in the brightness curve as
    a hard edge (a Mach band) even though every pixel under it is the same
-   colour. Linear makes the colour a plain function of y, so the eased stops
-   land on the end colour exactly at the bottom edge. */
+   colour. Linear makes the colour a plain function of y.
+
+   The stops are spaced linearly in CIE Lab, NOT in sRGB, and that is the whole
+   point. The earlier eased ramp put 69% of the visible change in the top half;
+   below 70% of the screen it moved less than 1 L* per 10% of height, which is
+   under the threshold where the eye sees a change at all. So the bottom third
+   read as a flat block and the gradient looked like it stopped, no matter how
+   the layer was sized. Measured with these stops: every 12% band of the screen
+   carries 12-13% of the change, and the bottom half gets 49% of it (was 31%).
+   The last stop is still exactly html's background-color, so the edge of the
+   layer stays invisible. */
 html {
   background-color: #0e0922;
 }
@@ -87,11 +96,10 @@ body::before {
     radial-gradient(55% 34% at 108% 4%, rgba(255, 86, 74, 0.05), transparent 70%),
     radial-gradient(50% 36% at 106% -4%, rgba(255, 194, 61, 0.05), transparent 70%),
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
-    radial-gradient(85% 34% at 50% -6%, rgba(104, 52, 172, 0.5) 0%, rgba(104, 52, 172, 0.24) 38%, rgba(104, 52, 172, 0.07) 68%, rgba(104, 52, 172, 0) 100%),
-    linear-gradient(180deg, #3b1c66 0%, #301a58 13%, #26154a 27%, #1d123f 42%, #171036 57%, #130d2e 72%, #100b28 87%, #0e0922 100%);
-  background-repeat: no-repeat, no-repeat, no-repeat, repeat, no-repeat, no-repeat;
-  background-position: top, top, top, top left, top, top;
-  background-size: 100% 100%, 100% 100%, 100% 100%, 160px 160px, 100% 100%, 100% 100%;
+    linear-gradient(180deg, #3b1c66 0%, #351a5d 12%, #2f1954 25%, #29174b 37%, #231542 50%, #1e133a 62%, #181132 75%, #140e2a 87%, #0e0922 100%);
+  background-repeat: no-repeat, no-repeat, no-repeat, repeat, no-repeat;
+  background-position: top, top, top, top left, top;
+  background-size: 100% 100%, 100% 100%, 100% 100%, 160px 160px, 100% 100%;
 }
 
 body {
