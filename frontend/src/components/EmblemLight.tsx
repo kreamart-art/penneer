@@ -65,8 +65,15 @@ function highlight(sterk: number, reik: number): string {
   return `radial-gradient(circle closest-side, transparent 0%, rgba(255,220,80,${0.22 * sterk}) ${st(16)}, rgba(255,206,24,${0.82 * sterk}) ${st(25)}, rgba(255,172,14,${0.56 * sterk}) ${st(36)}, rgba(255,132,26,${0.3 * sterk}) ${st(50)}, rgba(214,92,60,${0.12 * sterk}) ${st(64)}, transparent ${st(82)})`;
 }
 
+// Het gat loopt tot vlak onder de BUITENrand van de munt, niet tot de binnenrand
+// van de ring: zo zit er nergens gloed achter de munt zelf en begint het licht
+// pas waar de munt ophoudt. Het goud loopt in de art van 40 tot 52 procent van
+// de halve breedte, dus de buitenrand zit op 0,26 keer de embleemmaat; deze laag
+// is 3,4 keer zo groot, dus dat is 15,3 procent van de straal. We stoppen net
+// even binnen die rand, anders zie je bij het uitlopen een donker haartje om de
+// munt heen.
 const HOLE =
-  "radial-gradient(circle closest-side at 50% 50%, transparent 0%, transparent 10.6%, #000 12.6%, #000 100%)";
+  "radial-gradient(circle closest-side at 50% 50%, transparent 0%, transparent 13.8%, #000 15%, #000 100%)";
 
 export function EmblemLight() {
   return (
