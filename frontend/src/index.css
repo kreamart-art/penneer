@@ -268,19 +268,29 @@ input:focus {
 }
 
 /* Two-layer background parallax: opposing, very slow drifts. */
-@keyframes drift-a {
-  from { transform: translate3d(0, 0, 0); }
-  to { transform: translate3d(14px, -18px, 0); }
+/* De zwevende letters op de main page. Ze lopen van de ene kant naar de andere
+   en worden onderweg groter en weer kleiner, alsof ze wegdrijven en terugkomen.
+   Alles staat in de keyframes, ook de draaiing: een animatie die `transform`
+   schrijft veegt een inline transform van hetzelfde element weg. De maten komen
+   per letter uit custom properties, zodat één regel CSS acht verschillende
+   reizen aanstuurt. `alternate` zou de terugweg de omgekeerde versnelling geven;
+   met een volle cyclus loopt hij heen en terug even soepel. */
+@keyframes letter-drift {
+  0% {
+    transform: translateX(calc(var(--reis) * -1)) rotate(var(--draai)) scale(var(--klein));
+  }
+  50% {
+    transform: translateX(var(--reis)) rotate(var(--draai)) scale(var(--groot));
+  }
+  100% {
+    transform: translateX(calc(var(--reis) * -1)) rotate(var(--draai)) scale(var(--klein));
+  }
 }
-@keyframes drift-b {
-  from { transform: translate3d(0, 0, 0); }
-  to { transform: translate3d(-16px, 12px, 0); }
-}
-.drift-a {
-  animation: drift-a 26s ease-in-out infinite alternate;
-}
-.drift-b {
-  animation: drift-b 34s ease-in-out infinite alternate;
+.letter-drift {
+  animation-name: letter-drift;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  will-change: transform;
 }
 
 /* Tiny glowing dust rising near the hero. */
@@ -413,8 +423,7 @@ input:focus {
   .reveal-rise,
   .shimmer-bar,
   .twinkle,
-  .drift-a,
-  .drift-b,
+  .letter-drift,
   .hero-particle,
   .hero-rays,
   .breath-glow,

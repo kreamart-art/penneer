@@ -141,39 +141,42 @@ export function Landing({
   const canCreate = effectiveName.length > 0;
   const canJoin = effectiveName.length > 0 && code.trim().length === 4;
 
-  // Gold dot on the Dagronde tile until today's round is played (accounts via
-  // the server, guests via their local copy). Best-effort: no dot on failure.
-  const [dailyPending, setDailyPending] = useState(false);
+  // Het telknopje op de Dagronde-tegel: hoeveel onderdelen je vandaag nog te
+  // gaan hebt. De dagronde bestaat uit twee losse potjes, woorden en topografie,
+  // dus dat zijn er twee, een of geen. Accounts halen het bij de server; een
+  // gast heeft alleen zijn eigen kopie in de opslag. Bij een fout geen knopje.
+  const [dailyLeft, setDailyLeft] = useState(0);
   useEffect(() => {
     const tok = localStorage.getItem("penneer.accountToken");
+    const lokaal = (sleutel: string, dag: string) => {
+      try {
+        const saved = JSON.parse(localStorage.getItem(sleutel) || "null");
+        return !!saved && saved.day === dag;
+      } catch {
+        return false;
+      }
+    };
     fetch("/api/daily/info", { headers: tok ? { Authorization: `Bearer ${tok}` } : {} })
       .then((r) => r.json())
       .then((d) => {
-        let played = !!d.played;
-        if (!played) {
-          try {
-            const saved = JSON.parse(localStorage.getItem("penneer.dailyResult") || "null");
-            if (saved && saved.day === d.day) played = true;
-          } catch {
-            /* no local copy */
-          }
-        }
-        setDailyPending(!played);
+        const woorden = !!d.played || lokaal("penneer.dailyResult", d.day);
+        const topo = !!d.topo_played || lokaal("penneer.topoResult", d.day);
+        setDailyLeft((woorden ? 0 : 1) + (topo ? 0 : 1));
       })
       .catch(() => {});
   }, []);
 
-  // Gold dot on the Duel tile while a duel is waiting for your move.
-  const [duelPending, setDuelPending] = useState(false);
+  // Hetzelfde knopje op de Duel-tegel: hoeveel duels op jouw beurt wachten.
+  const [duelLeft, setDuelLeft] = useState(0);
   useEffect(() => {
     if (!account) {
-      setDuelPending(false);
+      setDuelLeft(0);
       return;
     }
     const tok = localStorage.getItem("penneer.accountToken");
     fetch("/api/duel/info", { headers: tok ? { Authorization: `Bearer ${tok}` } : {} })
       .then((r) => r.json())
-      .then((d) => setDuelPending(!!d.pending))
+      .then((d) => setDuelLeft(Number(d.pending) || 0))
       .catch(() => {});
   }, [account?.id]);
 
@@ -483,7 +486,7 @@ export function Landing({
                 art="daily"
                 icon={<CalendarDays size={30} strokeWidth={2.2} />}
                 label={t("dailyTitle")}
-                badge={dailyPending}
+                badge={dailyLeft}
               />
               <Tile
                 accent={colors.green}
@@ -508,7 +511,7 @@ export function Landing({
                 }}
                 icon={<Swords size={26} strokeWidth={2.2} />}
                 label={t("duelTitle")}
-                badge={duelPending}
+                badge={duelLeft}
               />
             </div>
           ) : (
@@ -702,6 +705,53 @@ function MissionsSheet({
 // filled gold hero tile (gloss, shimmer sweep, occasional sparkle); the rest
 // get a glassy panel with their own ambient accent glow. Fixed icon/label
 // slots keep all four tiles pixel-identical in height and alignment.
+/** Het gouden telknopje op een tegel: hoeveel er nog te doen is.
+ *
+ *  Een muntje, geen gekleurd rondje. De reeks is dezelfde als overal: donker
+ *  goud voor de rand, middengoud voor de bodem, licht en fel voor de kant waar
+ *  het licht op valt. Het cijfer is bijna-zwart met een glansje aan de
+ *  bovenkant, want dat leest op goud beter dan wit met een schaduw.
+ *
+ *  `x` en `y` zijn waar het MIDDEN komt te liggen, in de doos van de tegel. Ze
+ *  worden van buiten meegegeven omdat elke plaat zijn eigen afschuining heeft
+ *  (zie TILE_ART). */
+function CountBadge({ n, x, y }: { n: number; x: string; y: string }) {
+  return (
+    <span
+      aria-hidden
+      style={{
+        position: "absolute",
+        left: x,
+        top: y,
+        transform: "translate(-50%, -50%)",
+        minWidth: 23,
+        height: 23,
+        padding: "0 6px",
+        boxSizing: "border-box",
+        borderRadius: 999,
+        display: "grid",
+        placeItems: "center",
+        background: "linear-gradient(158deg, #FFEBB8 0%, #FFC23D 42%, #B07C17 100%)",
+        boxShadow: [
+          "inset 0 -3px 4px rgba(74,46,4,.5)",
+          "inset 0 1.5px 0 rgba(255,255,255,.6)",
+          "0 0 0 1.6px #4A2E04",
+          "0 3px 7px rgba(0,0,0,.55)",
+          "0 0 12px rgba(255,194,61,.45)",
+        ].join(", "),
+        fontFamily: font.display,
+        fontWeight: 800,
+        fontSize: 13,
+        lineHeight: 1,
+        color: "#2A1802",
+        textShadow: "0 1px 0 rgba(255,240,190,.45)",
+      }}
+    >
+      {n}
+    </span>
+  );
+}
+
 function Tile({
   icon,
   label,
@@ -709,7 +759,7 @@ function Tile({
   accent = colors.gold,
   primary = false,
   disabled = false,
-  badge = false,
+  badge = 0,
   wide = false,
   art,
 }: {
@@ -719,7 +769,8 @@ function Tile({
   accent?: string;
   primary?: boolean;
   disabled?: boolean;
-  badge?: boolean;
+  /** Hoeveel er nog te doen is. 0 is geen knopje. */
+  badge?: number;
   wide?: boolean;
   /** Welke plaat deze tegel krijgt als de platen-skin aanstaat. */
   art?: string;
@@ -824,8 +875,8 @@ function Tile({
             {label}
           </span>
         )}
-        {badge && (
-          <span style={{ position: "absolute", top: "12%", right: "12%", width: 10, height: 10, borderRadius: "50%", background: colors.gold, boxShadow: `0 0 8px ${colors.gold}` }} />
+        {badge > 0 && (
+          <CountBadge n={badge} x={tile.badgeX ?? "94%"} y={tile.badgeY ?? "7%"} />
         )}
       </button>
     );
@@ -920,21 +971,7 @@ function Tile({
 
       <span style={{ ...iconSlot, color: accent, filter: `drop-shadow(0 0 11px ${withAlpha(accent, 0.6)})` }}>{icon}</span>
       <span style={labelSlot}>{label}</span>
-      {badge && (
-        <span
-          aria-hidden
-          style={{
-            position: "absolute",
-            top: 10,
-            right: 10,
-            width: 11,
-            height: 11,
-            borderRadius: 999,
-            background: colors.gold,
-            boxShadow: `0 0 10px ${withAlpha(colors.gold, 0.8)}`,
-          }}
-        />
-      )}
+      {badge > 0 && <CountBadge n={badge} x="calc(100% - 14px)" y="14px" />}
     </button>
   );
 }
@@ -952,15 +989,32 @@ function Tile({
  *
  *  Stof en stralen zitten al in de art, dus die tekenen we er niet nog eens
  *  overheen. */
-const LETTERS: { c: string; size: number; op: number; pos: React.CSSProperties; rot: number; slow?: boolean }[] = [
-  { c: "K", size: 300, op: 0.055, pos: { top: "1%", left: "-14%" }, rot: -11 },
-  { c: "R", size: 240, op: 0.045, pos: { bottom: "-2%", right: "-10%" }, rot: 8 },
-  { c: "P", size: 150, op: 0.03, pos: { top: "24%", left: "6%" }, rot: -6 },
-  { c: "M", size: 120, op: 0.025, pos: { top: "8%", right: "12%" }, rot: 10 },
-  { c: "N", size: 285, op: 0.05, pos: { top: "40%", right: "-13%" }, rot: 12, slow: true },
-  { c: "E", size: 215, op: 0.04, pos: { bottom: "2%", left: "-9%" }, rot: -7, slow: true },
-  { c: "A", size: 132, op: 0.028, pos: { bottom: "24%", left: "34%" }, rot: 5, slow: true },
-  { c: "S", size: 96, op: 0.022, pos: { top: "58%", left: "14%" }, rot: -9, slow: true },
+// De zwevende letters. Twee dingen bepalen of het mooi wordt.
+//
+// SPREIDING. Ze staan over het hele doek, links en rechts even zwaar en van
+// boven tot onder. Eerder hingen ze bijna allemaal links; dan leest het als een
+// fout in plaats van als decor.
+//
+// TEGENWICHT. Het vignet maakt de randen en de onderkant donker, dus dezelfde
+// dekking leest daar veel zwakker. Een letter onderaan krijgt daarom meer mee
+// dan dezelfde letter bovenin, anders verdwijnt de helft van de compositie.
+// De zwevende letters. Elke letter loopt van de ene kant naar de andere en
+// wordt onderweg groter en kleiner, alsof hij wegloopt en weer terugkomt.
+//
+// `reis` is hoe ver hij naar weerszijden gaat (negatief = de andere kant op),
+// `klein`/`groot` is het bereik waarin hij ademt, `duur` en `fase` zetten ze uit
+// de pas zodat het nooit als één beweging leest. De draaiing hoort bij de
+// animatie en niet bij de stijl: een keyframe die `transform` schrijft veegt een
+// inline transform weg.
+const LETTERS: { c: string; size: number; op: number; pos: React.CSSProperties; rot: number; reis: string; klein: number; groot: number; duur: number; fase: number }[] = [
+  { c: "K", size: 300, op: 0.055, pos: { top: "1%", left: "-14%" }, rot: -11, reis: "9vw", klein: 0.72, groot: 1.14, duur: 74, fase: -6 },
+  { c: "R", size: 240, op: 0.045, pos: { bottom: "-2%", right: "-10%" }, rot: 8, reis: "-8vw", klein: 0.78, groot: 1.2, duur: 88, fase: -31 },
+  { c: "P", size: 150, op: 0.03, pos: { top: "24%", left: "6%" }, rot: -6, reis: "12vw", klein: 0.66, groot: 1.24, duur: 61, fase: -18 },
+  { c: "M", size: 120, op: 0.025, pos: { top: "8%", right: "12%" }, rot: 10, reis: "-11vw", klein: 0.7, groot: 1.3, duur: 55, fase: -44 },
+  { c: "N", size: 285, op: 0.05, pos: { top: "40%", right: "-13%" }, rot: 12, reis: "-7vw", klein: 0.8, groot: 1.12, duur: 96, fase: -12 },
+  { c: "E", size: 215, op: 0.04, pos: { bottom: "2%", left: "-9%" }, rot: -7, reis: "8vw", klein: 0.75, groot: 1.18, duur: 82, fase: -57 },
+  { c: "A", size: 132, op: 0.028, pos: { bottom: "24%", left: "34%" }, rot: 5, reis: "-13vw", klein: 0.62, groot: 1.28, duur: 67, fase: -25 },
+  { c: "S", size: 96, op: 0.022, pos: { top: "58%", left: "14%" }, rot: -9, reis: "14vw", klein: 0.6, groot: 1.34, duur: 49, fase: -38 },
 ];
 
 function LandingFX() {
@@ -973,7 +1027,6 @@ function LandingFX() {
     userSelect: "none",
     lineHeight: 1,
   });
-  const pick = (slow?: boolean) => LETTERS.filter((l) => !!l.slow === !!slow);
   return (
     <div
       aria-hidden
@@ -1001,14 +1054,26 @@ function LandingFX() {
             "radial-gradient(128% 30.8% at 50% 21%, rgba(3,1,10,0) 0%, rgba(3,1,10,0) 30%, rgba(3,1,10,.12) 38%, rgba(3,1,10,.30) 46%, rgba(3,1,10,.52) 55%, rgba(3,1,10,.68) 65%, rgba(3,1,10,.78) 80%, rgba(3,1,10,.82) 100%)",
         }}
       />
-      {[false, true].map((slow) => (
-        <div key={String(slow)} className={slow ? "drift-b" : "drift-a"} style={{ position: "absolute", inset: "-30px" }}>
-          {pick(slow).map((l) => (
-            <span key={l.c} style={{ ...letter(l.op), ...l.pos, fontSize: l.size, transform: `rotate(${l.rot}deg)` }}>
-              {l.c}
-            </span>
-          ))}
-        </div>
+      {LETTERS.map((l, i) => (
+        <span
+          key={i}
+          className="letter-drift"
+          style={
+            {
+              ...letter(l.op),
+              ...l.pos,
+              fontSize: l.size,
+              "--reis": l.reis,
+              "--klein": l.klein,
+              "--groot": l.groot,
+              "--draai": `${l.rot}deg`,
+              animationDuration: `${l.duur}s`,
+              animationDelay: `${l.fase}s`,
+            } as React.CSSProperties
+          }
+        >
+          {l.c}
+        </span>
       ))}
     </div>
   );

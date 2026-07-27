@@ -1,7 +1,7 @@
 // Hub — profile, friends, inbox and leaderboard in one tabbed screen.
 // Reached from the Landing. A profile is optional: guests see the create form.
 import { Fragment, useEffect, useRef, useState } from "react";
-import { ArrowLeft, Award, Camera, Check, ChevronDown, CircleDot, Copy, Lock, LogOut, Maximize2, MessageCircle, MoreVertical, Pencil, Plus, Search, Send, Settings as SettingsIcon, Share2, Shield, ShoppingCart, Smile, Sparkles, Star, Swords, Trash2, UserPlus, Users, X, ZoomIn, ZoomOut } from "lucide-react";
+import { ArrowLeft, Award, Camera, Check, ChevronDown, CircleDot, Copy, Lock, LogOut, MessageCircle, MoreVertical, Pencil, Plus, Search, Send, Settings as SettingsIcon, Share2, Shield, ShoppingCart, Smile, Sparkles, Star, Swords, Trash2, UserPlus, Users, X, ZoomIn, ZoomOut } from "lucide-react";
 import { Avatar, RANK_RING } from "../components/Avatar";
 import { AvatarZoom } from "../components/AvatarZoom";
 import { Button } from "../components/Button";
@@ -542,7 +542,6 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
   const [editFile, setEditFile] = useState<File | null>(null);
   const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
-  const [avatarZoom, setAvatarZoom] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const colorInputRef = useRef<HTMLInputElement | null>(null);
   const colorDebounce = useRef<number | undefined>(undefined);
@@ -737,25 +736,12 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
         />
       )}
 
-      {avatarZoom && (
-        <AvatarZoom
-          name={account.name}
-          color={account.color}
-          userId={account.id}
-          hasAvatar={account.has_avatar}
-          avatarVer={account.avatar_ver}
-          frame={account.avatar_frame}
-          onClose={() => setAvatarZoom(false)}
-        />
-      )}
       {avatarMenuOpen && (
         <AvatarMenu
           hasCustomPhoto={!!account.has_avatar && !account.avatar_preset}
           onPhoto={() => { setAvatarMenuOpen(false); fileRef.current?.click(); }}
           onPreset={() => { setAvatarMenuOpen(false); setAvatarPickerOpen(true); }}
           onRemove={() => { setAvatarMenuOpen(false); removeAvatar(); }}
-          onView={() => { setAvatarMenuOpen(false); setAvatarZoom(true); }}
-          hasPhoto={!!account.has_avatar}
           onClose={() => setAvatarMenuOpen(false)}
         />
       )}
@@ -1420,16 +1406,12 @@ function AvatarMenu({
   onPhoto,
   onPreset,
   onRemove,
-  onView,
-  hasPhoto,
   onClose,
 }: {
   hasCustomPhoto: boolean;
   onPhoto: () => void;
   onPreset: () => void;
   onRemove: () => void;
-  onView: () => void;
-  hasPhoto: boolean;
   onClose: () => void;
 }) {
   const { t } = useT();
@@ -1461,11 +1443,6 @@ function AvatarMenu({
       >
         <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 18, color: colors.ink }}>{t("avatarMenuTitle")}</span>
         <p style={{ margin: "0 0 4px", fontFamily: font.ui, fontSize: 13, color: colors.sub, lineHeight: 1.5 }}>{t("avatarMenuQuestion")}</p>
-        {hasPhoto && (
-          <button onClick={onView} className="pressable" style={row}>
-            <Maximize2 size={17} color={colors.gold} /> {t("viewPhoto")}
-          </button>
-        )}
         <button onClick={onPhoto} className="pressable" style={row}>
           <Camera size={17} color={colors.gold} /> {t("uploadPhoto")}
         </button>
@@ -1900,7 +1877,10 @@ function FriendsTab({ game, onChallenge }: { game: GameApi; onChallenge: (userId
 }
 
 // Score card of another player: stats + achievements in a small overlay.
-function ProfileViewModal({ game, userId, onClose }: { game: GameApi; userId: string; onClose: () => void }) {
+/** Het korte profiel als popup: avatar, level, statistieken, onderling
+ *  resultaat en prestaties. Ook buiten de hub bruikbaar (de lobby laat hem
+ *  zien als je op een medespeler tikt), dus hij staat hier geexporteerd. */
+export function ProfileViewModal({ game, userId, onClose }: { game: GameApi; userId: string; onClose: () => void }) {
   const { t } = useT();
   const p = game.state.viewedProfile;
   const loaded = p && p.id === userId;

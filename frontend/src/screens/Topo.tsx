@@ -100,6 +100,14 @@ export function Topo({ game, onBack, onProfile, played }: { game: GameApi; onBac
     sound.results();
     setResult(data);
     setPhase("result");
+    // Een gast staat niet op de server, dus zonder deze regel weet de main page
+    // niet dat het topografiedeel al gedaan is en blijft het telknopje op de
+    // Dagronde-tegel staan. Alleen de dag, meer hoeft er niet in.
+    try {
+      if (data.day) localStorage.setItem("penneer.topoResult", JSON.stringify({ day: data.day }));
+    } catch {
+      /* opslag vol of geblokkeerd */
+    }
   };
 
   const viewStored = async () => {

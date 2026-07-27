@@ -12,6 +12,7 @@ import { MusicToggle } from "../components/MusicToggle";
 import { Toggle } from "../components/Toggle";
 import { Screen, Card } from "../components/Layout";
 import { TopBar } from "../components/TopBar";
+import { ProfileViewModal } from "./Hub";
 import type { GameApi } from "../net/socket";
 import { ALL_CATEGORY_KEYS, subLabelKey, useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
@@ -118,6 +119,8 @@ export function Lobby({ game }: { game: GameApi }) {
   const [deelInput, setDeelInput] = useState("");
   const [deelErr, setDeelErr] = useState("");
   const [shared, setShared] = useState(false);
+  // Het profiel van de medespeler op wie je hebt getikt.
+  const [viewing, setViewing] = useState<string | null>(null);
 
   const players = room.players.filter((p) => !p.is_spectator);
   const spectators = room.players.filter((p) => p.is_spectator);
@@ -259,8 +262,19 @@ export function Lobby({ game }: { game: GameApi }) {
             {spectators.length > 0 ? ` (+${spectators.length})` : ""}
           </SectionLabel>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {[...players, ...spectators].map((p) => (
+            {[...players, ...spectators].map((p) => {
+              // Tik op een medespeler en je ziet zijn korte profiel: level,
+              // statistieken, onderling resultaat, prestaties. Alleen voor wie
+              // een account heeft; een gast of een bot heeft niets te tonen.
+              const opent = !!p.user_id && !p.is_bot;
+              return (
               <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <button
+                  onClick={() => { if (!opent) return; sound.uiTap(); game.viewProfile(p.user_id!); setViewing(p.user_id!); }}
+                  disabled={!opent}
+                  aria-label={p.name}
+                  style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 0, background: "transparent", border: "none", padding: 0, textAlign: "left", cursor: opent ? "pointer" : "default" }}
+                >
                 <Avatar name={p.name} color={p.color} size={38} crown={p.is_host} dim={!p.connected || p.is_spectator} userId={p.user_id} hasAvatar={p.has_avatar} avatarVer={p.avatar_ver} frame={p.frame} />
                 <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
                   <span style={{ fontFamily: font.ui, fontWeight: 600, fontSize: 15, color: colors.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -276,6 +290,7 @@ export function Lobby({ game }: { game: GameApi }) {
                     ) : null;
                   })()}
                 </div>
+                </button>
                 <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
                   {p.is_bot && <Badge text="bot" color={colors.violet} />}
                   {p.is_spectator && <Badge text={t("watching")} color={colors.faint} />}
@@ -287,7 +302,8 @@ export function Lobby({ game }: { game: GameApi }) {
                   )}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
           {/* Computer players only exist in a room started from "Tegen de
               computer"; a room made to play with friends never offers them. */}
@@ -409,6 +425,7 @@ export function Lobby({ game }: { game: GameApi }) {
           {t("leaveRoom")}
         </Button>
       </div>
+      {viewing && <ProfileViewModal game={game} userId={viewing} onClose={() => setViewing(null)} />}
     </Screen>
   );
 }

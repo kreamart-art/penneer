@@ -82,11 +82,18 @@ export function shadowSrc(src: string): string {
  *  een regel. Zo staan ze allemaal op dezelfde lijn.
  *
  *  `dark` is voor platen die zo licht zijn dat witte letters erop vervagen. Op
- *  goud leest bijna-zwart met een licht glansje beter dan wit met een schaduw. */
-export const TILE_ART: Record<string, { src: string; label: boolean; labelY?: string; dark?: boolean }> = {
+ *  goud leest bijna-zwart met een licht glansje beter dan wit met een schaduw.
+ *
+ *  `badgeX`/`badgeY` is waar het telknopje hangt: het MIDDEN ervan, op de
+ *  afgeschuinde rechterbovenhoek van de plaat. Dat moet per plaat, want een
+ *  percentage in `top` rekent met de HOOGTE en in `left` met de BREEDTE. Eén
+ *  paar getallen voor alle platen zette het knopje op de vierkante plaat netjes
+ *  in de hoek en op de brede Duel-balk ver naar binnen: 12% van 190px hoog is
+ *  23px, 12% van 900px breed is 108px. */
+export const TILE_ART: Record<string, { src: string; label: boolean; labelY?: string; dark?: boolean; badgeX?: string; badgeY?: string }> = {
   friends: { src: "/tiles/friends.webp", label: true, labelY: "62%", dark: true },
   bots: { src: "/tiles/bots.webp", label: true, labelY: "62%" },
-  daily: { src: "/tiles/daily.webp", label: true, labelY: "68%" },
+  daily: { src: "/tiles/daily.webp", label: true, labelY: "68%", badgeX: "95%", badgeY: "5%" },
   train: { src: "/tiles/train.webp", label: true, labelY: "68%" },
-  duel: { src: "/tiles/duel.webp", label: false },
+  duel: { src: "/tiles/duel.webp", label: false, badgeX: "97%", badgeY: "14%" },
 };
