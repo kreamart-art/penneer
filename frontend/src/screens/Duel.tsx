@@ -8,7 +8,7 @@
 //
 // De server is de baas over de klok: elke ronde wordt apart OPGEHAALD en dan
 // pas begint zijn 15 seconden, dus de app herladen koopt geen denktijd.
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ArrowLeft, Check, Clock as ClockIcon, Hourglass, RotateCcw, Search, Swords, Trophy, X, Zap } from "lucide-react";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
@@ -610,55 +610,76 @@ function Clock({ left, tint }: { left: number; tint: string }) {
   );
 }
 
-// De zeshoek van de categorie-tab. Staat apart omdat zowel de rand-laag als de
-// vulling erop geknipt worden.
-const HEX_TAB = "polygon(14px 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 14px 100%, 0 50%)";
+// De kleur van de omlijning: exact dezelfde als de rand van de letterkaart,
+// zodat de tab en het vak één doorlopend frame zijn.
+const FRAME_LINE = withAlpha(colors.violet, 0.65);
+
+/** De categorie-tab: een zeshoek die met zijn PUNTEN precies op de bovenlijn van
+ *  de letterkaart rust, met een doorzichtig binnenvak zodat je de arena erdoor
+ *  ziet lopen.
+ *
+ *  Getekend als SVG-lijn en niet als geknipt blokje: een clip-path kan alleen
+ *  een vorm VULLEN, dus met die aanpak was het binnenvak altijd dicht. Een
+ *  polygon met `fill: none` geeft wel een echte omlijning. De breedte hangt van
+ *  de tekst af en wordt daarom gemeten; de zeshoek wordt daarna exact op die
+ *  maat getekend, zodat de punten links en rechts scherp blijven in plaats van
+ *  uitgerekt. */
+function CategoryTab({ label }: { label: string }) {
+  const box = useRef<HTMLDivElement | null>(null);
+  const [w, setW] = useState(150);
+  useLayoutEffect(() => {
+    if (box.current) setW(box.current.offsetWidth);
+  }, [label]);
+
+  const H = 30;      // hoogte van de tab
+  const C = 13;      // hoe ver de punt naar binnen loopt
+  const pts = `${C},1.5 ${w - C},1.5 ${w - 1},${H / 2} ${w - C},${H - 1.5} ${C},${H - 1.5} 1,${H / 2}`;
+  return (
+    <div
+      ref={box}
+      style={{
+        position: "absolute",
+        // De punten zitten op halve hoogte, dus het MIDDEN van de tab moet op
+        // de bovenlijn van de kaart liggen: die lijn is hier top 0.
+        top: 0,
+        left: "50%",
+        transform: "translate(-50%, -50%)",
+        zIndex: 2,
+        height: H,
+        padding: "0 24px",
+        display: "grid",
+        placeItems: "center",
+      }}
+    >
+      <svg width={w} height={H} viewBox={`0 0 ${w} ${H}`} style={{ position: "absolute", left: 0, top: 0, overflow: "visible" }} aria-hidden>
+        {/* dikke, doorzichtige lijn eronder = de gloed, zonder filter */}
+        <polygon points={pts} fill="none" stroke={FRAME_LINE} strokeWidth={5} opacity={0.3} />
+        <polygon points={pts} fill="none" stroke={FRAME_LINE} strokeWidth={1.5} />
+      </svg>
+      <span
+        style={{
+          position: "relative",
+          fontFamily: font.ui,
+          fontSize: 12.5,
+          fontWeight: 800,
+          letterSpacing: 2.4,
+          textTransform: "uppercase",
+          color: "#FFFFFF",
+          textShadow: `0 0 8px ${withAlpha(colors.violet, 0.95)}, 0 0 18px ${withAlpha(colors.violet, 0.7)}`,
+        }}
+      >
+        {label}
+      </span>
+    </div>
+  );
+}
 
 /** De letter op zijn voetstuk: neon-omlijsting, hexagonale categorie-tab die op
  *  de rand rust, opstijgende stralen en een gloeiende schijf onder de letter. */
 function LetterStage({ letter, category, hint }: { letter: string; category: string; hint: string }) {
   return (
     <div style={{ position: "relative", marginTop: 12 }}>
-      {/* De tab rust op de bovenrand van de kaart en hoort bij hetzelfde frame,
-          dus hij krijgt dezelfde neon-omlijsting. Een `border` volgt geen
-          clip-path, dus de rand is een tweede, iets grotere gekniple laag
-          eronder: wat ertussenuit steekt IS de lijn. */}
-      <div
-        style={{
-          position: "absolute",
-          top: -14,
-          left: "50%",
-          transform: "translateX(-50%)",
-          zIndex: 2,
-          padding: 1.5,
-          clipPath: HEX_TAB,
-          background: withAlpha(colors.violet, 0.75),
-          boxShadow: `0 0 18px ${withAlpha(colors.violet, 0.5)}`,
-        }}
-      >
-        <div
-          style={{
-            padding: "6px 26px",
-            clipPath: HEX_TAB,
-            background: `linear-gradient(180deg, #2a1a4e, #1d1039)`,
-          }}
-        >
-          <span
-            style={{
-              fontFamily: font.ui,
-              fontSize: 12.5,
-              fontWeight: 800,
-              letterSpacing: 2.4,
-              textTransform: "uppercase",
-              color: "#FFFFFF",
-              // Zelfde neon als de lijnen, maar dan als gloed óm de letters.
-              textShadow: `0 0 8px ${withAlpha(colors.violet, 0.95)}, 0 0 18px ${withAlpha(colors.violet, 0.7)}`,
-            }}
-          >
-            {category}
-          </span>
-        </div>
-      </div>
+      <CategoryTab label={category} />
 
       <div
         style={{
@@ -674,7 +695,7 @@ function LetterStage({ letter, category, hint }: { letter: string; category: str
           // moeten er dwars doorheen te zien zijn, anders staat de letter op een
           // dichte kaart in plaats van op het toneel.
           background: `linear-gradient(180deg, ${withAlpha(colors.violet, 0.1)}, ${withAlpha("#0E0922", 0.22)})`,
-          border: `1.5px solid ${withAlpha(colors.violet, 0.65)}`,
+          border: `1.5px solid ${FRAME_LINE}`,
           boxShadow: `0 0 26px ${withAlpha(colors.violet, 0.35)}, inset 0 0 34px ${withAlpha(colors.violet, 0.12)}`,
         }}
       >
@@ -683,7 +704,7 @@ function LetterStage({ letter, category, hint }: { letter: string; category: str
             style={{
               fontFamily: font.display,
               fontWeight: 700,
-              fontSize: 108,
+              fontSize: 86,
               lineHeight: 1,
               color: colors.gold,
               textShadow: `0 0 10px ${withAlpha(colors.goldHi, 0.45)}, 0 0 40px ${withAlpha(colors.gold, 0.35)}, 0 0 88px ${withAlpha(colors.orange, 0.2)}`,
@@ -691,18 +712,6 @@ function LetterStage({ letter, category, hint }: { letter: string; category: str
           >
             {letter}
           </span>
-          {/* voetstuk: gloeiende schijf onder de letter */}
-          <span
-            aria-hidden
-            style={{
-              position: "absolute",
-              bottom: -14,
-              width: 190,
-              height: 34,
-              borderRadius: "50%",
-              background: `radial-gradient(ellipse at center, ${withAlpha(colors.gold, 0.26)} 0%, ${withAlpha(colors.orange, 0.1)} 42%, transparent 72%)`,
-            }}
-          />
         </div>
         <span style={{ position: "relative", marginTop: 46, fontFamily: font.ui, fontSize: 13, color: withAlpha(colors.violet, 0.95), textAlign: "center", filter: "brightness(1.5)" }}>
           {hint}
