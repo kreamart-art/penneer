@@ -11,6 +11,46 @@ import { colors, font, withAlpha } from "../theme/tokens";
 const STD_POOL = "ABCDEFGHIJKLMNOPRSTUVWZ".split("");
 const FULL_POOL = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
+// De rol is afgeschuind: een achthoek met schuine hoeken. Alleen mochten die
+// hoeken niet in een scherpe punt eindigen, en dat kan een `polygon()` niet: die
+// verbindt punten met rechte lijnen en dus met scherpe hoeken. Daarom tekenen we
+// dezelfde achthoek als PAD, waarbij elke hoek een kwartbocht krijgt: we stoppen
+// een stukje voor het hoekpunt, en buigen met dat hoekpunt als stuurpunt naar het
+// stukje erna. Dat werkt alleen omdat de rol een vaste maat heeft, want een
+// `path()` rekent in echte pixels en schaalt niet mee.
+function chamferPath(w: number, h: number, cut: number, r: number): string {
+  const pts: Array<[number, number]> = [
+    [cut, 0], [w - cut, 0],
+    [w, cut], [w, h - cut],
+    [w - cut, h], [cut, h],
+    [0, h - cut], [0, cut],
+  ];
+  const toward = (from: [number, number], to: [number, number]): [number, number] => {
+    const dx = to[0] - from[0];
+    const dy = to[1] - from[1];
+    const len = Math.hypot(dx, dy) || 1;
+    const t = Math.min(r, len / 2) / len;
+    return [+(from[0] + dx * t).toFixed(2), +(from[1] + dy * t).toFixed(2)];
+  };
+  let d = "";
+  pts.forEach((cur, i) => {
+    const prev = pts[(i - 1 + pts.length) % pts.length];
+    const next = pts[(i + 1) % pts.length];
+    const a = toward(cur, prev);
+    const b = toward(cur, next);
+    d += `${i === 0 ? "M" : "L"} ${a[0]} ${a[1]} Q ${cur[0]} ${cur[1]} ${b[0]} ${b[1]} `;
+  });
+  return `${d}Z`;
+}
+
+// De rol heeft een vaste maat; de binnenkant zit 2px binnen de buitenkant, dus
+// daar valt de schuine snede 2px korter uit.
+const REEL_W = 172;
+const REEL_H = 200;
+const CORNER_R = 5;
+const CLIP_OUTER = `path("${chamferPath(REEL_W, REEL_H, 20, CORNER_R)}")`;
+const CLIP_INNER = `path("${chamferPath(REEL_W - 4, REEL_H - 4, 18, CORNER_R)}")`;
+
 type ReelState = "idle" | "spinning" | "locked";
 
 interface Props {
@@ -69,11 +109,8 @@ export function Reel({ state, letter, exclude = [], hard = false, skin = null }:
   // theme reads at a glance.
   const idleBorder = skin ? withAlpha(th.border, 0.45) : PLAIN.edge;
 
-  // De rol is afgeschuind zoals de rest van het toneel. Een `border` volgt geen
-  // clip-path, dus de rand is een tweede, iets grotere geknipte laag eronder:
-  // wat ertussenuit steekt IS de lijn.
-  const CHAMFER =
-    "polygon(20px 0, calc(100% - 20px) 0, 100% 20px, 100% calc(100% - 20px), calc(100% - 20px) 100%, 20px 100%, 0 calc(100% - 20px), 0 20px)";
+  // Een `border` volgt geen clip-path, dus de rand is een tweede, iets grotere
+  // geknipte laag eronder: wat ertussenuit steekt IS de lijn.
   const line = isLocked ? th.border : idleBorder;
 
   return (
@@ -83,7 +120,7 @@ export function Reel({ state, letter, exclude = [], hard = false, skin = null }:
         width: 172,
         height: 200,
         padding: 2,
-        clipPath: CHAMFER,
+        clipPath: CLIP_OUTER,
         background: line,
         boxShadow: isLocked
           ? `0 0 44px ${withAlpha(th.glow, 0.6)}`
@@ -98,7 +135,7 @@ export function Reel({ state, letter, exclude = [], hard = false, skin = null }:
         position: "relative",
         width: "100%",
         height: "100%",
-        clipPath: CHAMFER,
+        clipPath: CLIP_INNER,
         background: plain && !isLocked ? PLAIN.fill : th.bg,
         boxShadow: plain && !isLocked
           ? `inset 0 0 34px ${PLAIN.innerGlow}, inset 0 8px 26px rgba(0,0,0,.55)`

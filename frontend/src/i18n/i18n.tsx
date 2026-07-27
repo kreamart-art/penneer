@@ -590,7 +590,7 @@ const nl: Dict = {
   // reveal
   youSpin: "Jij draait deze ronde",
   xSpinsRound: "{name} draait deze ronde",
-  pressToSpin: "Druk op de knop om de rol te laten draaien.",
+  pressToSpin: "Druk op de knop om te draaien",
   pressStop: "Druk op de knop om te stoppen. Daar valt de letter voor iedereen.",
   everyoneFills: "Iedereen begint nu in te vullen.",
   xSpinning: "{name} draait de letter",
@@ -1235,7 +1235,7 @@ const en: Dict = {
   spectatorNote: "You're watching. You don't fill in.",
   youSpin: "You spin this round",
   xSpinsRound: "{name} spins this round",
-  pressToSpin: "Press the button to spin the reel.",
+  pressToSpin: "Press the button to spin",
   pressStop: "Press the button to stop. The letter drops for everyone.",
   everyoneFills: "Everyone starts filling in now.",
   xSpinning: "{name} is spinning the letter",

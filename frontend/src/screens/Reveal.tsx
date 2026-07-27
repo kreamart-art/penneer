@@ -80,7 +80,9 @@ export function Reveal({ game }: { game: GameApi }) {
             ) : game.isActive ? (
               <>
                 <Buzzer label={spinning ? "STOP" : t("spin")} size={104} skin={game.state.account?.buzzer_skin ?? null} onPress={() => (spinning ? game.spinStop() : game.spinStart())} />
-                <HintBar text={spinning ? t("pressStop") : t("pressToSpin")} icon={<Hand size={16} />} />
+                {/* De draai-hint hoort op een regel te staan, met het handje ervoor.
+                    De stop-hint is een zin langer en mag wel afbreken. */}
+                <HintBar text={spinning ? t("pressStop") : t("pressToSpin")} icon={<Hand size={16} />} nowrap={!spinning} />
               </>
             ) : (
               <HintBar text={`${t("xSpinning", { name: active?.name ?? "?" })}...`} />
@@ -102,22 +104,47 @@ const BANNER_H = 54;
 // achtergrond kan dat niet: dan is hij overal even sterk en even hard. Daarom
 // een stapeling die samen als gloeiende energie leest:
 //
-//  1. het paarse verloop, fel violet in het midden en donker naar de randen;
-//  2. een fijne lichte kern die door het midden van de lijn loopt;
-//  3. een dun helder randje bovenop, dat maakt het glasachtig;
-//  4. een zachte ronde oplichting waar de lijn de balk raakt;
-//  5. een kleine bloom eronder, net genoeg om te gloeien zonder wazig te worden.
+//  1. het verloop: donker marineblauw aan de uiteinden, via elektrisch blauw en
+//     indigo naar fel paars in het midden;
+//  2. een dun bijna-wit randje bovenop, MAAR alleen in het midden. Bijna-wit op
+//     de bijna-zwarte flanken mengt tot grijs, en op een lijn van 1,5px is dat
+//     randje bijna de halve lijn, dus dan wordt de hele lijn grijs. Het randje is
+//     een glans, en glans hoort alleen te zitten waar de lijn oplicht;
+//  3. een kleine bloom eronder, net genoeg om te gloeien zonder wazig te worden.
 //
 // Het uitfaden aan de uiteinden doet EEN masker over die hele stapel. Zou elke
 // laag zijn eigen fade krijgen, dan lopen ze niet gelijk uit en zie je de laagjes
 // los van elkaar eindigen.
-const LINE_PURPLE =
-  "linear-gradient(90deg, #3A167E 0%, #6A2DFF 18%, #9A4DFF 36%, #C46BFF 50%, #9A4DFF 64%, #6A2DFF 82%, #3A167E 100%)";
+// Het blauw ligt vlak bij de achtergrondkleur van de arena, dus de flanken van
+// de lijn zakken erin weg en alleen het midden licht op.
+const LINE_RAMP =
+  "linear-gradient(90deg, #0A0724 0%, #0A1440 16%, #1A1470 32%, #6A3DF5 44%, #A86BFF 50%, #6A3DF5 56%, #1A1470 68%, #0A1440 84%, #0A0724 100%)";
 const LINE_FADE = "linear-gradient(90deg, transparent 0%, #000 12%, #000 88%, transparent 100%)";
-const LINE_H = 3;
+// Voor de hintbalk: de lijn loopt van rand tot rand en is overal te zien; het is
+// de HIGHLIGHT die in het midden zit. De grondkleur blijft dus zichtbaar blauw in
+// plaats van weg te zakken, en alleen de lichte kern verschilt van lengte, onder
+// wat langer dan boven.
+const LINE_BASE = "#241C7A";
+const rampWithCore = (half: number) =>
+  `linear-gradient(90deg, ${LINE_BASE} 0%, ${LINE_BASE} ${50 - half}%, #6A3DF5 ${50 - half * 0.45}%, #A86BFF 50%, #6A3DF5 ${50 + half * 0.45}%, ${LINE_BASE} ${50 + half}%, ${LINE_BASE} 100%)`;
+const RAMP_CORE_SHORT = rampWithCore(14);
+const RAMP_CORE_LONG = rampWithCore(28);
+// De ring om de hintbalk: dikte en verloop.
+const RING = 1.5;
+const RING_RAMP = rampWithCore(26);
+const glans = (half: number) =>
+  `linear-gradient(90deg, transparent ${50 - half}%, rgba(231,216,255,.55) 50%, transparent ${50 + half}%)`;
+const LINE_H = 1.5;
 
-function EnergyLine({ side }: { side: "top" | "bottom" }) {
-  const fade = { WebkitMaskImage: LINE_FADE, maskImage: LINE_FADE } as React.CSSProperties;
+function EnergyLine({ side, core }: { side: "top" | "bottom"; core?: "short" | "long" }) {
+  // Zonder `core` is het de banner-variant: die zakt juist wel weg naar de
+  // uiteinden. Met `core` loopt de lijn door tot de rand en verschilt alleen de
+  // lengte van de lichtkern.
+  const ramp = core === "short" ? RAMP_CORE_SHORT : core === "long" ? RAMP_CORE_LONG : LINE_RAMP;
+  const shine = glans(core === "long" ? 22 : core === "short" ? 12 : 18);
+  const fade = (core
+    ? {}
+    : { WebkitMaskImage: LINE_FADE, maskImage: LINE_FADE }) as React.CSSProperties;
   return (
     <>
       {/* De bloom ligt eronder en is bewust klein: een brede gloed maakt de lijn
@@ -126,13 +153,13 @@ function EnergyLine({ side }: { side: "top" | "bottom" }) {
         aria-hidden
         style={{
           position: "absolute",
-          [side]: -3,
+          [side]: -2,
           left: 0,
           right: 0,
-          height: LINE_H + 6,
-          background: LINE_PURPLE,
-          opacity: 0.5,
-          filter: "blur(3.5px)",
+          height: LINE_H + 4,
+          background: ramp,
+          opacity: 0.45,
+          filter: "blur(3px)",
           pointerEvents: "none",
           ...fade,
         }}
@@ -145,18 +172,23 @@ function EnergyLine({ side }: { side: "top" | "bottom" }) {
           left: 0,
           right: 0,
           height: LINE_H,
-          backgroundImage: [
-            // 3: het glasrandje bovenop
-            "linear-gradient(180deg, rgba(255,255,255,.8) 0px, rgba(255,255,255,0) 1px)",
-            // 2: de lichte kern door het midden
-            "linear-gradient(180deg, transparent 1px, rgba(255,235,255,.6) 1px, rgba(255,235,255,.6) 2px, transparent 2px)",
-            // 4: de ronde oplichting in het midden
-            "radial-gradient(50% 320% at 50% 50%, rgba(255,255,255,.4) 0%, transparent 65%)",
-            // 1: het paarse verloop
-            LINE_PURPLE,
-          ].join(", "),
+          background: ramp,
           pointerEvents: "none",
           ...fade,
+        }}
+      />
+      {/* 2: de glans bovenop. Eigen laag, want hij heeft zijn eigen horizontale
+          begrenzing: alleen daar waar de lijn oplicht. */}
+      <span
+        aria-hidden
+        style={{
+          position: "absolute",
+          [side]: 0,
+          left: 0,
+          right: 0,
+          height: 0.6,
+          background: shine,
+          pointerEvents: "none",
         }}
       />
     </>
@@ -182,7 +214,7 @@ function Chevron({ id }: { id: string }) {
         d={path}
         fill="none"
         stroke={`url(#${id})`}
-        strokeWidth={2.5}
+        strokeWidth={1.6}
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -266,27 +298,36 @@ function TurnBanner({ label, avatar }: { name: string | null; label: string; ava
 
 /** De regel onder de knop: een omlijnd balkje in plaats van losse tekst, zodat
  *  hij bij de rest van het toneel hoort. */
-function HintBar({ text, icon, tone = colors.sub }: { text: string; icon?: React.ReactNode; tone?: string }) {
+function HintBar({ text, icon, tone = colors.sub, nowrap = false }: { text: string; icon?: React.ReactNode; tone?: string; nowrap?: boolean }) {
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 9,
-        maxWidth: 320,
-        padding: "11px 18px",
-        borderRadius: 14,
-        background: withAlpha(ARENA.base, 0.55),
-        border: `1px solid ${withAlpha(colors.violet, 0.4)}`,
-        color: tone,
-        fontFamily: font.ui,
-        fontSize: 13.5,
-        textAlign: "center",
-      }}
-    >
-      {icon && <span style={{ color: colors.gold, display: "flex", flexShrink: 0 }}>{icon}</span>}
-      <span>{text}</span>
+    // De omlijning loopt met de ronde hoeken mee, dus het is een RING en geen
+    // losse lijnen: een laag met het verloop erop, met daarbinnen de balk zelf.
+    // Wat er tussenuit steekt is de lijn. Een `border` kan geen verloop dragen,
+    // vandaar deze twee lagen.
+    <div style={{ position: "relative", maxWidth: 320, borderRadius: 14, padding: RING, background: RING_RAMP }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 9,
+          padding: "10px 17px",
+          borderRadius: 14 - RING,
+          background: withAlpha(ARENA.base, 0.72),
+          color: tone,
+          fontFamily: font.ui,
+          fontSize: 13.5,
+          textAlign: "center",
+          whiteSpace: nowrap ? "nowrap" : undefined,
+        }}
+      >
+        {icon && <span style={{ color: colors.gold, display: "flex", flexShrink: 0 }}>{icon}</span>}
+        <span>{text}</span>
+      </div>
+      {/* De glans op de ring: boven kort, onder langer. Hij zit alleen in het
+          midden, dus hij raakt de ronde hoeken nooit. */}
+      <span aria-hidden style={{ position: "absolute", top: 0, left: 0, right: 0, height: RING, background: glans(12), pointerEvents: "none" }} />
+      <span aria-hidden style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: RING, background: glans(24), pointerEvents: "none" }} />
     </div>
   );
 }
