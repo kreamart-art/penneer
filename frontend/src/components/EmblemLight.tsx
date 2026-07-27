@@ -93,16 +93,20 @@ export function EmblemLightFront() {
         ...laag,
         width: "calc(var(--em) * 3.4)",
         height: "calc(var(--em) * 3.4)",
-        opacity: 0.72,
         WebkitMaskImage: HOLE,
         maskImage: HOLE,
         WebkitMaskRepeat: "no-repeat",
         maskRepeat: "no-repeat",
       }}
     >
+      {/* `reik` is hier hoger dan bij de achterste set, en dat is het hele punt:
+          het masker geeft de vorm, de verf de lengte. Met de reik van achter
+          was de straal op de hoogte van het woordmerk al bijna op, en dan zie
+          je er niets van. Nu draagt hij tot voorbij de letters. */}
       {[
-        { masker: SPIES, maat: 3.25, sterk: 0.4, reik: 0.5, sec: 260, terug: false, min: 0.8, adem: 7, wacht: 4 },
-        { masker: UIT, maat: 3.25, sterk: 0.55, reik: 0.85, sec: 165, terug: true, min: 0.68, adem: 17, wacht: 1.2 },
+        { masker: SPIES, maat: 3.25, sterk: 0.75, reik: 0.95, sec: 260, terug: false, min: 0.8, adem: 7, wacht: 4 },
+        { masker: MIDDEL, maat: 3.25, sterk: 0.42, reik: 1.05, sec: 190, terug: true, min: 0.88, adem: 13, wacht: 2.5 },
+        { masker: UIT, maat: 3.25, sterk: 0.95, reik: 1.15, sec: 165, terug: true, min: 0.68, adem: 17, wacht: 1.2 },
       ].map((w, i) => (
         <div
           key={`voor${i}`}
