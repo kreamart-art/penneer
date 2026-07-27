@@ -11,6 +11,7 @@ import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { canInstall, isIos, isIosInAppBrowser, isStandalone, onInstallChange, promptInstall } from "../pwa/install";
 import { APP_VERSION } from "../version";
+import { setTileSkin, tileSkinOn } from "../theme/tileSkin";
 import { colors, font, withAlpha } from "../theme/tokens";
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -175,6 +176,8 @@ export function Settings({ game, onBack, onShowRules }: { game: GameApi; onBack:
   const iosInApp = isIosInAppBrowser();
   const [adminCode, setAdminCode] = useState("");
   const { isAdmin, adminAi, recoveryCodes, aiCodes, avatarCodes, buzzerCodes } = game.state;
+  // De platen-skin staat lokaal, dus we houden hem hier zelf bij.
+  const [tileSkin, setTileSkinOn] = useState(tileSkinOn);
 
   useEffect(() => onInstallChange(() => setInstallable(canInstall())), []);
 
@@ -348,6 +351,15 @@ export function Settings({ game, onBack, onShowRules }: { game: GameApi; onBack:
                 <span style={{ fontFamily: font.ui, fontSize: 14, color: colors.green }}>{t("loggedInAdmin")}</span>
                 <Button variant="ghost" onClick={game.adminLogout}>{t("logout")}</Button>
               </div>
+
+              {/* Platen-skin: een PROEF voor de main page. Lokaal bewaard en
+                  alleen hier zichtbaar, dus geen speler ziet er iets van tot we
+                  besluiten dat dit de nieuwe standaard wordt. */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                <span style={{ fontFamily: font.ui, fontSize: 15, color: colors.ink }}>{t("tileSkin")}</span>
+                <Toggle on={tileSkin} onChange={(v) => { setTileSkin(v); setTileSkinOn(v); }} />
+              </div>
+              <p style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint, margin: 0 }}>{t("tileSkinHint")}</p>
 
               {/* AI referee toggle */}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>

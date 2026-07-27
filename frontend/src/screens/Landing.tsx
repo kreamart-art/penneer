@@ -14,6 +14,7 @@ import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { NeonText } from "../components/NeonText";
 import { neonSkin } from "../theme/neon";
+import { TILE_ART, useTileSkin } from "../theme/tileSkin";
 import { colors, font, radius, withAlpha } from "../theme/tokens";
 
 const inputStyle: React.CSSProperties = {
@@ -379,6 +380,7 @@ export function Landing({
                   sound.uiTap();
                   setShowFriends(true);
                 }}
+                art="friends"
                 icon={<Play size={30} strokeWidth={2.2} fill="currentColor" />}
                 label={t("playFriends")}
               />
@@ -386,6 +388,7 @@ export function Landing({
                 accent={colors.violet}
                 disabled={!canCreate}
                 onClick={() => createRoom(true)}
+                art="bots"
                 icon={<Bot size={30} strokeWidth={2.2} />}
                 label={t("playCpu")}
               />
@@ -395,6 +398,7 @@ export function Landing({
                   sound.uiTap();
                   onShowDaily();
                 }}
+                art="daily"
                 icon={<CalendarDays size={30} strokeWidth={2.2} />}
                 label={t("dailyTitle")}
                 badge={dailyPending}
@@ -405,6 +409,7 @@ export function Landing({
                   sound.uiTap();
                   onShowTraining();
                 }}
+                art="train"
                 icon={<GraduationCap size={30} strokeWidth={2.2} />}
                 label={t("trainTitle")}
               />
@@ -414,6 +419,7 @@ export function Landing({
               <Tile
                 wide
                 accent={colors.red}
+                art="duel"
                 onClick={() => {
                   sound.uiTap();
                   onShowDuel();
@@ -615,6 +621,7 @@ function Tile({
   disabled = false,
   badge = false,
   wide = false,
+  art,
 }: {
   icon: React.ReactNode;
   label: string;
@@ -624,7 +631,10 @@ function Tile({
   disabled?: boolean;
   badge?: boolean;
   wide?: boolean;
+  /** Welke plaat deze tegel krijgt als de platen-skin aanstaat. */
+  art?: string;
 }) {
+  const skin = useTileSkin();
   const base: React.CSSProperties = {
     position: "relative",
     // Flatter than square. The grid is two columns wide, so a narrower tile
@@ -658,8 +668,64 @@ function Tile({
   const labelSlot: React.CSSProperties = wide
     ? { display: "flex", alignItems: "center" }
     : { minHeight: 34, display: "flex", alignItems: "center", justifyContent: "center" };
+  // ---- de platen-skin ----
+  // Een proef die alleen de admin aanzet. De plaat IS de knop: rand, vulling,
+  // licht en icoon zitten al in de art, dus er wordt niets omheen getekend. Het
+  // label komt er alleen op als het niet al in de plaat staat (de Duel-plaat
+  // heeft zijn woord al).
+  const tile = art ? TILE_ART[art] : undefined;
+  if (skin && tile) {
+    return (
+      <button
+        onClick={onClick}
+        disabled={disabled}
+        aria-label={label}
+        className="pressable"
+        style={{
+          position: "relative",
+          width: "100%",
+          gridColumn: wide ? "1 / -1" : undefined,
+          border: "none",
+          background: "transparent",
+          padding: 0,
+          cursor: disabled ? "default" : "pointer",
+          opacity: disabled ? 0.45 : 1,
+          display: "block",
+          lineHeight: 0,
+        }}
+      >
+        <img src={tile.src} alt="" style={{ width: "100%", height: "auto", display: "block" }} />
+        {tile.label && (
+          <span
+            style={{
+              position: "absolute",
+              left: "10%",
+              right: "10%",
+              // Het icoon staat in de bovenhelft van de plaat; het label hoort
+              // in de lege ruimte eronder.
+              top: "58%",
+              fontFamily: font.display,
+              fontWeight: 700,
+              fontSize: "clamp(13px, 4vw, 17px)",
+              lineHeight: 1.15,
+              letterSpacing: 0.2,
+              textAlign: "center",
+              color: "#FFF6E2",
+              textShadow: "0 2px 6px rgba(0,0,0,.65), 0 0 14px rgba(0,0,0,.5)",
+            }}
+          >
+            {label}
+          </span>
+        )}
+        {badge && (
+          <span style={{ position: "absolute", top: "12%", right: "12%", width: 10, height: 10, borderRadius: "50%", background: colors.gold, boxShadow: `0 0 8px ${colors.gold}` }} />
+        )}
+      </button>
+    );
+  }
+
   if (primary) {
-    // De hoofdknop is gepolijst goud, geen geel vlak. Dat is een STAPELING, want
+  // De hoofdknop is gepolijst goud, geen geel vlak. Dat is een STAPELING, want
     // een enkel verloop kan geen metaal zijn: metaal heeft een lichte bovenrand,
     // een felle kern, een donkere onderkant en een harde glans vlak onder de
     // rand. Van onder naar boven:
