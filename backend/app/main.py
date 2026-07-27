@@ -516,11 +516,10 @@ def _topo_result_payload(db, uid: str, day: str, score: int, breakdown: list, ra
 
 @app.post("/api/daily/topo/start")
 async def topo_start(request: Request) -> JSONResponse:
-    """Deel de vragen van vandaag uit. Voor accounts zet dit de klok vast op de
-    EERSTE start van de dag, zodat sluiten en heropenen niets teruggeeft."""
+    """Begin het topografiedeel. Geeft alleen HOEVEEL vragen er zijn, niet de
+    vragen zelf: die worden een voor een uitgeserveerd, zodat je niet vooruit
+    kunt lezen en de klok per vraag bij de server ligt."""
     db = get_db()
-    body = await request.json() if request.headers.get("content-type", "").startswith("application/json") else {}
-    lang = "en" if str((body or {}).get("lang") or "nl").startswith("en") else "nl"
     day = daily.today()
     uid = db.auth(_bearer(request))
     if uid and db.topo_entry(uid, day):
@@ -529,10 +528,44 @@ async def topo_start(request: Request) -> JSONResponse:
         db.topo_start(uid, day, time.time())
     return JSONResponse({
         "day": day,
-        "questions": topo.public_questions(day, lang),
-        "duration": topo.DURATION_S,
+        "total": topo.QUESTIONS_PER_DAY,
+        "seconds": topo.QUESTION_S,
         "played": False,
     })
+
+
+@app.post("/api/daily/topo/serve")
+async def topo_serve(request: Request) -> JSONResponse:
+    """Deel EEN vraag uit en stempel wanneer dat gebeurde. Opnieuw opvragen geeft
+    dezelfde vraag met de resterende tijd, nooit een nieuwe klok."""
+    db = get_db()
+    body = await request.json()
+    lang = "en" if str((body or {}).get("lang") or "nl").startswith("en") else "nl"
+    idx = max(0, min(topo.QUESTIONS_PER_DAY - 1, int((body or {}).get("idx") or 0)))
+    day = daily.today()
+    uid = db.auth(_bearer(request))
+    qs = topo.public_questions(day, lang)
+    q = qs[idx]
+    if not uid:
+        # Gasten spelen ongerangschikt; hun klok loopt in de app zelf, want er is
+        # niets om aan vast te leggen.
+        return JSONResponse({"idx": idx, "id": q["id"], "q": q["q"], "seconds": topo.QUESTION_S, "seconds_left": topo.QUESTION_S, "total": len(qs)})
+    served = db.topo_serve(uid, day, idx, time.time())
+    left = max(0, topo.QUESTION_S - (time.time() - served))
+    return JSONResponse({"idx": idx, "id": q["id"], "q": q["q"], "seconds": topo.QUESTION_S, "seconds_left": round(left, 1), "total": len(qs)})
+
+
+@app.post("/api/daily/topo/answer")
+async def topo_answer(request: Request) -> JSONResponse:
+    """Leg het antwoord op EEN vraag vast. Per vraag krijg je een kans."""
+    db = get_db()
+    body = await request.json()
+    idx = max(0, min(topo.QUESTIONS_PER_DAY - 1, int((body or {}).get("idx") or 0)))
+    answer = str((body or {}).get("answer") or "")[:40]
+    uid = db.auth(_bearer(request))
+    if uid:
+        db.topo_answer_set(uid, daily.today(), idx, answer, time.time())
+    return JSONResponse({"ok": True})
 
 
 @app.post("/api/daily/topo/submit")
@@ -548,8 +581,7 @@ async def topo_submit(request: Request) -> JSONResponse:
     entry = db.topo_entry(uid, day) if uid else None
     if entry is not None:
         # Al op het bord: geef de OPGESLAGEN uitslag terug, beoordeeld met de
-        # instelling waarmee toen is ingeleverd, zodat de uitsplitsing bij de
-        # bewaarde score past.
+        # instelling waarmee toen is ingeleverd.
         try:
             stored = json.loads(entry["answers"])
         except Exception:
@@ -557,16 +589,33 @@ async def topo_submit(request: Request) -> JSONResponse:
         _, breakdown = topo.score_answers(day, stored, lenient=bool(entry.get("lenient")))
         return JSONResponse({**_topo_result_payload(db, uid, day, int(entry["score"]), breakdown, True, int(entry["time_ms"]), lang), "already": True})
 
-    answers = {str(k)[:32]: str(v)[:40] for k, v in ((body or {}).get("answers") or {}).items()}
+    qs = topo.questions_for(day)
+    if uid:
+        # De antwoorden komen uit de opslag, niet uit dit verzoek: ze zijn per
+        # vraag vastgelegd toen ze werden gegeven. Een antwoord dat te laat kwam
+        # telt niet mee, en de tijd is de som van wat elke vraag kostte.
+        answers: dict = {}
+        spent = 0.0
+        by_idx = {row["idx"]: row for row in db.topo_progress_of(uid, day)}
+        for i, q in enumerate(qs):
+            row = by_idx.get(i)
+            if not row:
+                spent += topo.QUESTION_S
+                continue
+            took = (row["answered_at"] - row["served_at"]) if row["answered_at"] else topo.QUESTION_S
+            spent += min(max(took, 0.0), topo.QUESTION_S)
+            if row["answer"] and took <= topo.QUESTION_S + topo.GRACE_S:
+                answers[q["id"]] = row["answer"]
+    else:
+        answers = {str(k)[:32]: str(v)[:40] for k, v in ((body or {}).get("answers") or {}).items()}
+        spent = float(topo.DURATION_S)
+
     score, breakdown = topo.score_answers(day, answers, lenient=lenient)
     ranked = False
     time_ms = 0
     if uid:
-        started = db.topo_start(uid, day, now)
-        elapsed = now - started
-        if elapsed <= topo.DURATION_S + topo.GRACE_S:
-            time_ms = int(min(max(elapsed, 1.0), topo.DURATION_S) * 1000)
-            ranked = db.topo_submit(uid, day, score, time_ms, json.dumps(answers)[:4000], now, lenient=lenient)
+        time_ms = int(min(max(spent, 1.0), topo.DURATION_S) * 1000)
+        ranked = db.topo_submit(uid, day, score, time_ms, json.dumps(answers)[:4000], now, lenient=lenient)
     return JSONResponse({**_topo_result_payload(db, uid, day, score, breakdown, ranked, time_ms, lang), "already": False})
 
 

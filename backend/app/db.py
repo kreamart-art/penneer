@@ -249,6 +249,18 @@ CREATE TABLE IF NOT EXISTS topo_starts (
     started_at REAL NOT NULL,
     PRIMARY KEY (day, user_id)
 );
+-- Topografie wordt vraag voor vraag gespeeld, net als het duel. Elke vraag wordt
+-- apart uitgeserveerd en gestempeld, zodat de app sluiten en heropenen geen
+-- bedenktijd oplevert: de klok loopt bij de server.
+CREATE TABLE IF NOT EXISTS topo_progress (
+    day TEXT NOT NULL,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    idx INTEGER NOT NULL,
+    served_at REAL NOT NULL,
+    answer TEXT,
+    answered_at REAL,
+    PRIMARY KEY (day, user_id, idx)
+);
 CREATE TABLE IF NOT EXISTS topo_scores (
     day TEXT NOT NULL,
     user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -1392,6 +1404,34 @@ class Database:
                 return float(row[0]["started_at"])
             self._exec("INSERT INTO topo_starts (day, user_id, started_at) VALUES (?,?,?)", (day, user_id, now))
             return now
+
+    def topo_serve(self, user_id: str, day: str, idx: int, now: float) -> float:
+        """Stempel het moment waarop deze vraag is uitgeserveerd, en geef dat
+        terug. Een tweede keer opvragen levert dezelfde stempel: de klok loopt
+        door, ook als je de app tussendoor sluit."""
+        with self._lock:
+            row = self._q("SELECT served_at FROM topo_progress WHERE day=? AND user_id=? AND idx=?", (day, user_id, idx))
+            if row:
+                return float(row[0]["served_at"])
+            self._exec("INSERT INTO topo_progress (day, user_id, idx, served_at) VALUES (?,?,?,?)", (day, user_id, idx, now))
+            return now
+
+    def topo_answer_set(self, user_id: str, day: str, idx: int, answer: str, now: float) -> None:
+        """Leg het antwoord vast. Een tweede antwoord op dezelfde vraag telt
+        niet: je krijgt per vraag een kans."""
+        with self._lock:
+            self._exec(
+                "UPDATE topo_progress SET answer=?, answered_at=? WHERE day=? AND user_id=? AND idx=? AND answer IS NULL",
+                (answer[:40], now, day, user_id, idx),
+            )
+
+    def topo_progress_of(self, user_id: str, day: str) -> list[dict]:
+        with self._lock:
+            rows = self._q(
+                "SELECT idx, served_at, answer, answered_at FROM topo_progress WHERE day=? AND user_id=? ORDER BY idx",
+                (day, user_id),
+            )
+        return [dict(r) for r in rows]
 
     def topo_submit(self, user_id: str, day: str, score: int, time_ms: int, answers_json: str, now: float, lenient: bool = False) -> bool:
         with self._lock:

@@ -5,6 +5,11 @@ dezelfde vragen, afgeleid uit de datum, dus geen enkele server hoeft iets op te
 slaan om het eens te zijn. Alleen gaat het hier niet om een letter maar om acht
 aardrijkskundevragen.
 
+De vragen komen EEN VOOR EEN, met vijftien seconden per vraag, net als een
+duelronde. Elke vraag wordt apart uitgeserveerd en door de server gestempeld: de
+app sluiten en heropenen levert dus geen bedenktijd op, en je ziet de volgende
+vraag pas als de vorige voorbij is.
+
 Antwoorden worden getypt, niet aangeklikt. Dat past bij de rest van het spel,
 maar het betekent wel dat spelfouten in eigennamen ("Kopenhagen" met een c)
 verkeerd zouden vallen. Daarom mag een antwoord een paar letters afwijken,
@@ -23,8 +28,9 @@ import random
 from .game import _edit_distance_capped, normalize
 
 QUESTIONS_PER_DAY = 8
-DURATION_S = 90          # iets ruimer dan het woordendeel: je moet nadenken
-GRACE_S = 15
+QUESTION_S = 15          # per vraag, net als een duelronde
+GRACE_S = 5              # speling voor het netwerk bovenop die 15
+DURATION_S = QUESTIONS_PER_DAY * QUESTION_S
 POINTS_PER_ANSWER = 10   # 8 x 10 = 80 maximaal
 BOARD_LIMIT = 25
 
