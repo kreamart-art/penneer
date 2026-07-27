@@ -1,20 +1,22 @@
 // De gouden actieknop uit de studio-art, precies zoals hij in het bestand staat.
 //
-// De plaat wordt NIET uitgerekt: de knop neemt de verhouding van de plaat over
-// en de afbeelding ligt er onvervormd overheen, op ware hoogte-breedte. De
-// gloed die in het bestand om de plaat heen zit steekt buiten de knop uit; dat
-// moet ook, anders zou je hem wegknippen.
+// De bron-PNG heeft ZELF al een alfakanaal; de asset is dus niets meer dan die
+// PNG bijgesneden op zijn zichtbare pixels. (Eerder haalde ik er met een
+// kleurmasker een uitsnede uit, omdat een viewer het bestand op grijs toonde en
+// ik dacht dat het grijs erin zat. Dat masker maakte juist de wazige vorm die
+// er niet hoorde te zijn. Open zo'n bestand altijd als RGBA en kijk naar het
+// alfakanaal voordat je iets weg gaat knippen.)
 //
-// De drie getallen hieronder zijn uit de asset zelf gemeten: hoe groot het
-// bestand is en welk deel daarvan de scherpe plaat beslaat. Vervang je de art,
-// meet dan opnieuw en pas alleen deze regels aan.
+// De plaat wordt NIET uitgerekt: de knop neemt de verhouding van de plaat over
+// en de afbeelding ligt er onvervormd overheen. De getallen hieronder zijn uit
+// de asset gemeten; vervang je de art, meet dan opnieuw.
 import { useState } from "react";
 import { colors, font } from "../theme/tokens";
 
 const ASSET_W = 760;
-const ASSET_H = 246;
-const PLATE_W = 0.8039;   // deel van de assetbreedte dat de plaat is
-const PLATE_H = 0.5325;   // idem in de hoogte
+const ASSET_H = 196;
+const PLATE_W = 0.9513;   // deel van de assetbreedte dat de plaat is
+const PLATE_H = 0.8418;   // idem in de hoogte
 
 const PLATE_RATIO = (ASSET_W * PLATE_W) / (ASSET_H * PLATE_H); // breedte/hoogte van de plaat
 const OVER_X = (1 / PLATE_W - 1) / 2;                          // gloedmarge links en rechts
