@@ -12,6 +12,7 @@ import { Screen, Card } from "../components/Layout";
 import type { GameApi } from "../net/socket";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
+import { NeonText } from "../components/NeonText";
 import { neonSkin } from "../theme/neon";
 import { colors, font, radius, withAlpha } from "../theme/tokens";
 
@@ -309,11 +310,13 @@ export function Landing({
                 fontSize: "min(60px, 15vw)",
                 letterSpacing: "0.14em",
                 whiteSpace: "nowrap",
-                color: colors.ink,
-                textShadow: `0 0 44px ${withAlpha(colors.violet, 0.85)}, 0 0 16px ${withAlpha(colors.gold, 0.4)}, 0 2px 0 rgba(0,0,0,.28)`,
               }}
             >
-              PEN NEER
+              {/* Zelfde behandeling als de letter op de rol: een verloop over de
+                  letters met een gloed als vervaagde kopie erachter, in violet.
+                  Een text-shadow kon hier niet meer: die tekent over een verloop
+                  heen dat op de letters is geknipt. */}
+              <NeonText accent={colors.violet} blur={22} glow={0.8}>PEN NEER</NeonText>
             </h1>
             <p
               style={{

@@ -7,6 +7,7 @@ import { ArrowLeft, CalendarDays, Check, ChevronRight, Flame, Globe2, HelpCircle
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { Screen, Card } from "../components/Layout";
+import { NeonText } from "../components/NeonText";
 import { Topo } from "./Topo";
 import type { GameApi } from "../net/socket";
 import { useT } from "../i18n/i18n";
@@ -381,7 +382,8 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
 
           <Card style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, padding: 14 }}>
             <span style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.sub }}>{t("letterIs")}</span>
-            <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 46, color: colors.gold, textShadow: `0 0 24px ${withAlpha(colors.gold, 0.5)}` }}>{letter}</span>
+            {/* Zelfde behandeling als de letter op de rol, in goud. */}
+            <NeonText accent={colors.gold} blur={16} glow={0.7} style={{ fontFamily: font.display, fontWeight: 700, fontSize: 46, lineHeight: 1 }}>{letter}</NeonText>
           </Card>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -432,7 +434,7 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <Card style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
           <span style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.sub }}>{t("dailyYourScore")}</span>
-          <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 54, color: colors.gold, textShadow: `0 0 26px ${withAlpha(colors.gold, 0.5)}`, lineHeight: 1 }}>{r.score}</span>
+          <NeonText accent={colors.gold} blur={18} glow={0.7} style={{ fontFamily: font.display, fontWeight: 700, fontSize: 54, lineHeight: 1 }}>{r.score}</NeonText>
           <span style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint }}>{t("dailyScoreOf", { score: r.score, max: MAX_SCORE })}</span>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", marginTop: 4 }}>
             {r.ranked && r.rank > 0 && chip(<Trophy size={13} color={colors.gold} />, t("dailyRankLine", { rank: r.rank, total: r.total }))}

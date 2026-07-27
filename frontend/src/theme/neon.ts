@@ -68,6 +68,13 @@ export function litGradient(accent: string): string {
   return `radial-gradient(115% 65% at 50% -12%, hsl(${c.h.toFixed(1)} ${(c.s * 100).toFixed(1)}% ${(clamp(c.l, 0.35, 0.7) * 100).toFixed(1)}% / .16), transparent 62%)`;
 }
 
+/** Het oppervlak van een letter of icoon: licht van boven, donker naar onder.
+ *  Zelfde verloop als de rol gebruikt voor zijn letter. */
+export function faceGradient(accent: string): string {
+  const r = rampFrom(accent);
+  return `linear-gradient(155deg, ${r[3]} 0%, ${r[2]} 42%, ${r[1]} 76%, ${r[0]} 100%)`;
+}
+
 /** Een sierlijn in deze kleur: donker aan de uiteinden, fel in het midden. */
 export function lineGradient(accent: string): string {
   const r = rampFrom(accent);

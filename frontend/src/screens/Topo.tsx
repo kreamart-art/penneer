@@ -12,6 +12,7 @@ import { ArrowLeft, Check, Flame, Globe2, Trophy, X } from "lucide-react";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { Screen, Card } from "../components/Layout";
+import { NeonText } from "../components/NeonText";
 import type { GameApi } from "../net/socket";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
@@ -234,7 +235,7 @@ export function Topo({ game, onBack, onProfile, played }: { game: GameApi; onBac
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <Card style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
           <span style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.sub }}>{t("topoYourScore")}</span>
-          <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 54, color: colors.gold, textShadow: `0 0 26px ${withAlpha(colors.gold, 0.5)}`, lineHeight: 1 }}>{r.score}</span>
+          <NeonText accent={colors.gold} blur={18} glow={0.7} style={{ fontFamily: font.display, fontWeight: 700, fontSize: 54, lineHeight: 1 }}>{r.score}</NeonText>
           <span style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint }}>{t("dailyScoreOf", { score: r.score, max: r.max_score })}</span>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", marginTop: 4 }}>
             {r.ranked && r.rank > 0 && chip(<Trophy size={13} color={colors.gold} />, t("dailyRankLine", { rank: r.rank, total: r.total }))}

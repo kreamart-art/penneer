@@ -11,6 +11,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ArrowLeft, Check, Clock as ClockIcon, Hourglass, RotateCcw, Search, Swords, Trophy, X, Zap } from "lucide-react";
 import { Avatar } from "../components/Avatar";
+import { NeonText } from "../components/NeonText";
 import { Button } from "../components/Button";
 import { GoldButton } from "../components/GoldButton";
 import { Arena, ARENA } from "../components/Arena";
@@ -661,18 +662,17 @@ function LetterStage({ letter, category, hint }: { letter: string; category: str
           </svg>
         )}
         <div style={{ position: "relative", display: "grid", placeItems: "center", width: "100%" }}>
-          <span
-            style={{
-              fontFamily: font.display,
-              fontWeight: 700,
-              fontSize: 86,
-              lineHeight: 1,
-              color: colors.gold,
-              textShadow: `0 0 10px ${withAlpha(colors.goldHi, 0.45)}, 0 0 40px ${withAlpha(colors.gold, 0.35)}, 0 0 88px ${withAlpha(colors.orange, 0.2)}`,
-            }}
+          {/* Zelfde behandeling als de letter op de rol: een verloop over het
+              glyph met de gloed als vervaagde kopie erachter, in het goud dat de
+              letter al had. */}
+          <NeonText
+            accent={colors.gold}
+            blur={26}
+            glow={0.7}
+            style={{ fontFamily: font.display, fontWeight: 700, fontSize: 86, lineHeight: 1 }}
           >
             {letter}
-          </span>
+          </NeonText>
         </div>
         <span style={{ position: "relative", marginTop: 46, fontFamily: font.ui, fontSize: 13, color: withAlpha(colors.violet, 0.95), textAlign: "center", filter: "brightness(1.5)" }}>
           {hint}

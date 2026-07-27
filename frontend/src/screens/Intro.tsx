@@ -6,9 +6,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
+import { NeonText } from "../components/NeonText";
 import { colors, font, withAlpha } from "../theme/tokens";
 
 const INTRO_TEXT = "An Artnomad Game";
+// Het merk is wit, dus de reeks vertrekt vanuit zilver.
+const INTRO_SILVER = "#DDE3F2";
 const PER_CHAR_MS = 135;
 const MARK_MS = 420; // beat between the logo strike and the first letter
 const MARK_SIZE = "clamp(78px, 22vw, 112px)";
@@ -119,25 +122,47 @@ export function Intro({ onDone }: { onDone: () => void }) {
             marginBottom: started ? 26 : 0,
           }}
         >
-          {/* No halo at all. A drop-shadow filter showed its layer rectangle on
-              iOS, and a radial stand-in showed its own circle edge: on a dark
-              backdrop any glow that fades to nothing leaves a visible boundary.
-              The white mark carries itself. */}
-          <img
-            src="/artnomad.webp"
-            alt=""
-            aria-hidden
-            width={112}
-            height={112}
-            style={{
-              display: "block",
-              width: MARK_SIZE,
-              height: MARK_SIZE,
-              opacity: markIn ? 0.96 : 0,
-              transform: markIn ? "scale(1)" : "scale(0.8)",
-              transition: reduced ? "none" : "opacity 200ms ease-out, transform 260ms cubic-bezier(.2,1.5,.4,1)",
-            }}
-          />
+          {/* De gloed is een VERVAAGDE KOPIE van het merk zelf. Eerder stond
+              hier niets, omdat een drop-shadow op iOS zijn laagrechthoek liet
+              zien en een radiale stand-in zijn eigen cirkelrand. Een kopie van de
+              vorm heeft dat probleem niet: hij vervaagt langs het merk en houdt
+              nergens een rand over. */}
+          <div style={{ position: "relative", width: MARK_SIZE, height: MARK_SIZE }}>
+            <img
+              src="/artnomad.webp"
+              alt=""
+              aria-hidden
+              width={112}
+              height={112}
+              style={{
+                position: "absolute",
+                inset: 0,
+                width: MARK_SIZE,
+                height: MARK_SIZE,
+                filter: "blur(14px)",
+                opacity: markIn ? 0.55 : 0,
+                transform: markIn ? "scale(1.04)" : "scale(0.8)",
+                transition: reduced ? "none" : "opacity 320ms ease-out, transform 260ms cubic-bezier(.2,1.5,.4,1)",
+                pointerEvents: "none",
+              }}
+            />
+            <img
+              src="/artnomad.webp"
+              alt=""
+              aria-hidden
+              width={112}
+              height={112}
+              style={{
+                position: "relative",
+                display: "block",
+                width: MARK_SIZE,
+                height: MARK_SIZE,
+                opacity: markIn ? 0.96 : 0,
+                transform: markIn ? "scale(1)" : "scale(0.8)",
+                transition: reduced ? "none" : "opacity 200ms ease-out, transform 260ms cubic-bezier(.2,1.5,.4,1)",
+              }}
+            />
+          </div>
         </div>
         <span
           style={{
@@ -152,13 +177,15 @@ export function Intro({ onDone }: { onDone: () => void }) {
             letterSpacing: 0.4,
             color: colors.ink,
             whiteSpace: "nowrap",
-            textShadow: "0 2px 14px rgba(0,0,0,.5)",
           }}
         >
           {/* invisible full line reserves the width, so the text never shifts */}
           <span aria-hidden style={{ visibility: "hidden" }}>{INTRO_TEXT}</span>
           <span style={{ position: "absolute", left: 0, top: 0, whiteSpace: "nowrap" }}>
-            {shown}
+            {/* Zilver, want dat is de kleur van het merk. De cursor staat er
+                bewust BUITEN: die is goud, en een verloop dat op de tekst wordt
+                geknipt zou hem meepakken. */}
+            <NeonText accent={INTRO_SILVER} blur={11} glow={0.5}>{shown}</NeonText>
             <span
               className={done || !started ? "caret-blink" : undefined}
               style={{ display: "inline-block", marginLeft: 1, color: colors.gold, fontWeight: 400, transform: "translateY(-1px)" }}
