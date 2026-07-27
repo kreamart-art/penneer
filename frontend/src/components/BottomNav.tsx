@@ -81,16 +81,16 @@ export function BottomNav({
   ];
 
   if (skin) {
-    // Vier tiende van de plaathoogte past ruim in een vak: het vak is twee derde
-    // hoog, dus er blijft aan weerskanten lucht staan. Tot de plaat is gemeten
-    // tekenen we nog geen pictogrammen, anders springen ze een frame later.
-    const s = Math.round(plateH * 0.4);
+    // Het vak is twee derde van de plaathoogte. Op 0,5 vult het pictogram dat
+    // vak goed zonder de rand te raken; op 0,4 stond het er verloren in. Tot de
+    // plaat is gemeten tekenen we nog niets, anders springen ze een frame later.
+    const s = Math.round(plateH * 0.5);
     // De skin krijgt getekende, gevulde pictogrammen in plaats van lijntjes.
     // Zie NavIcons: naast art van goud leest een lijnpictogram als een tekening.
     const art: Partial<Record<NavKey, (on: boolean) => React.ReactNode>> = {
-      shop: (on) => <ShopIcon on={on} size={Math.round(s * 1.15)} />,
-      leaderboard: (on) => <TrophyIcon on={on} size={Math.round(s * 1.15)} />,
-      friends: (on) => <FriendsIcon on={on} size={Math.round(s * 1.15)} />,
+      shop: (on) => <ShopIcon on={on} size={Math.round(s * 1.18)} />,
+      leaderboard: (on) => <TrophyIcon on={on} size={Math.round(s * 1.18)} />,
+      friends: (on) => <FriendsIcon on={on} size={Math.round(s * 1.18)} />,
     };
     return (
       <nav
@@ -119,7 +119,7 @@ export function BottomNav({
             }}
           />
           {plateH > 0 &&
-            items(s, Math.round(plateH * 0.56)).map(({ key, label, icon, badge }, i) => {
+            items(s, Math.round(plateH * 0.6)).map(({ key, label, icon, badge }, i) => {
               const on = active === key;
               const home = key === "home";
               return (
