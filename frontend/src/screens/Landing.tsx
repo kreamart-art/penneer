@@ -12,6 +12,7 @@ import { Screen, Card } from "../components/Layout";
 import type { GameApi } from "../net/socket";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
+import { neonSkin } from "../theme/neon";
 import { colors, font, radius, withAlpha } from "../theme/tokens";
 
 const inputStyle: React.CSSProperties = {
@@ -651,6 +652,31 @@ function Tile({
     ? { display: "flex", alignItems: "center" }
     : { minHeight: 34, display: "flex", alignItems: "center", justifyContent: "center" };
   if (primary) {
+    // De hoofdknop is gepolijst goud, geen geel vlak. Dat is een STAPELING, want
+    // een enkel verloop kan geen metaal zijn: metaal heeft een lichte bovenrand,
+    // een felle kern, een donkere onderkant en een harde glans vlak onder de
+    // rand. Van onder naar boven:
+    //   1. de basisreeks, van licht goud bovenaan naar donker brons onderaan;
+    //   2. randverdonkering, zodat het vlak bol lijkt in plaats van vlak;
+    //   3. een zachte oplichting in het bovenste midden, waar het licht valt;
+    //   4. een dun glansstreepje over de bovenrand.
+    // De randen zijn geen `border` maar een laag eronder met een eigen verloop en
+    // vier kleine glanspunten in de hoeken, want een border kan geen verloop.
+    // Bewust GEEN gloed om de knop: al het licht blijft binnen de knop zelf.
+    const face = [
+      "linear-gradient(180deg, rgba(255,243,181,.62) 0%, rgba(255,243,181,.14) 7%, transparent 20%)",
+      "radial-gradient(66% 44% at 50% 14%, rgba(255,243,181,.42) 0%, transparent 68%)",
+      "radial-gradient(125% 105% at 50% 46%, transparent 52%, rgba(107,52,0,.38) 100%)",
+      "linear-gradient(180deg, #FFD95A 0%, #FFC72C 20%, #F6A800 50%, #C97700 80%, #8F4B00 100%)",
+    ].join(", ");
+    const rim = [
+      "radial-gradient(58% 58% at 4% 5%, rgba(255,243,181,.95) 0%, transparent 62%)",
+      "radial-gradient(58% 58% at 96% 5%, rgba(255,243,181,.82) 0%, transparent 62%)",
+      "radial-gradient(58% 58% at 4% 95%, rgba(255,243,181,.32) 0%, transparent 62%)",
+      "radial-gradient(58% 58% at 96% 95%, rgba(255,243,181,.32) 0%, transparent 62%)",
+      "linear-gradient(180deg, #FFE9A8 0%, #F6A800 40%, #C97700 72%, #6B3400 100%)",
+    ].join(", ");
+    const { borderRadius, aspectRatio, width, height, gridColumn, ...faceBox } = base;
     return (
       <button
         onClick={onClick}
@@ -658,17 +684,39 @@ function Tile({
         aria-label={label}
         className="pressable"
         style={{
-          ...base,
-          color: "#2A1B05",
-          background: `linear-gradient(165deg, #FFE9A8 0%, ${colors.goldHi} 30%, ${colors.gold} 64%, #E8A62A 100%)`,
+          position: "relative",
+          aspectRatio,
+          width,
+          height,
+          gridColumn,
+          borderRadius,
+          padding: 2,
           border: "none",
-          boxShadow: `0 16px 38px ${withAlpha(colors.gold, 0.36)}, 0 4px 12px rgba(0,0,0,.35), inset 0 2px 0 rgba(255,255,255,.55), inset 0 -4px 0 rgba(0,0,0,.16)`,
+          backgroundImage: rim,
+          cursor: disabled ? "default" : "pointer",
+          // Alleen een zachte slagschaduw en een donkere onderlip. Geen gloed.
+          boxShadow: "0 5px 12px rgba(0,0,0,.45), 0 2px 0 rgba(107,52,0,.9)",
         }}
       >
-        <span aria-hidden className="shimmer-bar" />
-        <Sparkles aria-hidden className="twinkle" size={14} color="#FFF8E0" style={{ position: "absolute", top: 10, right: 10 }} />
-        <span style={{ ...iconSlot, filter: "drop-shadow(0 1px 0 rgba(255,255,255,.4))" }}>{icon}</span>
-        <span style={labelSlot}>{label}</span>
+        <span
+          style={{
+            ...faceBox,
+            width: "100%",
+            height: "100%",
+            borderRadius: (borderRadius as number) - 2,
+            color: "#2A1B05",
+            backgroundImage: face,
+            // De afschuining: lichte bovenrand, donkere onderrand, en zacht licht
+            // dat naar binnen wegvalt.
+            boxShadow:
+              "inset 0 1.5px 0 rgba(255,243,181,.9), inset 0 -3px 0 rgba(107,52,0,.6), inset 0 10px 16px rgba(255,199,44,.22), inset 0 -12px 18px rgba(107,52,0,.32)",
+          }}
+        >
+          <span aria-hidden className="shimmer-bar" />
+          <Sparkles aria-hidden className="twinkle" size={14} color="#FFF8E0" style={{ position: "absolute", top: 10, right: 10 }} />
+          <span style={{ ...iconSlot, filter: "drop-shadow(0 1px 0 rgba(255,243,181,.55))" }}>{icon}</span>
+          <span style={labelSlot}>{label}</span>
+        </span>
       </button>
     );
   }
@@ -677,27 +725,19 @@ function Tile({
       onClick={onClick}
       disabled={disabled}
       aria-label={label}
-      className="pressable"
+      className="pressable panel-neon"
       style={{
         ...base,
+        // Dezelfde ring en belichting als de panelen, maar in de kleur van deze
+        // tegel. De reeks wordt uit het accent afgeleid, dus dit werkt net zo
+        // goed in goud, groen of rood.
+        ...neonSkin(accent),
         color: colors.ink,
         background: `linear-gradient(160deg, ${withAlpha(accent, 0.22)} 0%, ${withAlpha("#000000", 0.26)} 58%, ${withAlpha("#000000", 0.34)} 100%)`,
-        border: `1.5px solid ${withAlpha(accent, 0.5)}`,
-        boxShadow: `inset 0 1px 0 ${withAlpha("#FFFFFF", 0.1)}, inset 0 -14px 24px rgba(0,0,0,.2), 0 14px 32px rgba(0,0,0,.32), 0 6px 22px ${withAlpha(accent, 0.16)}`,
+        boxShadow: `inset 0 -14px 24px rgba(0,0,0,.2), 0 14px 32px rgba(0,0,0,.32), 0 6px 22px ${withAlpha(accent, 0.16)}`,
       }}
     >
-      {/* top edge light reflection */}
-      <span
-        aria-hidden
-        style={{
-          position: "absolute",
-          top: 0,
-          left: "12%",
-          right: "12%",
-          height: 1,
-          background: `linear-gradient(90deg, transparent, ${withAlpha(accent, 0.65)}, transparent)`,
-        }}
-      />
+
       <span style={{ ...iconSlot, color: accent, filter: `drop-shadow(0 0 11px ${withAlpha(accent, 0.6)})` }}>{icon}</span>
       <span style={labelSlot}>{label}</span>
       {badge && (

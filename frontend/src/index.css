@@ -433,7 +433,10 @@ input:focus {
   inset: 0;
   border-radius: inherit;
   padding: 1.5px;
-  background: linear-gradient(170deg, #c46bff 0%, #8a45f0 20%, #5a2abf 52%, #2e1263 100%);
+  /* De kleur komt van buiten via een variabele, met violet als terugval. Zo
+     werkt dezelfde ring in goud, groen, rood of grijs, zonder een klasse per
+     kleur. Zie theme/neon.ts voor het afleiden van de reeks. */
+  background: var(--ng-ring, linear-gradient(170deg, #c46bff 0%, #8a45f0 20%, #5a2abf 52%, #2e1263 100%));
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
@@ -449,10 +452,31 @@ input:focus {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: radial-gradient(115% 65% at 50% -12%, rgba(169, 107, 255, 0.13), transparent 62%);
+  background: var(--ng-lit, radial-gradient(115% 65% at 50% -12%, rgba(169, 107, 255, 0.13), transparent 62%));
   pointer-events: none;
 }
 
 /* Kaarten die hun eigen rand meebrengen (een winnaarskaart in zijn eigen kleur)
    slaan de ring over, anders staan er twee randen om hetzelfde vlak. */
 .panel-neon.own-border::before { display: none; }
+
+/* ---------- losse ring ----------
+   Dezelfde uitgeknipte verlooprand als bij een paneel, maar zonder de belichting
+   erover: voor een ring OM iets heen (een avatar, een rangring, een frame). De
+   dikte komt van --ng-w, de kleur van --ng-ring. */
+.neon-ring {
+  position: relative;
+}
+.neon-ring::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: var(--ng-w, 2px);
+  background: var(--ng-ring, linear-gradient(170deg, #c46bff 0%, #8a45f0 20%, #5a2abf 52%, #2e1263 100%));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}

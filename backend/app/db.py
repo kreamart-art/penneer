@@ -446,8 +446,17 @@ FREE_EMOTE_PACKS = {p for p, (kind, _) in EMOTE_PACK_UNLOCK.items() if kind == "
 # Avatar frames: a decorative frame drawn around your avatar, earned by
 # LEVELLING UP (never bought). (level threshold, frame id, name key for i18n).
 # NULL avatar_frame = no frame. Art lives in frontend/public/frames/{id}.webp.
+# fr01 komt uit een plaatje; de nf-frames worden in code getekend uit een
+# kleurreeks, dus een frame in een nieuwe kleur is hier een regel en geen nieuw
+# bestand. Zie NEON_FRAMES in frontend/src/components/Avatar.tsx.
 LEVEL_FRAMES = [
     (10, "fr01", "frameReward_gold"),
+    (20, "nf-violet", "frameReward_violet"),
+    (30, "nf-cyan", "frameReward_cyan"),
+    (40, "nf-emerald", "frameReward_emerald"),
+    (60, "nf-ember", "frameReward_ember"),
+    (80, "nf-rose", "frameReward_rose"),
+    (100, "nf-silver", "frameReward_silver"),
 ]
 LEVEL_FRAME_IDS = [f[1] for f in LEVEL_FRAMES]
 LEVEL_FOR_FRAME = {fid: lvl for lvl, fid, _ in LEVEL_FRAMES}

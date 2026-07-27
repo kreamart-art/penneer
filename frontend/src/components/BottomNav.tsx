@@ -8,6 +8,7 @@
 import { Home, ShoppingCart, Trophy, UserRound, Users } from "lucide-react";
 import { Avatar } from "./Avatar";
 import type { GameApi } from "../net/socket";
+import { NeonLine } from "./NeonLine";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { colors, font, withAlpha } from "../theme/tokens";
@@ -64,11 +65,14 @@ export function BottomNav({
         padding: "6px 8px",
         paddingBottom: "calc(6px + env(safe-area-inset-bottom))",
         background: "linear-gradient(180deg, rgba(22,13,48,.9), rgba(14,9,34,.98))",
-        borderTop: `1px solid ${withAlpha(colors.gold, 0.16)}`,
         backdropFilter: "blur(14px)",
         WebkitBackdropFilter: "blur(14px)",
       }}
     >
+      {/* De bovenrand is geen streep maar een sierlijn in het goud van de balk:
+          donker aan de uiteinden, oplichtend in het midden, met een klein glansje
+          erop. Een `border` kan dat niet, die is overal even sterk. */}
+      <NeonLine accent={colors.gold} side="top" />
       {items.map(({ key, label, icon, badge }) => {
         const on = active === key;
         const home = key === "home";
