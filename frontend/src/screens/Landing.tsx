@@ -284,13 +284,14 @@ export function Landing({
           {/* overflow hidden keeps the dust inside the hero box (and any wide
               decor from ever widening the page). */}
           <div aria-hidden style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", zIndex: 0, overflow: "hidden" }}>
+            {/* Warm goudstof, alleen aan de randen: het midden blijft leeg. */}
             {[
-              { l: "30%", t: "62%", s: 4, c: colors.gold, d: 0, dur: 7 },
-              { l: "68%", t: "58%", s: 3, c: colors.goldHi, d: 1.8, dur: 8 },
-              { l: "22%", t: "38%", s: 3, c: colors.violet, d: 3.2, dur: 9 },
-              { l: "76%", t: "34%", s: 4, c: colors.gold, d: 4.4, dur: 7.5 },
-              { l: "52%", t: "70%", s: 2.5, c: colors.ink, d: 2.4, dur: 8.5 },
-              { l: "42%", t: "30%", s: 2.5, c: colors.goldHi, d: 5.4, dur: 7 },
+              { l: "16%", t: "64%", s: 3, c: colors.gold, d: 0, dur: 7 },
+              { l: "84%", t: "60%", s: 2.5, c: colors.goldHi, d: 1.8, dur: 8 },
+              { l: "11%", t: "34%", s: 2.5, c: colors.gold, d: 3.2, dur: 9 },
+              { l: "88%", t: "30%", s: 3, c: colors.gold, d: 4.4, dur: 7.5 },
+              { l: "26%", t: "76%", s: 2, c: colors.goldHi, d: 2.4, dur: 8.5 },
+              { l: "74%", t: "80%", s: 2, c: colors.gold, d: 5.4, dur: 7 },
             ].map((p, i) => (
               <span
                 key={i}
@@ -301,7 +302,7 @@ export function Landing({
                   width: p.s,
                   height: p.s,
                   background: p.c,
-                  boxShadow: `0 0 ${p.s * 2.4}px ${withAlpha(p.c === colors.ink ? colors.violet : p.c, 0.9)}`,
+                  boxShadow: `0 0 ${p.s * 2.4}px ${withAlpha(p.c, 0.85)}`,
                   animationDelay: `${p.d}s`,
                   animationDuration: `${p.dur}s`,
                 }}
@@ -926,42 +927,64 @@ function Tile({
 // opposite directions (cheap parallax depth) carrying barely-visible alphabet
 // letters and a few static dust specks. zIndex -1 keeps it above the body
 // gradient but under everything interactive; pointer-events stay off.
+/** Het decor achter de main page. Vier letters die nauwelijks te zien zijn, een
+ *  waaier stralen uit het midden van de bovenhelft, en wat warm goudstof.
+ *
+ *  De bovenste zestig procent hoort bij het logo, dus daar staat niets: de
+ *  letters wijken naar de randen en de stralen zijn in het hart weggemaskerd.
+ *  Alles blijft indigo en violet met een warme goudzweem; geen blauw, geen
+ *  roze, geen neon, en geen vignet. */
 function LandingFX() {
   const letter: React.CSSProperties = {
     position: "absolute",
     fontFamily: font.display,
     fontWeight: 700,
-    color: "rgba(202,190,235,.032)",
+    // Vier procent: net genoeg om te vermoeden, te weinig om te lezen.
+    color: "rgba(206,192,240,.04)",
     userSelect: "none",
     lineHeight: 1,
   };
-  const speck = (l: string, t: string, s: number, c: string, o: number): React.CSSProperties => ({
+  const dust = (l: string, t: string, s: number, o: number): React.CSSProperties => ({
     position: "absolute",
     left: l,
     top: t,
     width: s,
     height: s,
     borderRadius: 999,
-    background: c,
+    background: colors.goldHi,
     opacity: o,
-    boxShadow: `0 0 ${s * 3}px ${c}`,
+    boxShadow: `0 0 ${s * 3}px ${withAlpha(colors.gold, 0.8)}`,
   });
   return (
     <div aria-hidden style={{ position: "fixed", inset: 0, zIndex: -1, overflow: "hidden", pointerEvents: "none" }}>
+      {/* De stralen. Weggemaskerd in het hart, zodat het midden leeg blijft, en
+          uitgedoofd naar buiten, zodat er nergens een rand ontstaat. */}
+      <div
+        style={{
+          position: "absolute",
+          left: "50%",
+          top: "-46vw",
+          width: "180vw",
+          height: "180vw",
+          transform: "translateX(-50%)",
+          background:
+            "repeating-conic-gradient(from 198deg at 50% 50%, rgba(255,206,128,.028) 0deg 2.4deg, transparent 2.4deg 15deg)",
+          WebkitMaskImage: "radial-gradient(circle at 50% 50%, transparent 9%, rgba(0,0,0,.85) 25%, transparent 56%)",
+          maskImage: "radial-gradient(circle at 50% 50%, transparent 9%, rgba(0,0,0,.85) 25%, transparent 56%)",
+        }}
+      />
       <div className="drift-a" style={{ position: "absolute", inset: "-30px" }}>
-        <span style={{ ...letter, fontSize: 150, top: "7%", left: "-3%", transform: "rotate(-12deg)" }}>P</span>
-        <span style={{ ...letter, fontSize: 96, top: "55%", right: "-2%", transform: "rotate(9deg)" }}>R</span>
-        <span style={{ ...letter, fontSize: 80, bottom: "6%", left: "10%", transform: "rotate(6deg)" }}>A</span>
-        <span style={speck("22%", "24%", 3, colors.violet, 0.16)} />
-        <span style={speck("80%", "14%", 2.5, colors.gold, 0.14)} />
+        <span style={{ ...letter, fontSize: 210, top: "4%", left: "-9%", transform: "rotate(-12deg)" }}>K</span>
+        <span style={{ ...letter, fontSize: 168, bottom: "3%", right: "-6%", transform: "rotate(9deg)" }}>R</span>
+        <span style={dust("21%", "27%", 2.5, 0.16)} />
+        <span style={dust("81%", "16%", 2, 0.13)} />
       </div>
       <div className="drift-b" style={{ position: "absolute", inset: "-30px" }}>
-        <span style={{ ...letter, fontSize: 120, top: "30%", right: "4%", transform: "rotate(14deg)" }}>N</span>
-        <span style={{ ...letter, fontSize: 88, bottom: "18%", right: "26%", transform: "rotate(-8deg)" }}>E</span>
-        <span style={{ ...letter, fontSize: 104, top: "12%", left: "30%", transform: "rotate(-5deg)" }}>K</span>
-        <span style={speck("12%", "66%", 3, colors.gold, 0.13)} />
-        <span style={speck("64%", "80%", 2.5, colors.violet, 0.15)} />
-        <span style={speck("38%", "10%", 2, colors.ink, 0.12)} />
+        <span style={{ ...letter, fontSize: 190, top: "46%", right: "-8%", transform: "rotate(13deg)" }}>N</span>
+        <span style={{ ...letter, fontSize: 150, bottom: "6%", left: "-5%", transform: "rotate(-8deg)" }}>E</span>
+        <span style={dust("13%", "68%", 2.5, 0.14)} />
+        <span style={dust("66%", "82%", 2, 0.15)} />
+        <span style={dust("39%", "12%", 1.8, 0.12)} />
       </div>
     </div>
   );

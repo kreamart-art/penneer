@@ -78,13 +78,17 @@ body::before {
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background-color: #09002c;
+  /* Het decor. Bijna zwart indigo als bodem, daarboven een zachte bloei in het
+     midden van de bovenhelft, met een warme goudzweem in het hart ervan. Geen
+     hoekvlekken meer: het licht komt uit het midden, want daar komt het logo.
+     Alles blijft indigo en violet; niets loopt naar blauw, roze of neon. */
+  background-color: #090311;
   background-image:
-    radial-gradient(60% 38% at -8% 12%, rgba(117, 50, 197, 0.22), transparent 70%),
-    radial-gradient(55% 34% at 108% 4%, rgba(255, 86, 74, 0.05), transparent 70%),
-    radial-gradient(50% 36% at 106% -4%, rgba(255, 194, 61, 0.05), transparent 70%),
+    radial-gradient(46% 26% at 50% 19%, rgba(255, 198, 104, 0.05), transparent 70%),
+    radial-gradient(74% 44% at 50% 15%, rgba(112, 58, 196, 0.28), transparent 72%),
+    radial-gradient(125% 72% at 50% 6%, rgba(58, 26, 116, 0.3), transparent 76%),
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
-    linear-gradient(180deg, #2b0470 0%, #170150 42.8%, #10013b 59.7%, #0d0134 74.6%, #0b0130 87.3%, #09002c 100%);
+    linear-gradient(180deg, #1a0a3c 0%, #150733 34%, #0f0526 58%, #0b0419 78%, #090311 100%);
   background-repeat: no-repeat, no-repeat, no-repeat, repeat, no-repeat;
   background-position: top, top, top, top left, top;
   background-size: 100% 100%, 100% 100%, 100% 100%, 160px 160px, 100% 100%;
