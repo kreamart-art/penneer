@@ -9,7 +9,7 @@
 // De server is de baas over de klok: elke ronde wordt apart OPGEHAALD en dan
 // pas begint zijn 15 seconden, dus de app herladen koopt geen denktijd.
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { ArrowLeft, Check, Clock as ClockIcon, Hourglass, RotateCcw, Search, Swords, Trophy, X, Zap } from "lucide-react";
+import { ArrowLeft, Check, Clock as ClockIcon, Hourglass, RotateCcw, Search, Swords, Trophy, X } from "lucide-react";
 import { Avatar } from "../components/Avatar";
 import { NeonText } from "../components/NeonText";
 import { Button } from "../components/Button";
@@ -19,6 +19,8 @@ import { Screen, Card } from "../components/Layout";
 import type { GameApi } from "../net/socket";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
+import { rampFrom } from "../theme/neon";
+import { reelFace } from "../theme/reelSkins";
 import { colors, font, radius, withAlpha } from "../theme/tokens";
 
 interface Person { id: string; name: string; color: string; has_avatar: boolean | number; avatar_ver: number }
@@ -290,8 +292,8 @@ export function Duel({ game, onBack, onProfile }: { game: GameApi; onBack: () =>
                   transition: "border-color .2s ease, box-shadow .2s ease",
                 }}
               >
-                <span style={{ display: "grid", placeItems: "center", width: 52, flexShrink: 0, borderRight: `1.5px solid ${withAlpha(colors.violet, 0.35)}`, color: word ? colors.gold : colors.violet }}>
-                  <Zap size={19} strokeWidth={2.3} />
+                <span style={{ display: "grid", placeItems: "center", width: 52, flexShrink: 0, borderRight: `1.5px solid ${withAlpha(colors.violet, 0.35)}` }}>
+                  <Bolt accent={word ? colors.gold : colors.violet} />
                 </span>
                 <input
                   ref={input}
@@ -828,5 +830,39 @@ function FriendPicker({ friends, onPick, onClose, busy }: { friends: Person[]; o
         )}
       </div>
     </div>
+  );
+}
+
+/** De bliksem in de invoerbalk, in dezelfde taal als de levelster op je profiel.
+ *
+ *  Een lucide-icoon krijgt een KLEUR mee en kan dus geen verloop dragen. Daarom
+ *  knippen we het verloop uit op de vorm van de bolt met een masker, met een
+ *  tikje grotere kopie eronder als stroke, en de gloed als vervaagde kopie
+ *  erachter. Precies de drie lagen van de ster. */
+const BOLT_MASK =
+  "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M13 1.4 2.6 14.2h8.2l-1 8.4 10.6-12.8h-8.2z'/></svg>\")";
+
+function Bolt({ accent, size = 22 }: { accent: string; size?: number }) {
+  const r = rampFrom(accent);
+  const shape: React.CSSProperties = {
+    position: "absolute",
+    WebkitMaskImage: BOLT_MASK,
+    maskImage: BOLT_MASK,
+    WebkitMaskSize: "contain",
+    maskSize: "contain",
+    WebkitMaskPosition: "center",
+    maskPosition: "center",
+    WebkitMaskRepeat: "no-repeat",
+    maskRepeat: "no-repeat",
+  };
+  return (
+    <span style={{ position: "relative", width: size, height: size, display: "block", transition: "opacity .2s ease" }}>
+      {/* Gloed: vervaagde kopie, met ruimte om zich heen zodat je zijn doos niet ziet. */}
+      <span aria-hidden style={{ ...shape, inset: -9, background: r[2], filter: "blur(6px)", opacity: 0.6 }} />
+      {/* Stroke: fel bovenaan, donker onderaan, want het licht komt van linksboven. */}
+      <span aria-hidden style={{ ...shape, inset: 0, background: `linear-gradient(170deg, ${r[3]} 0%, ${r[2]} 42%, ${r[0]} 100%)` }} />
+      {/* Het vlak zelf, een tikje kleiner zodat de stroke eronderuit steekt. */}
+      <span aria-hidden style={{ ...shape, inset: 1.2, background: reelFace(r) }} />
+    </span>
   );
 }

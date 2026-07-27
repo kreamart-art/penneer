@@ -11,7 +11,7 @@
 // helderste beeldrij). Door de plaat precies die fractie omhoog te schuiven
 // landt het podium op de lijn die je kiest, op elk schermformaat. En omdat de
 // randen vervagen maakt het niet uit als dat er een paar pixels naast zit.
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { withAlpha } from "../theme/tokens";
 
 export const ARENA = {
@@ -44,8 +44,35 @@ export function Arena({
   fill?: boolean;
 }) {
   const [art, setArt] = useState(true);
+  const layer = useRef<HTMLDivElement | null>(null);
+
+  // Het decor volgt het ZICHTBARE deel van het scherm, niet de pagina.
+  //
+  // Op iOS maakt het toetsenbord de pagina niet kleiner; Safari schuift hem
+  // omhoog zodat het invoerveld in beeld komt. Een laag met `position: fixed`
+  // hangt aan de PAGINA, dus die schuift mee naar boven en laat onderin een
+  // strook onbedekt: dan valt het decor rond de letter weg en zie je de kale
+  // achtergrond. `visualViewport` vertelt precies welk stuk je nog ziet, dus
+  // daar leggen we de laag overheen. Zonder toetsenbord verandert er niets.
+  useEffect(() => {
+    const vv = window.visualViewport;
+    const el = layer.current;
+    if (!vv || !el) return;
+    const sync = () => {
+      el.style.height = `${vv.height}px`;
+      el.style.transform = `translateY(${vv.offsetTop}px)`;
+    };
+    sync();
+    vv.addEventListener("resize", sync);
+    vv.addEventListener("scroll", sync);
+    return () => {
+      vv.removeEventListener("resize", sync);
+      vv.removeEventListener("scroll", sync);
+    };
+  }, []);
+
   return (
-    <div aria-hidden style={{ position: "fixed", inset: 0, zIndex: 0, overflow: "hidden", pointerEvents: "none" }}>
+    <div ref={layer} aria-hidden style={{ position: "fixed", inset: 0, zIndex: 0, overflow: "hidden", pointerEvents: "none" }}>
       {/* Dekkende ondergrond in het palet van de plaat: dekt de app-gradient af. */}
       <div
         style={{
