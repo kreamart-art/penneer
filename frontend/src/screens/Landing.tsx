@@ -113,6 +113,8 @@ export function Landing({
   // voorkomt dat hij tussen twee bijna gelijke maten blijft heen en weer gaan.
   const kaartVak = useRef<HTMLDivElement | null>(null);
   const vorige = useRef<{ w: number; h: number } | null>(null);
+  const straf = useRef(0);
+  const scherm = useRef("");
   const [kaartMax, setKaartMax] = useState<number | undefined>(undefined);
   useEffect(() => {
     const meet = () => {
@@ -138,7 +140,17 @@ export function Landing({
       const onder = zicht - parseFloat(getComputedStyle(kolom).paddingBottom || "0");
       const r = vak.getBoundingClientRect();
       if (!r.width || !r.height) return;
-      const ruimte = onder - r.top;
+      // Wat de pagina ECHT te veel is. Alle rekenwerk hierboven gaat uit van
+      // wat de browser zegt dat er in beeld past, en op een telefoon klopt dat
+      // niet altijd: een zwevende balk, een veiligheidsstrook, een adresbalk
+      // die er half is. Dit is het enige getal dat niet liegt, want het is het
+      // verschijnsel zelf. Het telt op en gaat er nooit meer af binnen hetzelfde
+      // scherm, anders krijg je een slinger: krimpen tot het past, dan weer
+      // groeien omdat het past, en weer krimpen.
+      const teveel = Math.max(0, document.documentElement.scrollHeight - document.documentElement.clientHeight);
+      if (teveel > 0) straf.current += teveel;
+      // Tien pixels lucht, zodat de sectie tegen de balk aan komt en er niet op.
+      const ruimte = onder - r.top - straf.current - 10;
       if (ruimte <= 0) return;
       // Hoe breed mag de kaart zijn om precies in `ruimte` te passen?
       //
@@ -167,19 +179,27 @@ export function Landing({
         wil = (ruimte * w) / h;
       }
       vorige.current = { w, h };
-      // Vier pixels eraf, verder niets. De sectie hoort tot net tegen de balk
-      // te komen, op elk scherm: die vier pixels zijn er alleen om te
-      // voorkomen dat een afronding hem er alsnog overheen duwt.
-      wil = Math.min(460, Math.max(220, Math.floor(wil) - 4));
+      wil = Math.min(460, Math.max(220, Math.floor(wil)));
       setKaartMax((oud) => (oud !== undefined && Math.abs(oud - wil) <= 3 ? oud : wil));
     };
-    meet();
+    // Een nieuw scherm is een nieuwe rekensom: de opgebouwde correctie hoort
+    // bij de maat waarop hij gemeten is.
+    const opnieuw = () => {
+      const maat = `${window.innerWidth}x${window.innerHeight}`;
+      if (maat !== scherm.current) {
+        scherm.current = maat;
+        straf.current = 0;
+        vorige.current = null;
+      }
+      meet();
+    };
+    opnieuw();
     const ro = new ResizeObserver(meet);
     if (kaartVak.current) ro.observe(kaartVak.current);
-    window.addEventListener("resize", meet);
+    window.addEventListener("resize", opnieuw);
     return () => {
       ro.disconnect();
-      window.removeEventListener("resize", meet);
+      window.removeEventListener("resize", opnieuw);
     };
   }, []);
   const [name, setName] = useState("");
