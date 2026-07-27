@@ -399,3 +399,19 @@ input:focus {
     transition: none;
   }
 }
+
+/* De lichtveeg over de spelerbanner: een schuine glans die er elke 6 seconden
+   overheen trekt, zodat de balk leeft zonder dat er iets beweegt wat afleidt.
+   Transform-only, dus geen layout-werk per frame. */
+@keyframes banner-sweep {
+  0% { transform: translateX(-140%) skewX(-18deg); }
+  14% { transform: translateX(240%) skewX(-18deg); }
+  100% { transform: translateX(240%) skewX(-18deg); }
+}
+
+/* De zachte paarse gloed die over de BOVENRAND van de banner loopt. Los van de
+   veeg en trager, zodat de twee elkaar niet nadoen. */
+@keyframes banner-edge {
+  0%, 100% { opacity: .25; transform: translateX(-30%); }
+  50% { opacity: .8; transform: translateX(30%); }
+}
