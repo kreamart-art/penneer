@@ -133,6 +133,48 @@ export function EmblemLight() {
         </div>
       ))}
 
+      {/* 4c. Het puntje. Boven de punt van de pen staat een klein wit vlekje dat
+              alleen oplicht als er net een straal langskomt, en weer weg is
+              zodra die voorbij is.
+              Drie lagen in elkaar: de buitenste draait, de middelste draagt het
+              waaiermasker en draait dus mee, en de binnenste draait even hard
+              terug zodat het vlekje blijft staan waar het staat. Wat je ziet is
+              dus de straal die over een vast punt schuift. */}
+      {[
+        { masker: BREED, maat: 2.4, sec: 120, terug: false },
+        { masker: MIDDEL, maat: 2.83, sec: 190, terug: true },
+      ].map((w, i) => (
+        <div
+          key={`tip${i}`}
+          aria-hidden
+          style={{ ...laag, width: `calc(var(--em) * ${w.maat})`, height: `calc(var(--em) * ${w.maat})` }}
+        >
+          <div
+            className="hero-rays"
+            style={{
+              width: "100%",
+              height: "100%",
+              animationDuration: `${w.sec}s`,
+              animationDirection: w.terug ? "reverse" : undefined,
+            }}
+          >
+            <div style={{ width: "100%", height: "100%", WebkitMaskImage: w.masker, maskImage: w.masker }}>
+              <div
+                className="hero-rays"
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  animationDuration: `${w.sec}s`,
+                  animationDirection: w.terug ? undefined : "reverse",
+                  background:
+                    "radial-gradient(4.6% 4.6% at 50% 36%, rgba(255,255,255,.95) 0%, rgba(255,248,220,.66) 26%, rgba(255,210,80,.28) 52%, transparent 78%)",
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      ))}
+
       {/* 2. Gesmeed goud. Amber en oranje, niet geel: het geel gaat eruit door de
              rode kant hoger te houden dan de groene. */}
       <div
