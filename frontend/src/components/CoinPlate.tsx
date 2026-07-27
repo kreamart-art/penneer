@@ -10,8 +10,9 @@
 import { colors, font } from "../theme/tokens";
 
 const SIZES = [
-  { max: 3, src: "/tiles/coinbar-s.webp", ratio: 958 / 300 },
-  { max: 4, src: "/tiles/coinbar.webp", ratio: 1140 / 300 },
+  { max: 3, src: "/tiles/coinbar-xs.webp", ratio: 753 / 300 },
+  { max: 4, src: "/tiles/coinbar-s.webp", ratio: 958 / 300 },
+  { max: 5, src: "/tiles/coinbar.webp", ratio: 1140 / 300 },
   { max: 99, src: "/tiles/coinbar-l.webp", ratio: 1301 / 300 },
 ];
 

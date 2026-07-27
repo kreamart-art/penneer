@@ -24,9 +24,9 @@ import { colors, font, radius, withAlpha } from "../theme/tokens";
 // ligt, zodat er hooguit een paar procent na te rekken valt. Komt er later meer
 // op de main page, dan schuift hij vanzelf naar de volgende maat op.
 const FRAMES = [
-  { src: "/tiles/frame-1.webp", ratio: 1187 / 1270 },
-  { src: "/tiles/frame-2.webp", ratio: 1200 / 1464 },
-  { src: "/tiles/frame-3.webp", ratio: 1200 / 1573 },
+  { src: "/tiles/frame-1.webp", ratio: 1192 / 1273 },
+  { src: "/tiles/frame-2.webp", ratio: 1205 / 1468 },
+  { src: "/tiles/frame-3.webp", ratio: 1205 / 1577 },
 ];
 
 const inputStyle: React.CSSProperties = {
