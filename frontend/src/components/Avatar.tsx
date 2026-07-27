@@ -66,12 +66,15 @@ export function Avatar({ name, color, size = 40, crown, dim, userId, hasAvatar, 
         style={{
           width: inner,
           height: inner,
+          position: "relative",
           borderRadius: inner * 0.32,
           display: "grid",
           placeItems: "center",
           overflow: "hidden",
           background: withAlpha(color, 0.16),
-          border: `2px solid ${color}`,
+          // Geen vlakke rand: de ring hieronder is de rand, met een verloop dat
+          // bovenaan oplicht en onderaan wegzakt. Zo krijgt de spelerkleur
+          // dezelfde behandeling als de rangring eromheen.
           // De ring zelf is een eigen laag hieronder; hier alleen de gloed, want
           // een box-shadow kan geen verloop dragen.
           boxShadow: dim
@@ -100,6 +103,21 @@ export function Avatar({ name, color, size = 40, crown, dim, userId, hasAvatar, 
         ) : (
           initial
         )}
+        {/* De rand in de kleur van de speler. Ligt binnen het vak, dus over de
+            foto heen, en volgt vanzelf de ronding. */}
+        <span
+          aria-hidden
+          className="neon-ring"
+          style={{
+            position: "absolute",
+            inset: 0,
+            borderRadius: "inherit",
+            ...neonSkin(color),
+            ["--ng-w" as string]: "2px",
+            opacity: dim ? 0.5 : 1,
+            pointerEvents: "none",
+          } as React.CSSProperties}
+        />
       </div>
       {/* De ring: rangring of code-frame, in zijn eigen kleur. */}
       {ringColor && !dim && (

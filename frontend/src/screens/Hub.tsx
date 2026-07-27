@@ -16,6 +16,8 @@ import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { makeProfileCard, shareOrDownload } from "../util/shareCard";
 import { ClubEmblem, CLUB_EMBLEM_IDS } from "../components/ClubEmblem";
+import { NeonText } from "../components/NeonText";
+import { neonSkin, rampFrom } from "../theme/neon";
 import { reelEdge, reelFace, reelTheme } from "../theme/reelSkins";
 import { colors, font, playerColors, radius, withAlpha } from "../theme/tokens";
 
@@ -165,6 +167,13 @@ export function Hub({ game, section, onBack, onShowShop, onOpenInbox, onChalleng
 
 // ---- Level / rang -------------------------------------------------------------
 
+// De reeks van de levelster en de XP-balk: goud, van donker naar fel.
+const LEVEL_RAMP = rampFrom(colors.gold);
+// De stervorm als masker. Een lucide-ster kan geen verloop dragen (die krijgt
+// een kleur mee), dus we knippen het verloop uit op deze vorm.
+const STAR_MASK =
+  "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M12 1.6l3.2 6.5 7.2 1-5.2 5.1 1.2 7.2L12 18l-6.4 3.4 1.2-7.2L1.6 9.1l7.2-1z'/></svg>\")";
+
 // 8 Ball Pool-style level strip: level chip + rank title + xp progress bar.
 function LevelBar({ level, compact }: { level: LevelInfo; compact?: boolean }) {
   const { t } = useT();
@@ -172,21 +181,67 @@ function LevelBar({ level, compact }: { level: LevelInfo; compact?: boolean }) {
   const frac = Math.min(1, Math.max(0, (level.xp - level.level_start) / span));
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      {/* De ster is een vlakke vorm, dus het verloop moet ERIN. Een SVG-vulling
+          kan een verloop dragen; de lucide-ster niet, want die krijgt een kleur
+          mee. Daarom een eigen verloop-definitie eronder en de ster als vorm
+          erbovenop, met de gloed als vervaagde kopie erachter. */}
       <div style={{ position: "relative", width: compact ? 40 : 48, height: compact ? 40 : 48, flexShrink: 0 }}>
-        <Star size={compact ? 40 : 48} color={colors.gold} fill={withAlpha(colors.gold, 0.25)} strokeWidth={1.4} />
-        <span style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", fontFamily: font.display, fontWeight: 700, fontSize: compact ? 15 : 18, color: colors.ink, paddingTop: 2 }}>
+        <span aria-hidden style={{ position: "absolute", inset: -14, display: "grid", placeItems: "center", filter: "blur(9px)", opacity: 0.55, pointerEvents: "none" }}>
+          <Star size={compact ? 40 : 48} color={LEVEL_RAMP[2]} fill={LEVEL_RAMP[2]} strokeWidth={1.4} />
+        </span>
+        <span
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: reelFace(LEVEL_RAMP),
+            WebkitMaskImage: STAR_MASK,
+            maskImage: STAR_MASK,
+            WebkitMaskSize: "contain",
+            maskSize: "contain",
+            WebkitMaskPosition: "center",
+            maskPosition: "center",
+            WebkitMaskRepeat: "no-repeat",
+            maskRepeat: "no-repeat",
+          }}
+        />
+        <span style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", fontFamily: font.display, fontWeight: 700, fontSize: compact ? 15 : 18, color: "#3A2500", paddingTop: 2, textShadow: "0 1px 0 rgba(255,240,190,.5)" }}>
           {level.level}
         </span>
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 5 }}>
-          <span style={{ fontFamily: font.ui, fontWeight: 700, fontSize: compact ? 12.5 : 13.5, color: colors.gold }}>{t(`rank_${level.rank}`)}</span>
+          <NeonText accent={colors.gold} blur={9} glow={0.55} style={{ fontFamily: font.ui, fontWeight: 700, fontSize: compact ? 12.5 : 13.5 }}>
+            {t(`rank_${level.rank}`)}
+          </NeonText>
           <span style={{ fontFamily: font.ui, fontSize: 11, color: colors.faint }}>
             {level.xp - level.level_start}/{span} XP
           </span>
         </div>
-        <div style={{ height: compact ? 8 : 10, borderRadius: 999, background: withAlpha("#000000", 0.35), border: `1px solid ${colors.hairline}`, overflow: "hidden" }}>
-          <div style={{ width: `${Math.round(frac * 100)}%`, height: "100%", borderRadius: 999, background: `linear-gradient(90deg, ${colors.gold}, ${colors.goldHi})`, boxShadow: `0 0 10px ${withAlpha(colors.gold, 0.6)}`, transition: "width .4s ease" }} />
+        {/* De balk is een klein vak, dus hij krijgt dezelfde opbouw als een
+            paneel: een verlooprand eromheen en binnenin een gevulde staaf die
+            bovenaan oplicht, met een glansstreepje over de bovenste helft. */}
+        <div
+          className="neon-ring"
+          style={{
+            height: compact ? 10 : 12,
+            borderRadius: 999,
+            background: withAlpha("#000000", 0.4),
+            overflow: "hidden",
+            ...neonSkin(colors.gold),
+            ["--ng-w" as string]: "1px",
+          } as React.CSSProperties}
+        >
+          <div
+            style={{
+              position: "relative",
+              width: `${Math.round(frac * 100)}%`,
+              height: "100%",
+              borderRadius: 999,
+              background: `linear-gradient(180deg, ${LEVEL_RAMP[3]} 0%, ${LEVEL_RAMP[2]} 42%, ${LEVEL_RAMP[1]} 100%)`,
+              boxShadow: `inset 0 1px 0 rgba(255,243,181,.8), 0 0 10px ${withAlpha(colors.gold, 0.5)}`,
+              transition: "width .4s ease",
+            }}
+          />
         </div>
       </div>
     </div>

@@ -93,6 +93,9 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
   const [remaining, setRemaining] = useState(60);
   const [result, setResult] = useState<DailyResult | null>(null);
   const [retryOffer, setRetryOffer] = useState<{ cost: number } | null>(null);
+  // Het herkansingsvenster reageert pas als het even heeft gestaan. Anders landt
+  // de tik waarmee je inleverde nog op de knop die eronder verschijnt.
+  const [armed, setArmed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [nextIn, setNextIn] = useState(0);
@@ -183,7 +186,9 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
       // Anti-cheat: if a paid retry is on offer, the server withheld the score.
       // Ask BEFORE revealing anything, so the choice is made blind.
       if (data.retry_available) {
+        setArmed(false);
         setRetryOffer({ cost: data.retry_cost ?? 50 });
+        window.setTimeout(() => setArmed(true), 550);
         return;
       }
       try {
@@ -415,10 +420,18 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
             <div className="pop-in" style={{ width: "100%", maxWidth: 340, display: "flex", flexDirection: "column", alignItems: "center", gap: 12, padding: "26px 22px 20px", borderRadius: 24, background: "linear-gradient(180deg, #2a1c48, #160D30)", border: `1px solid ${withAlpha(colors.gold, 0.5)}`, boxShadow: `0 24px 80px rgba(0,0,0,.65)`, textAlign: "center" }}>
               <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 20, color: colors.gold }}>{t("dailyRetryTitle")}</span>
               <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13.5, color: colors.sub, lineHeight: 1.55 }}>{t("dailyRetryBody")}</p>
-              <Button variant="gold" full disabled={busy} onClick={() => void doRetry()}>
+              {/* Twee volwaardige knoppen. Eerder was "nee" een klein tekstlinkje
+                  onder een grote gouden knop, en dan tikt iemand die net op
+                  "Ik ben klaar" drukte er zo overheen: dat kostte per ongeluk
+                  coins. Nu kosten beide keuzes evenveel moeite.
+                  De knoppen doen bovendien de eerste halve seconde niets, want
+                  het venster verschijnt precies onder de duim die net inleverde. */}
+              <Button variant="gold" full disabled={busy || !armed} onClick={() => void doRetry()}>
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>{t("dailyRetryYes", { n: retryOffer.cost })}<img src="/coin.webp" alt="" width={17} height={17} /></span>
               </Button>
-              <button onClick={() => void declineRetry()} disabled={busy} style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, fontFamily: font.ui, fontSize: 13.5, padding: "4px 4px 0" }}>{t("dailyRetryNo")}</button>
+              <Button variant="primary" full disabled={busy || !armed} onClick={() => void declineRetry()}>
+                {t("dailyRetryNo")}
+              </Button>
             </div>
           </div>
         )}
