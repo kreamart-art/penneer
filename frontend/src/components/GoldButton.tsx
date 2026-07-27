@@ -1,85 +1,113 @@
-// De gouden knopplaat uit de studio-art, gedeeld door ELKE gouden knop in het
-// spel (de hero-tegel "Speel met vrienden" op de main page uitgezonderd: die is
-// geen knop maar een tegel en houdt zijn eigen vlakke goud).
+// De knopplaten uit de studio-art: goud voor de hoofdacties, paars voor de
+// spelen-met-vrienden-kant ("Maak een room" en de rest van de primaire
+// knoppen). De hero-TEGEL "Speel met vrienden" op de main page hoort er niet
+// bij: dat is een vierkante tegel, geen balk, en die houdt zijn eigen goud.
 //
-// De bron-PNG heeft ZELF al een alfakanaal; de asset is dus niets meer dan die
-// PNG bijgesneden op zijn zichtbare pixels. (Eerder haalde ik er met een
-// kleurmasker een uitsnede uit, omdat een viewer het bestand op grijs toonde en
-// ik dacht dat het grijs erin zat. Dat masker maakte juist de wazige vorm die
-// er niet hoorde te zijn. Open zo'n bestand altijd als RGBA en kijk naar het
-// alfakanaal voordat je iets weg gaat knippen.)
+// Beide bron-PNG's hebben ZELF al een alfakanaal; de assets zijn dus niets meer
+// dan die PNG's bijgesneden op hun zichtbare pixels. (Bij de gouden ging ik er
+// eerst met een kleurmasker overheen, omdat een viewer het bestand op grijs
+// toonde en ik dacht dat het grijs erin zat. Dat masker maakte juist een wazige
+// vorm die er niet hoorde te zijn. Open zo'n bestand altijd als RGBA en kijk
+// naar het alfakanaal voordat je iets weg gaat knippen.)
 //
-// De plaat wordt NIET uitgerekt: elke gouden knop neemt de verhouding van de
-// plaat over, dus de hoogte volgt uit de breedte. Een minimumbreedte zorgt dat
-// een korte knop ("Terug") daardoor niet te laag wordt om te lezen.
+// Twee dingen die voor allebei gelden:
+//  - Het knopvak is niet de hele plaat maar zijn LICHTE BOVENVLAK. De donkere
+//    3D-lip onderaan telt wel mee in de hoogte maar hoort niet bij het vlak waar
+//    tekst op staat, dus door het vlak als vak te nemen staat de tekst vanzelf
+//    gecentreerd, zonder correcties die verkeerd meeschalen.
+//  - De plaat wordt niet uitgerekt: het vak neemt de verhouding van de plaat
+//    over, dus de hoogte volgt uit de breedte. En omdat de gloed BUITEN de plaat
+//    valt, is de knop iets smaller dan de ruimte, anders duwt die gloed zichzelf
+//    van het scherm af.
 //
-// De getallen hieronder zijn uit de asset gemeten: welk deel ervan de scherpe
-// plaat is, en dus hoeveel gloed er omheen zit. Vervang je de art, meet opnieuw.
+// Alle getallen hieronder zijn uit de assets gemeten. Vervang je de art, meet
+// dan opnieuw (bijsnijden op alfa > 8, dan het lichte vlak opmeten).
 import { useState } from "react";
 import { colors, font } from "../theme/tokens";
 
-const ASSET_W = 760;
-const ASSET_H = 196;
-// Het LICHTE BOVENVLAK van de plaat, gemeten in de asset: x 51-713, y 12-161.
-// Dat vlak is waar de tekst op hoort te staan, dus DAT wordt het knopvak. De
-// donkere 3D-lip onderaan en de gloed eromheen steken er buiten uit.
-//
-// Zo hoeft de tekst nergens voor gecorrigeerd te worden: hij staat gewoon in
-// het midden van de knop, en dat midden IS het midden van het vlak. (Eerder
-// schoof ik de tekst met een procentuele margin-top omhoog, maar procentuele
-// marges rekenen tegen de BREEDTE van het element, niet de hoogte, dus die
-// correctie schaalde volkomen verkeerd mee.)
-const FACE_X = 51 / ASSET_W;
-const FACE_Y = 12 / ASSET_H;
-const FACE_W = 663 / ASSET_W;
-const FACE_H = 150 / ASSET_H;
+export type PlateKind = "gold" | "violet";
 
-const LETTER_SPACING = 2.2;
+interface Plate {
+  src: string;
+  w: number;      // afmetingen van de asset
+  h: number;
+  fx: number;     // het lichte vlak binnen de asset
+  fy: number;
+  fw: number;
+  fh: number;
+  text: string;   // leesbare tekstkleur op deze plaat
+  shine: string;  // subtiele highlight onder de letters
+}
 
-/** Breedte/hoogte van het vlak: hier volgt de hoogte van elke gouden knop uit. */
-export const GOLD_RATIO = (ASSET_W * FACE_W) / (ASSET_H * FACE_H);
-/** Onder deze hoogte is een knop niet meer te lezen, dus dwingt hij zijn eigen
- *  breedte af in plaats van platter te worden. */
-export const GOLD_MIN_WIDTH = Math.round(44 * GOLD_RATIO);
-
-/** De plaat is BREDER dan de knop, want de gloed hoort eromheen. Een knop op
- *  volle breedte duwt die gloed dus van het scherm af. Deze breedte laat er
- *  precies genoeg naast over. */
-export const GOLD_FIT = `${(FACE_W * 100).toFixed(2)}%`;
-/** En een plafond, anders wordt de knop op een tablet een banier van 200 pixels
- *  hoog: de hoogte volgt immers uit de breedte. */
-export const GOLD_MAX_WIDTH = 320;
-
-/** Breedte-regels die elke gouden knop op volle breedte deelt. */
-export const goldWidth = {
-  width: `min(${GOLD_FIT}, ${GOLD_MAX_WIDTH}px)`,
-  marginLeft: "auto",
-  marginRight: "auto",
-} as const;
-
-/** Terugval als de art niet laadt: dezelfde vorm in CSS, zodat er nooit een
- *  naamloze knop overblijft. */
-export const GOLD_FALLBACK = {
-  background: `linear-gradient(180deg, #FFE08C 0%, ${colors.goldHi} 34%, ${colors.gold} 66%, #E29A1F 100%)`,
-  clipPath:
-    "polygon(16px 0, calc(100% - 16px) 0, 100% 16px, 100% calc(100% - 16px), calc(100% - 16px) 100%, 16px 100%, 0 calc(100% - 16px), 0 16px)",
+const PLATES: Record<PlateKind, Plate> = {
+  gold: {
+    src: "/btn-gold.webp",
+    w: 760, h: 196,
+    fx: 51, fy: 12, fw: 663, fh: 150,
+    text: "#4A2E04",
+    shine: "0 1px 0 rgba(255,240,190,.45)",
+  },
+  violet: {
+    src: "/btn-violet.webp",
+    w: 760, h: 228,
+    fx: 52, fy: 18, fw: 682, fh: 156,
+    text: colors.ink,
+    shine: "0 1px 2px rgba(20,0,60,.5)",
+  },
 };
 
-/** De plaat zelf, als laag over de knop heen. `onMissing` gaat af als het
- *  bestand er niet is, zodat de knop op de CSS-vorm kan terugvallen. */
-export function GoldPlate({ onMissing }: { onMissing: () => void }) {
+/** Alles wat uit de maten volgt: verhouding, gloedmarge, breedtegrenzen. */
+function metrics(kind: PlateKind) {
+  const p = PLATES[kind];
+  const faceW = p.fw / p.w;
+  const faceH = p.fh / p.h;
+  const ratio = (p.w * faceW) / (p.h * faceH);
+  return {
+    plate: p,
+    ratio,
+    // De knop mag precies dit deel van de ruimte innemen; de rest is gloed.
+    fit: `${(faceW * 100).toFixed(2)}%`,
+    // Plafond, anders wordt de knop op een tablet een banier: de hoogte volgt
+    // immers uit de breedte.
+    maxWidth: 320,
+    minWidth: Math.round(44 * ratio),
+    img: {
+      left: `${(-p.fx / p.fw) * 100}%`,
+      width: `${(p.w / p.fw) * 100}%`,
+      top: `${(-p.fy / p.fh) * 100}%`,
+      height: `${(p.h / p.fh) * 100}%`,
+    },
+  };
+}
+
+export const GOLD = metrics("gold");
+export const VIOLET = metrics("violet");
+export const plateMetrics = (kind: PlateKind) => (kind === "gold" ? GOLD : VIOLET);
+
+/** Breedte-regels voor een plaatknop op volle breedte. */
+export function plateWidth(kind: PlateKind) {
+  const m = plateMetrics(kind);
+  return { width: `min(${m.fit}, ${m.maxWidth}px)`, marginLeft: "auto", marginRight: "auto" } as const;
+}
+
+/** Terugval als een asset niet laadt: dezelfde vorm in CSS, zodat er nooit een
+ *  naamloze knop overblijft. */
+export const PLATE_CHAMFER =
+  "polygon(16px 0, calc(100% - 16px) 0, 100% 16px, 100% calc(100% - 16px), calc(100% - 16px) 100%, 16px 100%, 0 calc(100% - 16px), 0 16px)";
+
+/** De plaat als laag over de knop heen. `onMissing` gaat af als het bestand er
+ *  niet is, zodat de knop op de CSS-vorm kan terugvallen. */
+export function PlateArt({ kind, onMissing }: { kind: PlateKind; onMissing: () => void }) {
+  const m = plateMetrics(kind);
   return (
     <img
-      src="/btn-gold.webp"
+      src={m.plate.src}
       alt=""
       aria-hidden
       onError={onMissing}
       style={{
         position: "absolute",
-        left: `${(-FACE_X / FACE_W) * 100}%`,
-        width: `${(1 / FACE_W) * 100}%`,
-        top: `${(-FACE_Y / FACE_H) * 100}%`,
-        height: `${(1 / FACE_H) * 100}%`,
+        ...m.img,
         // De reset zet `max-width: 100%` op afbeeldingen; die knipte de plaat
         // terug naar knopbreedte, waardoor hij te klein en uit het midden stond.
         maxWidth: "none",
@@ -89,18 +117,23 @@ export function GoldPlate({ onMissing }: { onMissing: () => void }) {
   );
 }
 
+const LETTER_SPACING = 2.2;
+
 /** De hero-variant: volle breedte, hoofdletters, voor de hoofdactie van een
- *  scherm (VASTLEGGEN in Duel). Gewone gouden knoppen gaan via `Button`. */
+ *  scherm (VASTLEGGEN in Duel). Gewone knoppen gaan via `Button`. */
 export function GoldButton({
   label,
   onClick,
   disabled = false,
+  kind = "gold",
 }: {
   label: string;
   onClick: () => void;
   disabled?: boolean;
+  kind?: PlateKind;
 }) {
   const [art, setArt] = useState(true);
+  const m = plateMetrics(kind);
   return (
     <button
       onClick={onClick}
@@ -108,12 +141,12 @@ export function GoldButton({
       className="pressable"
       style={{
         position: "relative",
-        ...(art ? goldWidth : { width: "100%" }),
-        aspectRatio: art ? `${GOLD_RATIO}` : undefined,
+        ...(art ? plateWidth(kind) : { width: "100%" }),
+        aspectRatio: art ? `${m.ratio}` : undefined,
         minHeight: art ? undefined : 54,
         border: "none",
-        background: art ? "transparent" : GOLD_FALLBACK.background,
-        clipPath: art ? undefined : GOLD_FALLBACK.clipPath,
+        background: art ? "transparent" : colors.gold,
+        clipPath: art ? undefined : PLATE_CHAMFER,
         cursor: disabled ? "default" : "pointer",
         opacity: disabled ? 0.5 : 1,
         display: "grid",
@@ -121,7 +154,7 @@ export function GoldButton({
         padding: 0,
       }}
     >
-      {art && <GoldPlate onMissing={() => setArt(false)} />}
+      {art && <PlateArt kind={kind} onMissing={() => setArt(false)} />}
       <span
         style={{
           position: "relative",
@@ -130,8 +163,8 @@ export function GoldButton({
           fontSize: 18,
           letterSpacing: LETTER_SPACING,
           textTransform: "uppercase",
-          color: "#4A2E04",
-          textShadow: "0 1px 0 rgba(255,240,190,.45)",
+          color: m.plate.text,
+          textShadow: m.plate.shine,
           // letter-spacing zet ook ruimte NA de laatste letter, dus zonder dit
           // staat het woord optisch een halve spatie te ver naar links.
           marginLeft: LETTER_SPACING,
