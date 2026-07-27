@@ -13,7 +13,7 @@ import { ArrowLeft, Check, Clock as ClockIcon, Hourglass, RotateCcw, Search, Swo
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { GoldButton } from "../components/GoldButton";
-import { Arena } from "../components/Arena";
+import { Arena, ARENA } from "../components/Arena";
 import { Screen, Card } from "../components/Layout";
 import type { GameApi } from "../net/socket";
 import { useT } from "../i18n/i18n";
@@ -546,12 +546,15 @@ const FRAME_LINE = withAlpha(colors.violet, 0.65);
  *  de tekst af en wordt daarom gemeten; de zeshoek wordt daarna exact op die
  *  maat getekend, zodat de punten links en rechts scherp blijven in plaats van
  *  uitgerekt. */
-function CategoryTab({ label }: { label: string }) {
+function CategoryTab({ label, onWidth }: { label: string; onWidth?: (w: number) => void }) {
   const box = useRef<HTMLDivElement | null>(null);
   const [w, setW] = useState(150);
   useLayoutEffect(() => {
-    if (box.current) setW(box.current.offsetWidth);
-  }, [label]);
+    if (!box.current) return;
+    const next = box.current.offsetWidth;
+    setW(next);
+    onWidth?.(next);
+  }, [label, onWidth]);
 
   const H = 30;      // hoogte van de tab
   const C = 13;      // hoe ver de punt naar binnen loopt
@@ -599,15 +602,41 @@ function CategoryTab({ label }: { label: string }) {
 /** De letter op zijn voetstuk: neon-omlijsting, hexagonale categorie-tab die op
  *  de rand rust, opstijgende stralen en een gloeiende schijf onder de letter. */
 function LetterStage({ letter, category, hint }: { letter: string; category: string; hint: string }) {
+  // De omlijning van de kaart is een SVG-pad met een GAT bovenin, precies zo
+  // breed als de tab. Met een gewone `border` liep die lijn dwars door de tab
+  // heen; nu houdt hij op waar de tab begint en pakt hij erna weer op, zodat
+  // tab en vak als een doorlopende vorm lezen.
+  const card = useRef<HTMLDivElement | null>(null);
+  const [box, setBox] = useState({ w: 0, h: 0 });
+  const [tabW, setTabW] = useState(0);
+  useLayoutEffect(() => {
+    const measure = () => {
+      if (card.current) setBox({ w: card.current.offsetWidth, h: card.current.offsetHeight });
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [letter, category, hint]);
+
+  const R = 22;
+  const gap = tabW + 6;                       // beetje lucht naast de punten
+  const { w, h } = box;
+  const outline =
+    w && h
+      ? `M ${w / 2 + gap / 2} 0 H ${w - R} A ${R} ${R} 0 0 1 ${w} ${R} V ${h - R} ` +
+        `A ${R} ${R} 0 0 1 ${w - R} ${h} H ${R} A ${R} ${R} 0 0 1 0 ${h - R} ` +
+        `V ${R} A ${R} ${R} 0 0 1 ${R} 0 H ${w / 2 - gap / 2}`
+      : "";
+
   return (
     <div style={{ position: "relative", marginTop: 12 }}>
-      <CategoryTab label={category} />
+      <CategoryTab label={category} onWidth={setTabW} />
 
       <div
+        ref={card}
         style={{
           position: "relative",
-          overflow: "hidden",
-          borderRadius: 22,
+          borderRadius: R,
           padding: "46px 18px 20px",
           display: "flex",
           flexDirection: "column",
@@ -616,11 +645,21 @@ function LetterStage({ letter, category, hint }: { letter: string; category: str
           // Bewust bijna doorzichtig: het podium en de stralen van de arena
           // moeten er dwars doorheen te zien zijn, anders staat de letter op een
           // dichte kaart in plaats van op het toneel.
-          background: `linear-gradient(180deg, ${withAlpha(colors.violet, 0.1)}, ${withAlpha("#0E0922", 0.22)})`,
-          border: `1.5px solid ${FRAME_LINE}`,
+          background: `linear-gradient(180deg, ${withAlpha(colors.violet, 0.1)}, ${withAlpha(ARENA.base, 0.22)})`,
           boxShadow: `0 0 26px ${withAlpha(colors.violet, 0.35)}, inset 0 0 34px ${withAlpha(colors.violet, 0.12)}`,
         }}
       >
+        {!!outline && (
+          <svg
+            aria-hidden
+            width={w}
+            height={h}
+            viewBox={`0 0 ${w} ${h}`}
+            style={{ position: "absolute", left: 0, top: 0, overflow: "visible", pointerEvents: "none" }}
+          >
+            <path d={outline} fill="none" stroke={FRAME_LINE} strokeWidth={1.5} />
+          </svg>
+        )}
         <div style={{ position: "relative", display: "grid", placeItems: "center", width: "100%" }}>
           <span
             style={{
