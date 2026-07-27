@@ -35,6 +35,12 @@ const FRAMES = [
 // percentages van deze maat via --em, dus alles schaalt als één geheel.
 const EMBLEM_SIZE = "clamp(112px, calc(64vh - 315px), 215px)";
 
+// De zeshoek van de knopjes, met de punt naar boven, net als de knopplaten.
+const HEX = "polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)";
+// De goudreeks: donker, midden, licht, fel. Rand, cijfer en gloed komen hier
+// allemaal uit, en daarom horen ze bij elkaar.
+const GOUD = ["#4A2E04", "#B07C17", "#FFC23D", "#FFEBB8"];
+
 const inputStyle: React.CSSProperties = {
   width: "100%",
   boxSizing: "border-box",
@@ -260,9 +266,9 @@ export function Landing({
               <Target size={23} />
             </HexPlate>
             {missionsOpen > 0 && (
-              <span style={{ position: "absolute", top: skin ? -1 : 3, right: skin ? -1 : 3, minWidth: 15, height: 15, padding: "0 4px", borderRadius: 999, background: colors.gold, color: colors.bg0, fontFamily: font.ui, fontSize: 9.5, fontWeight: 800, lineHeight: "15px", textAlign: "center", boxShadow: `0 0 8px ${withAlpha(colors.gold, 0.6)}` }}>
-                {missionsOpen}
-              </span>
+              // Hetzelfde knopje als op de tegels. Twee soorten telknopjes op
+              // een scherm is er een te veel.
+              <CountBadge n={missionsOpen} x={skin ? "80%" : "calc(100% - 4px)"} y={skin ? "20%" : "4px"} size={16} />
             )}
           </button>
           <button
@@ -735,7 +741,11 @@ function MissionsSheet({
  *  `x` en `y` zijn waar het MIDDEN komt te liggen, in de doos van de tegel. Ze
  *  worden van buiten meegegeven omdat elke plaat zijn eigen afschuining heeft
  *  (zie TILE_ART). */
-function CountBadge({ n, x, y }: { n: number; x: string; y: string }) {
+function CountBadge({ n, x, y, size = 23 }: { n: number; x: string; y: string; size?: number }) {
+  // Een zeshoek, want die staat al op deze pagina: de knopjes voor instellingen,
+  // muziek en uitleg zijn zeshoekig. Een rondje was een melding uit een website,
+  // dit is een plaatje uit hetzelfde spel.
+  const h = Math.round(size * 1.115);
   return (
     <span
       aria-hidden
@@ -744,30 +754,74 @@ function CountBadge({ n, x, y }: { n: number; x: string; y: string }) {
         left: x,
         top: y,
         transform: "translate(-50%, -50%)",
-        minWidth: 23,
-        height: 23,
-        padding: "0 6px",
-        boxSizing: "border-box",
-        borderRadius: 999,
+        width: size,
+        height: h,
         display: "grid",
         placeItems: "center",
-        background: "linear-gradient(158deg, #FFEBB8 0%, #FFC23D 42%, #B07C17 100%)",
-        boxShadow: [
-          "inset 0 -3px 4px rgba(74,46,4,.5)",
-          "inset 0 1.5px 0 rgba(255,255,255,.6)",
-          "0 0 0 1.6px #4A2E04",
-          "0 3px 7px rgba(0,0,0,.55)",
-          "0 0 12px rgba(255,194,61,.45)",
-        ].join(", "),
-        fontFamily: font.display,
-        fontWeight: 800,
-        fontSize: 13,
-        lineHeight: 1,
-        color: "#2A1802",
-        textShadow: "0 1px 0 rgba(255,240,190,.45)",
+        pointerEvents: "none",
       }}
     >
-      {n}
+      {/* De gloed is een EIGEN laag. Een box-shadow kan hier niet: `clip-path`
+          knipt alles weg wat een element tekent, dus ook zijn schaduw. */}
+      <span
+        style={{
+          position: "absolute",
+          left: "50%",
+          top: "50%",
+          transform: "translate(-50%, -50%)",
+          width: size * 2.2,
+          height: h * 2.2,
+          borderRadius: "50%",
+          background: `radial-gradient(circle closest-side, ${withAlpha(colors.gold, 0.4)} 0%, ${withAlpha(colors.gold, 0.14)} 44%, transparent 74%)`,
+        }}
+      />
+      {/* Rand en vulling zijn twee geknipte lagen over elkaar: een `border` kan
+          geen verloop, en zou bovendien de rechthoek volgen en niet de zeshoek.
+          Wat er onderuit steekt IS de lijn. Licht boven, donker onder, want het
+          licht komt van boven. */}
+      <span style={{ position: "absolute", inset: 0, clipPath: HEX, background: `linear-gradient(168deg, ${GOUD[3]} 0%, ${GOUD[2]} 17%, ${GOUD[1]} 45%, ${GOUD[0]} 86%, #2A1A02 100%)` }} />
+      <span
+        style={{
+          position: "absolute",
+          inset: Math.max(1.2, size * 0.055),
+          clipPath: HEX,
+          // Donker van binnen. Op een gouden lijst zou een gouden muntje
+          // verdwijnen; zo staat het knopje ergens IN en niet erop geplakt.
+          // Drie lagen: randverdonkering zodat het verzonken leest, daarboven
+          // een KORTE oplichting waar het licht valt (een verloop dat over de
+          // halve vorm licht is leest als een vlak, niet als licht), en
+          // daaronder de bodem.
+          backgroundImage: [
+            "radial-gradient(118% 118% at 50% 38%, transparent 42%, rgba(5,2,14,.72) 100%)",
+            "radial-gradient(58% 34% at 50% 6%, rgba(255,235,184,.5), transparent 72%)",
+            "linear-gradient(180deg, #37245F 0%, #23153F 48%, #120922 100%)",
+          ].join(", "),
+        }}
+      />
+      {/* De glans op de bovenrand. Kort en alleen bovenaan: dat is waar het
+          metaal het licht vangt. Als eigen laag, want binnen dezelfde
+          `background-image` delen alle lagen dezelfde begrenzing. */}
+      <span
+        style={{
+          position: "absolute",
+          inset: 0,
+          clipPath: HEX,
+          background: "radial-gradient(46% 16% at 50% 3%, rgba(255,252,236,.85), rgba(255,240,190,.35) 52%, transparent 78%)",
+        }}
+      />
+      <span
+        style={{
+          position: "relative",
+          fontFamily: font.display,
+          fontWeight: 800,
+          fontSize: Math.round(size * 0.56),
+          lineHeight: 1,
+          color: GOUD[3],
+          textShadow: "0 1px 1px rgba(8,3,20,.75)",
+        }}
+      >
+        {n}
+      </span>
     </span>
   );
 }

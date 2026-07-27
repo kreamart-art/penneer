@@ -90,14 +90,19 @@ export function shadowSrc(src: string): string {
  *
  *  De plek is per plaat gemeten en niet geschat. Uit de art is het binnenvlak
  *  gehaald (de aaneengesloten kleurvlek waar het icoon op staat) en daarin is
- *  de plek gezocht die het dichtst bij de hoek ligt en waar het hele muntje nog
- *  net vrij ligt. Een gedeeld paar getallen kan niet: een percentage in `top`
+ *  de plek gezocht die het dichtst bij de hoek ligt en waar het hele knopje nog
+ *  net vrij ligt. Daar is het met de hand vanaf geschoven, zeven pixels naar
+ *  links en drie en een halve naar beneden op het scherm: precies passen leest
+ *  als klem zitten, en een knopje dat tegen de lijst aan plakt hoort er niet
+ *  bij. Die verschuiving is in SCHERMpixels op beide platen gelijk en niet in
+ *  procenten, anders schuift de brede balk vier keer zo ver op als de vierkante
+ *  plaat. Een gedeeld paar getallen kan niet: een percentage in `top`
  *  rekent met de HOOGTE en in `left` met de BREEDTE, dus wat op de vierkante
  *  plaat in de hoek staat, staat op de brede Duel-balk 108px naar binnen. */
 export const TILE_ART: Record<string, { src: string; label: boolean; labelY?: string; dark?: boolean; badgeX?: string; badgeY?: string }> = {
   friends: { src: "/tiles/friends.webp", label: true, labelY: "62%", dark: true },
   bots: { src: "/tiles/bots.webp", label: true, labelY: "62%" },
-  daily: { src: "/tiles/daily.webp", label: true, labelY: "68%", badgeX: "86.1%", badgeY: "18.8%" },
+  daily: { src: "/tiles/daily.webp", label: true, labelY: "68%", badgeX: "81.8%", badgeY: "21.8%" },
   train: { src: "/tiles/train.webp", label: true, labelY: "68%" },
-  duel: { src: "/tiles/duel.webp", label: false, badgeX: "93.1%", badgeY: "33.2%" },
+  duel: { src: "/tiles/duel.webp", label: false, badgeX: "91%", badgeY: "38.1%" },
 };
