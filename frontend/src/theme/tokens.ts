@@ -44,7 +44,7 @@ export const font = {
 // Reusable surface for translucent panels / cards.
 export const panelStyle: React.CSSProperties = {
   background: colors.panel,
-  border: `1px solid ${colors.panelBorder}`,
+  // Geen `border`: de rand van een paneel is de verloopring uit `.panel-neon`.
   borderRadius: 18,
   backdropFilter: "blur(8px)",
   WebkitBackdropFilter: "blur(8px)",

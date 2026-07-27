@@ -415,3 +415,44 @@ input:focus {
   0%, 100% { opacity: .25; transform: translateX(-30%); }
   50% { opacity: .8; transform: translateX(30%); }
 }
+
+/* ---------- panelen in de neon-game-stijl ----------
+   Een kaart is niet vlak: hij heeft een verlooprand die bovenaan oplicht en
+   onderaan wegzakt, en een zachte belichting van bovenaf. De rand wordt met een
+   masker uit een verloopvlak GEKNIPT (mask-composite), niet als tweede laag
+   eronder gelegd: de kaart is doorschijnend, dus een laag eronder zou er
+   doorheen schemeren.
+
+   Let op de twee schrijfwijzen van mask-composite: zonder de -webkit-regel doet
+   Safari niets en zie je een gevuld blok in plaats van een rand. */
+.panel-neon { position: relative; }
+
+.panel-neon::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: linear-gradient(170deg, #c46bff 0%, #8a45f0 20%, #5a2abf 52%, #2e1263 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* De belichting van bovenaf. Heel laag van dekking: hij mag de inhoud tinten,
+   niet bedekken. */
+.panel-neon::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(115% 65% at 50% -12%, rgba(169, 107, 255, 0.13), transparent 62%);
+  pointer-events: none;
+}
+
+/* Kaarten die hun eigen rand meebrengen (een winnaarskaart in zijn eigen kleur)
+   slaan de ring over, anders staan er twee randen om hetzelfde vlak. */
+.panel-neon.own-border::before { display: none; }

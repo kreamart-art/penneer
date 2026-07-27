@@ -13,7 +13,7 @@ import { sound } from "../sound/sound";
 import type { GameApi } from "../net/socket";
 import { useT } from "../i18n/i18n";
 import { EMOTE_PACKS_FOR_SALE, EMOTE_SRC } from "../components/emotes";
-import { reelTheme } from "../theme/reelSkins";
+import { reelEdge, reelFace, reelTheme } from "../theme/reelSkins";
 import { colors, font, withAlpha } from "../theme/tokens";
 
 const AVATAR_ART_VERSION = 9;
@@ -112,16 +112,35 @@ function CoinItem({ title, owned, price, coins, onBuy, children }: {
 // reel is code-drawn, so the preview is too).
 function ReelSwatch({ id }: { id: string }) {
   const th = reelTheme(id);
+  // Zelfde opbouw als de echte rol: de rand is een laag met het verloop eronder,
+  // en de letter draagt hetzelfde verloop. Een egale rand met een egale letter
+  // laat de skin er in de winkel anders uitzien dan in het spel.
   return (
     <div
       style={{
-        width: "70%", aspectRatio: "6 / 7", borderRadius: 12,
-        background: th.bg, border: `2px solid ${th.border}`,
-        boxShadow: `0 0 14px ${withAlpha(th.glow, 0.45)}, inset 0 4px 12px rgba(0,0,0,.6)`,
-        display: "grid", placeItems: "center",
+        width: "70%", aspectRatio: "6 / 7", borderRadius: 12, padding: 2,
+        background: reelEdge(th.ramp),
+        boxShadow: `0 0 14px ${withAlpha(th.glow, 0.45)}`,
       }}
     >
-      <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 34, lineHeight: 1, color: th.letter, textShadow: `0 0 12px ${withAlpha(th.glow, 0.8)}` }}>A</span>
+      <div
+        style={{
+          width: "100%", height: "100%", borderRadius: 10, background: th.bg,
+          boxShadow: `inset 0 0 22px ${withAlpha(th.ramp[2], 0.28)}, inset 0 4px 12px rgba(0,0,0,.6)`,
+          display: "grid", placeItems: "center",
+        }}
+      >
+        <span
+          style={{
+            fontFamily: font.display, fontWeight: 700, fontSize: 34, lineHeight: 1,
+            backgroundImage: reelFace(th.ramp),
+            WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent",
+            textShadow: "-1px -1px 0 rgba(255,255,255,.3)",
+          }}
+        >
+          A
+        </span>
+      </div>
     </div>
   );
 }

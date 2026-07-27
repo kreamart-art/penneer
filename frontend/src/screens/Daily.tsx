@@ -3,10 +3,11 @@
 // list categories, list-only scoring, one ranked attempt per account. Guests
 // play the identical round unranked and get a profile nudge.
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, CalendarDays, Check, Flame, HelpCircle, Share2, Trophy, X } from "lucide-react";
+import { ArrowLeft, CalendarDays, Check, ChevronRight, Flame, Globe2, HelpCircle, Share2, SpellCheck2, Trophy, X } from "lucide-react";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { Screen, Card } from "../components/Layout";
+import { Topo } from "./Topo";
 import type { GameApi } from "../net/socket";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
@@ -81,7 +82,9 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
   const { t, tCat, lang } = useT();
   const account = game.state.account;
   const [phase, setPhase] = useState<"intro" | "play" | "result">("intro");
-  const [info, setInfo] = useState<{ players: number; played: boolean; streak: number; day: string; seconds_left: number } | null>(null);
+  const [info, setInfo] = useState<{ players: number; played: boolean; streak: number; day: string; seconds_left: number; topo_played: boolean; topo_players: number } | null>(null);
+  // De Dagronde bestaat uit twee losse onderdelen. Null = de keuze staat open.
+  const [part, setPart] = useState<"words" | "topo" | null>(null);
   const [letter, setLetter] = useState("");
   const [cats, setCats] = useState<string[]>([]);
   const [duration, setDuration] = useState(60);
@@ -98,11 +101,15 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
   const answersRef = useRef<Record<string, string>>({});
   answersRef.current = answers;
 
-  useEffect(() => {
+  const refreshInfo = () =>
     fetch("/api/daily/info", { headers: authHeaders() })
       .then((r) => r.json())
       .then(setInfo)
       .catch(() => {});
+
+  useEffect(() => {
+    void refreshInfo();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Countdown to the next letter, shown on the result (and played-intro).
@@ -250,9 +257,13 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
     }
   };
 
+  if (part === "topo") {
+    return <Topo game={game} onProfile={onProfile} played={!!info?.topo_played} onBack={() => { setPart(null); void refreshInfo(); }} />;
+  }
+
   const header = (
     <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", paddingTop: "calc(14px + env(safe-area-inset-top))" }}>
-      <button onClick={onBack} aria-label={t("back")} style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 2 }}>
+      <button onClick={() => (part && phase === "intro" ? setPart(null) : onBack())} aria-label={t("back")} style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 2 }}>
         <ArrowLeft size={20} />
       </button>
       <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>
@@ -268,7 +279,54 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
     </span>
   );
 
-  // ---- intro ----
+  // ---- keuze tussen de twee onderdelen ----
+  if (phase === "intro" && part === null) {
+    const wordsPlayed = !!info?.played || (() => {
+      try {
+        const saved = JSON.parse(localStorage.getItem(LOCAL_KEY) || "null");
+        return !account && saved && saved.day === info?.day;
+      } catch {
+        return false;
+      }
+    })();
+    return (
+      <Screen top={header}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {/* Geen of-of: de twee onderdelen staan los van elkaar, met elk een
+              eigen ranglijst, en je mag ze allebei op dezelfde dag doen. */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+            <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint }}>{t("partPickTitle")}</span>
+            <span style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.sub, lineHeight: 1.45 }}>{t("partPickHint")}</span>
+          </div>
+          <PartTile
+            icon={<SpellCheck2 size={22} />}
+            title={t("partWords")}
+            desc={t("partWordsDesc")}
+            meta={info ? t("dailyPlayers", { n: info.players }) : ""}
+            done={wordsPlayed}
+            doneLabel={t("partDone")}
+            onClick={() => { sound.uiTap(); setPart("words"); }}
+          />
+          <PartTile
+            icon={<Globe2 size={22} />}
+            title={t("partTopo")}
+            desc={t("partTopoDesc")}
+            meta={info ? t("topoPlayers", { n: info.topo_players ?? 0 }) : ""}
+            done={!!info?.topo_played}
+            doneLabel={t("partDone")}
+            onClick={() => { sound.uiTap(); setPart("topo"); }}
+          />
+          {!!info?.streak && info.streak > 0 && (
+            <div style={{ display: "flex", justifyContent: "center" }}>
+              {chip(<Flame size={13} color={colors.orange} />, t("dailyStreakLine", { n: info.streak }))}
+            </div>
+          )}
+        </div>
+      </Screen>
+    );
+  }
+
+  // ---- intro van het woordendeel ----
   if (phase === "intro") {
     const played = !!info?.played || (() => {
       try {
@@ -301,6 +359,7 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
               {t("dailyStart")}
             </Button>
           )}
+          <Button variant="ghost" full onClick={() => setPart(null)}>{t("back")}</Button>
         </div>
       </Screen>
     );
@@ -463,5 +522,45 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
         <Button variant="ghost" full onClick={onBack}>{t("back")}</Button>
       </div>
     </Screen>
+  );
+}
+
+/** Een van de twee onderdelen van de Dagronde. Bewust een grote aanraakbare
+ *  tegel en geen lijstregel: dit is de eerste keuze van het scherm. */
+function PartTile({
+  icon, title, desc, meta, done, doneLabel, onClick,
+}: {
+  icon: React.ReactNode; title: string; desc: string; meta: string;
+  done: boolean; doneLabel: string; onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="pressable"
+      style={{
+        display: "flex", alignItems: "center", gap: 13, width: "100%", textAlign: "left",
+        padding: "15px 14px", borderRadius: radius.card, cursor: "pointer",
+        background: "linear-gradient(180deg, rgba(42,28,72,.85), rgba(22,13,48,.85))",
+        border: `1px solid ${done ? withAlpha(colors.green, 0.45) : withAlpha(colors.violet, 0.4)}`,
+        boxShadow: `0 0 14px ${withAlpha(colors.violet, 0.18)}`,
+      }}
+    >
+      <span style={{ display: "grid", placeItems: "center", width: 44, height: 44, flexShrink: 0, borderRadius: 14, color: colors.gold, background: withAlpha(colors.gold, 0.12), border: `1px solid ${withAlpha(colors.gold, 0.35)}` }}>
+        {icon}
+      </span>
+      <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
+        <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink }}>{title}</span>
+          {done && (
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontFamily: font.ui, fontSize: 10.5, fontWeight: 700, letterSpacing: 0.3, textTransform: "uppercase", color: colors.green, background: withAlpha(colors.green, 0.14), border: `1px solid ${withAlpha(colors.green, 0.45)}`, padding: "2px 7px", borderRadius: 999 }}>
+              <Check size={11} /> {doneLabel}
+            </span>
+          )}
+        </span>
+        <span style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.sub, lineHeight: 1.45 }}>{desc}</span>
+        {!!meta && <span style={{ fontFamily: font.ui, fontSize: 11.5, color: colors.faint }}>{meta}</span>}
+      </span>
+      <ChevronRight size={18} color={colors.faint} style={{ flexShrink: 0 }} />
+    </button>
   );
 }

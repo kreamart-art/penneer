@@ -17,6 +17,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import ai_referee, daily, duel, game, missions, paypal, push
+from . import topo
 from .db import AVATAR_MAX_BYTES, get_db
 from .social import accounts
 from .ws import manager, router as ws_router
@@ -364,6 +365,10 @@ async def daily_info(request: Request) -> JSONResponse:
         "players": db.daily_players_count(day),
         "played": bool(uid and db.daily_entry(uid, day)),
         "streak": _daily_streak(db, uid, day) if uid else 0,
+        # Het topografiedeel is een eigen potje met een eigen ranglijst; je kunt
+        # er los van het woordendeel aan meedoen.
+        "topo_played": bool(uid and db.topo_entry(uid, day)),
+        "topo_players": db.topo_players_count(day),
     })
 
 
@@ -474,6 +479,113 @@ async def daily_result(request: Request) -> JSONResponse:
     approved = await _daily_approvals(db, day, stored, len_used, ask_ai=False)
     _, breakdown = daily.score_answers(day, stored, lenient=len_used, approved=approved)
     return JSONResponse(_daily_result_payload(db, uid, day, int(entry["score"]), breakdown, True, int(entry["time_ms"])))
+
+
+# ---- topografie: het tweede deel van de Dagronde ----------------------------
+# Zelfde vorm als de dagronde hierboven: dezelfde vragen voor iedereen, afgeleid
+# uit de datum, een inzending per account per dag, en een eigen dagranglijst.
+
+
+def _topo_streak(db, uid: str, day: str) -> int:
+    days = set(db.topo_days_of(uid))
+    streak = 0
+    d = day
+    while d in days:
+        streak += 1
+        d = daily.previous_day(d)
+    return streak
+
+
+def _topo_result_payload(db, uid: str, day: str, score: int, breakdown: list, ranked: bool, time_ms: int, lang: str) -> dict:
+    rank, total = db.topo_rank(uid, day) if uid else (0, db.topo_players_count(day))
+    qs = {q["id"]: q for q in topo.public_questions(day, lang)}
+    return {
+        "day": day,
+        "score": score,
+        "questions": [{**row, "q": qs.get(row["id"], {}).get("q", "")} for row in breakdown],
+        "ranked": ranked,
+        "rank": rank,
+        "total": total,
+        "streak": _topo_streak(db, uid, day) if uid else 0,
+        "time_ms": time_ms,
+        "board": db.topo_board(day, 10),
+        "seconds_left": daily.seconds_to_next_day(),
+        "max_score": topo.QUESTIONS_PER_DAY * topo.POINTS_PER_ANSWER,
+    }
+
+
+@app.post("/api/daily/topo/start")
+async def topo_start(request: Request) -> JSONResponse:
+    """Deel de vragen van vandaag uit. Voor accounts zet dit de klok vast op de
+    EERSTE start van de dag, zodat sluiten en heropenen niets teruggeeft."""
+    db = get_db()
+    body = await request.json() if request.headers.get("content-type", "").startswith("application/json") else {}
+    lang = "en" if str((body or {}).get("lang") or "nl").startswith("en") else "nl"
+    day = daily.today()
+    uid = db.auth(_bearer(request))
+    if uid and db.topo_entry(uid, day):
+        return JSONResponse({"day": day, "played": True, "seconds_left": daily.seconds_to_next_day()})
+    if uid:
+        db.topo_start(uid, day, time.time())
+    return JSONResponse({
+        "day": day,
+        "questions": topo.public_questions(day, lang),
+        "duration": topo.DURATION_S,
+        "played": False,
+    })
+
+
+@app.post("/api/daily/topo/submit")
+async def topo_submit(request: Request) -> JSONResponse:
+    db = get_db()
+    body = await request.json()
+    lang = "en" if str((body or {}).get("lang") or "nl").startswith("en") else "nl"
+    day = daily.today()
+    uid = db.auth(_bearer(request))
+    now = time.time()
+    lenient = db.lenient_of(uid) if uid else False
+
+    entry = db.topo_entry(uid, day) if uid else None
+    if entry is not None:
+        # Al op het bord: geef de OPGESLAGEN uitslag terug, beoordeeld met de
+        # instelling waarmee toen is ingeleverd, zodat de uitsplitsing bij de
+        # bewaarde score past.
+        try:
+            stored = json.loads(entry["answers"])
+        except Exception:
+            stored = {}
+        _, breakdown = topo.score_answers(day, stored, lenient=bool(entry.get("lenient")))
+        return JSONResponse({**_topo_result_payload(db, uid, day, int(entry["score"]), breakdown, True, int(entry["time_ms"]), lang), "already": True})
+
+    answers = {str(k)[:32]: str(v)[:40] for k, v in ((body or {}).get("answers") or {}).items()}
+    score, breakdown = topo.score_answers(day, answers, lenient=lenient)
+    ranked = False
+    time_ms = 0
+    if uid:
+        started = db.topo_start(uid, day, now)
+        elapsed = now - started
+        if elapsed <= topo.DURATION_S + topo.GRACE_S:
+            time_ms = int(min(max(elapsed, 1.0), topo.DURATION_S) * 1000)
+            ranked = db.topo_submit(uid, day, score, time_ms, json.dumps(answers)[:4000], now, lenient=lenient)
+    return JSONResponse({**_topo_result_payload(db, uid, day, score, breakdown, ranked, time_ms, lang), "already": False})
+
+
+@app.get("/api/daily/topo/result")
+async def topo_result(request: Request) -> JSONResponse:
+    """Sla de opgeslagen uitslag van vandaag weer open (alleen accounts)."""
+    db = get_db()
+    day = daily.today()
+    uid = db.auth(_bearer(request))
+    lang = "en" if str(request.query_params.get("lang") or "nl").startswith("en") else "nl"
+    entry = db.topo_entry(uid, day) if uid else None
+    if not uid or entry is None:
+        return JSONResponse({"error": "not_played"}, status_code=404)
+    try:
+        stored = json.loads(entry["answers"])
+    except Exception:
+        stored = {}
+    _, breakdown = topo.score_answers(day, stored, lenient=bool(entry.get("lenient")))
+    return JSONResponse(_topo_result_payload(db, uid, day, int(entry["score"]), breakdown, True, int(entry["time_ms"]), lang))
 
 
 # ---- duel (1v1 om beurten, gescoord op zeldzaamheid) -------------------------

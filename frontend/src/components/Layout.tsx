@@ -35,7 +35,11 @@ export function Screen({ children, top }: { children: React.ReactNode; top?: Rea
 }
 
 export function Card({ children, style, className }: { children: React.ReactNode; style?: React.CSSProperties; className?: string }) {
-  return <div className={className} style={{ ...panelStyle, padding: 18, ...style }}>{children}</div>;
+  // Elke kaart krijgt de neon-ring en de belichting van bovenaf. Brengt de
+  // aanroeper een eigen rand mee, dan slaat de ring zichzelf over: twee randen om
+  // hetzelfde vlak leest als een fout.
+  const cls = ["panel-neon", style?.border ? "own-border" : "", className].filter(Boolean).join(" ");
+  return <div className={cls} style={{ ...panelStyle, padding: 18, ...style }}>{children}</div>;
 }
 
 /** Studio credit line. Not in `Screen` any more: the main page has to fit on one

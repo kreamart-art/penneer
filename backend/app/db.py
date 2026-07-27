@@ -240,6 +240,25 @@ CREATE TABLE IF NOT EXISTS daily_scores (
     created_at REAL NOT NULL,
     PRIMARY KEY (day, user_id)
 );
+-- Topografie: het tweede deel van de Dagronde. Eigen tabellen naast die van het
+-- woordendeel, want het is een eigen ranglijst met een eigen score: door elkaar
+-- husselen zou beide boards onvergelijkbaar maken.
+CREATE TABLE IF NOT EXISTS topo_starts (
+    day TEXT NOT NULL,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    started_at REAL NOT NULL,
+    PRIMARY KEY (day, user_id)
+);
+CREATE TABLE IF NOT EXISTS topo_scores (
+    day TEXT NOT NULL,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    score INTEGER NOT NULL,
+    time_ms INTEGER NOT NULL,
+    answers TEXT NOT NULL,
+    lenient INTEGER NOT NULL DEFAULT 0,
+    created_at REAL NOT NULL,
+    PRIMARY KEY (day, user_id)
+);
 -- One paid retry of the daily round per account per day (50 coins). The row's
 -- existence means the retry has been spent, so it can never be bought twice.
 CREATE TABLE IF NOT EXISTS daily_retries (
@@ -1350,6 +1369,78 @@ class Database:
     def daily_players_count(self, day: str) -> int:
         with self._lock:
             return int(self._q("SELECT COUNT(*) AS n FROM daily_scores WHERE day=?", (day,))[0]["n"])
+
+    # ---- topografie (het tweede deel van de Dagronde) -----------------------
+    # Zelfde vorm als hierboven, alleen op de topo_-tabellen. Bewust niet
+    # samengevoegd met een "soort"-kolom: dan zou elke bestaande dagronde-query
+    # een filter nodig hebben en is er precies een vergeten filter nodig om de
+    # twee ranglijsten door elkaar te laten lopen.
+
+    def topo_start(self, user_id: str, day: str, now: float) -> float:
+        with self._lock:
+            row = self._q("SELECT started_at FROM topo_starts WHERE day=? AND user_id=?", (day, user_id))
+            if row:
+                return float(row[0]["started_at"])
+            self._exec("INSERT INTO topo_starts (day, user_id, started_at) VALUES (?,?,?)", (day, user_id, now))
+            return now
+
+    def topo_submit(self, user_id: str, day: str, score: int, time_ms: int, answers_json: str, now: float, lenient: bool = False) -> bool:
+        with self._lock:
+            try:
+                self._exec(
+                    "INSERT INTO topo_scores (day, user_id, score, time_ms, answers, lenient, created_at) VALUES (?,?,?,?,?,?,?)",
+                    (day, user_id, score, time_ms, answers_json, int(lenient), now),
+                )
+                return True
+            except sqlite3.IntegrityError:
+                return False
+
+    def topo_entry(self, user_id: str, day: str) -> Optional[dict]:
+        with self._lock:
+            rows = self._q("SELECT score, time_ms, answers, lenient, created_at FROM topo_scores WHERE day=? AND user_id=?", (day, user_id))
+        return dict(rows[0]) if rows else None
+
+    def topo_board(self, day: str, limit: int = 25) -> list[dict]:
+        with self._lock:
+            rows = self._q(
+                """
+                SELECT u.id, u.name, u.color, u.avatar_ver, u.avatar IS NOT NULL AS has_avatar,
+                       ts.score, ts.time_ms
+                FROM topo_scores ts JOIN users u ON u.id = ts.user_id
+                WHERE ts.day = ?
+                ORDER BY ts.score DESC, ts.time_ms ASC, ts.created_at ASC
+                LIMIT ?
+                """,
+                (day, limit),
+            )
+        return [dict(r) for r in rows]
+
+    def topo_rank(self, user_id: str, day: str) -> tuple[int, int]:
+        with self._lock:
+            total = self._q("SELECT COUNT(*) AS n FROM topo_scores WHERE day=?", (day,))[0]["n"]
+            mine = self._q("SELECT score, time_ms, created_at FROM topo_scores WHERE day=? AND user_id=?", (day, user_id))
+            if not mine:
+                return 0, int(total)
+            m = mine[0]
+            better = self._q(
+                """
+                SELECT COUNT(*) AS n FROM topo_scores WHERE day=? AND (
+                    score > ? OR (score = ? AND time_ms < ?) OR
+                    (score = ? AND time_ms = ? AND created_at < ?)
+                )
+                """,
+                (day, m["score"], m["score"], m["time_ms"], m["score"], m["time_ms"], m["created_at"]),
+            )[0]["n"]
+        return int(better) + 1, int(total)
+
+    def topo_players_count(self, day: str) -> int:
+        with self._lock:
+            return int(self._q("SELECT COUNT(*) AS n FROM topo_scores WHERE day=?", (day,))[0]["n"])
+
+    def topo_days_of(self, user_id: str, limit: int = 400) -> list[str]:
+        with self._lock:
+            rows = self._q("SELECT day FROM topo_scores WHERE user_id=? ORDER BY day DESC LIMIT ?", (user_id, limit))
+        return [r["day"] for r in rows]
 
     # ---- duel (1v1 om beurten, gescoord op zeldzaamheid) --------------------
 
