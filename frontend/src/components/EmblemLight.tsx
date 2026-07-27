@@ -87,7 +87,43 @@ export function EmblemLight() {
               width: "100%",
               height: "100%",
               borderRadius: "50%",
-              background: `radial-gradient(circle, rgba(255,235,184,${0.6 * w.sterk}) 0%, rgba(255,194,61,${0.44 * w.sterk}) 16%, rgba(226,158,36,${0.28 * w.sterk}) 30%, rgba(176,124,23,${0.18 * w.sterk}) 42%, rgba(140,84,120,${0.12 * w.sterk}) 54%, rgba(112,54,196,${0.065 * w.sterk}) 66%, rgba(70,32,140,${0.025 * w.sterk}) 78%, transparent 92%)`,
+              background: `radial-gradient(circle, transparent 0%, rgba(255,198,40,${0.12 * w.sterk}) 15%, rgba(255,190,16,${0.58 * w.sterk}) 24%, rgba(255,158,18,${0.42 * w.sterk}) 35%, rgba(240,118,28,${0.24 * w.sterk}) 47%, rgba(186,82,146,${0.13 * w.sterk}) 60%, rgba(112,54,196,${0.055 * w.sterk}) 74%, transparent 90%)`,
+              WebkitMaskImage: w.masker,
+              maskImage: w.masker,
+              animationDuration: `${w.sec}s`,
+              animationDirection: w.terug ? "reverse" : undefined,
+            }}
+          />
+        </div>
+      ))}
+
+      {/* 4b. De highlights. Dezelfde waaiers nog een keer, maar in de felle tint
+              van de reeks en alleen BOVEN het embleem: de wikkel draagt een
+              masker dat naar onderen wegvalt, en de draaiing zit op de kern
+              eronder. Dus de zone blijft staan en de stralen draaien erdoorheen,
+              zoals licht dat door een fellere plek trekt. */}
+      {[
+        { masker: BREED, maat: 1.7, sterk: 1, sec: 120, terug: false },
+        { masker: MIDDEL, maat: 2.0, sterk: 0.7, sec: 190, terug: true },
+      ].map((w, i) => (
+        <div
+          key={`hi${i}`}
+          aria-hidden
+          style={{
+            ...laag,
+            width: `calc(var(--em) * ${w.maat})`,
+            height: `calc(var(--em) * ${w.maat})`,
+            WebkitMaskImage: "linear-gradient(180deg, #000 0%, #000 20%, rgba(0,0,0,.55) 40%, rgba(0,0,0,.18) 58%, transparent 76%)",
+            maskImage: "linear-gradient(180deg, #000 0%, #000 20%, rgba(0,0,0,.55) 40%, rgba(0,0,0,.18) 58%, transparent 76%)",
+          }}
+        >
+          <div
+            className="hero-rays"
+            style={{
+              width: "100%",
+              height: "100%",
+              borderRadius: "50%",
+              background: `radial-gradient(circle, transparent 0%, rgba(255,220,80,${0.22 * w.sterk}) 16%, rgba(255,206,24,${0.82 * w.sterk}) 25%, rgba(255,172,14,${0.56 * w.sterk}) 36%, rgba(255,132,26,${0.3 * w.sterk}) 50%, rgba(214,92,60,${0.12 * w.sterk}) 64%, transparent 82%)`,
               WebkitMaskImage: w.masker,
               maskImage: w.masker,
               animationDuration: `${w.sec}s`,
@@ -106,7 +142,7 @@ export function EmblemLight() {
           width: "calc(var(--em) * 1.15)",
           height: "calc(var(--em) * 1.15)",
           background:
-            "radial-gradient(circle, rgba(255,194,61,.34) 0%, rgba(246,178,48,.27) 12%, rgba(226,158,36,.2) 24%, rgba(200,138,28,.14) 36%, rgba(176,124,23,.093) 47%, rgba(146,100,18,.058) 58%, rgba(112,74,12,.032) 69%, rgba(82,52,8,.015) 80%, rgba(74,46,4,.006) 89%, transparent 97%)",
+            "radial-gradient(circle, rgba(255,206,24,.4) 0%, rgba(255,190,16,.32) 12%, rgba(252,168,14,.24) 24%, rgba(240,140,16,.17) 36%, rgba(214,116,18,.11) 47%, rgba(180,92,20,.068) 58%, rgba(140,68,20,.037) 69%, rgba(100,48,16,.017) 80%, rgba(74,46,4,.007) 89%, transparent 97%)",
         }}
       />
 
@@ -119,7 +155,7 @@ export function EmblemLight() {
           width: "calc(var(--em) * 0.62)",
           height: "calc(var(--em) * 0.62)",
           background:
-            "radial-gradient(circle, rgba(255,235,184,.88) 0%, rgba(255,222,140,.7) 10%, rgba(255,194,61,.52) 22%, rgba(255,194,61,.33) 34%, rgba(232,163,32,.19) 46%, rgba(190,132,24,.1) 58%, rgba(150,104,18,.048) 70%, rgba(110,74,12,.018) 82%, transparent 96%)",
+            "radial-gradient(circle, rgba(255,251,236,.9) 0%, rgba(255,232,128,.76) 9%, rgba(255,212,32,.58) 20%, rgba(255,196,16,.4) 32%, rgba(255,168,14,.24) 44%, rgba(238,128,18,.13) 56%, rgba(196,96,16,.06) 68%, rgba(150,70,12,.022) 81%, transparent 95%)",
           animationDuration: "5.5s",
         }}
       />
