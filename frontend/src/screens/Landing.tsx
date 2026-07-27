@@ -19,7 +19,7 @@ import { colors, font, radius, withAlpha } from "../theme/tokens";
 
 // Hoe breed de lijst-art van de skin op het scherm staat. `border-image` rekt
 // het hoekstuk met deze breedte mee, dus dit is meteen de maat van het sieraad.
-const FRAME_W = 28;
+const FRAME_W = 22;
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
@@ -356,8 +356,15 @@ export function Landing({
             // Met de skin is de kaart de lijst-art. `border-image` snijdt hem in
             // negenen: de hoekstukken blijven zoals ze zijn en alleen de randen
             // en het midden rekken mee, dus het sieraad op de hoeken vervormt
-            // niet hoe hoog de kaart ook wordt. De rand zelf is doorzichtig,
-            // want de art vult hem.
+            // niet hoe hoog de kaart ook wordt.
+            //
+            // Het VELD zit niet meer in de art maar hieronder, als één verloop.
+            // Een verloop dat in negenen wordt gesneden krijgt in elke strook
+            // een andere rekfactor: de randstrook perst 128 bronpixels in 22, het
+            // midden rekt er 1055 uit over de hele hoogte. De kleuren sluiten op
+            // de snijlijn precies aan, maar de HELLING springt, en dat zie je als
+            // een rechthoek in het vlak. Nu er niets meer te snijden valt, kan er
+            // ook niets meer knikken.
             ...(skin
               ? {
                   // De lijst neemt de plaats in van de paginamarge: hij loopt
@@ -365,11 +372,13 @@ export function Landing({
                   // hap smaller worden puur omdat er een rand omheen staat.
                   marginInline: -10,
                   padding: 8,
-                  background: "none",
+                  // Het verloop uit de art, nu in één stuk over de hele kaart.
+                  background:
+                    "radial-gradient(125% 85% at 50% 44%, #311C66 0%, #24124F 52%, #1B0E44 100%)",
                   backdropFilter: "none",
                   WebkitBackdropFilter: "none",
-                  boxShadow: "none",
-                  borderRadius: 0,
+                  boxShadow: "0 24px 60px rgba(0,0,0,.45)",
+                  borderRadius: 18,
                   border: `${FRAME_W}px solid transparent`,
                   borderImage: "url(/tiles/frame.webp) 128 fill stretch",
                 }
