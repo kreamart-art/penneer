@@ -365,10 +365,10 @@ export function Landing({
                   die halen we er rechts weer af. Anders staat het merk een halve
                   letter naar links. */}
               <span style={{ display: "inline-flex", alignItems: "baseline", gap: "0.03em" }}>
-                <NeonText accent="#C3B4FF" depth="light" glowColor={colors.violet} blur={26} glow={0.9} side={0.2} drop={0.16}>
+                <NeonText accent="#C3B4FF" depth="light" flat drop={0.13}>
                   PEN
                 </NeonText>
-                <NeonText accent="#C3B4FF" depth="light" glowColor={colors.violet} blur={26} glow={0.9} side={0.2} drop={0.16} style={{ marginRight: "-0.14em" }}>
+                <NeonText accent="#C3B4FF" depth="light" flat drop={0.13} style={{ marginRight: "-0.14em" }}>
                   NEER
                 </NeonText>
               </span>

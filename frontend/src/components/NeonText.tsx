@@ -18,29 +18,6 @@
 import type React from "react";
 import { faceGradient, rampFrom } from "../theme/neon";
 
-/** De ZIJKANT van een geslagen letter: een stapel harde kopieën die stap voor
- *  stap naar rechtsonder loopt, van licht bij de letter naar diep aan het eind.
- *  Dat maakt het een vlak in plaats van een trap, en het is wat een woordmerk
- *  massief laat lijken in plaats van geplakt.
- *
- *  Als `text-shadow`, want dat is de enige schaduw die de VORM van de glyph
- *  volgt zonder een eigen laag te rasteren. Op de gloed kan het niet, daar
- *  wordt hij over het geknipte verloop getekend; hier is er geen verloop
- *  onder, dus hier mag het wel. */
-function sideStack(steps: number, step: number, near: string, far: string): string {
-  const hex = (c: string) => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16));
-  const A = hex(near);
-  const B = hex(far);
-  const parts: string[] = [];
-  for (let i = 1; i <= steps; i++) {
-    const t = i / steps;
-    const c = A.map((v, k) => Math.round(v + (B[k] - v) * t));
-    const d = (step * i).toFixed(3);
-    parts.push(`${d}em ${d}em 0 rgb(${c.join(",")})`);
-  }
-  return parts.join(", ");
-}
-
 export function NeonText({
   accent,
   children,
@@ -48,7 +25,7 @@ export function NeonText({
   glow = 0.85,
   depth = "full",
   glowColor,
-  side = 0,
+  flat = false,
   drop = 0,
   style,
 }: {
@@ -62,8 +39,10 @@ export function NeonText({
    *  tekst op een donkere achtergrond: daar zou de onderste helft van elke letter
    *  anders wegvallen en wordt het geheel dof. */
   depth?: "full" | "light";
-  /** De violette zijkant onder de letter, in em zodat hij meeschaalt. 0 is uit. */
-  side?: number;
+  /** Kaal: geen gloed en geen zijkant, alleen het vlak van de letter met de
+   *  schaduw eronder. Voor een woordmerk dat plat moet leggen in plaats van
+   *  uit het scherm te komen. */
+  flat?: boolean;
   /** Zachte schaduw recht onder de letter, in em. 0 is uit. */
   drop?: number;
   /** Een afwijkende kleur voor de gloed. Handig als het VLAK licht moet blijven
@@ -75,27 +54,32 @@ export function NeonText({
   const room = Math.ceil(blur * 2.2);
   return (
     <span style={{ position: "relative", display: "inline-block", ...style }}>
-      <span
-        aria-hidden
-        style={{
-          position: "absolute",
-          top: -room,
-          right: -room,
-          bottom: -room,
-          left: -room,
-          display: "grid",
-          placeItems: "center",
-          color: glowColor ?? ramp[2],
-          filter: `blur(${blur}px)`,
-          opacity: glow,
-          pointerEvents: "none",
-        }}
-      >
-        {children}
-      </span>
+      {!flat && (
+        <span
+          aria-hidden
+          style={{
+            position: "absolute",
+            top: -room,
+            right: -room,
+            bottom: -room,
+            left: -room,
+            display: "grid",
+            placeItems: "center",
+            color: glowColor ?? ramp[2],
+            filter: `blur(${blur}px)`,
+            opacity: glow,
+            pointerEvents: "none",
+          }}
+        >
+          {children}
+        </span>
+      )}
       {drop > 0 && (
-        // De schaduw op de grond: recht naar beneden, ruim onder de zijkant
-        // door. Als text-shadow, dus hij volgt de vorm van de letters.
+        // De schaduw op de grond. Het licht komt van BOVEN, dus hij valt recht
+        // naar beneden en niet schuin: geen horizontale verschuiving, alleen
+        // een verticale. Twee lagen, een korte harde en een lange zachte, want
+        // een schaduw is dichter bij de letter donkerder dan aan zijn eind.
+        // Als text-shadow, dus hij volgt de vorm van de letters.
         <span
           aria-hidden
           style={{
@@ -105,23 +89,6 @@ export function NeonText({
             whiteSpace: "nowrap",
             color: "transparent",
             textShadow: `0 ${drop.toFixed(3)}em ${(drop * 0.62).toFixed(3)}em rgba(10,3,28,.72), 0 ${(drop * 0.5).toFixed(3)}em ${(drop * 0.3).toFixed(3)}em rgba(10,3,28,.5)`,
-            pointerEvents: "none",
-          }}
-        >
-          {children}
-        </span>
-      )}
-      {side > 0 && (
-        // De zijkant ligt tussen de gloed en het vlak in.
-        <span
-          aria-hidden
-          style={{
-            position: "absolute",
-            left: 0,
-            top: 0,
-            whiteSpace: "nowrap",
-            color: "#4B2694",
-            textShadow: sideStack(18, side / 18, "#6C3ACD", "#22103F"),
             pointerEvents: "none",
           }}
         >
