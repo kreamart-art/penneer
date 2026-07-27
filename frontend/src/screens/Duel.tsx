@@ -13,6 +13,7 @@ import { ArrowLeft, Check, Clock as ClockIcon, Hourglass, RotateCcw, Search, Swo
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { GoldButton } from "../components/GoldButton";
+import { Arena } from "../components/Arena";
 import { Screen, Card } from "../components/Layout";
 import type { GameApi } from "../net/socket";
 import { useT } from "../i18n/i18n";
@@ -264,7 +265,7 @@ export function Duel({ game, onBack, onProfile }: { game: GameApi; onBack: () =>
     const tint = clockColor(frac);
     return (
       <Screen top={header}>
-        <DuelArena />
+        <Arena src="/duel-bg.webp" podium={PODIUM_Y} at="46%" width="205%" />
         <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", gap: 16 }}>
           <RoundDots total={total} idx={idx} />
 
@@ -421,7 +422,7 @@ export function Duel({ game, onBack, onProfile }: { game: GameApi; onBack: () =>
 // Het duel-scherm is de enige plek in de app met een eigen decor: een donkere
 // arena met neon-randen, in plaats van de gewone glazen kaarten. Alles hier is
 // puur CSS zodat er niets te laden valt; een eigen achtergrondplaat mag er
-// later overheen (zie DuelArena).
+// later overheen (zie components/Arena.tsx).
 
 /** Mengt twee hex-kleuren. t=0 geeft a, t=1 geeft b.
  *
@@ -447,89 +448,10 @@ function clockColor(frac: number): string {
 }
 
 // Het gloeiende podium zit op 68.8% van de hoogte van de arena-plaat (gemeten:
-// dat is de helderste beeldrij). Door de afbeelding met precies die fractie
-// omhoog te verschuiven landt het podium op de lijn die we kiezen, ongeacht hoe
-// groot het scherm is. De plaat is boven en onder al doorzichtig gemaakt, dus
-// het maakt niet uit als hij niet exact onder de letter uitkomt.
-const PODIUM_Y = "68.8%";
-
-// Het duel heeft een ANDER paars dan de rest van de app: de arena-plaat komt uit
-// een eigen palet. De plaat vervaagt boven en onder naar doorzichtig, dus wat
-// eronder ligt moet exact die randkleuren hebben, anders zie je de naad. Deze
-// waarden zijn uit de plaat zelf gemeten: de wegfade-zone boven zit op #08002B
-// en de onderkant op #10013B, wat neerkomt op "donkerste achtergrond" en iets
-// richting "donker paars" uit het palet.
-const ARENA = {
-  base: "#09002C",     // donkerste achtergrond, gelijk aan de bovenrand van de plaat
-  deep: "#0D0134",
-  mid: "#10013B",      // de onderrand van de plaat
-  glow: "#360287",     // midden paars, alleen als zachte lichtspreiding
-} as const;
-
-/** Het decor achter het duel: de arena-plaat met het podium onder de letter,
- *  op een ondergrond in de kleuren van de plaat zelf, zodat de uitgefadede
- *  randen naadloos overlopen. Zonder plaat blijft een CSS-vloer over. */
-function DuelArena() {
-  const [art, setArt] = useState(true);
-  return (
-    <div aria-hidden style={{ position: "fixed", inset: 0, zIndex: 0, overflow: "hidden", pointerEvents: "none" }}>
-      {/* Dekkende ondergrond in het palet van de plaat: dekt de paarse
-          app-gradient af, die een andere kleurfamilie heeft. */}
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          background: `linear-gradient(180deg, ${ARENA.base} 0%, ${ARENA.base} 16%, ${ARENA.deep} 44%, ${ARENA.mid} 68%, ${ARENA.deep} 86%, ${ARENA.base} 100%)`,
-        }}
-      />
-      {/* Zachte lichtspreiding rond het podium, zodat de overgang van plaat naar
-          ondergrond als licht leest en niet als een rand. */}
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          background: `radial-gradient(80% 40% at 50% 46%, ${withAlpha(ARENA.glow, 0.4)} 0%, transparent 70%)`,
-        }}
-      />
-      {art && (
-        <img
-          src="/duel-bg.webp"
-          alt=""
-          onError={() => setArt(false)}
-          style={{
-            position: "absolute",
-            left: "50%",
-            top: "46%",
-            width: "205%",
-            maxWidth: "none",   // idem: de reset knipte de arena terug naar schermbreedte
-            transform: `translate(-50%, -${PODIUM_Y})`,
-          }}
-        />
-      )}
-      {/* Terugval-vloer: alleen als de plaat er niet is, anders krijg je twee
-          rasters over elkaar. */}
-      {!art && (
-        <div
-          style={{
-            position: "absolute",
-            left: "-25%",
-            right: "-25%",
-            bottom: 0,
-            height: "42%",
-            backgroundImage: `repeating-linear-gradient(${withAlpha(colors.violet, 0.16)} 0 1px, transparent 1px 46px), repeating-linear-gradient(90deg, ${withAlpha(colors.violet, 0.13)} 0 1px, transparent 1px 58px)`,
-            transform: "perspective(320px) rotateX(64deg)",
-            transformOrigin: "bottom",
-            WebkitMaskImage: "linear-gradient(to top, black, transparent 78%)",
-            maskImage: "linear-gradient(to top, black, transparent 78%)",
-          }}
-        />
-      )}
-      {/* Vignet: houdt de aandacht in het midden en dempt de randen. Dempt naar
-          de arena-basiskleur, niet naar het app-paars. */}
-      <div style={{ position: "absolute", inset: 0, background: `radial-gradient(125% 70% at 50% 40%, transparent 30%, ${withAlpha(ARENA.base, 0.62)} 100%)` }} />
-    </div>
-  );
-}
+// dat is de helderste beeldrij), en op 46% van het scherm landt het onder de
+// letter. Het decor zelf zit in components/Arena.tsx, gedeeld met het gewone
+// potje, zodat beide schermen op hetzelfde toneel spelen.
+const PODIUM_Y = 0.688;
 
 /** Voortgang door het duel: gedane rondes als volle stippen, de huidige als een
  *  bredere pil, de rest gedoofd. */
