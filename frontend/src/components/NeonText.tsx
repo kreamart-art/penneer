@@ -9,6 +9,12 @@
 //  - `filter: drop-shadow`. iOS rastert die laag apart en dan zie je zijn
 //    rechthoek over de tekst heen.
 // Vandaar de vervaagde kopie eronder.
+//
+// En die kopie krijgt RUIMTE om zich heen. Een blur wordt afgeknipt op de doos
+// van zijn eigen element: waaiert hij tot aan die rand, dan houdt hij daar
+// abrupt op en zie je de doos als rechthoek. Binnen een kaart met een eigen
+// vulling valt dat niet op, op een kale achtergrond wel. Door de doos ruim twee
+// keer de blur groter te maken is de vervaging al uitgestorven voor de rand.
 import type React from "react";
 import { faceGradient, rampFrom } from "../theme/neon";
 
@@ -37,11 +43,24 @@ export function NeonText({
   style?: React.CSSProperties;
 }) {
   const ramp = rampFrom(accent);
+  const room = Math.ceil(blur * 2.2);
   return (
     <span style={{ position: "relative", display: "inline-block", ...style }}>
       <span
         aria-hidden
-        style={{ position: "absolute", inset: 0, color: glowColor ?? ramp[2], filter: `blur(${blur}px)`, opacity: glow, pointerEvents: "none" }}
+        style={{
+          position: "absolute",
+          top: -room,
+          right: -room,
+          bottom: -room,
+          left: -room,
+          display: "grid",
+          placeItems: "center",
+          color: glowColor ?? ramp[2],
+          filter: `blur(${blur}px)`,
+          opacity: glow,
+          pointerEvents: "none",
+        }}
       >
         {children}
       </span>

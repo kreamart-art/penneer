@@ -128,24 +128,25 @@ export function Intro({ onDone }: { onDone: () => void }) {
               vorm heeft dat probleem niet: hij vervaagt langs het merk en houdt
               nergens een rand over. */}
           <div style={{ position: "relative", width: MARK_SIZE, height: MARK_SIZE }}>
-            <img
-              src="/artnomad.webp"
-              alt=""
+            {/* De vervaagde kopie krijgt ruimte om zich heen. Een blur wordt
+                afgeknipt op de doos van zijn element; loopt hij tot aan die rand,
+                dan zie je die doos als rechthoek op de kale achtergrond. */}
+            <div
               aria-hidden
-              width={112}
-              height={112}
               style={{
                 position: "absolute",
-                inset: 0,
-                width: MARK_SIZE,
-                height: MARK_SIZE,
+                inset: -34,
+                display: "grid",
+                placeItems: "center",
                 filter: "blur(14px)",
-                opacity: markIn ? 0.55 : 0,
+                opacity: markIn ? 0.5 : 0,
                 transform: markIn ? "scale(1.04)" : "scale(0.8)",
                 transition: reduced ? "none" : "opacity 320ms ease-out, transform 260ms cubic-bezier(.2,1.5,.4,1)",
                 pointerEvents: "none",
               }}
-            />
+            >
+              <img src="/artnomad.webp" alt="" width={112} height={112} style={{ width: MARK_SIZE, height: MARK_SIZE, display: "block" }} />
+            </div>
             <img
               src="/artnomad.webp"
               alt=""
