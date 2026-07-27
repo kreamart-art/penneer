@@ -10,6 +10,7 @@ import { TopBar } from "../components/TopBar";
 import type { GameApi } from "../net/socket";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
+import { neonSkin } from "../theme/neon";
 import { colors, font, withAlpha } from "../theme/tokens";
 
 export function Results({ game }: { game: GameApi }) {
@@ -354,9 +355,29 @@ export function Results({ game }: { game: GameApi }) {
               </button>
             )}
             {game.isHost && !isLast && (
+              // Alleen de LIJN in de premium stijl: een verlooprand die bovenaan
+              // oplicht. Bewust geen gloed eromheen, want dit is een uitweg en
+              // geen beloning; licht eromheen zou hem belangrijker maken dan de
+              // knop waarmee je doorspeelt. En hij is zo breed als zijn tekst,
+              // niet zo breed als het scherm.
               <button
                 onClick={game.endGame}
-                style={{ marginTop: 2, background: "transparent", border: `1px solid ${withAlpha(colors.red, 0.4)}`, cursor: "pointer", color: colors.redHi, fontFamily: font.ui, fontSize: 13, fontWeight: 600, borderRadius: 10, padding: "8px 12px" }}
+                className="neon-ring pressable"
+                style={{
+                  marginTop: 2,
+                  alignSelf: "center",
+                  background: withAlpha(colors.red, 0.1),
+                  border: "none",
+                  cursor: "pointer",
+                  color: colors.redHi,
+                  fontFamily: font.ui,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  borderRadius: 10,
+                  padding: "8px 16px",
+                  ...neonSkin(colors.red),
+                  ["--ng-w" as string]: "1px",
+                } as React.CSSProperties}
               >
                 {t("endGame")}
               </button>

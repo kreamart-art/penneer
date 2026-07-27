@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check } from "lucide-react";
 import { Avatar } from "../components/Avatar";
+import { NeonText } from "../components/NeonText";
 import { Button } from "../components/Button";
 import { Timer } from "../components/Timer";
 import { Screen, Card } from "../components/Layout";
@@ -72,7 +73,9 @@ export function Fill({ game }: { game: GameApi }) {
         <Card style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
             <span style={{ fontFamily: font.ui, fontSize: 13, color: colors.sub }}>{t("letterIs")}</span>
-            <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 40, color: colors.gold, textShadow: `0 0 22px ${withAlpha(colors.gold, 0.5)}` }}>{letter}</span>
+            {/* Zelfde behandeling als de letter op de rol: een verloop over het
+                teken met de gloed als vervaagde kopie erachter. */}
+            <NeonText accent={colors.gold} blur={14} glow={0.7} style={{ fontFamily: font.display, fontWeight: 700, fontSize: 40, lineHeight: 1 }}>{letter}</NeonText>
           </div>
           {noTimer ? (
             <div style={{ textAlign: "center", padding: "6px 0" }}>
