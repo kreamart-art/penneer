@@ -1,7 +1,7 @@
 // Settings + About — reachable from the Landing gear. Language, sound, how-to,
 // install-as-app, and an About card with the version and studio credit.
 import { useEffect, useState } from "react";
-import { ArrowLeft, Download, HelpCircle, Music, Share, ShieldCheck, Volume2 } from "lucide-react";
+import { ArrowLeft, Download, HelpCircle, Music, Share, ShieldCheck, Trash2, Volume2 } from "lucide-react";
 import { Logo } from "../components/Logo";
 import { Button } from "../components/Button";
 import { Toggle } from "../components/Toggle";
@@ -17,6 +17,101 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <div style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint, marginBottom: 10 }}>
       {children}
+    </div>
+  );
+}
+
+// Eigen categorieen. De naam IS de categorie zoals spelers hem zien; een room
+// accepteert al vrije categoriestrings, dus zodra de host er een aanzet spelen
+// alle anderen in die room automatisch mee, ook wie hem niet bezit.
+//
+// De woordenlijst is optioneel: met lijst krijgt de categorie auto-check zoals
+// Dier of Land, zonder lijst telt elk woord met de goede letter, zoals Ding.
+// Prijs 0 betekent gratis voor iedereen; hoger zet hem in de winkel. De maker
+// krijgt hem altijd meteen zelf.
+function AdminCategories({ game }: { game: GameApi }) {
+  const { t } = useT();
+  const cats = game.state.adminCategories;
+  const [name, setName] = useState("");
+  const [words, setWords] = useState("");
+  const [price, setPrice] = useState("0");
+
+  useEffect(() => {
+    game.adminCatList();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const field: React.CSSProperties = {
+    width: "100%",
+    boxSizing: "border-box",
+    fontFamily: font.ui,
+    fontSize: 14,
+    color: colors.ink,
+    background: withAlpha("#000000", 0.25),
+    border: `1.5px solid ${colors.panelBorder}`,
+    borderRadius: 12,
+    padding: "10px 12px",
+  };
+
+  const create = () => {
+    const n = name.trim();
+    if (n.length < 2) return;
+    game.adminCatCreate(n, words, Number(price) || 0);
+    setName("");
+    setWords("");
+    setPrice("0");
+  };
+
+  return (
+    <div style={{ borderTop: `1px solid ${colors.hairline}`, paddingTop: 12 }}>
+      <div style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint, marginBottom: 6 }}>
+        {t("catAdminTitle")}
+      </div>
+      <p style={{ fontFamily: font.ui, fontSize: 12, color: colors.faint, margin: "0 0 10px", lineHeight: 1.5 }}>{t("catAdminHint")}</p>
+
+      {!!cats?.length && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 12 }}>
+          {cats.map((c) => (
+            <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 10, background: withAlpha("#000000", 0.2), border: `1px solid ${colors.hairline}` }}>
+              <span style={{ flex: 1, fontFamily: font.ui, fontSize: 13.5, fontWeight: 600, color: colors.ink }}>{c.name}</span>
+              <span style={{ fontFamily: font.ui, fontSize: 11.5, color: colors.faint }}>
+                {c.words > 0 ? t("catWordsN", { n: c.words }) : t("catOpenList")}
+              </span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontFamily: font.ui, fontSize: 12, fontWeight: 700, color: c.price > 0 ? colors.gold : colors.green }}>
+                {c.price > 0 ? <>{c.price}<img src="/coin.webp" alt="" width={12} height={12} /></> : t("catFree")}
+              </span>
+              <button
+                onClick={() => game.adminCatDelete(c.id)}
+                aria-label={t("delete")}
+                style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.red, display: "flex", padding: 2 }}
+              >
+                <Trash2 size={15} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <input style={field} value={name} maxLength={24} onChange={(e) => setName(e.target.value)} placeholder={t("catNamePlaceholder")} />
+        <textarea
+          style={{ ...field, minHeight: 74, resize: "vertical" }}
+          value={words}
+          onChange={(e) => setWords(e.target.value)}
+          placeholder={t("catWordsPlaceholder")}
+        />
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <input
+            style={{ ...field, width: 96 }}
+            value={price}
+            inputMode="numeric"
+            onChange={(e) => setPrice(e.target.value.replace(/[^0-9]/g, ""))}
+            placeholder="0"
+          />
+          <span style={{ flex: 1, fontFamily: font.ui, fontSize: 12, color: colors.faint }}>{t("catPriceHint")}</span>
+          <Button variant="primary" disabled={name.trim().length < 2} onClick={create}>{t("catCreate")}</Button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -375,6 +470,9 @@ export function Settings({ game, onBack, onShowRules }: { game: GameApi; onBack:
                   <Button variant="ghost" onClick={() => game.adminGenBuzzerCodes(5)}>{t("aiCodesGenFive")}</Button>
                 </div>
               </div>
+
+              {/* Eigen categorieen: maken, prijzen, weggooien. */}
+              <AdminCategories game={game} />
             </>
           )}
         </Card>

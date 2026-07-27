@@ -60,6 +60,15 @@ async def ws_endpoint(ws: WebSocket) -> None:
             if mtype == "admin_gen_ai_codes":
                 await manager.admin_gen_ai_codes(ws, player_id, data)
                 continue
+            if mtype == "admin_cat_list":
+                await manager.admin_cat_list(ws, player_id, data)
+                continue
+            if mtype == "admin_cat_create":
+                await manager.admin_cat_create(ws, player_id, data)
+                continue
+            if mtype == "admin_cat_delete":
+                await manager.admin_cat_delete(ws, player_id, data)
+                continue
 
             # --- everything else needs an identity ---
             if player_id is None:

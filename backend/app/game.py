@@ -303,7 +303,25 @@ def list_canonical(text: str, category: str, lenient: bool = False) -> str | Non
 
 # Categories that have a curated list, so they can be TRAINED (the reveal shows
 # the words you missed). Open categories (Jongen/Meisje/Ding) are excluded.
+# Snapshot on purpose: admin-made categories (register_category) must NOT leak
+# into Oefenen or the Dagronde, want die twee draaien op deze lijst en zouden
+# dan van dag tot dag van vorm veranderen.
 TRAINABLE_CATEGORIES = list(RAW.keys())
+
+
+def register_category(name: str, words: list[str]) -> None:
+    """Laat een door de admin gemaakte categorie zich gedragen als een ingebouwde.
+
+    Met woorden erbij krijgt hij auto-check op de lijst (zoals Dier of Land) en
+    kunnen bots er echte woorden in spelen. Zonder woorden doen we niets: een
+    categorie zonder lijst hoort letter-only te blijven (zoals Jongen of Ding),
+    en een LEGE lijst registreren zou juist elk antwoord afkeuren.
+    """
+    if not name or not words:
+        return
+    RAW[name] = list(words)
+    WORD_SETS[name] = {normalize(w) for w in words}
+    _BOT_WORDS[name] = _bank_by_letter(words)
 
 
 def list_words_for_letter(category: str, letter: str) -> list[str]:

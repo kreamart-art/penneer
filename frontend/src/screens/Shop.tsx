@@ -5,7 +5,7 @@
 // Coins are also earned by levelling (1/level + 5 per 10 levels). A code the
 // owner handed out still unlocks the AI. A profile is required to own anything.
 import { useEffect, useState } from "react";
-import { ArrowLeft, Bot, Check, ShoppingCart, Ticket } from "lucide-react";
+import { ArrowLeft, Bot, Check, ListChecks, ShoppingCart, Ticket } from "lucide-react";
 import { Screen, Card } from "../components/Layout";
 import { Button } from "../components/Button";
 import { MusicToggle } from "../components/MusicToggle";
@@ -144,6 +144,21 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
     return () => { alive = false; };
   }, []);
 
+  // Eigen categorieen komen van de server: de admin maakt ze, dus ze kunnen niet
+  // in een lijst in de code staan. Alleen de betaalde verschijnen in de winkel;
+  // gratis categorieen heeft iedereen al.
+  const [cats, setCats] = useState<{ id: string; name: string; price: number; checked: boolean; owned: boolean }[]>([]);
+  const reloadCats = () => {
+    const tok = localStorage.getItem("penneer.accountToken");
+    fetch("/api/categories", { headers: tok ? { Authorization: `Bearer ${tok}` } : {} })
+      .then((r) => r.json())
+      .then((d) => setCats(d.categories ?? []))
+      .catch(() => {});
+  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(reloadCats, [account?.id, account?.owned_items?.length]);
+  const catsForSale = cats.filter((c) => c.price > 0);
+
   // Clear a stale redeem result when leaving the screen.
   useEffect(() => () => game.clearShopResult(), []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -222,6 +237,38 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
             </div>
           )}
         </div>
+
+        {/* ---- Eigen categorieen (coins, per stuk) ----
+             Ze komen van de server (de admin maakt ze), niet uit een lijst in de
+             code. Wie er een bezit kan hem als HOST in zijn lobby aanzetten, en
+             dan speelt iedereen in die room mee, ook wie hem niet gekocht heeft. */}
+        {catsForSale.length > 0 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div>
+              <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink }}>{t("shopCatsHeader")}</div>
+              <div style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint }}>{t("shopCatsLead")}</div>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+              {catsForSale.map((c) => (
+                <CoinItem
+                  key={c.id}
+                  title={c.name}
+                  owned={c.owned || owned.has(`cat:${c.id}`)}
+                  price={c.price}
+                  coins={coins}
+                  onBuy={() => game.buyItemCoins(`cat:${c.id}`)}
+                >
+                  <div style={{ display: "grid", placeItems: "center", width: "100%", height: "100%", gap: 3 }}>
+                    <ListChecks size={26} color={colors.gold} />
+                    <span style={{ fontFamily: font.ui, fontSize: 10, color: colors.faint }}>
+                      {c.checked ? t("catChecked") : t("catOpenList")}
+                    </span>
+                  </div>
+                </CoinItem>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* ---- Draai-knoppen (coins, single) ---- */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>

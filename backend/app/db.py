@@ -296,6 +296,20 @@ CREATE TABLE IF NOT EXISTS answer_freq (
     n INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (category, letter, word)
 );
+-- Eigen categorieen die de admin aanmaakt. `name` is meteen wat spelers zien
+-- EN de sleutel die in room.settings.categories belandt, want een room accepteert
+-- al vrije categoriestrings (de deelcode-packs werken zo). `words` is optioneel:
+-- met een lijst gedraagt de categorie zich als Dier of Land (auto-check op de
+-- lijst), zonder lijst als Jongen of Ding (alles met de goede letter telt).
+CREATE TABLE IF NOT EXISTS custom_categories (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    name_lower TEXT NOT NULL UNIQUE,
+    words TEXT NOT NULL DEFAULT '',
+    price INTEGER NOT NULL DEFAULT 0,      -- coins; 0 = gratis voor iedereen
+    created_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+    created_at REAL NOT NULL
+);
 CREATE INDEX IF NOT EXISTS idx_duels_a ON duels(a, status);
 CREATE INDEX IF NOT EXISTS idx_duels_b ON duels(b, status);
 CREATE INDEX IF NOT EXISTS idx_game_players_user ON game_players(user_id);
@@ -1545,6 +1559,88 @@ class Database:
         self.meta_set("answer_freq_seeded", "1")
         return n
 
+    # ---- eigen categorieen (door de admin gemaakt, in de winkel verkocht) ----
+
+    CATEGORY_ITEM = "cat:"          # voorvoegsel in owned_items
+    CATEGORY_MAX_WORDS = 4000
+
+    @staticmethod
+    def parse_words(raw: str) -> list[str]:
+        """Woordenlijst uit een plakveld: komma's of regels, ontdubbeld."""
+        parts = [w.strip() for chunk in (raw or "").replace("\\n", ",").split(",") for w in [chunk]]
+        out, seen = [], set()
+        for w in parts:
+            key = w.lower()
+            if w and key not in seen:
+                seen.add(key)
+                out.append(w[:40])
+        return out
+
+    def category_create(self, name: str, words: str, price: int, creator: Optional[str]) -> tuple[Optional[dict], str]:
+        """Nieuwe categorie. De maker krijgt hem meteen, zodat de admin altijd
+        bij zijn eigen spullen kan zonder ze te kopen."""
+        name = (name or "").strip()[:24]
+        if len(name) < 2:
+            return None, "name"
+        cid = _new_id()
+        row = {
+            "id": cid, "name": name, "words": (words or "")[: self.CATEGORY_MAX_WORDS],
+            "price": max(0, int(price or 0)), "created_by": creator, "created_at": time.time(),
+        }
+        with self._lock:
+            try:
+                self._exec(
+                    "INSERT INTO custom_categories (id, name, name_lower, words, price, created_by, created_at) "
+                    "VALUES (?,?,?,?,?,?,?)",
+                    (cid, name, name.lower(), row["words"], row["price"], creator, row["created_at"]),
+                )
+            except sqlite3.IntegrityError:
+                return None, "exists"
+            if creator:
+                self._exec(
+                    "INSERT OR IGNORE INTO owned_items (user_id, item, bought_at) VALUES (?,?,?)",
+                    (creator, f"{self.CATEGORY_ITEM}{cid}", time.time()),
+                )
+        return row, "ok"
+
+    def category_list(self) -> list[dict]:
+        with self._lock:
+            rows = self._q("SELECT * FROM custom_categories ORDER BY created_at DESC")
+        return [dict(r) for r in rows]
+
+    def category_get(self, cid: str) -> Optional[dict]:
+        with self._lock:
+            rows = self._q("SELECT * FROM custom_categories WHERE id=?", (cid,))
+        return dict(rows[0]) if rows else None
+
+    def category_update(self, cid: str, words: Optional[str], price: Optional[int]) -> bool:
+        sets, args = [], []
+        if words is not None:
+            sets.append("words=?")
+            args.append(words[: self.CATEGORY_MAX_WORDS])
+        if price is not None:
+            sets.append("price=?")
+            args.append(max(0, int(price)))
+        if not sets:
+            return False
+        args.append(cid)
+        self._exec(f"UPDATE custom_categories SET {', '.join(sets)} WHERE id=?", tuple(args))
+        return True
+
+    def category_delete(self, cid: str) -> None:
+        with self._lock:
+            self._exec("DELETE FROM custom_categories WHERE id=?", (cid,))
+            self._exec("DELETE FROM owned_items WHERE item=?", (f"{self.CATEGORY_ITEM}{cid}",))
+
+    def categories_owned_by(self, user_id: Optional[str]) -> list[dict]:
+        """De categorieen die deze speler in de lobby mag aanzetten: alles wat
+        gratis is plus wat hij gekocht of zelf gemaakt heeft."""
+        rows = self.category_list()
+        if not rows:
+            return []
+        owned = self.owned_items_of(user_id) if user_id else set()
+        return [r for r in rows if r["price"] == 0 or f"{self.CATEGORY_ITEM}{r['id']}" in owned]
+
     def history_of(self, user_id: str, limit: int = 10) -> list[dict]:
         """The user's most recent games, newest first, each with their own
         score/place and the co-players (name/color/avatar + score)."""
@@ -1992,7 +2088,13 @@ class Database:
     def buy_item_coins(self, user_id: str, item: str) -> str:
         """Spend coins to buy a shop item (a buzzer skin or an avatar pack).
         Returns 'ok' | 'already' | 'insufficient' | 'invalid'."""
-        price = self.COIN_PRICES.get(item)
+        # Eigen categorieen hebben geen vaste prijs in de code: die staat bij de
+        # categorie zelf, want de admin bepaalt hem bij het aanmaken.
+        if item.startswith(self.CATEGORY_ITEM):
+            cat = self.category_get(item[len(self.CATEGORY_ITEM):])
+            price = int(cat["price"]) if cat and cat["price"] > 0 else None
+        else:
+            price = self.COIN_PRICES.get(item)
         if price is None:
             return "invalid"
         with self._lock:  # self._lock is non-reentrant: check ownership inline, never via owned_items_of

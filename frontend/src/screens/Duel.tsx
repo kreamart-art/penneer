@@ -9,9 +9,10 @@
 // De server is de baas over de klok: elke ronde wordt apart OPGEHAALD en dan
 // pas begint zijn 15 seconden, dus de app herladen koopt geen denktijd.
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, Check, Clock, Hourglass, RotateCcw, Search, Swords, Trophy, X } from "lucide-react";
+import { ArrowLeft, Check, Clock as ClockIcon, Hourglass, RotateCcw, Search, Swords, Trophy, X, Zap } from "lucide-react";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
+import { GoldButton } from "../components/GoldButton";
 import { Screen, Card } from "../components/Layout";
 import type { GameApi } from "../net/socket";
 import { useT } from "../i18n/i18n";
@@ -229,7 +230,7 @@ export function Duel({ game, onBack, onProfile }: { game: GameApi; onBack: () =>
   };
 
   const header = (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", paddingTop: "calc(14px + env(safe-area-inset-top))" }}>
+    <div style={{ position: "relative", zIndex: 1, display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", paddingTop: "calc(14px + env(safe-area-inset-top))" }}>
       <button
         onClick={() => { sound.uiTap(); view === "list" ? onBack() : (setView("list"), void refresh()); }}
         aria-label={t("back")}
@@ -260,58 +261,49 @@ export function Duel({ game, onBack, onProfile }: { game: GameApi; onBack: () =>
     const total = duel.rounds;
     const idx = round?.idx ?? duel.my_done;
     const frac = round ? Math.max(0, Math.min(1, left / round.seconds)) : 0;
-    const urgent = left <= 5;
+    const tint = clockColor(frac);
     return (
       <Screen top={header}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          {/* vijf bolletjes: waar je bent in het duel */}
-          <div style={{ display: "flex", justifyContent: "center", gap: 7 }}>
-            {Array.from({ length: total }, (_, i) => (
-              <span
-                key={i}
-                style={{
-                  width: i === idx ? 22 : 8, height: 8, borderRadius: 999,
-                  background: i < idx ? colors.gold : i === idx ? colors.goldHi : withAlpha("#FFFFFF", 0.16),
-                  transition: "width .25s ease",
-                }}
-              />
-            ))}
-          </div>
+        <DuelArena />
+        <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", gap: 16 }}>
+          <RoundDots total={total} idx={idx} />
 
           {flash ? (
             <TierFlash slot={flash} />
           ) : round ? (
             <>
-              <div style={{ height: 8, borderRadius: 999, background: withAlpha("#000000", 0.3), overflow: "hidden" }}>
-                <div style={{ height: "100%", width: `${frac * 100}%`, borderRadius: 999, background: urgent ? colors.red : colors.gold, transition: "width .2s linear" }} />
-              </div>
-              <div style={{ textAlign: "center", fontFamily: font.display, fontWeight: 700, fontSize: 20, color: urgent ? colors.redHi : colors.sub }}>
-                {Math.ceil(left)}s
+              <TimeBar frac={frac} tint={tint} />
+              <Clock left={left} tint={tint} />
+              <LetterStage letter={round.letter} category={tCat(round.category)} hint={t("duelRarityHint")} />
+
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "stretch",
+                  borderRadius: 16,
+                  overflow: "hidden",
+                  background: withAlpha("#000000", 0.3),
+                  border: `1.5px solid ${withAlpha(word ? colors.gold : colors.violet, word ? 0.55 : 0.45)}`,
+                  boxShadow: `0 0 20px ${withAlpha(word ? colors.gold : colors.violet, 0.2)}`,
+                  transition: "border-color .2s ease, box-shadow .2s ease",
+                }}
+              >
+                <span style={{ display: "grid", placeItems: "center", width: 52, flexShrink: 0, borderRight: `1.5px solid ${withAlpha(colors.violet, 0.35)}`, color: word ? colors.gold : colors.violet }}>
+                  <Zap size={19} strokeWidth={2.3} />
+                </span>
+                <input
+                  ref={input}
+                  value={word}
+                  onChange={(e) => setWord(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") void submit(); }}
+                  autoComplete="off" autoCorrect="off" spellCheck={false}
+                  maxLength={40}
+                  placeholder={t("duelPlaceholder", { cat: tCat(round.category), letter: round.letter })}
+                  style={{ ...inputStyle, border: "none", background: "transparent", borderRadius: 0 }}
+                />
               </div>
 
-              <Card style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: 18 }}>
-                <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint }}>
-                  {tCat(round.category)}
-                </span>
-                <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 62, lineHeight: 1.1, color: colors.gold, textShadow: `0 0 28px ${withAlpha(colors.gold, 0.5)}` }}>
-                  {round.letter}
-                </span>
-                <span style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.sub, textAlign: "center" }}>
-                  {t("duelRarityHint")}
-                </span>
-              </Card>
-
-              <input
-                ref={input}
-                value={word}
-                onChange={(e) => setWord(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") void submit(); }}
-                autoComplete="off" autoCorrect="off" spellCheck={false}
-                maxLength={40}
-                placeholder={t("duelPlaceholder", { cat: tCat(round.category), letter: round.letter })}
-                style={{ ...inputStyle, border: `1.5px solid ${word ? withAlpha(colors.gold, 0.5) : colors.panelBorder}` }}
-              />
-              <Button variant="gold" full disabled={busy} onClick={() => void submit()}>{t("duelLock")}</Button>
+              <GoldButton disabled={busy} onClick={() => void submit()} label={t("duelLock")} />
             </>
           ) : (
             <p style={{ textAlign: "center", fontFamily: font.ui, fontSize: 13.5, color: colors.faint }}>…</p>
@@ -425,6 +417,276 @@ export function Duel({ game, onBack, onProfile }: { game: GameApi; onBack: () =>
   );
 }
 
+// ---- arena-onderdelen -------------------------------------------------------
+// Het duel-scherm is de enige plek in de app met een eigen decor: een donkere
+// arena met neon-randen, in plaats van de gewone glazen kaarten. Alles hier is
+// puur CSS zodat er niets te laden valt; een eigen achtergrondplaat mag er
+// later overheen (zie DuelArena).
+
+/** Mengt twee hex-kleuren. t=0 geeft a, t=1 geeft b.
+ *
+ *  Geeft bewust weer #RRGGBB terug en geen rgb(): de uitkomst gaat door
+ *  `withAlpha`, en die verwacht hex. Een rgb()-string maakte daar stilzwijgend
+ *  onzin van, waardoor de hele gradient ongeldig werd en de tijdbalk leeg bleef. */
+function mix(a: string, b: string, t: number): string {
+  const channels = (c: string) => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16));
+  const [r1, g1, b1] = channels(a);
+  const [r2, g2, b2] = channels(b);
+  const k = Math.max(0, Math.min(1, t));
+  const lerp = (x: number, y: number) => Math.round(x + (y - x) * k).toString(16).padStart(2, "0");
+  return `#${lerp(r1, r2)}${lerp(g1, g2)}${lerp(b1, b2)}`;
+}
+
+/** De klokkleur verloopt met de tijd mee: goud zolang je rustig kan denken, via
+ *  oranje naar rood als het menens wordt. Een harde omslag op 5 seconden voelde
+ *  als een storing; een verloop leest als spanning die oploopt. */
+function clockColor(frac: number): string {
+  return frac > 0.5
+    ? mix(colors.orange, colors.gold, (frac - 0.5) * 2)
+    : mix(colors.red, colors.orange, frac * 2);
+}
+
+// Het gloeiende podium zit op 68.8% van de hoogte van de arena-plaat (gemeten:
+// dat is de helderste beeldrij). Door de afbeelding met precies die fractie
+// omhoog te verschuiven landt het podium op de lijn die we kiezen, ongeacht hoe
+// groot het scherm is. De plaat is boven en onder al doorzichtig gemaakt, dus
+// het maakt niet uit als hij niet exact onder de letter uitkomt.
+const PODIUM_Y = "68.8%";
+
+// Het duel heeft een ANDER paars dan de rest van de app: de arena-plaat komt uit
+// een eigen palet. De plaat vervaagt boven en onder naar doorzichtig, dus wat
+// eronder ligt moet exact die randkleuren hebben, anders zie je de naad. Deze
+// waarden zijn uit de plaat zelf gemeten: de wegfade-zone boven zit op #08002B
+// en de onderkant op #10013B, wat neerkomt op "donkerste achtergrond" en iets
+// richting "donker paars" uit het palet.
+const ARENA = {
+  base: "#09002C",     // donkerste achtergrond, gelijk aan de bovenrand van de plaat
+  deep: "#0D0134",
+  mid: "#10013B",      // de onderrand van de plaat
+  glow: "#360287",     // midden paars, alleen als zachte lichtspreiding
+} as const;
+
+/** Het decor achter het duel: de arena-plaat met het podium onder de letter,
+ *  op een ondergrond in de kleuren van de plaat zelf, zodat de uitgefadede
+ *  randen naadloos overlopen. Zonder plaat blijft een CSS-vloer over. */
+function DuelArena() {
+  const [art, setArt] = useState(true);
+  return (
+    <div aria-hidden style={{ position: "fixed", inset: 0, zIndex: 0, overflow: "hidden", pointerEvents: "none" }}>
+      {/* Dekkende ondergrond in het palet van de plaat: dekt de paarse
+          app-gradient af, die een andere kleurfamilie heeft. */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: `linear-gradient(180deg, ${ARENA.base} 0%, ${ARENA.base} 16%, ${ARENA.deep} 44%, ${ARENA.mid} 68%, ${ARENA.deep} 86%, ${ARENA.base} 100%)`,
+        }}
+      />
+      {/* Zachte lichtspreiding rond het podium, zodat de overgang van plaat naar
+          ondergrond als licht leest en niet als een rand. */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: `radial-gradient(80% 40% at 50% 46%, ${withAlpha(ARENA.glow, 0.4)} 0%, transparent 70%)`,
+        }}
+      />
+      {art && (
+        <img
+          src="/duel-bg.webp"
+          alt=""
+          onError={() => setArt(false)}
+          style={{
+            position: "absolute",
+            left: "50%",
+            top: "46%",
+            width: "205%",
+            maxWidth: "none",   // idem: de reset knipte de arena terug naar schermbreedte
+            transform: `translate(-50%, -${PODIUM_Y})`,
+          }}
+        />
+      )}
+      {/* Terugval-vloer: alleen als de plaat er niet is, anders krijg je twee
+          rasters over elkaar. */}
+      {!art && (
+        <div
+          style={{
+            position: "absolute",
+            left: "-25%",
+            right: "-25%",
+            bottom: 0,
+            height: "42%",
+            backgroundImage: `repeating-linear-gradient(${withAlpha(colors.violet, 0.16)} 0 1px, transparent 1px 46px), repeating-linear-gradient(90deg, ${withAlpha(colors.violet, 0.13)} 0 1px, transparent 1px 58px)`,
+            transform: "perspective(320px) rotateX(64deg)",
+            transformOrigin: "bottom",
+            WebkitMaskImage: "linear-gradient(to top, black, transparent 78%)",
+            maskImage: "linear-gradient(to top, black, transparent 78%)",
+          }}
+        />
+      )}
+      {/* Vignet: houdt de aandacht in het midden en dempt de randen. Dempt naar
+          de arena-basiskleur, niet naar het app-paars. */}
+      <div style={{ position: "absolute", inset: 0, background: `radial-gradient(125% 70% at 50% 40%, transparent 30%, ${withAlpha(ARENA.base, 0.62)} 100%)` }} />
+    </div>
+  );
+}
+
+/** Voortgang door het duel: gedane rondes als volle stippen, de huidige als een
+ *  bredere pil, de rest gedoofd. */
+function RoundDots({ total, idx }: { total: number; idx: number }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "center", gap: 8 }}>
+      {Array.from({ length: total }, (_, i) => {
+        const done = i < idx;
+        const now = i === idx;
+        return (
+          <span
+            key={i}
+            style={{
+              width: now ? 24 : 9,
+              height: 9,
+              borderRadius: 999,
+              background: done ? colors.gold : now ? colors.goldHi : withAlpha(colors.violet, 0.45),
+              boxShadow: now ? `0 0 12px ${withAlpha(colors.gold, 0.75)}` : done ? `0 0 7px ${withAlpha(colors.gold, 0.4)}` : "none",
+              transition: "width .25s ease, background .25s ease",
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+/** De tijdbalk. Verloopt van kleur mee met de resterende tijd en gloeit in die
+ *  kleur, zodat je met je ooghoek al ziet hoe laat het is. */
+function TimeBar({ frac, tint }: { frac: number; tint: string }) {
+  return (
+    <div
+      style={{
+        position: "relative",
+        height: 12,
+        borderRadius: 999,
+        padding: 2,
+        background: withAlpha("#000000", 0.45),
+        border: `1px solid ${withAlpha(colors.violet, 0.4)}`,
+        boxShadow: `inset 0 1px 3px rgba(0,0,0,.6)`,
+      }}
+    >
+      <div
+        style={{
+          height: "100%",
+          width: `${frac * 100}%`,
+          minWidth: frac > 0 ? 8 : 0,
+          borderRadius: 999,
+          background: `linear-gradient(90deg, ${withAlpha(tint, 0.75)}, ${tint})`,
+          boxShadow: `0 0 14px ${withAlpha(tint, 0.8)}, inset 0 1px 0 ${withAlpha("#FFFFFF", 0.45)}`,
+          transition: "width .2s linear, background .4s linear, box-shadow .4s linear",
+        }}
+      />
+    </div>
+  );
+}
+
+/** De seconden, geflankeerd door dunne lijntjes, met het klokje eronder. */
+function Clock({ left, tint }: { left: number; tint: string }) {
+  const rule = (dir: string): React.CSSProperties => ({
+    width: 62,
+    height: 1,
+    background: `linear-gradient(${dir}, transparent, ${withAlpha(tint, 0.7)})`,
+  });
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 7 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+        <span aria-hidden style={rule("90deg")} />
+        <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 34, lineHeight: 1, color: colors.ink, textShadow: `0 0 22px ${withAlpha(tint, 0.75)}` }}>
+          {Math.ceil(left)}<span style={{ fontSize: 20, color: colors.sub }}>s</span>
+        </span>
+        <span aria-hidden style={rule("270deg")} />
+      </div>
+      <span style={{ display: "grid", placeItems: "center", width: 28, height: 28, borderRadius: 999, border: `1.5px solid ${withAlpha(tint, 0.6)}`, color: tint, boxShadow: `0 0 12px ${withAlpha(tint, 0.35)}` }}>
+        <ClockIcon size={15} strokeWidth={2.2} />
+      </span>
+    </div>
+  );
+}
+
+/** De letter op zijn voetstuk: neon-omlijsting, hexagonale categorie-tab die op
+ *  de rand rust, opstijgende stralen en een gloeiende schijf onder de letter. */
+function LetterStage({ letter, category, hint }: { letter: string; category: string; hint: string }) {
+  return (
+    <div style={{ position: "relative", marginTop: 12 }}>
+      {/* De tab rust op de bovenrand, dus hij staat buiten de kaart en trekt de
+          rand ter plekke weg met zijn eigen achtergrond. */}
+      <div
+        style={{
+          position: "absolute",
+          top: -14,
+          left: "50%",
+          transform: "translateX(-50%)",
+          zIndex: 2,
+          padding: "6px 26px",
+          clipPath: "polygon(14px 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 14px 100%, 0 50%)",
+          background: `linear-gradient(180deg, #35205e, #241546)`,
+          boxShadow: `0 0 18px ${withAlpha(colors.violet, 0.5)}`,
+        }}
+      >
+        <span style={{ fontFamily: font.ui, fontSize: 12.5, fontWeight: 800, letterSpacing: 2.4, textTransform: "uppercase", color: colors.ink }}>
+          {category}
+        </span>
+      </div>
+
+      <div
+        style={{
+          position: "relative",
+          overflow: "hidden",
+          borderRadius: 22,
+          padding: "46px 18px 20px",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 6,
+          // Bewust bijna doorzichtig: het podium en de stralen van de arena
+          // moeten er dwars doorheen te zien zijn, anders staat de letter op een
+          // dichte kaart in plaats van op het toneel.
+          background: `linear-gradient(180deg, ${withAlpha(colors.violet, 0.1)}, ${withAlpha("#0E0922", 0.22)})`,
+          border: `1.5px solid ${withAlpha(colors.violet, 0.65)}`,
+          boxShadow: `0 0 26px ${withAlpha(colors.violet, 0.35)}, inset 0 0 34px ${withAlpha(colors.violet, 0.12)}`,
+        }}
+      >
+        <div style={{ position: "relative", display: "grid", placeItems: "center", width: "100%" }}>
+          <span
+            style={{
+              fontFamily: font.display,
+              fontWeight: 700,
+              fontSize: 108,
+              lineHeight: 1,
+              color: colors.gold,
+              textShadow: `0 0 10px ${withAlpha(colors.goldHi, 0.45)}, 0 0 40px ${withAlpha(colors.gold, 0.35)}, 0 0 88px ${withAlpha(colors.orange, 0.2)}`,
+            }}
+          >
+            {letter}
+          </span>
+          {/* voetstuk: gloeiende schijf onder de letter */}
+          <span
+            aria-hidden
+            style={{
+              position: "absolute",
+              bottom: -14,
+              width: 190,
+              height: 34,
+              borderRadius: "50%",
+              background: `radial-gradient(ellipse at center, ${withAlpha(colors.gold, 0.26)} 0%, ${withAlpha(colors.orange, 0.1)} 42%, transparent 72%)`,
+            }}
+          />
+        </div>
+        <span style={{ position: "relative", marginTop: 46, fontFamily: font.ui, fontSize: 13, color: withAlpha(colors.violet, 0.95), textAlign: "center", filter: "brightness(1.5)" }}>
+          {hint}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 // Grote trede-kaart direct na je antwoord: dit is het moment waarop je ziet of
 // je iets zeldzaams te pakken had.
 function TierFlash({ slot }: { slot: Slot }) {
@@ -499,7 +761,7 @@ function Section({ title, items, onOpen, t }: { title: string; items: DuelState[
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontFamily: font.ui, fontSize: 14.5, fontWeight: 700, color: colors.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.opponent.name}</div>
               <div style={{ display: "inline-flex", alignItems: "center", gap: 5, fontFamily: font.ui, fontSize: 12, color: accent }}>
-                {done ? <Check size={12} /> : yourTurn ? <Swords size={12} /> : <Clock size={12} />}
+                {done ? <Check size={12} /> : yourTurn ? <Swords size={12} /> : <ClockIcon size={12} />}
                 {done
                   ? d.winner === "me" ? t("duelWon") : d.winner === "them" ? t("duelLost") : t("duelDraw")
                   : yourTurn

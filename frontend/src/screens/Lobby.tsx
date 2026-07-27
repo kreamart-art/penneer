@@ -181,8 +181,21 @@ export function Lobby({ game }: { game: GameApi }) {
     setTimeout(() => setShared(false), 1400);
   };
 
+  // Eigen categorieen die JIJ mag aanzetten (gratis, gekocht of zelf gemaakt).
+  // Alleen de HOST hoeft ze te bezitten: zodra hij er een aanzet zit hij in
+  // room.settings.categories en spelen alle anderen gewoon mee.
+  const [myCats, setMyCats] = useState<string[]>([]);
+  useEffect(() => {
+    const tok = localStorage.getItem("penneer.accountToken");
+    fetch("/api/categories", { headers: tok ? { Authorization: `Bearer ${tok}` } : {} })
+      .then((r) => r.json())
+      .then((d) => setMyCats((d.categories ?? []).filter((c: { owned: boolean }) => c.owned).map((c: { name: string }) => c.name)))
+      .catch(() => {});
+  }, [game.state.account?.id]);
+
   const customCats = settings.categories.filter((c) => !ALL_CATEGORY_KEYS.includes(c));
-  const chipKeys = [...ALL_CATEGORY_KEYS, ...customCats];
+  const ownedExtra = myCats.filter((c) => !ALL_CATEGORY_KEYS.includes(c) && !customCats.includes(c));
+  const chipKeys = [...ALL_CATEGORY_KEYS, ...customCats, ...(isHost ? ownedExtra : [])];
 
   const canStart = isHost && players.length >= 1;
   const isCustomRounds = !ROUNDS.includes(settings.rounds);

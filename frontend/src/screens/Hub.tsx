@@ -221,6 +221,61 @@ function StatGrid({ stats }: { stats: AccountStats }) {
   );
 }
 
+// ---- Inklapbare profielsectie ----------------------------------------------
+// Prestaties en Laatste potjes groeien mee met hoe lang je speelt en duwden het
+// profiel daardoor eindeloos lang. Ingeklapt blijft het eerste item staan als
+// voorproefje (een lege kop zegt niks), met een chevron rechtsboven om de rest
+// erbij te halen. Zelfde gebaar als de secties in Profielinstellingen.
+function CollapsibleCard({
+  title,
+  items,
+  emptyText,
+}: {
+  title: string;
+  items: React.ReactNode[];
+  emptyText: string;
+}) {
+  const { t } = useT();
+  const [open, setOpen] = useState(false);
+  const hidden = Math.max(0, items.length - 1);
+  const shown = open ? items : items.slice(0, 1);
+  return (
+    <Card style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <button
+        onClick={() => { sound.uiTap(); setOpen((v) => !v); }}
+        disabled={hidden === 0}
+        aria-expanded={open}
+        style={{ display: "flex", alignItems: "center", gap: 8, background: "transparent", border: "none", padding: 0, cursor: hidden === 0 ? "default" : "pointer", textAlign: "left" }}
+      >
+        <span style={{ flex: 1, fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint }}>
+          {title}
+        </span>
+        {hidden > 0 && (
+          <>
+            {!open && (
+              <span style={{ fontFamily: font.ui, fontSize: 11.5, fontWeight: 700, color: colors.gold }}>+{hidden}</span>
+            )}
+            <ChevronDown size={16} color={colors.faint} style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform .2s ease" }} />
+          </>
+        )}
+      </button>
+      {items.length === 0 ? (
+        <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13, color: colors.faint }}>{emptyText}</p>
+      ) : (
+        shown
+      )}
+      {!open && hidden > 0 && (
+        <button
+          onClick={() => { sound.uiTap(); setOpen(true); }}
+          style={{ background: "transparent", border: "none", cursor: "pointer", padding: "2px 0 0", fontFamily: font.ui, fontSize: 12, color: colors.sub }}
+        >
+          {t("showAllN", { n: items.length })}
+        </button>
+      )}
+    </Card>
+  );
+}
+
 // ---- Laatste potjes -------------------------------------------------------------
 
 function HistoryCard({ game, meId }: { game: GameApi; meId: string }) {
@@ -243,40 +298,35 @@ function HistoryCard({ game, meId }: { game: GameApi; meId: string }) {
   };
 
   return (
-    <Card style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint }}>
-        {t("historyTitle")}
-      </span>
-      {games.length === 0 ? (
-        <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13, color: colors.faint }}>{t("noHistory")}</p>
-      ) : (
-        games.map((g, i) => (
-          <div key={`${g.finished_at}-${i}`} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 10px", borderRadius: 10, background: withAlpha("#000000", 0.18), border: `1px solid ${g.is_winner ? withAlpha(colors.gold, 0.35) : colors.hairline}` }}>
-            <span style={{ width: 34, textAlign: "center", flexShrink: 0, fontFamily: font.display, fontWeight: 700, fontSize: 14, color: g.is_winner ? colors.gold : colors.sub }}>
-              {t("placeN", { p: g.place })}
-            </span>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                {g.players.slice(0, 6).map((pl) => (
-                  <span key={pl.user_id} style={{ opacity: pl.user_id === meId ? 1 : 0.85 }}>
-                    <Avatar name={pl.name} color={pl.color} size={20} userId={pl.user_id} hasAvatar={pl.has_avatar} avatarVer={pl.avatar_ver} />
-                  </span>
-                ))}
-                {g.player_count > 6 && (
-                  <span style={{ fontFamily: font.ui, fontSize: 11, color: colors.faint }}>+{g.player_count - 6}</span>
-                )}
-              </div>
-              <div style={{ fontFamily: font.ui, fontSize: 11, color: colors.faint, marginTop: 3 }}>
-                {fmtDate(g.finished_at)} · {g.rounds === 1 ? t("historyRound1") : t("historyRounds", { n: g.rounds })}
-              </div>
+    <CollapsibleCard
+      title={t("historyTitle")}
+      emptyText={t("noHistory")}
+      items={games.map((g, i) => (
+        <div key={`${g.finished_at}-${i}`} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 10px", borderRadius: 10, background: withAlpha("#000000", 0.18), border: `1px solid ${g.is_winner ? withAlpha(colors.gold, 0.35) : colors.hairline}` }}>
+          <span style={{ width: 34, textAlign: "center", flexShrink: 0, fontFamily: font.display, fontWeight: 700, fontSize: 14, color: g.is_winner ? colors.gold : colors.sub }}>
+            {t("placeN", { p: g.place })}
+          </span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              {g.players.slice(0, 6).map((pl) => (
+                <span key={pl.user_id} style={{ opacity: pl.user_id === meId ? 1 : 0.85 }}>
+                  <Avatar name={pl.name} color={pl.color} size={20} userId={pl.user_id} hasAvatar={pl.has_avatar} avatarVer={pl.avatar_ver} />
+                </span>
+              ))}
+              {g.player_count > 6 && (
+                <span style={{ fontFamily: font.ui, fontSize: 11, color: colors.faint }}>+{g.player_count - 6}</span>
+              )}
             </div>
-            <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, color: g.is_winner ? colors.gold : colors.ink, flexShrink: 0 }}>
-              {g.score}
-            </span>
+            <div style={{ fontFamily: font.ui, fontSize: 11, color: colors.faint, marginTop: 3 }}>
+              {fmtDate(g.finished_at)} · {g.rounds === 1 ? t("historyRound1") : t("historyRounds", { n: g.rounds })}
+            </div>
           </div>
-        ))
-      )}
-    </Card>
+          <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, color: g.is_winner ? colors.gold : colors.ink, flexShrink: 0 }}>
+            {g.score}
+          </span>
+        </div>
+      ))}
+    />
   );
 }
 
@@ -633,19 +683,16 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
       <HistoryCard game={game} meId={account.id} />
 
       {/* prestaties */}
-      <Card style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint }}>{t("badgesTitle")}</span>
-        {account.badges.length === 0 ? (
-          <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13, color: colors.faint }}>{t("noBadges")}</p>
-        ) : (
-          account.badges.map((b) => (
-            <div key={b.badge} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 10, background: withAlpha(colors.gold, 0.08), border: `1px solid ${withAlpha(colors.gold, 0.25)}` }}>
-              <Award size={16} color={colors.gold} />
-              <span style={{ fontFamily: font.ui, fontSize: 13.5, color: colors.ink }}>{t(`badge_${b.badge}`)}</span>
-            </div>
-          ))
-        )}
-      </Card>
+      <CollapsibleCard
+        title={t("badgesTitle")}
+        emptyText={t("noBadges")}
+        items={account.badges.map((b) => (
+          <div key={b.badge} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 10, background: withAlpha(colors.gold, 0.08), border: `1px solid ${withAlpha(colors.gold, 0.25)}` }}>
+            <Award size={16} color={colors.gold} />
+            <span style={{ fontFamily: font.ui, fontSize: 13.5, color: colors.ink }}>{t(`badge_${b.badge}`)}</span>
+          </div>
+        ))}
+      />
 
     </Fragment>
   );

@@ -56,6 +56,42 @@ async def debug_viewport(request: Request) -> Response:
 
 
 @app.on_event("startup")
+async def _load_custom_categories() -> None:
+    """Woordenlijsten van admin-categorieen weer in het spel hangen na een
+    herstart, anders scoort zo'n categorie ineens letter-only."""
+    db = get_db()
+    n = 0
+    for cat in db.category_list():
+        words = db.parse_words(cat["words"])
+        if words:
+            game.register_category(cat["name"], words)
+            n += 1
+    if n:
+        print(f"[penneer] {n} eigen categorie(en) met woordenlijst geladen", flush=True)
+
+
+@app.get("/api/categories")
+async def categories_get(request: Request) -> JSONResponse:
+    """Eigen categorieen voor de winkel en de lobby: wat er is, wat het kost en
+    wat JIJ mag aanzetten (gratis, gekocht, of zelf gemaakt)."""
+    db = get_db()
+    uid = db.auth(_bearer(request))
+    owned = db.owned_items_of(uid) if uid else set()
+    return JSONResponse({
+        "categories": [
+            {
+                "id": c["id"],
+                "name": c["name"],
+                "price": int(c["price"]),
+                "checked": bool(db.parse_words(c["words"])),
+                "owned": c["price"] == 0 or f"{db.CATEGORY_ITEM}{c['id']}" in owned,
+            }
+            for c in db.category_list()
+        ],
+    })
+
+
+@app.on_event("startup")
 async def _seed_rarity_table() -> None:
     """Cold start for Duel: fold the stored dagronde answers into the rarity
     table once, so the very first duel is judged against real player answers

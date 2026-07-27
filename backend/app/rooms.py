@@ -81,6 +81,49 @@ class RoomManager:
             "buzzer_codes": {**db.ai_code_stats("buzzers"), "new": buzzer_codes or []},
         }
 
+    # ---- eigen categorieen (admin maakt ze, winkel verkoopt ze) -------------
+
+    async def _send_categories(self, ws: Any, note: str = "") -> None:
+        db = get_db()
+        await ws.send_json({
+            "type": "admin_categories",
+            "categories": [
+                {"id": c["id"], "name": c["name"], "price": c["price"],
+                 "words": len(db.parse_words(c["words"]))}
+                for c in db.category_list()
+            ],
+            "note": note,
+        })
+
+    async def admin_cat_list(self, ws: Any, player_id: Optional[str], payload: dict) -> None:
+        if not self._is_admin_conn(ws):
+            return
+        await self._send_categories(ws)
+
+    async def admin_cat_create(self, ws: Any, player_id: Optional[str], payload: dict) -> None:
+        """Maak een categorie. De woordenlijst is optioneel: met lijst gedraagt
+        hij zich als Dier (auto-check), zonder lijst als Ding (letter-only)."""
+        if not self._is_admin_conn(ws):
+            return
+        db = get_db()
+        words_raw = str(payload.get("words") or "")
+        try:
+            price = int(payload.get("price") or 0)
+        except (TypeError, ValueError):
+            price = 0
+        row, status = db.category_create(
+            str(payload.get("name") or ""), words_raw, price, accounts.user_of(ws)
+        )
+        if row:
+            game.register_category(row["name"], db.parse_words(row["words"]))
+        await self._send_categories(ws, status)
+
+    async def admin_cat_delete(self, ws: Any, player_id: Optional[str], payload: dict) -> None:
+        if not self._is_admin_conn(ws):
+            return
+        get_db().category_delete(str(payload.get("id") or ""))
+        await self._send_categories(ws, "deleted")
+
     def _is_admin_conn(self, ws: Any) -> bool:
         # Admin is scoped to the WebSocket connection, so it works before the
         # user has created/joined a room (the pre-room Settings screen).

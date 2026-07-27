@@ -305,6 +305,7 @@ export interface ClientState {
   aiCodes: AiCodeInfo | null; // AI-referee unlock-code stats + freshly generated codes
   avatarCodes: AiCodeInfo | null; // premium-avatar unlock-code stats
   buzzerCodes: AiCodeInfo | null; // buzzer-skin unlock-code stats
+  adminCategories: AdminCategory[] | null; // eigen categorieen die de admin maakte
   // Shop: result of the last code redeem (null until one happens).
   shopResult: ShopResult | null;
   // In-room chat (so players can ask what a word means without leaving).
@@ -385,6 +386,7 @@ type ServerMessage =
   | { type: "results_updated"; points: RoundView["points"]; scores: Record<string, number>; answers: RoundView["answers"] }
   | { type: "game_over"; scores: Record<string, number>; winner_id: string | null }
   | { type: "admin_ok"; is_admin: boolean; ai: AdminAi; recovery_codes: RecoveryCode[]; ai_codes: AiCodeInfo; avatar_codes?: AiCodeInfo; buzzer_codes?: AiCodeInfo }
+  | { type: "admin_categories"; categories: AdminCategory[]; note?: string }
   | { type: "shop_result"; ok: boolean; reason: string }
   | { type: "coins_result"; ok: boolean; reason: string; item?: string }
   | { type: "chat"; message: ChatMessage }
@@ -438,6 +440,8 @@ function clearSession() {
   }
 }
 
+export interface AdminCategory { id: string; name: string; price: number; words: number }
+
 const ADMIN_KEY = "penneer.adminSecret";
 function loadAdminSecret(): string | null {
   try {
@@ -473,6 +477,7 @@ const initialState: ClientState = {
   roundEndedToken: 0,
   isAdmin: false,
   adminAi: null,
+  adminCategories: null,
   recoveryCodes: [],
   aiCodes: null,
   avatarCodes: null,
@@ -526,7 +531,7 @@ function reducer(state: ClientState, action: Action): ClientState {
     return { ...state, error: null };
   }
   if (action.type === "adminLogout") {
-    return { ...state, isAdmin: false, adminAi: null, recoveryCodes: [], aiCodes: null, avatarCodes: null, buzzerCodes: null };
+    return { ...state, isAdmin: false, adminAi: null, recoveryCodes: [], aiCodes: null, avatarCodes: null, buzzerCodes: null, adminCategories: null };
   }
   if (action.type === "clearShopResult") {
     return { ...state, shopResult: null };
@@ -594,6 +599,8 @@ function reducer(state: ClientState, action: Action): ClientState {
       return state; // room_state carries the authoritative snapshot
     case "admin_ok":
       return { ...state, isAdmin: msg.is_admin, adminAi: msg.ai, recoveryCodes: msg.recovery_codes, aiCodes: msg.ai_codes, avatarCodes: msg.avatar_codes ?? state.avatarCodes, buzzerCodes: msg.buzzer_codes ?? state.buzzerCodes };
+    case "admin_categories":
+      return { ...state, adminCategories: msg.categories };
     case "shop_result":
       return { ...state, shopResult: { ok: msg.ok, reason: msg.reason } };
     case "coins_result":
@@ -744,6 +751,9 @@ export interface GameApi {
   adminGenAiCodes: (count: number) => void;
   adminGenAvatarCodes: (count: number) => void;
   adminGenBuzzerCodes: (count: number) => void;
+  adminCatList: () => void;
+  adminCatCreate: (name: string, words: string, price: number) => void;
+  adminCatDelete: (id: string) => void;
   redeemAiCode: (code: string) => void;
   clearShopResult: () => void;
   sendChat: (text: string, voice?: { id: string; dur: number }, emote?: string) => void;
@@ -957,6 +967,9 @@ export function useGame(): GameApi {
     adminGenAiCodes: (count) => send({ type: "admin_gen_ai_codes", count }),
     adminGenAvatarCodes: (count) => send({ type: "admin_gen_ai_codes", count, product: "avatars" }),
     adminGenBuzzerCodes: (count) => send({ type: "admin_gen_ai_codes", count, product: "buzzers" }),
+    adminCatList: () => send({ type: "admin_cat_list" }),
+    adminCatCreate: (name, words, price) => send({ type: "admin_cat_create", name, words, price }),
+    adminCatDelete: (id) => send({ type: "admin_cat_delete", id }),
     redeemAiCode: (code) => {
       const c = code.trim();
       if (c) send({ type: "shop_redeem", code: c });
