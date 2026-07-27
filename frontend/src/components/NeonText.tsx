@@ -103,9 +103,16 @@ export function NeonText({
               ? // Het licht komt uit RECHTSBOVEN. Een hoek boven de 180 laat het
                 // verloop naar linksonder lopen, dus het lichte eind ligt
                 // rechtsboven; op 155 lag het nog linksboven. De lichte kop
-                // loopt door tot 34% zodat er een echt vlak van te zien is en
+                // loopt door tot 30% zodat er een echt vlak van te zien is en
                 // niet alleen een randje.
-                `linear-gradient(205deg, ${ramp[3]} 0%, ${ramp[3]} 34%, ${ramp[2]} 72%, ${ramp[1]} 100%)`
+                //
+                // Aan de andere kant een tweede kop, in donkerblauw. Die twee
+                // vaste blauwen staan er los in en komen niet uit de reeks: de
+                // reeks houdt de tint van het accent vast en dat is blauwviolet,
+                // dus zijn donkerste tint leest als paars en niet als blauw. Om
+                // ECHT blauw te zijn moet de tint mee opschuiven, en dat is een
+                // keuze voor dit woordmerk en niet iets wat de reeks moet doen.
+                `linear-gradient(205deg, ${ramp[3]} 0%, ${ramp[3]} 30%, ${ramp[2]} 58%, #3D4FE8 80%, #141A63 100%)`
               : faceGradient(accent),
           WebkitBackgroundClip: "text",
           backgroundClip: "text",
