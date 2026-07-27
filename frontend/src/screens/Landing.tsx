@@ -362,10 +362,10 @@ export function Landing({
                   die halen we er rechts weer af. Anders staat het merk een halve
                   letter naar links. */}
               <span style={{ display: "inline-flex", alignItems: "baseline", gap: "0.03em" }}>
-                <NeonText accent="#C3B4FF" depth="light" glowColor={colors.violet} blur={26} glow={0.9} side={0.13}>
+                <NeonText accent="#C3B4FF" depth="light" glowColor={colors.violet} blur={26} glow={0.9} side={0.2} drop={0.16}>
                   PEN
                 </NeonText>
-                <NeonText accent="#C3B4FF" depth="light" glowColor={colors.violet} blur={26} glow={0.9} side={0.13} style={{ marginRight: "-0.14em" }}>
+                <NeonText accent="#C3B4FF" depth="light" glowColor={colors.violet} blur={26} glow={0.9} side={0.2} drop={0.16} style={{ marginRight: "-0.14em" }}>
                   NEER
                 </NeonText>
               </span>
@@ -998,7 +998,7 @@ function LandingFX() {
           position: "absolute",
           inset: 0,
           background:
-            "radial-gradient(98% 39.3% at 50% 21%, rgba(3,1,10,0) 0%, rgba(3,1,10,0) 30%, rgba(3,1,10,.35) 38%, rgba(3,1,10,.65) 46%, rgba(3,1,10,.85) 55%, rgba(3,1,10,.95) 65%, rgba(3,1,10,1) 78%, rgba(3,1,10,1) 100%)",
+            "radial-gradient(128% 30.8% at 50% 21%, rgba(3,1,10,0) 0%, rgba(3,1,10,0) 30%, rgba(3,1,10,.12) 38%, rgba(3,1,10,.30) 46%, rgba(3,1,10,.52) 55%, rgba(3,1,10,.68) 65%, rgba(3,1,10,.78) 80%, rgba(3,1,10,.82) 100%)",
         }}
       />
       {[false, true].map((slow) => (

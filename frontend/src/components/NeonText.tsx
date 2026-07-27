@@ -49,6 +49,7 @@ export function NeonText({
   depth = "full",
   glowColor,
   side = 0,
+  drop = 0,
   style,
 }: {
   accent: string;
@@ -63,6 +64,8 @@ export function NeonText({
   depth?: "full" | "light";
   /** De violette zijkant onder de letter, in em zodat hij meeschaalt. 0 is uit. */
   side?: number;
+  /** Zachte schaduw recht onder de letter, in em. 0 is uit. */
+  drop?: number;
   /** Een afwijkende kleur voor de gloed. Handig als het VLAK licht moet blijven
    *  maar de gloed eromheen juist verzadigd. */
   glowColor?: string;
@@ -90,6 +93,24 @@ export function NeonText({
       >
         {children}
       </span>
+      {drop > 0 && (
+        // De schaduw op de grond: recht naar beneden, ruim onder de zijkant
+        // door. Als text-shadow, dus hij volgt de vorm van de letters.
+        <span
+          aria-hidden
+          style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            whiteSpace: "nowrap",
+            color: "transparent",
+            textShadow: `0 ${drop.toFixed(3)}em ${(drop * 0.62).toFixed(3)}em rgba(10,3,28,.72), 0 ${(drop * 0.5).toFixed(3)}em ${(drop * 0.3).toFixed(3)}em rgba(10,3,28,.5)`,
+            pointerEvents: "none",
+          }}
+        >
+          {children}
+        </span>
+      )}
       {side > 0 && (
         // De zijkant ligt tussen de gloed en het vlak in.
         <span
@@ -112,7 +133,7 @@ export function NeonText({
           position: "relative",
           backgroundImage:
             depth === "light"
-              ? `linear-gradient(155deg, ${ramp[3]} 0%, ${ramp[3]} 24%, ${ramp[2]} 100%)`
+              ? `linear-gradient(155deg, ${ramp[3]} 0%, ${ramp[3]} 18%, ${ramp[2]} 62%, ${ramp[1]} 100%)`
               : faceGradient(accent),
           WebkitBackgroundClip: "text",
           backgroundClip: "text",

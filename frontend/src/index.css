@@ -87,28 +87,29 @@ body::before {
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  /* Het decor. Bijna zwart indigo als bodem, daarboven een zachte bloei in het
-     midden van de bovenhelft, met een warme goudzweem in het hart ervan. Geen
-     hoekvlekken meer: het licht komt uit het midden, want daar komt het logo.
-     Alles blijft indigo en violet; niets loopt naar blauw, roze of neon. */
-  /* Donker en met contrast: marineblauw dat naar zwart valt, met het licht
-     alleen daar waar het embleem staat. Niet één egaal violet vlak. */
+  /* Het decor voor de intro en alle subpagina's: de art uit de UI-map. Een
+     violette nevel met een lichtkegel uit het midden boven, donker naar de
+     randen. De main page legt hier zijn eigen art overheen (LandingFX), dus
+     wat je hier ziet is de lobby, invullen, uitslag, winkel, profiel.
+
+     De art is liggend en het scherm staand, dus met `cover` zie je alleen de
+     middenkolom. Die is er al uit geknipt in het bestand (4:5), zodat de
+     pixels die je te zien krijgt ook echt de pixels van het bestand zijn.
+
+     Daarbovenop nog twee lagen: korrel, zodat de nevel niet gaat banden op een
+     8-bits scherm, en een vignet dat de randen naar zwart trekt zodat tekst
+     overal leesbaar blijft. */
   background-color: #06040e;
   background-image:
     /* korrel over alles heen */
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
-    /* de randen vallen stevig naar zwart */
-    radial-gradient(112% 78% at 50% 32%, transparent 24%, rgba(2, 1, 7, 0.88) 100%),
-    /* warme kern waar het embleem staat */
-    radial-gradient(30% 16% at 50% 25%, rgba(255, 186, 90, 0.09), transparent 72%),
-    /* de bloei zelf: strak, alleen boven het midden */
-    radial-gradient(56% 31% at 50% 26%, rgba(104, 64, 196, 0.4), transparent 74%),
-    /* marineblauwe sfeer eromheen */
-    radial-gradient(105% 60% at 50% 30%, rgba(38, 40, 112, 0.34), transparent 78%),
+    /* de randen vallen naar zwart */
+    radial-gradient(118% 74% at 50% 30%, transparent 34%, rgba(2, 1, 7, 0.72) 100%),
+    url("/bg-sub.webp"),
     linear-gradient(180deg, #100c24 0%, #14102c 30%, #0e0b20 60%, #090714 82%, #06040e 100%);
-  background-repeat: repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat;
-  background-position: top left, top, top, top, top, top;
-  background-size: 160px 160px, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%;
+  background-repeat: repeat, no-repeat, no-repeat, no-repeat;
+  background-position: top left, top, center, top;
+  background-size: 160px 160px, 100% 100%, cover, 100% 100%;
 }
 
 body {
