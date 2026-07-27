@@ -112,6 +112,7 @@ export function Landing({
   // een ResizeObserver mee en corrigeert hij na. De drempel van drie pixels
   // voorkomt dat hij tussen twee bijna gelijke maten blijft heen en weer gaan.
   const kaartVak = useRef<HTMLDivElement | null>(null);
+  const vorige = useRef<{ w: number; h: number } | null>(null);
   const [kaartMax, setKaartMax] = useState<number | undefined>(undefined);
   useEffect(() => {
     const meet = () => {
@@ -139,9 +140,37 @@ export function Landing({
       if (!r.width || !r.height) return;
       const ruimte = onder - r.top;
       if (ruimte <= 0) return;
-      // Vijf procent eraf. Precies passen is niet hetzelfde als mooi staan: zo
-      // blijft er lucht rond de sectie en zie je de achtergrond nog.
-      const wil = Math.min(460, Math.floor(((ruimte * r.width) / r.height) * 0.95));
+      // Hoe breed mag de kaart zijn om precies in `ruimte` te passen?
+      //
+      // Niet "ruimte gedeeld door de huidige verhouding". De hoogte van de kaart
+      // is namelijk niet EVENREDIG met de breedte: de tegels schalen mee, maar
+      // de regel "je speelt als", de tussenruimtes en de padding niet. In een
+      // formule: hoogte = helling x breedte + een vaste voet. Reken je met de
+      // verhouding, dan tel je die voet als het ware nog een keer mee en kom je
+      // stelselmatig tientallen pixels te smal uit. Dat is precies wat de kaart
+      // te klein maakte.
+      //
+      // Dus: uit twee metingen de HELLING afleiden en daarmee een stap zetten.
+      // Na de eerste correctie klopt hij, en verder blijft hij staan. De eerste
+      // keer is er nog niets om mee te vergelijken; dan de oude schatting als
+      // vertrekpunt.
+      const w = r.width;
+      const h = r.height;
+      const v = vorige.current;
+      let wil: number;
+      if (v && Math.abs(v.w - w) > 4 && Math.abs(v.h - h) > 1) {
+        // Begrensd, want een bijna vlakke helling zou een sprong van duizenden
+        // pixels opleveren op een meetfoutje van een halve pixel.
+        const helling = Math.min(1.5, Math.max(0.3, (h - v.h) / (w - v.w)));
+        wil = w + (ruimte - h) / helling;
+      } else {
+        wil = (ruimte * w) / h;
+      }
+      vorige.current = { w, h };
+      // Vier pixels eraf, verder niets. De sectie hoort tot net tegen de balk
+      // te komen, op elk scherm: die vier pixels zijn er alleen om te
+      // voorkomen dat een afronding hem er alsnog overheen duwt.
+      wil = Math.min(460, Math.max(220, Math.floor(wil) - 4));
       setKaartMax((oud) => (oud !== undefined && Math.abs(oud - wil) <= 3 ? oud : wil));
     };
     meet();
