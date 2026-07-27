@@ -56,21 +56,32 @@ const PLATES: Record<PlateKind, Plate> = {
   },
 };
 
-/** Alles wat uit de maten volgt: verhouding, gloedmarge, breedtegrenzen. */
+// EEN gedeeld knopvak voor alle knoppen op volle breedte, plaat of niet. De twee
+// platen hebben elk net een andere verhouding (goud 663x150 = 4.42, paars
+// 682x156 = 4.37) en een andere gloedmarge; als je die ieder hun eigen maat
+// geeft, staan een gouden en een paarse knop onder elkaar zichtbaar ongelijk.
+// Daarom: één vak, en elke plaat legt zijn eigen VLAK daar overheen. De
+// afwijking van ~1% die dat per plaat oplevert zie je niet.
+//
+// De breedte is die van de KRAPSTE plaat, zodat bij allebei de gloed er nog
+// naast past in plaats van van het scherm af te lopen.
+export const BUTTON_RATIO = 4.4;
+export const BUTTON_FIT = "87%";
+export const BUTTON_MAX_WIDTH = 320;
+
+/** Breedte-regels die elke knop op volle breedte deelt. */
+export const fullWidthButton = {
+  width: `min(${BUTTON_FIT}, ${BUTTON_MAX_WIDTH}px)`,
+  aspectRatio: `${BUTTON_RATIO}`,
+  marginLeft: "auto",
+  marginRight: "auto",
+} as const;
+
+/** Waar de plaat moet liggen zodat zijn LICHTE VLAK precies het knopvak vult. */
 function metrics(kind: PlateKind) {
   const p = PLATES[kind];
-  const faceW = p.fw / p.w;
-  const faceH = p.fh / p.h;
-  const ratio = (p.w * faceW) / (p.h * faceH);
   return {
     plate: p,
-    ratio,
-    // De knop mag precies dit deel van de ruimte innemen; de rest is gloed.
-    fit: `${(faceW * 100).toFixed(2)}%`,
-    // Plafond, anders wordt de knop op een tablet een banier: de hoogte volgt
-    // immers uit de breedte.
-    maxWidth: 320,
-    minWidth: Math.round(44 * ratio),
     img: {
       left: `${(-p.fx / p.fw) * 100}%`,
       width: `${(p.w / p.fw) * 100}%`,
@@ -80,15 +91,9 @@ function metrics(kind: PlateKind) {
   };
 }
 
-export const GOLD = metrics("gold");
-export const VIOLET = metrics("violet");
+const GOLD = metrics("gold");
+const VIOLET = metrics("violet");
 export const plateMetrics = (kind: PlateKind) => (kind === "gold" ? GOLD : VIOLET);
-
-/** Breedte-regels voor een plaatknop op volle breedte. */
-export function plateWidth(kind: PlateKind) {
-  const m = plateMetrics(kind);
-  return { width: `min(${m.fit}, ${m.maxWidth}px)`, marginLeft: "auto", marginRight: "auto" } as const;
-}
 
 /** Terugval als een asset niet laadt: dezelfde vorm in CSS, zodat er nooit een
  *  naamloze knop overblijft. */
@@ -141,8 +146,7 @@ export function GoldButton({
       className="pressable"
       style={{
         position: "relative",
-        ...(art ? plateWidth(kind) : { width: "100%" }),
-        aspectRatio: art ? `${m.ratio}` : undefined,
+        ...fullWidthButton,
         minHeight: art ? undefined : 54,
         border: "none",
         background: art ? "transparent" : colors.gold,

@@ -6,7 +6,7 @@
 // vrienden" en "Maak een room". De hero-TEGEL op de main page hoort er niet
 // bij: dat is een vierkante tegel, geen balk, en die houdt zijn eigen goud.
 import React, { useState } from "react";
-import { PlateArt, PLATE_CHAMFER, plateMetrics, plateWidth, type PlateKind } from "./GoldButton";
+import { PlateArt, PLATE_CHAMFER, fullWidthButton, plateMetrics, type PlateKind } from "./GoldButton";
 import { colors, font, radius } from "../theme/tokens";
 
 type Variant = "primary" | "gold" | "danger" | "ghost";
@@ -81,15 +81,15 @@ export function Button({ variant = "primary", full, style, children, disabled, .
         clipPath: !!kind && !art ? PLATE_CHAMFER : undefined,
         border: p.border ? `1.5px solid ${p.border}` : "none",
         borderRadius: plated ? 0 : radius.button,
-        padding: plated ? "0 26px" : "13px 20px",
-        // Niet uitrekken: de hoogte volgt uit de breedte, in de verhouding van
-        // de plaat. De maximumbreedte houdt de gloed binnen het scherm en de
-        // knop op een tablet normaal van formaat.
-        ...(plated && kind ? plateWidth(kind) : { width: full ? "100%" : undefined }),
-        aspectRatio: plated && m ? `${m.ratio}` : undefined,
-        maxWidth: plated && m ? m.maxWidth : undefined,
-        display: plated ? "grid" : undefined,
-        placeItems: plated ? "center" : undefined,
+        padding: full ? "0 26px" : "13px 20px",
+        // ELKE knop op volle breedte krijgt hetzelfde vak, met of zonder plaat.
+        // Anders staan een gouden, een paarse en een ghost-knop onder elkaar
+        // alle drie net iets anders. De hoogte volgt uit de breedte (dus geen
+        // uitrekken), de breedte laat ruimte over voor de gloed naast de plaat,
+        // en het plafond houdt de knop op een tablet normaal van formaat.
+        ...(full ? fullWidthButton : null),
+        display: full ? "grid" : undefined,
+        placeItems: full ? "center" : undefined,
         textAlign: "center",
         cursor: disabled ? "not-allowed" : "pointer",
         opacity: disabled ? 0.5 : 1,
