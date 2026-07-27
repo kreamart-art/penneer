@@ -16,7 +16,6 @@ import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { makeProfileCard, shareOrDownload } from "../util/shareCard";
 import { ClubEmblem, CLUB_EMBLEM_IDS } from "../components/ClubEmblem";
-import { NeonText } from "../components/NeonText";
 import { neonSkin, rampFrom } from "../theme/neon";
 import { reelClip, reelEdge, reelFace, reelTheme } from "../theme/reelSkins";
 import { colors, font, playerColors, radius, withAlpha } from "../theme/tokens";
@@ -216,20 +215,12 @@ function LevelBar({ level, compact }: { level: LevelInfo; compact?: boolean }) {
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 5 }}>
-          {/* In de kleur van je RANG, dezelfde als de ring om je avatar. Alleen
-              Beginneling heeft er geen, die blijft goud.
-              De gloed zit dicht op de letters: op kleine tekst waaiert een wijde
-              gloed voorbij de letters heen en dan lijkt het geheel onscherp. Een
-              vuistregel die goed werkt is ongeveer een derde van de
-              lettergrootte. */}
-          <NeonText
-            accent={RANK_RING[level.rank] ?? colors.gold}
-            blur={4}
-            glow={0.5}
-            style={{ fontFamily: font.ui, fontWeight: 700, fontSize: compact ? 12.5 : 13.5 }}
-          >
+          {/* Gewoon goud. Op tekst van dertien pixels voegt een verloop met een
+              gloed niets toe: je ziet het verloop niet en de gloed maakt de
+              letters juist onscherp. */}
+          <span style={{ fontFamily: font.ui, fontWeight: 700, fontSize: compact ? 12.5 : 13.5, color: colors.gold }}>
             {t(`rank_${level.rank}`)}
-          </NeonText>
+          </span>
           <span style={{ fontFamily: font.ui, fontSize: 11, color: colors.faint }}>
             {level.xp - level.level_start}/{span} XP
           </span>
@@ -662,7 +653,7 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
             className="pressable"
             style={{ position: "relative", background: "transparent", border: "none", padding: 0, cursor: "pointer", flexShrink: 0 }}
           >
-            <Avatar name={account.name} color={account.color} size={64} userId={account.id} hasAvatar={account.has_avatar} avatarVer={account.avatar_ver} frame={account.avatar_frame} />
+            <Avatar name={account.name} color={account.color} size={64} userId={account.id} hasAvatar={account.has_avatar} avatarVer={account.avatar_ver} frame={account.avatar_frame} glow />
             <span style={{ position: "absolute", right: -3, bottom: -3, width: 22, height: 22, borderRadius: 8, display: "grid", placeItems: "center", background: colors.gold, color: colors.bg0, boxShadow: "0 2px 8px rgba(0,0,0,.4)" }}>
               <Pencil size={12} />
             </span>

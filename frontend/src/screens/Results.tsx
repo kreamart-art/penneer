@@ -152,7 +152,7 @@ export function Results({ game }: { game: GameApi }) {
           return (
             <Card key={p.id} className="reveal-rise" style={{ animationDelay: `${cardDelay(pi)}s`, display: "flex", flexDirection: "column", gap: 12 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <Avatar name={p.name} color={p.color} size={34} dim={!p.connected} userId={p.user_id} hasAvatar={p.has_avatar} avatarVer={p.avatar_ver} rank={p.rank} />
+                <Avatar name={p.name} color={p.color} size={34} dim={!p.connected} userId={p.user_id} hasAvatar={p.has_avatar} avatarVer={p.avatar_ver} />
                 <span style={{ fontFamily: font.ui, fontWeight: 600, fontSize: 15, color: colors.ink, flex: 1 }}>
                   {p.name}
                   {p.id === game.me?.id && <span style={{ color: colors.faint, fontWeight: 500 }}> · {t("you")}</span>}

@@ -5,8 +5,9 @@ import { Crown } from "lucide-react";
 import { neonSkin } from "../theme/neon";
 import { colors, font, withAlpha } from "../theme/tokens";
 
-// Rank ring colors per tier (badge of honor around the avatar, 8BP-style).
-// Beginneling has no ring; every rank above it gets its own metal/color.
+// De kleur per rang. Werd ooit als ring om de avatar getekend, maar dat lag over
+// het frame dat je zelf koos: twee ringen om dezelfde avatar zijn niet uit elkaar
+// te houden. De kleuren blijven wel bestaan voor plekken die ze los gebruiken.
 export const RANK_RING: Record<string, string> = {
   krabbelaar: "#C08A50",       // brons
   pennenlikker: "#B9C4D0",     // zilver
@@ -40,26 +41,23 @@ interface Props {
   userId?: string | null;
   hasAvatar?: boolean;
   avatarVer?: number;
-  rank?: string | null; // rank key -> colored ring (see RANK_RING)
   frame?: string | null; // avatar-frame id -> gold frame overlay (level reward)
+  /** De gloed achter de avatar. Uit in lijsten: tussen tien avatars onder elkaar
+   *  wordt dat een waas. Alleen aan waar er EEN avatar groot in beeld staat. */
+  glow?: boolean;
 }
 
-export function Avatar({ name, color, size = 40, crown, dim, userId, hasAvatar, avatarVer, rank, frame }: Props) {
+export function Avatar({ name, color, size = 40, crown, dim, userId, hasAvatar, avatarVer, frame, glow = false }: Props) {
   const initial = (name.trim()[0] || "?").toUpperCase();
   const photo = !!(userId && hasAvatar);
   const neonColor = frame ? NEON_FRAMES[frame] : undefined;
   const artFramed = !!frame && !neonColor;
-  const framed = !!frame;
   // An ART frame fills the size box and the avatar insets to ~0.70 so it sits in
   // the frame's transparent window. A CODE frame is a thin ring, so the avatar
   // only makes room for the ring itself. The frame is the badge of honor, so it
   // replaces the automatic rank ring while active.
   const inner = artFramed ? Math.round(size * 0.7) : neonColor ? size - 6 : size;
-  const ring = rank && !framed ? RANK_RING[rank] : undefined;
-  // Rangring en code-frame zijn hetzelfde ding in een andere kleur: een ring met
-  // een verloop dat bovenaan oplicht en onderaan wegzakt. Zo sluiten ze op
-  // elkaar aan in plaats van dat de een een lijn is en de ander een plaatje.
-  const ringColor = neonColor ?? ring;
+  const ringColor = neonColor;
   return (
     <div style={{ position: "relative", width: size, height: size, flexShrink: 0, display: "grid", placeItems: "center" }}>
       <div
@@ -77,13 +75,9 @@ export function Avatar({ name, color, size = 40, crown, dim, userId, hasAvatar, 
           // dezelfde behandeling als de rangring eromheen.
           // De ring zelf is een eigen laag hieronder; hier alleen de gloed, want
           // een box-shadow kan geen verloop dragen.
-          boxShadow: dim
+          boxShadow: !glow || dim || artFramed
             ? "none"
-            : ringColor
-              ? `0 0 14px ${withAlpha(ringColor, 0.5)}`
-              : artFramed
-                ? "none"
-                : `0 0 16px ${withAlpha(color, 0.4)}`,
+            : `0 0 14px ${withAlpha(ringColor ?? color, 0.45)}`,
           opacity: dim ? 0.4 : 1,
           fontFamily: font.display,
           fontWeight: 700,

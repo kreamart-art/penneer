@@ -64,7 +64,7 @@ export function Final({ game }: { game: GameApi }) {
           <div style={{ display: "flex", gap: 14, flexWrap: "wrap", justifyContent: "center" }}>
             {winners.map((w) => (
               <div key={w.id} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
-                <Avatar name={w.name} color={w.color} size={66} crown userId={w.user_id} hasAvatar={w.has_avatar} avatarVer={w.avatar_ver} rank={w.rank} />
+                <Avatar name={w.name} color={w.color} size={66} crown userId={w.user_id} hasAvatar={w.has_avatar} avatarVer={w.avatar_ver} />
                 <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 22, color: colors.ink }}>{w.name}</span>
                 {(() => {
                   const sub = subLabelKey(w.title, w.rank);
