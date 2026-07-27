@@ -1887,7 +1887,22 @@ function ProfileViewModal({ game, userId, onClose }: { game: GameApi; userId: st
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{ width: "100%", maxWidth: 380, maxHeight: "82vh", overflowY: "auto", borderRadius: 22, background: "linear-gradient(180deg, #241738, #160D30)", border: `1px solid ${withAlpha(colors.gold, 0.35)}`, boxShadow: "0 24px 70px rgba(0,0,0,.6)", padding: "20px 18px", display: "flex", flexDirection: "column", gap: 14 }}
+        className="neon-ring"
+        style={{
+          width: "100%", maxWidth: 380, maxHeight: "82vh", overflowY: "auto",
+          borderRadius: 22, padding: "20px 18px", display: "flex", flexDirection: "column", gap: 14,
+          // Zelfde opbouw als een paneel: gouden verlooprand, licht dat van
+          // bovenaf in het vlak valt, en randverdonkering zodat het bol leest.
+          backgroundImage: [
+            "linear-gradient(180deg, rgba(255,243,181,.1) 0%, transparent 15%)",
+            `radial-gradient(90% 55% at 50% 0%, ${withAlpha(colors.gold, 0.13)}, transparent 66%)`,
+            "radial-gradient(130% 105% at 50% 46%, transparent 55%, rgba(6,3,18,.45) 100%)",
+            "linear-gradient(180deg, #2C1E4C 0%, #201340 48%, #130B2A 100%)",
+          ].join(", "),
+          ...neonSkin(colors.gold),
+          ["--ng-w" as string]: "1.5px",
+          boxShadow: "0 24px 70px rgba(0,0,0,.6), inset 0 1.5px 0 rgba(255,243,181,.3), inset 0 -14px 22px rgba(6,3,18,.4)",
+        } as React.CSSProperties}
       >
         {!loaded ? (
           <p style={{ margin: 0, textAlign: "center", fontFamily: font.ui, fontSize: 14, color: colors.faint }}>...</p>

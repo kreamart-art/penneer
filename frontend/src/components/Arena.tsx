@@ -35,6 +35,9 @@ export function Arena({
    *  van als losse band met vervaagde randen te liggen. Dan bepaalt de plaat
    *  zelf waar het podium uitkomt, en `podium`/`at`/`width` doen niets meer. */
   fill = false,
+  /** Uit: alleen de ondergrond en het vignet, geen plaat. Voor schermen die de
+   *  plaat zelf ergens anders ophangen (zie ArenaPlate). */
+  plate = true,
 }: {
   src: string;
   podium: number;
@@ -42,6 +45,7 @@ export function Arena({
   width?: string;
   glowAt?: string;
   fill?: boolean;
+  plate?: boolean;
 }) {
   const [art, setArt] = useState(true);
   const layer = useRef<HTMLDivElement | null>(null);
@@ -90,7 +94,7 @@ export function Arena({
           background: `radial-gradient(80% 40% at 50% ${glowAt}, ${withAlpha(ARENA.glow, 0.4)} 0%, transparent 70%)`,
         }}
       />
-      {art && (
+      {plate && art && (
         <img
           src={src}
           alt=""
@@ -123,5 +127,55 @@ export function Arena({
       {/* Vignet: houdt de aandacht in het midden en dempt de randen. */}
       <div style={{ position: "absolute", inset: 0, background: `radial-gradient(125% 70% at 50% 40%, transparent 30%, ${withAlpha(ARENA.base, 0.62)} 100%)` }} />
     </div>
+  );
+}
+
+/** De plaat, opgehangen aan het element waar hij omheen hoort in plaats van aan
+ *  het scherm.
+ *
+ *  Waarom dat uitmaakt: het podium moet onder de letter staan, en dat is een
+ *  verhouding van de KAART. Hang je hem aan het scherm, dan schuift hij zodra
+ *  het toetsenbord opengaat, want dan verandert het scherm wel en de kaart niet.
+ *
+ *  De plaat is breder dan zijn ouder en steekt er dus buiten. Dat is de bedoeling:
+ *  zo dekt hij nog steeds het hele beeld. Zet hem in een ouder met
+ *  `position: relative` en geef de inhoud daarvan `position: relative` mee,
+ *  anders verdwijnt die eronder. */
+export function ArenaPlate({
+  src,
+  /** Waar het podium in de PLAAT zit, als fractie van de plaathoogte. */
+  podium,
+  /** Waar het podium in de OUDER moet komen. */
+  at,
+  /** Hoe breed de plaat wordt getekend, als deel van de ouderbreedte. */
+  width = "205%",
+}: {
+  src: string;
+  podium: number;
+  at: string;
+  width?: string;
+}) {
+  const [art, setArt] = useState(true);
+  if (!art) return null;
+  return (
+    <img
+      src={src}
+      alt=""
+      aria-hidden
+      onError={() => setArt(false)}
+      style={{
+        position: "absolute",
+        left: "50%",
+        top: at,
+        width,
+        maxWidth: "none",   // de reset knipt afbeeldingen anders terug
+        transform: `translate(-50%, -${podium * 100}%)`,
+        pointerEvents: "none",
+        // Achter alles wat eromheen staat. De ouder maakt zelf geen stapelcontext
+        // (geen z-index), dus de plaat zakt door tot achter de buren van die
+        // ouder: de rondjes en de klok erboven blijven zichtbaar.
+        zIndex: -1,
+      }}
+    />
   );
 }

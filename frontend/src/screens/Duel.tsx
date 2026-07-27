@@ -14,7 +14,7 @@ import { Avatar } from "../components/Avatar";
 import { NeonText } from "../components/NeonText";
 import { Button } from "../components/Button";
 import { GoldButton } from "../components/GoldButton";
-import { Arena, ARENA } from "../components/Arena";
+import { Arena, ArenaPlate, ARENA } from "../components/Arena";
 import { Screen, Card } from "../components/Layout";
 import type { GameApi } from "../net/socket";
 import { useT } from "../i18n/i18n";
@@ -268,7 +268,7 @@ export function Duel({ game, onBack, onProfile }: { game: GameApi; onBack: () =>
     const tint = clockColor(frac);
     return (
       <Screen top={header}>
-        <Arena src="/duel-bg.webp" podium={PODIUM_Y} at="46%" width="205%" />
+        <Arena src="/duel-bg.webp" podium={PODIUM_Y} at="46%" width="205%" plate={false} />
         <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", gap: 16 }}>
           <RoundDots total={total} idx={idx} />
 
@@ -652,18 +652,23 @@ function LetterStage({ letter, category, hint }: { letter: string; category: str
           boxShadow: `0 0 26px ${withAlpha(colors.violet, 0.35)}, inset 0 0 34px ${withAlpha(colors.violet, 0.12)}`,
         }}
       >
+        {/* De plaat hangt aan de KAART, niet aan het scherm: het podium hoort
+            onder de letter en dat is een verhouding van de kaart. Aan het scherm
+            opgehangen schoof hij zodra het toetsenbord opengaat. Hij is breder
+            dan de kaart en steekt er dus buiten, zoals bedoeld. */}
+        <ArenaPlate src="/duel-bg.webp" podium={PODIUM_Y} at="58%" width="215%" />
         {!!outline && (
           <svg
             aria-hidden
             width={w}
             height={h}
             viewBox={`0 0 ${w} ${h}`}
-            style={{ position: "absolute", left: 0, top: 0, overflow: "visible", pointerEvents: "none" }}
+            style={{ position: "absolute", left: 0, top: 0, overflow: "visible", pointerEvents: "none", zIndex: 1 }}
           >
             <path d={outline} fill="none" stroke={FRAME_LINE} strokeWidth={1.5} />
           </svg>
         )}
-        <div style={{ position: "relative", display: "grid", placeItems: "center", width: "100%" }}>
+        <div style={{ position: "relative", zIndex: 1, display: "grid", placeItems: "center", width: "100%" }}>
           {/* Zelfde behandeling als de letter op de rol: een verloop over het
               glyph met de gloed als vervaagde kopie erachter, in het goud dat de
               letter al had. */}
@@ -676,7 +681,7 @@ function LetterStage({ letter, category, hint }: { letter: string; category: str
             {letter}
           </NeonText>
         </div>
-        <span style={{ position: "relative", marginTop: 46, fontFamily: font.ui, fontSize: 13, color: withAlpha(colors.violet, 0.95), textAlign: "center", filter: "brightness(1.5)" }}>
+        <span style={{ position: "relative", zIndex: 1, marginTop: 46, fontFamily: font.ui, fontSize: 13, color: withAlpha(colors.violet, 0.95), textAlign: "center", filter: "brightness(1.5)" }}>
           {hint}
         </span>
       </div>
@@ -857,8 +862,13 @@ function Bolt({ accent, size = 22 }: { accent: string; size?: number }) {
   };
   return (
     <span style={{ position: "relative", width: size, height: size, display: "block", transition: "opacity .2s ease" }}>
-      {/* Gloed: vervaagde kopie, met ruimte om zich heen zodat je zijn doos niet ziet. */}
-      <span aria-hidden style={{ ...shape, inset: -9, background: r[2], filter: "blur(6px)", opacity: 0.6 }} />
+      {/* Gloed: dezelfde vorm, op DEZELFDE MAAT, in een ruimere doos zodat de
+          vervaging niet wordt afgeknipt. Het masker eerst groter maken werkt
+          niet: `mask-size: contain` schaalt de vorm mee met zijn doos, en dan
+          steken de punten van een veel grotere bliksem naast de echte uit. */}
+      <span aria-hidden style={{ position: "absolute", inset: -10, display: "grid", placeItems: "center", filter: "blur(5px)", opacity: 0.55, pointerEvents: "none" }}>
+        <span style={{ ...shape, position: "relative", width: size, height: size, background: r[2] }} />
+      </span>
       {/* Stroke: fel bovenaan, donker onderaan, want het licht komt van linksboven. */}
       <span aria-hidden style={{ ...shape, inset: 0, background: `linear-gradient(170deg, ${r[3]} 0%, ${r[2]} 42%, ${r[0]} 100%)` }} />
       {/* Het vlak zelf, een tikje kleiner zodat de stroke eronderuit steekt. */}

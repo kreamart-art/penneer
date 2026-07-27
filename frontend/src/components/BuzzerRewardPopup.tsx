@@ -13,6 +13,7 @@ import { EMOTE_PACKS, EMOTE_SRC } from "./emotes";
 import type { GameApi, PendingReward } from "../net/socket";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
+import { neonSkin } from "../theme/neon";
 import { colors, font, withAlpha } from "../theme/tokens";
 
 /** The shared shell: veil, card and the staggered entrance. */
@@ -43,7 +44,7 @@ function RewardCard({
       }}
     >
       <div
-        className="reward-card"
+        className="reward-card neon-ring"
         style={{
           position: "relative",
           width: "100%",
@@ -54,9 +55,19 @@ function RewardCard({
           gap: 12,
           padding: "26px 22px 20px",
           borderRadius: 24,
-          background: "linear-gradient(180deg, #2a1c48, #160D30)",
-          border: `1px solid ${withAlpha(colors.gold, 0.5)}`,
-          boxShadow: `0 24px 80px rgba(0,0,0,.65), 0 0 60px ${withAlpha(colors.gold, 0.2)}`,
+          // De kaart van een beloning is gelaagd, niet vlak: een gouden ring met
+          // oplichtende hoeken eromheen, licht dat van bovenaf in het vlak valt,
+          // en een randverdonkering zodat het vlak bol leest. Dit is het moment
+          // waarop iets waardevol moet voelen, dus hier mag de gloed wel.
+          backgroundImage: [
+            "linear-gradient(180deg, rgba(255,243,181,.14) 0%, transparent 16%)",
+            `radial-gradient(90% 55% at 50% 0%, ${withAlpha(colors.gold, 0.16)}, transparent 66%)`,
+            "radial-gradient(130% 105% at 50% 46%, transparent 54%, rgba(6,3,18,.5) 100%)",
+            "linear-gradient(180deg, #33235A 0%, #241748 46%, #140C2C 100%)",
+          ].join(", "),
+          ...neonSkin(colors.gold),
+          ["--ng-w" as string]: "1.5px",
+          boxShadow: `0 24px 80px rgba(0,0,0,.65), 0 0 60px ${withAlpha(colors.gold, 0.2)}, inset 0 1.5px 0 rgba(255,243,181,.35), inset 0 -14px 22px rgba(6,3,18,.45)`,
           textAlign: "center",
         }}
       >
