@@ -99,14 +99,17 @@ export function EmblemLightFront() {
         maskRepeat: "no-repeat",
       }}
     >
-      {/* `reik` is hier hoger dan bij de achterste set, en dat is het hele punt:
-          het masker geeft de vorm, de verf de lengte. Met de reik van achter
-          was de straal op de hoogte van het woordmerk al bijna op, en dan zie
-          je er niets van. Nu draagt hij tot voorbij de letters. */}
+      {/* Dezelfde REIK als de achterste set, dus deze stralen zijn geen haar
+          langer dan ze waren. Wat omhoog gaat is `sterk`, en dat raakt alleen de
+          dekking: de stops blijven waar ze staan, de verf wordt alleen voller.
+          Zo zie je ze duidelijk over de letters lopen zonder dat er iets verder
+          het scherm in schiet. De derde waaier is er voor de frequentie: met
+          alleen de vijf brede stralen staat er lang niet altijd een over het
+          woordmerk. */}
       {[
-        { masker: SPIES, maat: 3.25, sterk: 0.75, reik: 0.95, sec: 260, terug: false, min: 0.8, adem: 7, wacht: 4 },
-        { masker: MIDDEL, maat: 3.25, sterk: 0.42, reik: 1.05, sec: 190, terug: true, min: 0.88, adem: 13, wacht: 2.5 },
-        { masker: UIT, maat: 3.25, sterk: 0.95, reik: 1.15, sec: 165, terug: true, min: 0.68, adem: 17, wacht: 1.2 },
+        { masker: SPIES, maat: 3.25, sterk: 0.9, reik: 0.5, sec: 260, terug: false, min: 0.8, adem: 7, wacht: 4 },
+        { masker: MIDDEL, maat: 3.25, sterk: 0.7, reik: 0.72, sec: 190, terug: true, min: 0.88, adem: 13, wacht: 2.5 },
+        { masker: UIT, maat: 3.25, sterk: 1.15, reik: 0.85, sec: 165, terug: true, min: 0.68, adem: 17, wacht: 1.2 },
       ].map((w, i) => (
         <div
           key={`voor${i}`}
