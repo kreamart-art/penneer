@@ -50,25 +50,6 @@ const FIJN = fan([[1.6, 7], [1, 5], [2.4, 9], [1.2, 6], [0.8, 4], [2, 8], [1.1, 
 export function EmblemLight() {
   return (
     <>
-      {/* 5. Magische rook. Drie verschoven wolken in plaats van een cirkel, want
-             nevel heeft geen rand. Het traagst van alles. */}
-      <div
-        aria-hidden
-        className="breath-glow"
-        style={{
-          ...laag,
-          width: "calc(var(--em) * 2.3)",
-          height: "calc(var(--em) * 2.3)",
-          borderRadius: "50%",
-          background: [
-            "radial-gradient(42% 42% at 36% 38%, rgba(78,40,150,.13), transparent 78%)",
-            "radial-gradient(38% 38% at 66% 60%, rgba(52,26,110,.12), transparent 80%)",
-            "radial-gradient(46% 46% at 52% 32%, rgba(96,48,168,.09), transparent 82%)",
-          ].join(", "),
-          animationDuration: "13s",
-        }}
-      />
-
       {/* 3. Koninklijk paars. De grootste laag, dooft uit in donker indigo. */}
       <div
         aria-hidden

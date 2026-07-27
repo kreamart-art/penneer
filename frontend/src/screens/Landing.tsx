@@ -34,14 +34,6 @@ const FRAMES = [
 // percentages van deze maat via --em, dus alles schaalt als één geheel.
 const EMBLEM_SIZE = "clamp(112px, calc(64vh - 315px), 215px)";
 
-// De lichtbundels aan de zijkant. Hoek, lengte en sterkte lopen uiteen, anders
-// leest het als een streepjespatroon in plaats van als licht.
-const SIDE_BEAMS = [
-  { top: "50%", hoek: 38, len: "62vw", dik: 18, op: 0.22 },
-  { top: "57%", hoek: 45, len: "46vw", dik: 11, op: 0.15 },
-  { top: "44%", hoek: 31, len: "38vw", dik: 24, op: 0.1 },
-];
-
 const inputStyle: React.CSSProperties = {
   width: "100%",
   boxSizing: "border-box",
@@ -335,7 +327,7 @@ export function Landing({
               style={{
                 // Negatief, zodat het woordmerk tegen het embleem aan kruipt en
                 // de twee als één merk lezen in plaats van als twee dingen.
-                margin: "-46px 0 0",
+                margin: "-74px 0 0",
                 // Cybergame (the studio face, already italic-shaped) is only
                 // this wordmark; vw-clamped so it never clips small phones.
                 // Cybergame is a very condensed face: it needs a much larger
@@ -982,30 +974,9 @@ function LandingFX() {
           position: "absolute",
           inset: 0,
           background:
-            "radial-gradient(circle 112% at 50% 26%, rgba(4,1,12,0) 0%, rgba(4,1,12,0) 26%, rgba(4,1,12,.03) 38%, rgba(4,1,12,.08) 48%, rgba(4,1,12,.16) 57%, rgba(4,1,12,.26) 66%, rgba(4,1,12,.38) 74%, rgba(4,1,12,.50) 82%, rgba(4,1,12,.62) 90%, rgba(4,1,12,.72) 100%)",
+            "radial-gradient(94% 54% at 50% 21%, rgba(4,1,12,0) 0%, rgba(4,1,12,0) 32%, rgba(4,1,12,.07) 46%, rgba(4,1,12,.19) 58%, rgba(4,1,12,.34) 69%, rgba(4,1,12,.50) 79%, rgba(4,1,12,.65) 88%, rgba(4,1,12,.78) 100%)",
         }}
       />
-      {/* De lichtbundels aan de zijkant, in de stijl van de strepen in de
-          achtergrond-art: een fel dun hart met een zachte mantel. Ze staan aan
-          BEIDE kanten op dezelfde hoogte en met dezelfde hoek, gespiegeld, zodat
-          het beeld in balans is. */}
-      {SIDE_BEAMS.map((b, i) =>
-        [-1, 1].map((kant) => (
-          <div
-            key={`beam${i}${kant}`}
-            style={{
-              position: "absolute",
-              [kant < 0 ? "left" : "right"]: "-14vw",
-              top: b.top,
-              width: b.len,
-              height: b.dik,
-              transform: `rotate(${kant * b.hoek}deg)`,
-              transformOrigin: kant < 0 ? "0 50%" : "100% 50%",
-              background: `radial-gradient(50% 34% at ${kant < 0 ? 40 : 60}% 50%, rgba(255,216,146,${b.op}) 0%, rgba(255,188,98,${b.op * 0.5}) 38%, rgba(198,122,150,${b.op * 0.2}) 62%, transparent 84%)`,
-            }}
-          />
-        )),
-      )}
       {[false, true].map((slow) => (
         <div key={String(slow)} className={slow ? "drift-b" : "drift-a"} style={{ position: "absolute", inset: "-30px" }}>
           {pick(slow).map((l) => (
