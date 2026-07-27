@@ -13,7 +13,7 @@ import type { GameApi } from "../net/socket";
 import { NeonLine } from "./NeonLine";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
-import { plateShadow, useTileSkin } from "../theme/tileSkin";
+import { useTileSkin } from "../theme/tileSkin";
 import { colors, font, withAlpha } from "../theme/tokens";
 
 export type NavKey = "shop" | "leaderboard" | "home" | "friends" | "profile";
@@ -108,9 +108,6 @@ export function BottomNav({
         }}
       >
         <div ref={plate} style={{ position: "relative", width: "100%", maxWidth: 460, margin: "0 auto", pointerEvents: "auto" }}>
-          {/* Dezelfde schaduw als onder de platen op de main page: een eigen
-              plaatje, geen CSS-effect. Zie `plateShadow`. */}
-          <img aria-hidden src="/tiles/navbar-shadow.webp" alt="" style={plateShadow} />
           <img
             src="/tiles/navbar.webp"
             alt=""

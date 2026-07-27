@@ -221,12 +221,12 @@ export function Landing({
           className="pressable"
           style={
             skin
-              ? { position: "relative", border: "none", background: "transparent", padding: 0, cursor: "pointer", width: 124, display: "block", lineHeight: 0 }
+              ? { position: "relative", border: "none", background: "transparent", padding: 0, cursor: "pointer", display: "block", lineHeight: 0 }
               : { display: "inline-flex", alignItems: "center", gap: 6, background: withAlpha(colors.gold, 0.12), border: `1px solid ${withAlpha(colors.gold, 0.4)}`, borderRadius: 999, cursor: "pointer", padding: "4px 12px 4px 5px" }
           }
         >
           {skin ? (
-            <CoinPlate coins={account?.coins ?? 0} />
+            <CoinPlate coins={account?.coins ?? 0} height={34} />
           ) : (
             <>
               <img src="/coin.webp" alt="" width={24} height={24} style={{ display: "block" }} />
@@ -396,7 +396,10 @@ export function Landing({
               ? {
                   position: "relative",
                   isolation: "isolate",
-                  padding: 15,
+                  // Iets breder dan de kolom en wat meer lucht boven en onder,
+                  // zodat de lijst niet strak om de tegels heen zit.
+                  marginInline: -4,
+                  padding: "26px 18px 30px",
                   background: "none",
                   backdropFilter: "none",
                   WebkitBackdropFilter: "none",

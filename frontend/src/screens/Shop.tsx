@@ -228,7 +228,7 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
           {account &&
             (skin ? (
               <span style={{ marginLeft: "auto" }}>
-                <CoinPlate coins={coins} width={116} />
+                <CoinPlate coins={coins} height={32} />
               </span>
             ) : (
               <span style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 12px 4px 8px", borderRadius: 999, background: withAlpha(colors.gold, 0.12), border: `1px solid ${withAlpha(colors.gold, 0.4)}` }}>
