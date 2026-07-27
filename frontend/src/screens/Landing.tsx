@@ -1,5 +1,5 @@
 // Landing — emblem, wordmark, tagline, name input, create / join, rules link.
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Bot, CalendarDays, Check, GraduationCap, Hash, HelpCircle, Play, Settings as SettingsIcon, Sparkles, Swords, Target, X } from "lucide-react";
 import { Logo } from "../components/Logo";
 import { Button } from "../components/Button";
@@ -116,7 +116,7 @@ export function Landing({
   const straf = useRef(0);
   const scherm = useRef("");
   const [kaartMax, setKaartMax] = useState<number | undefined>(undefined);
-  useEffect(() => {
+  useLayoutEffect(() => {
     const meet = () => {
       const vak = kaartVak.current;
       if (!vak) return;
@@ -148,9 +148,16 @@ export function Landing({
       // scherm, anders krijg je een slinger: krimpen tot het past, dan weer
       // groeien omdat het past, en weer krimpen.
       const teveel = Math.max(0, document.documentElement.scrollHeight - document.documentElement.clientHeight);
-      if (teveel > 0) straf.current += teveel;
-      // Tien pixels lucht, zodat de sectie tegen de balk aan komt en er niet op.
-      const ruimte = onder - r.top - straf.current - 10;
+      // Pas meetellen als de pagina KLAAR is. Tijdens het laden schuift er van
+      // alles: een plaatje dat binnenkomt duwt de boel even te ver door, en die
+      // ene tel zou dan voorgoed van de breedte af gaan. En met een dak erop,
+      // want een correctie van meer dan zestig pixels betekent dat er iets
+      // anders aan de hand is dan een balkje dat niet meegeteld werd.
+      if (teveel > 0 && document.readyState === "complete") {
+        straf.current = Math.min(60, straf.current + teveel);
+      }
+      // Zes pixels lucht, zodat de sectie tegen de balk aan komt en er niet op.
+      const ruimte = onder - r.top - straf.current - 6;
       if (ruimte <= 0) return;
       // Hoe breed mag de kaart zijn om precies in `ruimte` te passen?
       //
