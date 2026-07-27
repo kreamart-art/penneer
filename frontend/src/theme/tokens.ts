@@ -2,9 +2,9 @@
 // Dark, glowing arcade / game-show look. Drive every component from these.
 
 export const colors = {
-  bg0: "#0E0922",
-  bg1: "#1A1140",
-  glow: "#41216F",
+  bg0: "#09002C",   // donkerste achtergrond (Duel-palet)
+  bg1: "#170150",   // donker paars
+  glow: "#360287",  // midden paars
   panel: "rgba(255,255,255,.055)",
   panelBorder: "rgba(255,255,255,.12)",
   ink: "#F4EFFF",

@@ -45,7 +45,11 @@ body,
   margin: 0;
 }
 
-/* THE background. The main fade MUST be linear, never radial: a radial's
+/* THE background. De kleuren komen uit het Duel-palet (donkerste achtergrond
+   #09002C, donker paars #170150, midden paars #360287), zodat het hele spel in
+   dezelfde familie zit als het arena-decor van Duel en de plaat daar naadloos
+   in overloopt.
+   The main fade MUST be linear, never radial: a radial's
    iso-colour lines are ellipses, so the end colour is reached far earlier at
    the sides than in the centre. Measured on the last radial version, the bottom
    8% of the screen was already flat at x=0% and x=100% while only the exact
@@ -56,7 +60,7 @@ body,
    own stop heights, so the middle of the screen is pixel-identical to what it
    always was; the sides just lost the ellipse's extra darkening. */
 html {
-  background-color: #0e0922;
+  background-color: #09002c;
 }
 
 /* The backdrop is anchored to the VIEWPORT, exactly like the bottom bar, and
@@ -74,13 +78,13 @@ body::before {
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background-color: #0e0922;
+  background-color: #09002c;
   background-image:
-    radial-gradient(60% 38% at -8% 12%, rgba(122, 103, 255, 0.1), transparent 70%),
+    radial-gradient(60% 38% at -8% 12%, rgba(117, 50, 197, 0.22), transparent 70%),
     radial-gradient(55% 34% at 108% 4%, rgba(255, 86, 74, 0.05), transparent 70%),
     radial-gradient(50% 36% at 106% -4%, rgba(255, 194, 61, 0.05), transparent 70%),
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
-    linear-gradient(180deg, #3c1f69 0%, #1a1140 42.8%, #140d2f 59.7%, #100b27 74.6%, #0f0a24 87.3%, #0e0922 100%);
+    linear-gradient(180deg, #2b0470 0%, #170150 42.8%, #10013b 59.7%, #0d0134 74.6%, #0b0130 87.3%, #09002c 100%);
   background-repeat: no-repeat, no-repeat, no-repeat, repeat, no-repeat;
   background-position: top, top, top, top left, top;
   background-size: 100% 100%, 100% 100%, 100% 100%, 160px 160px, 100% 100%;

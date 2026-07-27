@@ -1,4 +1,6 @@
-// De gouden actieknop uit de studio-art, precies zoals hij in het bestand staat.
+// De gouden knopplaat uit de studio-art, gedeeld door ELKE gouden knop in het
+// spel (de hero-tegel "Speel met vrienden" op de main page uitgezonderd: die is
+// geen knop maar een tegel en houdt zijn eigen vlakke goud).
 //
 // De bron-PNG heeft ZELF al een alfakanaal; de asset is dus niets meer dan die
 // PNG bijgesneden op zijn zichtbare pixels. (Eerder haalde ik er met een
@@ -7,32 +9,73 @@
 // er niet hoorde te zijn. Open zo'n bestand altijd als RGBA en kijk naar het
 // alfakanaal voordat je iets weg gaat knippen.)
 //
-// De plaat wordt NIET uitgerekt: de knop neemt de verhouding van de plaat over
-// en de afbeelding ligt er onvervormd overheen. De getallen hieronder zijn uit
-// de asset gemeten; vervang je de art, meet dan opnieuw.
+// De plaat wordt NIET uitgerekt: elke gouden knop neemt de verhouding van de
+// plaat over, dus de hoogte volgt uit de breedte. Een minimumbreedte zorgt dat
+// een korte knop ("Terug") daardoor niet te laag wordt om te lezen.
+//
+// De getallen hieronder zijn uit de asset gemeten: welk deel ervan de scherpe
+// plaat is, en dus hoeveel gloed er omheen zit. Vervang je de art, meet opnieuw.
 import { useState } from "react";
 import { colors, font } from "../theme/tokens";
 
 const ASSET_W = 760;
 const ASSET_H = 196;
-const PLATE_W = 0.9513;   // deel van de assetbreedte dat de plaat is
-const PLATE_H = 0.8418;   // idem in de hoogte
-
-const PLATE_RATIO = (ASSET_W * PLATE_W) / (ASSET_H * PLATE_H); // breedte/hoogte van de plaat
-const OVER_X = (1 / PLATE_W - 1) / 2;                          // gloedmarge links en rechts
+// Het LICHTE BOVENVLAK van de plaat, gemeten in de asset: x 51-713, y 12-161.
+// Dat vlak is waar de tekst op hoort te staan, dus DAT wordt het knopvak. De
+// donkere 3D-lip onderaan en de gloed eromheen steken er buiten uit.
+//
+// Zo hoeft de tekst nergens voor gecorrigeerd te worden: hij staat gewoon in
+// het midden van de knop, en dat midden IS het midden van het vlak. (Eerder
+// schoof ik de tekst met een procentuele margin-top omhoog, maar procentuele
+// marges rekenen tegen de BREEDTE van het element, niet de hoogte, dus die
+// correctie schaalde volkomen verkeerd mee.)
+const FACE_X = 51 / ASSET_W;
+const FACE_Y = 12 / ASSET_H;
+const FACE_W = 663 / ASSET_W;
+const FACE_H = 150 / ASSET_H;
 
 const LETTER_SPACING = 2.2;
-// Het lichte bovenvlak van de plaat loopt in de asset van y 12 tot 161 van de
-// 196, dus het midden daarvan ligt 11.5px BOVEN het midden van het plaatje: de
-// donkere 3D-rand onderaan telt wel mee in de hoogte maar hoort niet bij het
-// vlak waar de tekst op staat.
-const FACE_OFFSET = -11.5 / ASSET_H;
 
-// Terugval als de art niet laadt: dezelfde vorm in CSS, zodat er nooit een
-// naamloze knop overblijft.
-const CHAMFER =
-  "polygon(16px 0, calc(100% - 16px) 0, 100% 16px, 100% calc(100% - 16px), calc(100% - 16px) 100%, 16px 100%, 0 calc(100% - 16px), 0 16px)";
+/** Breedte/hoogte van het vlak: hier volgt de hoogte van elke gouden knop uit. */
+export const GOLD_RATIO = (ASSET_W * FACE_W) / (ASSET_H * FACE_H);
+/** Onder deze hoogte is een knop niet meer te lezen, dus dwingt hij zijn eigen
+ *  breedte af in plaats van platter te worden. */
+export const GOLD_MIN_WIDTH = Math.round(44 * GOLD_RATIO);
 
+/** Terugval als de art niet laadt: dezelfde vorm in CSS, zodat er nooit een
+ *  naamloze knop overblijft. */
+export const GOLD_FALLBACK = {
+  background: `linear-gradient(180deg, #FFE08C 0%, ${colors.goldHi} 34%, ${colors.gold} 66%, #E29A1F 100%)`,
+  clipPath:
+    "polygon(16px 0, calc(100% - 16px) 0, 100% 16px, 100% calc(100% - 16px), calc(100% - 16px) 100%, 16px 100%, 0 calc(100% - 16px), 0 16px)",
+};
+
+/** De plaat zelf, als laag over de knop heen. `onMissing` gaat af als het
+ *  bestand er niet is, zodat de knop op de CSS-vorm kan terugvallen. */
+export function GoldPlate({ onMissing }: { onMissing: () => void }) {
+  return (
+    <img
+      src="/btn-gold.webp"
+      alt=""
+      aria-hidden
+      onError={onMissing}
+      style={{
+        position: "absolute",
+        left: `${(-FACE_X / FACE_W) * 100}%`,
+        width: `${(1 / FACE_W) * 100}%`,
+        top: `${(-FACE_Y / FACE_H) * 100}%`,
+        height: `${(1 / FACE_H) * 100}%`,
+        // De reset zet `max-width: 100%` op afbeeldingen; die knipte de plaat
+        // terug naar knopbreedte, waardoor hij te klein en uit het midden stond.
+        maxWidth: "none",
+        pointerEvents: "none",
+      }}
+    />
+  );
+}
+
+/** De hero-variant: volle breedte, hoofdletters, voor de hoofdactie van een
+ *  scherm (VASTLEGGEN in Duel). Gewone gouden knoppen gaan via `Button`. */
 export function GoldButton({
   label,
   onClick,
@@ -51,15 +94,11 @@ export function GoldButton({
       style={{
         position: "relative",
         width: "100%",
-        // De knop volgt de verhouding van de plaat, dus de art hoeft nergens
-        // voor te rekken.
-        aspectRatio: art ? `${PLATE_RATIO}` : undefined,
+        aspectRatio: art ? `${GOLD_RATIO}` : undefined,
         minHeight: art ? undefined : 54,
         border: "none",
-        background: art
-          ? "transparent"
-          : `linear-gradient(180deg, #FFE08C 0%, ${colors.goldHi} 34%, ${colors.gold} 66%, #E29A1F 100%)`,
-        clipPath: art ? undefined : CHAMFER,
+        background: art ? "transparent" : GOLD_FALLBACK.background,
+        clipPath: art ? undefined : GOLD_FALLBACK.clipPath,
         cursor: disabled ? "default" : "pointer",
         opacity: disabled ? 0.5 : 1,
         display: "grid",
@@ -67,27 +106,7 @@ export function GoldButton({
         padding: 0,
       }}
     >
-      {art && (
-        <img
-          src="/btn-gold.webp"
-          alt=""
-          aria-hidden
-          onError={() => setArt(false)}
-          style={{
-            position: "absolute",
-            left: `${-OVER_X * 100}%`,
-            width: `${(1 + OVER_X * 2) * 100}%`,
-            height: "auto",          // nooit uitrekken: de hoogte volgt de breedte
-            top: "50%",
-            transform: "translateY(-50%)",
-            // De reset zet `max-width: 100%` op afbeeldingen; die knipte de
-            // plaat terug naar knopbreedte, waardoor hij te klein en uit het
-            // midden stond.
-            maxWidth: "none",
-            pointerEvents: "none",
-          }}
-        />
-      )}
+      {art && <GoldPlate onMissing={() => setArt(false)} />}
       <span
         style={{
           position: "relative",
@@ -98,14 +117,9 @@ export function GoldButton({
           textTransform: "uppercase",
           color: "#4A2E04",
           textShadow: "0 1px 0 rgba(255,240,190,.45)",
-          // Twee kleine correcties, allebei nodig om het woord ECHT in het
-          // midden te krijgen:
-          // - horizontaal: letter-spacing zet ook ruimte NA de laatste letter,
-          //   dus schuift de tekst optisch een halve spatie naar links.
-          // - verticaal: de plaat heeft onderaan een donkere 3D-rand, dus het
-          //   lichte bovenvlak ligt hoger dan het midden van het plaatje.
+          // letter-spacing zet ook ruimte NA de laatste letter, dus zonder dit
+          // staat het woord optisch een halve spatie te ver naar links.
           marginLeft: LETTER_SPACING,
-          marginTop: `${FACE_OFFSET * 100}%`,
         }}
       >
         {label}

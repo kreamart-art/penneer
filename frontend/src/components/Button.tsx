@@ -1,6 +1,12 @@
 // Chunky, pressable buttons with a solid bottom shadow for depth (§8).
 // Variants: primary (violet), gold, danger (red), ghost (outline).
+//
+// De GOUDEN variant is geen CSS-verloop meer maar de studio-plaat (zie
+// GoldButton.tsx), zodat elke gouden knop in het spel dezelfde is. De hero-tegel
+// "Speel met vrienden" op de main page hoort daar bewust niet bij: dat is een
+// tegel, geen knop, en die houdt zijn eigen vlakke goud.
 import React, { useState } from "react";
+import { GoldPlate, GOLD_FALLBACK, GOLD_MIN_WIDTH, GOLD_RATIO } from "./GoldButton";
 import { colors, font, radius } from "../theme/tokens";
 
 type Variant = "primary" | "gold" | "danger" | "ghost";
@@ -22,7 +28,7 @@ const palette: Record<
   gold: {
     bg: `linear-gradient(180deg, ${colors.goldHi}, ${colors.gold})`,
     shadow: "#b9851f",
-    text: "#2A1B05",
+    text: "#4A2E04",
   },
   danger: {
     bg: `linear-gradient(180deg, ${colors.redHi}, ${colors.redDeep})`,
@@ -39,8 +45,12 @@ const palette: Record<
 
 export function Button({ variant = "primary", full, style, children, disabled, ...rest }: Props) {
   const [down, setDown] = useState(false);
+  // De plaat kan ontbreken (asset weg / offline); dan valt goud terug op de
+  // CSS-vorm en blijft de knop gewoon werken.
+  const [plate, setPlate] = useState(true);
   const p = palette[variant];
-  const depth = variant === "ghost" ? 0 : 5;
+  const gold = variant === "gold" && plate;
+  const depth = variant === "ghost" || gold ? 0 : 5;
 
   return (
     <button
@@ -50,27 +60,53 @@ export function Button({ variant = "primary", full, style, children, disabled, .
       onPointerUp={() => setDown(false)}
       onPointerLeave={() => setDown(false)}
       style={{
+        position: "relative",
         fontFamily: font.ui,
         fontWeight: 700,
         fontSize: 16,
         letterSpacing: 0.2,
         color: p.text,
-        background: p.bg,
+        // De plaat brengt zijn eigen goud mee; een verloop eronder zou er langs
+        // de schuine hoeken uitsteken.
+        background: gold ? "transparent" : p.bg,
+        clipPath: variant === "gold" && !plate ? GOLD_FALLBACK.clipPath : undefined,
         border: p.border ? `1.5px solid ${p.border}` : "none",
-        borderRadius: radius.button,
-        padding: "13px 20px",
+        borderRadius: gold ? 0 : radius.button,
+        padding: gold ? "0 26px" : "13px 20px",
+        display: gold ? "grid" : undefined,
+        placeItems: gold ? "center" : undefined,
+        textAlign: "center",
         width: full ? "100%" : undefined,
+        // Niet uitrekken: de hoogte volgt uit de breedte, in de verhouding van
+        // de plaat. De minimumbreedte houdt korte knoppen leesbaar, want anders
+        // zou "Terug" een streepje van 12 pixels hoog worden.
+        aspectRatio: gold ? `${GOLD_RATIO}` : undefined,
+        minWidth: gold ? GOLD_MIN_WIDTH : undefined,
         cursor: disabled ? "not-allowed" : "pointer",
         opacity: disabled ? 0.5 : 1,
         boxShadow: down || depth === 0 ? `0 0 0 ${p.shadow}` : `0 ${depth}px 0 ${p.shadow}`,
-        transform: down && depth ? "translateY(3px)" : "translateY(0)",
+        transform: down ? "translateY(3px)" : "translateY(0)",
         transition: "transform .06s ease, box-shadow .06s ease",
         userSelect: "none",
         WebkitUserSelect: "none",
         ...style,
       }}
     >
-      {children}
+      {variant === "gold" && plate && <GoldPlate onMissing={() => setPlate(false)} />}
+      <span
+        style={{
+          position: "relative",
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 8,
+          // Geen correctie nodig: het knopvak IS het lichte vlak van de plaat,
+          // dus het midden van de knop is het midden van het vlak.
+          textShadow: gold ? "0 1px 0 rgba(255,240,190,.4)" : undefined,
+        }}
+      >
+        {children}
+      </span>
     </button>
   );
 }
