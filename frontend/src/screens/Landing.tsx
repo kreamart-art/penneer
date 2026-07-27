@@ -988,7 +988,7 @@ function LandingFX() {
           position: "absolute",
           inset: 0,
           background:
-            "radial-gradient(98% 37.5% at 50% 21%, rgba(3,1,10,0) 0%, rgba(3,1,10,0) 36%, rgba(3,1,10,.24) 44%, rgba(3,1,10,.52) 52%, rgba(3,1,10,.74) 60%, rgba(3,1,10,.88) 68%, rgba(3,1,10,.96) 77%, rgba(3,1,10,1) 88%, rgba(3,1,10,1) 100%)",
+            "radial-gradient(98% 39.3% at 50% 21%, rgba(3,1,10,0) 0%, rgba(3,1,10,0) 30%, rgba(3,1,10,.35) 38%, rgba(3,1,10,.65) 46%, rgba(3,1,10,.85) 55%, rgba(3,1,10,.95) 65%, rgba(3,1,10,1) 78%, rgba(3,1,10,1) 100%)",
         }}
       />
       {[false, true].map((slow) => (

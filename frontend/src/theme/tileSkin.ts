@@ -1,9 +1,10 @@
 // De platen-skin voor de modustegels op de main page.
 //
-// Dit is een PROEF. Hij staat bewust alleen aan als de admin hem aanvinkt in
-// Instellingen, en hij wordt lokaal bewaard, niet op het account: er is nog
-// niets besloten, dus er hoeft ook niets naar de server en niets te migreren.
-// Wordt hij de nieuwe standaard, dan verhuist deze vlag naar het account.
+// De skin staat nu voor IEDEREEN aan; hij is de nieuwe look. De schakelaar
+// blijft staan, want die is straks weer nodig als er een volgende skin komt.
+//
+// Daarom slaan we alleen het UIT-zetten op: geen sleutel betekent aan. Zo hoeft
+// er niets gemigreerd te worden en krijgt elke bestaande speler hem meteen.
 import { useEffect, useState, type CSSProperties } from "react";
 
 const KEY = "penneer.tileSkin";
@@ -11,16 +12,16 @@ const EVENT = "penneer:tileskin";
 
 export function tileSkinOn(): boolean {
   try {
-    return localStorage.getItem(KEY) === "1";
+    return localStorage.getItem(KEY) !== "0";
   } catch {
-    return false;
+    return true;
   }
 }
 
 export function setTileSkin(on: boolean): void {
   try {
-    if (on) localStorage.setItem(KEY, "1");
-    else localStorage.removeItem(KEY);
+    if (on) localStorage.removeItem(KEY);
+    else localStorage.setItem(KEY, "0");
   } catch {
     /* opslag vol of geblokkeerd */
   }
