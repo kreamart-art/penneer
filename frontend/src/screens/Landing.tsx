@@ -1,5 +1,5 @@
 // Landing — emblem, wordmark, tagline, name input, create / join, rules link.
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Bot, CalendarDays, Check, GraduationCap, Hash, HelpCircle, Play, Settings as SettingsIcon, Sparkles, Swords, Target, X } from "lucide-react";
 import { Logo } from "../components/Logo";
 import { Button } from "../components/Button";
@@ -18,15 +18,16 @@ import { TILE_ART, plateShadow, shadowSrc, useTileSkin } from "../theme/tileSkin
 import { CoinPlate } from "../components/CoinPlate";
 import { colors, font, radius, withAlpha } from "../theme/tokens";
 
-// Een stuk van de lijst-art. Over de volle breedte, en de hoogte volgt uit de
-// verhouding van het plaatje, zodat er niets breder wordt getrokken.
-const framePart: React.CSSProperties = {
-  position: "absolute",
-  left: 0,
-  width: "100%",
-  zIndex: -1,
-  pointerEvents: "none",
-};
+// De lijst-art van de skin, in de drie maten uit `section main page.svg`:
+// dezelfde tekening, op drie hoogtes gezet. Er wordt niets geknipt, alleen
+// geschaald. We nemen de maat waarvan de verhouding het dichtst bij de kaart
+// ligt, zodat er hooguit een paar procent na te rekken valt. Komt er later meer
+// op de main page, dan schuift hij vanzelf naar de volgende maat op.
+const FRAMES = [
+  { src: "/tiles/frame-1.webp", ratio: 1187 / 1270 },
+  { src: "/tiles/frame-2.webp", ratio: 1200 / 1464 },
+  { src: "/tiles/frame-3.webp", ratio: 1200 / 1573 },
+];
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
@@ -59,6 +60,24 @@ export function Landing({
 }) {
   const { t } = useT();
   const skin = useTileSkin();
+  // De lijst meet zichzelf, en omdat hij de kaart precies vult is dat meteen de
+  // maat van de kaart. Daar kiezen we de passende maat art bij.
+  const card = useRef<HTMLImageElement | null>(null);
+  const [frame, setFrame] = useState(FRAMES[0].src);
+  useEffect(() => {
+    const el = card.current;
+    if (!skin || !el) return;
+    const ro = new ResizeObserver(() => {
+      const r = el.getBoundingClientRect();
+      if (!r.height) return;
+      const want = r.width / r.height;
+      let best = FRAMES[0];
+      for (const f of FRAMES) if (Math.abs(f.ratio - want) < Math.abs(best.ratio - want)) best = f;
+      setFrame(best.src);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [skin]);
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [mode, setMode] = useState<"none" | "join">("none");
@@ -370,24 +389,15 @@ export function Landing({
             flexDirection: "column",
             gap: 10,
             animationDelay: "0.1s",
-            // Met de skin is de lijst art, in drie stukken: kop, staart en een
-            // dun strookje ertussen. Kop en staart staan op ware verhouding
-            // (`width: 100%` en de hoogte volgt), dus de hoeksieraden en de
-            // randen worden NOOIT breder getrokken. Alleen het strookje rekt, en
-            // dat zijn twee verticale lijnen, die kun je onzichtbaar uitrekken.
-            //
-            // Het VELD zit niet in de art maar hieronder, als één verloop. Snijd
-            // je een verloop in stukken, dan krijgt elk stuk een andere
-            // rekfactor: de kleuren sluiten op de snijlijn nog precies aan, maar
-            // de HELLING springt, en dat leest als een rechthoek in het vlak.
+            // Met de skin is de kaart de lijst-art: één plaatje, in zijn geheel,
+            // alleen geschaald. Niets geknipt, dus ook niets dat op een naad kan
+            // gaan lijken.
             ...(skin
               ? {
                   position: "relative",
                   isolation: "isolate",
                   padding: 15,
-                  // Het verloop uit de art, in één stuk over de hele kaart.
-                  background:
-                    "radial-gradient(125% 85% at 50% 44%, #311C66 0%, #24124F 52%, #1B0E44 100%)",
+                  background: "none",
                   backdropFilter: "none",
                   WebkitBackdropFilter: "none",
                   // Recht van onderen, zonder zijwaartse verschuiving.
@@ -405,16 +415,16 @@ export function Landing({
                 }),
           }}
         >
-          {/* De lijst. Het strookje ligt over de volle hoogte en tekent de twee
-              zijranden; kop en staart leggen daar de hoeksieraden overheen, dus
-              van dat overlappen zie je niets. `zIndex: -1` houdt ze boven de
+          {/* De lijst, in zijn geheel. `zIndex: -1` houdt hem boven de
               achtergrond van de kaart maar onder de inhoud. */}
           {skin && (
-            <>
-              <img aria-hidden alt="" src="/tiles/frame-mid.webp" style={{ ...framePart, top: 0, height: "100%" }} />
-              <img aria-hidden alt="" src="/tiles/frame-top.webp" style={{ ...framePart, top: 0 }} />
-              <img aria-hidden alt="" src="/tiles/frame-bot.webp" style={{ ...framePart, bottom: 0 }} />
-            </>
+            <img
+              ref={card}
+              aria-hidden
+              alt=""
+              src={frame}
+              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", zIndex: -1, pointerEvents: "none" }}
+            />
           )}
           {account ? (
             <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13.5, color: colors.sub, textAlign: "center" }}>
