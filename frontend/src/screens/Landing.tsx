@@ -17,7 +17,7 @@ import { neonSkin } from "../theme/neon";
 import { TILE_ART, plateShadow, shadowSrc, useTileSkin } from "../theme/tileSkin";
 import { CoinPlate } from "../components/CoinPlate";
 import { HexPlate } from "../components/HexPlate";
-import { EmblemLight } from "../components/EmblemLight";
+import { EmblemLight, EmblemLightFront } from "../components/EmblemLight";
 import { colors, font, radius, withAlpha } from "../theme/tokens";
 
 // De lijst-art van de skin, in de drie maten uit `section main page.svg`:
@@ -335,6 +335,26 @@ export function Landing({
               <div style={{ position: "relative", isolation: "isolate", animation: "float-soft 4s ease-in-out infinite" }}>
                 <EmblemLight />
                 <Logo glow={false} size={EMBLEM_SIZE} />
+              </div>
+              {/* De voorste stralen. Die kunnen NIET in de zwevende doos hierboven
+                  staan: die is een eigen stapelcontext (`isolation: isolate`), dus
+                  alles erin blijft eronder gevangen en zou nooit over het
+                  woordmerk komen. Als eigen laag met een z-index erbovenop wel:
+                  de woorden zijn positioned met z-index auto, dus die verliezen
+                  hiervan wat er ook in de HTML-volgorde staat.
+                  Zelfde animatie en zelfde duur als de munt, en ze beginnen op
+                  hetzelfde moment, dus ze deinen samen. */}
+              <div
+                aria-hidden
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  zIndex: 5,
+                  pointerEvents: "none",
+                  animation: "float-soft 4s ease-in-out infinite",
+                }}
+              >
+                <EmblemLightFront />
               </div>
             </div>
             <h1

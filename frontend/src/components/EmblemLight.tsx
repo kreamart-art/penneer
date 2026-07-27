@@ -75,6 +75,67 @@ function highlight(sterk: number, reik: number): string {
 const HOLE =
   "radial-gradient(circle closest-side at 50% 50%, transparent 0%, transparent 13.8%, #000 15%, #000 100%)";
 
+/** De waaiers die VOOR de munt langs gaan.
+ *
+ *  Het licht zit niet allemaal achter het logo: een deel trekt eroverheen, en
+ *  loopt door tot over het woordmerk. Daarvoor staat de munt tussen twee sets
+ *  stralen in, en dit is de voorste set.
+ *
+ *  Alleen de twee ijle waaiers, want de brede zou de letters onder een oranje
+ *  waas leggen. Ze dragen hetzelfde masker met het gat, zodat de pen zelf vrij
+ *  blijft, en gaan door dezelfde adem- en draaicyclus als hun tegenhanger
+ *  erachter: het is hetzelfde licht, alleen aan de andere kant van de munt. */
+export function EmblemLightFront() {
+  return (
+    <div
+      aria-hidden
+      style={{
+        ...laag,
+        width: "calc(var(--em) * 3.4)",
+        height: "calc(var(--em) * 3.4)",
+        opacity: 0.72,
+        WebkitMaskImage: HOLE,
+        maskImage: HOLE,
+        WebkitMaskRepeat: "no-repeat",
+        maskRepeat: "no-repeat",
+      }}
+    >
+      {[
+        { masker: SPIES, maat: 3.25, sterk: 0.4, reik: 0.5, sec: 260, terug: false, min: 0.8, adem: 7, wacht: 4 },
+        { masker: UIT, maat: 3.25, sterk: 0.55, reik: 0.85, sec: 165, terug: true, min: 0.68, adem: 17, wacht: 1.2 },
+      ].map((w, i) => (
+        <div
+          key={`voor${i}`}
+          aria-hidden
+          className="ray-breathe"
+          style={{
+            ...laag,
+            width: `calc(var(--em) * ${w.maat})`,
+            height: `calc(var(--em) * ${w.maat})`,
+            ["--ray-min" as string]: w.min,
+            animationDuration: `${w.adem}s`,
+            animationDelay: `${w.wacht}s`,
+          }}
+        >
+          <div
+            className="hero-rays"
+            style={{
+              width: "100%",
+              height: "100%",
+              borderRadius: "50%",
+              background: straal(w.sterk, w.reik),
+              WebkitMaskImage: w.masker,
+              maskImage: w.masker,
+              animationDuration: `${w.sec}s`,
+              animationDirection: w.terug ? "reverse" : undefined,
+            }}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function EmblemLight() {
   return (
     // Al het licht in één laag met een GAT erin, precies zo groot als de
