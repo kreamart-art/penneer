@@ -19,33 +19,15 @@ const laag: CSSProperties = {
   pointerEvents: "none",
 };
 
-/** Een waaier stralen met ONGELIJKE dikte. Een `repeating-conic-gradient` geeft
- *  overal dezelfde breedte en dat leest als een zonnetje; hier heeft elke straal
- *  zijn eigen breedte en zachte flanken, dus ze overlappen als licht. */
-function fan(steps: number[][], soft = 0.5): string {
-  const total = steps.reduce((s, [w, g]) => s + w + g, 0);
-  const k = 360 / total;
-  const parts: string[] = [];
-  let at = 0;
-  for (const [w, g] of steps) {
-    const a = at * k;
-    const b = (at + w) * k;
-    const mid = (a + b) / 2;
-    const core = (b - a) * soft * 0.5;
-    parts.push(
-      `transparent ${a.toFixed(2)}deg`,
-      `#000 ${(mid - core).toFixed(2)}deg`,
-      `#000 ${(mid + core).toFixed(2)}deg`,
-      `transparent ${b.toFixed(2)}deg`,
-    );
-    at += w + g;
-  }
-  return `conic-gradient(${parts.join(", ")})`;
-}
-
-// Brede bundels en fijne spiesen, twee waaiers die tegen elkaar in draaien.
-const BREED = fan([[7, 19], [3, 11], [11, 24], [5, 14], [2.5, 9], [9, 21], [4, 12], [6.5, 17], [3, 15], [10, 20], [3.5, 10], [7.5, 16]]);
-const FIJN = fan([[1.6, 7], [1, 5], [2.4, 9], [1.2, 6], [0.8, 4], [2, 8], [1.1, 5], [1.8, 7], [0.9, 6], [2.2, 8], [1, 5], [1.5, 6], [0.8, 4], [2.6, 9]], 0.35);
+// hoek in graden, lengte en dikte in em-delen, op = sterkte van het hart.
+const BEAMS = [
+  { hoek: -34, len: 3.3, dik: 0.34, op: 0.5 },
+  { hoek: -12, len: 2.6, dik: 0.22, op: 0.38 },
+  { hoek: 9, len: 3.6, dik: 0.28, op: 0.55 },
+  { hoek: 31, len: 2.9, dik: 0.4, op: 0.42 },
+  { hoek: 58, len: 2.4, dik: 0.2, op: 0.34 },
+  { hoek: 79, len: 3.1, dik: 0.3, op: 0.46 },
+];
 
 export function EmblemLight() {
   return (
@@ -77,42 +59,33 @@ export function EmblemLight() {
           width: "calc(var(--em) * 2.7)",
           height: "calc(var(--em) * 2.7)",
           background:
-            "radial-gradient(circle, rgba(146,74,224,.36) 0%, rgba(112,54,196,.27) 26%, rgba(88,40,158,.18) 42%, rgba(58,26,116,.11) 58%, rgba(30,14,68,.05) 74%, transparent 92%)",
+            "radial-gradient(circle, rgba(146,74,224,.34) 0%, rgba(128,62,210,.28) 16%, rgba(112,54,196,.22) 30%, rgba(98,46,176,.165) 42%, rgba(88,40,158,.12) 52%, rgba(72,32,136,.08) 62%, rgba(58,26,116,.05) 72%, rgba(42,20,90,.026) 81%, rgba(30,14,68,.012) 90%, transparent 98%)",
         }}
       />
 
-      {/* 4. De stralen. Goud bij de kern, paars naar buiten: de conic is het
-             masker, het radiale verloop is de verf, want een conic kan zijn
-             kleur niet met de straal laten meelopen. */}
-      <div
-        aria-hidden
-        className="hero-rays"
-        style={{
-          ...laag,
-          width: "calc(var(--em) * 2.9)",
-          height: "calc(var(--em) * 2.9)",
-          background:
-            "radial-gradient(circle, rgba(255,238,190,.62) 0%, rgba(255,186,74,.44) 18%, rgba(226,132,80,.26) 32%, rgba(158,84,200,.19) 46%, rgba(112,54,196,.11) 60%, rgba(70,32,140,.045) 74%, transparent 90%)",
-          WebkitMaskImage: BREED,
-          maskImage: BREED,
-          animationDuration: "120s",
-        }}
-      />
-      <div
-        aria-hidden
-        className="hero-rays"
-        style={{
-          ...laag,
-          width: "calc(var(--em) * 2.4)",
-          height: "calc(var(--em) * 2.4)",
-          background:
-            "radial-gradient(circle, rgba(255,246,214,.55) 0%, rgba(255,198,96,.36) 20%, rgba(198,110,168,.18) 40%, rgba(120,58,200,.08) 58%, transparent 82%)",
-          WebkitMaskImage: FIJN,
-          maskImage: FIJN,
-          animationDuration: "170s",
-          animationDirection: "reverse",
-        }}
-      />
+      {/* 4. De stralen, in de stijl van de strepen in de achtergrond-art: dunne
+             bundels DOOR het hart, dus vanzelf symmetrisch. Elke bundel is een
+             liggende ellips met een fel dun hart en een zachte mantel, gedraaid
+             om het midden. */}
+      {BEAMS.map((b, i) => (
+        <div
+          key={i}
+          aria-hidden
+          className="breath-glow"
+          style={{
+            ...laag,
+            width: `calc(var(--em) * ${b.len})`,
+            height: `calc(var(--em) * ${b.dik})`,
+            transform: `translate(-50%, -50%) rotate(${b.hoek}deg)`,
+            background: [
+              `radial-gradient(50% 16% at 50% 50%, rgba(255,240,200,${b.op}) 0%, rgba(255,206,120,${b.op * 0.55}) 34%, transparent 72%)`,
+              `radial-gradient(50% 50% at 50% 50%, rgba(255,190,96,${b.op * 0.4}) 0%, rgba(190,110,170,${b.op * 0.2}) 40%, rgba(120,58,200,${b.op * 0.1}) 58%, transparent 78%)`,
+            ].join(", "),
+            animationDuration: `${9 + i * 1.7}s`,
+            animationDelay: `${i * 0.9}s`,
+          }}
+        />
+      ))}
 
       {/* 2. Gesmeed goud. Amber en oranje, niet geel: het geel gaat eruit door de
              rode kant hoger te houden dan de groene. */}
@@ -120,10 +93,10 @@ export function EmblemLight() {
         aria-hidden
         style={{
           ...laag,
-          width: "calc(var(--em) * 1.62)",
-          height: "calc(var(--em) * 1.62)",
+          width: "calc(var(--em) * 2.0)",
+          height: "calc(var(--em) * 2.0)",
           background:
-            "radial-gradient(circle, rgba(255,214,140,.52) 0%, rgba(255,176,66,.38) 24%, rgba(238,132,42,.24) 42%, rgba(196,92,58,.12) 58%, rgba(140,62,90,.05) 74%, transparent 92%)",
+            "radial-gradient(circle, rgba(255,214,140,.46) 0%, rgba(255,196,104,.36) 14%, rgba(255,176,66,.27) 26%, rgba(246,150,52,.19) 38%, rgba(238,132,42,.13) 48%, rgba(216,110,48,.085) 58%, rgba(196,92,58,.05) 68%, rgba(168,76,76,.026) 78%, rgba(140,62,90,.012) 87%, transparent 97%)",
         }}
       />
 
@@ -136,7 +109,7 @@ export function EmblemLight() {
           width: "calc(var(--em) * 1.04)",
           height: "calc(var(--em) * 1.04)",
           background:
-            "radial-gradient(circle, rgba(255,253,246,.92) 0%, rgba(255,246,222,.66) 16%, rgba(255,228,168,.38) 34%, rgba(255,198,110,.16) 54%, transparent 78%)",
+            "radial-gradient(circle, rgba(255,253,246,.9) 0%, rgba(255,249,232,.72) 12%, rgba(255,242,206,.52) 24%, rgba(255,232,178,.34) 36%, rgba(255,218,144,.2) 48%, rgba(255,204,116,.11) 60%, rgba(255,192,100,.05) 72%, rgba(255,184,92,.02) 84%, transparent 96%)",
           animationDuration: "5.5s",
         }}
       />

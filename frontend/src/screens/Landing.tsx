@@ -32,7 +32,7 @@ const FRAMES = [
 
 // De maat van het embleem. Het licht erachter (EmblemLight) rekent in
 // percentages van deze maat via --em, dus alles schaalt als één geheel.
-const EMBLEM_SIZE = "clamp(112px, calc(40vh - 155px), 200px)";
+const EMBLEM_SIZE = "clamp(112px, calc(64vh - 315px), 215px)";
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
@@ -334,7 +334,7 @@ export function Landing({
                 // px size than Space Grotesk did to span the same hero width.
                 fontFamily: "'Cybergame', 'Space Grotesk', sans-serif",
                 fontWeight: 400,
-                fontSize: "min(74px, 18vw, 8.2vh)",
+                fontSize: "min(76px, 18vw, 8.8vh)",
                 letterSpacing: "0.14em",
                 whiteSpace: "nowrap",
               }}
@@ -977,6 +977,27 @@ function LandingFX() {
             "radial-gradient(94% 54% at 50% 21%, rgba(4,1,12,0) 0%, rgba(4,1,12,0) 32%, rgba(4,1,12,.07) 46%, rgba(4,1,12,.19) 58%, rgba(4,1,12,.34) 69%, rgba(4,1,12,.50) 79%, rgba(4,1,12,.65) 88%, rgba(4,1,12,.78) 100%)",
         }}
       />
+      {/* De art heeft rechts halverwege een paar lichtstrepen; dit is hun
+          spiegelbeeld links, in dezelfde stijl, zodat het beeld symmetrisch is. */}
+      {[
+        { top: "52%", hoek: 38, len: "58vw", dik: 16, op: 0.2 },
+        { top: "58%", hoek: 44, len: "44vw", dik: 10, op: 0.14 },
+        { top: "47%", hoek: 33, len: "36vw", dik: 22, op: 0.1 },
+      ].map((b, i) => (
+        <div
+          key={`beam${i}`}
+          style={{
+            position: "absolute",
+            left: "-12vw",
+            top: b.top,
+            width: b.len,
+            height: b.dik,
+            transform: `rotate(${b.hoek}deg)`,
+            transformOrigin: "0 50%",
+            background: `radial-gradient(50% 30% at 42% 50%, rgba(255,214,140,${b.op}) 0%, rgba(255,186,96,${b.op * 0.5}) 40%, transparent 76%)`,
+          }}
+        />
+      ))}
       {[false, true].map((slow) => (
         <div key={String(slow)} className={slow ? "drift-b" : "drift-a"} style={{ position: "absolute", inset: "-30px" }}>
           {pick(slow).map((l) => (
