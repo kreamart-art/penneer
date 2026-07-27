@@ -18,7 +18,7 @@ import { makeProfileCard, shareOrDownload } from "../util/shareCard";
 import { ClubEmblem, CLUB_EMBLEM_IDS } from "../components/ClubEmblem";
 import { NeonText } from "../components/NeonText";
 import { neonSkin, rampFrom } from "../theme/neon";
-import { reelEdge, reelFace, reelTheme } from "../theme/reelSkins";
+import { reelClip, reelEdge, reelFace, reelTheme } from "../theme/reelSkins";
 import { colors, font, playerColors, radius, withAlpha } from "../theme/tokens";
 
 const inputStyle: React.CSSProperties = {
@@ -174,6 +174,20 @@ const LEVEL_RAMP = rampFrom(colors.gold);
 const STAR_MASK =
   "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M12 1.6l3.2 6.5 7.2 1-5.2 5.1 1.2 7.2L12 18l-6.4 3.4 1.2-7.2L1.6 9.1l7.2-1z'/></svg>\")";
 
+// Het masker dat een laag tot stervorm knipt. Gedeeld door de vulling en de
+// stroke eronder, zodat die twee gegarandeerd dezelfde vorm hebben.
+const starMask: React.CSSProperties = {
+  position: "absolute",
+  WebkitMaskImage: STAR_MASK,
+  maskImage: STAR_MASK,
+  WebkitMaskSize: "contain",
+  maskSize: "contain",
+  WebkitMaskPosition: "center",
+  maskPosition: "center",
+  WebkitMaskRepeat: "no-repeat",
+  maskRepeat: "no-repeat",
+};
+
 // 8 Ball Pool-style level strip: level chip + rank title + xp progress bar.
 function LevelBar({ level, compact }: { level: LevelInfo; compact?: boolean }) {
   const { t } = useT();
@@ -189,45 +203,51 @@ function LevelBar({ level, compact }: { level: LevelInfo; compact?: boolean }) {
         <span aria-hidden style={{ position: "absolute", inset: -14, display: "grid", placeItems: "center", filter: "blur(9px)", opacity: 0.55, pointerEvents: "none" }}>
           <Star size={compact ? 40 : 48} color={LEVEL_RAMP[2]} fill={LEVEL_RAMP[2]} strokeWidth={1.4} />
         </span>
-        <span
-          style={{
-            position: "absolute",
-            inset: 0,
-            background: reelFace(LEVEL_RAMP),
-            WebkitMaskImage: STAR_MASK,
-            maskImage: STAR_MASK,
-            WebkitMaskSize: "contain",
-            maskSize: "contain",
-            WebkitMaskPosition: "center",
-            maskPosition: "center",
-            WebkitMaskRepeat: "no-repeat",
-            maskRepeat: "no-repeat",
-          }}
-        />
+        {/* De stroke is een tweede ster ERONDER, een tikje groter. Een masker kan
+            geen rand dragen, dus wat er onderuit steekt IS de lijn: dezelfde
+            truc als de verlooprand om een paneel. Hij loopt van fel goud bovenaan
+            naar donker onderaan, zodat de ster belicht lijkt in plaats van
+            omlijnd. */}
+        <span style={{ ...starMask, inset: 0, background: `linear-gradient(170deg, ${LEVEL_RAMP[3]} 0%, ${LEVEL_RAMP[2]} 42%, ${LEVEL_RAMP[0]} 100%)` }} />
+        <span style={{ ...starMask, inset: 1.5, background: reelFace(LEVEL_RAMP) }} />
         <span style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", fontFamily: font.display, fontWeight: 700, fontSize: compact ? 15 : 18, color: "#3A2500", paddingTop: 2, textShadow: "0 1px 0 rgba(255,240,190,.5)" }}>
           {level.level}
         </span>
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 5 }}>
-          <NeonText accent={colors.gold} blur={9} glow={0.55} style={{ fontFamily: font.ui, fontWeight: 700, fontSize: compact ? 12.5 : 13.5 }}>
+          {/* In de kleur van je RANG, dezelfde als de ring om je avatar. Alleen
+              Beginneling heeft er geen, die blijft goud.
+              De gloed zit dicht op de letters: op kleine tekst waaiert een wijde
+              gloed voorbij de letters heen en dan lijkt het geheel onscherp. Een
+              vuistregel die goed werkt is ongeveer een derde van de
+              lettergrootte. */}
+          <NeonText
+            accent={RANK_RING[level.rank] ?? colors.gold}
+            blur={4}
+            glow={0.5}
+            style={{ fontFamily: font.ui, fontWeight: 700, fontSize: compact ? 12.5 : 13.5 }}
+          >
             {t(`rank_${level.rank}`)}
           </NeonText>
           <span style={{ fontFamily: font.ui, fontSize: 11, color: colors.faint }}>
             {level.xp - level.level_start}/{span} XP
           </span>
         </div>
-        {/* De balk is een klein vak, dus hij krijgt dezelfde opbouw als een
-            paneel: een verlooprand eromheen en binnenin een gevulde staaf die
-            bovenaan oplicht, met een glansstreepje over de bovenste helft. */}
+        {/* De balk is een GROEF: de gouden staaf ligt erin, niet erop. Twee
+            dingen maken dat verschil. De schaduw valt binnenin en van bovenaf,
+            zodat je in een holte kijkt. En de ring eromheen is omgedraaid: bij
+            licht van boven is de bovenrand van iets dat uitsteekt verlicht, maar
+            de bovenrand van een gat ligt juist in de schaduw. */}
         <div
           className="neon-ring"
           style={{
             height: compact ? 10 : 12,
             borderRadius: 999,
-            background: withAlpha("#000000", 0.4),
+            background: withAlpha("#000000", 0.55),
+            boxShadow: "inset 0 2px 4px rgba(0,0,0,.8), inset 0 -1px 0 rgba(255,255,255,.07)",
             overflow: "hidden",
-            ...neonSkin(colors.gold),
+            ...neonSkin(colors.gold, true),
             ["--ng-w" as string]: "1px",
           } as React.CSSProperties}
         >
@@ -238,7 +258,9 @@ function LevelBar({ level, compact }: { level: LevelInfo; compact?: boolean }) {
               height: "100%",
               borderRadius: 999,
               background: `linear-gradient(180deg, ${LEVEL_RAMP[3]} 0%, ${LEVEL_RAMP[2]} 42%, ${LEVEL_RAMP[1]} 100%)`,
-              boxShadow: `inset 0 1px 0 rgba(255,243,181,.8), 0 0 10px ${withAlpha(colors.gold, 0.5)}`,
+              // De staaf zelf blijft bol: glans bovenop, donkere onderkant, plus
+              // de schaduw die de groef erop werpt.
+              boxShadow: "inset 0 1px 0 rgba(255,243,181,.75), inset 0 -2px 3px rgba(107,52,0,.5), inset 2px 0 3px rgba(0,0,0,.35)",
               transition: "width .4s ease",
             }}
           />
@@ -903,6 +925,11 @@ function BuzzerPicker({ game, onShowShop }: { game: GameApi; onShowShop: () => v
 
 // One reel-theme choice: a mini themed reel with the letter A (the real reel is
 // code-drawn, so the preview is too).
+// De voorbeelden hebben een VASTE maat, want de vorm van de rol is een `path()`
+// en die rekent in echte pixels. Zonder vaste maat zou het voorbeeld een andere
+// vorm tonen dan het spel.
+const TILE_REEL = { w: 62, h: 72, ...reelClip(62, 72) };
+
 function ReelTile({ id, active, locked, label, onClick }: {
   id: string | null; active: boolean; locked: boolean; label: string; onClick: () => void;
 }) {
@@ -927,13 +954,14 @@ function ReelTile({ id, active, locked, label, onClick }: {
             keuzevakje iets anders dan je in het spel krijgt. */}
         <div
           style={{
-            width: "62%", aspectRatio: "6 / 7", borderRadius: 10, padding: 2,
+            width: TILE_REEL.w, height: TILE_REEL.h, padding: 2,
+            clipPath: TILE_REEL.outer,
             background: reelEdge(th.ramp),
             boxShadow: `0 0 10px ${withAlpha(th.glow, 0.4)}`,
             opacity: locked ? 0.35 : 1, filter: locked ? "grayscale(0.5)" : "none",
           }}
         >
-          <div style={{ width: "100%", height: "100%", borderRadius: 8, background: th.bg, boxShadow: "inset 0 3px 9px rgba(0,0,0,.6)", display: "grid", placeItems: "center" }}>
+          <div style={{ width: "100%", height: "100%", clipPath: TILE_REEL.inner, background: th.bg, boxShadow: "inset 0 3px 9px rgba(0,0,0,.6)", display: "grid", placeItems: "center" }}>
             <span
               style={{
                 fontFamily: font.display, fontWeight: 700, fontSize: 26, lineHeight: 1,

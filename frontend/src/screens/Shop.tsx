@@ -13,7 +13,7 @@ import { sound } from "../sound/sound";
 import type { GameApi } from "../net/socket";
 import { useT } from "../i18n/i18n";
 import { EMOTE_PACKS_FOR_SALE, EMOTE_SRC } from "../components/emotes";
-import { reelEdge, reelFace, reelTheme } from "../theme/reelSkins";
+import { reelClip, reelEdge, reelFace, reelTheme } from "../theme/reelSkins";
 import { colors, font, withAlpha } from "../theme/tokens";
 
 const AVATAR_ART_VERSION = 9;
@@ -110,6 +110,9 @@ function CoinItem({ title, owned, price, coins, onBuy, children }: {
 
 // A mini reel in the given theme — the shop preview for a rol-skin (the real
 // reel is code-drawn, so the preview is too).
+// Vaste maat: de vorm van de rol is een `path()` en die schaalt niet mee.
+const SWATCH = { w: 68, h: 79, ...reelClip(68, 79) };
+
 function ReelSwatch({ id }: { id: string }) {
   const th = reelTheme(id);
   // Zelfde opbouw als de echte rol: de rand is een laag met het verloop eronder,
@@ -118,14 +121,15 @@ function ReelSwatch({ id }: { id: string }) {
   return (
     <div
       style={{
-        width: "70%", aspectRatio: "6 / 7", borderRadius: 12, padding: 2,
+        width: SWATCH.w, height: SWATCH.h, padding: 2,
+        clipPath: SWATCH.outer,
         background: reelEdge(th.ramp),
         boxShadow: `0 0 14px ${withAlpha(th.glow, 0.45)}`,
       }}
     >
       <div
         style={{
-          width: "100%", height: "100%", borderRadius: 10, background: th.bg,
+          width: "100%", height: "100%", clipPath: SWATCH.inner, background: th.bg,
           boxShadow: `inset 0 0 22px ${withAlpha(th.ramp[2], 0.28)}, inset 0 4px 12px rgba(0,0,0,.6)`,
           display: "grid", placeItems: "center",
         }}

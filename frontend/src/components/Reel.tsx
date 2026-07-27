@@ -5,46 +5,12 @@
 // sees the active spelleider's skin.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { sound } from "../sound/sound";
-import { reelEdge, reelFace, reelTheme, type ReelRamp } from "../theme/reelSkins";
+import { chamferPath, reelEdge, reelFace, reelTheme, type ReelRamp } from "../theme/reelSkins";
 import { font, withAlpha } from "../theme/tokens";
 
 const STD_POOL = "ABCDEFGHIJKLMNOPRSTUVWZ".split("");
 const FULL_POOL = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
-// De rol is afgeschuind: een achthoek met schuine hoeken. Alleen mochten die
-// hoeken niet in een scherpe punt eindigen, en dat kan een `polygon()` niet: die
-// verbindt punten met rechte lijnen en dus met scherpe hoeken. Daarom tekenen we
-// dezelfde achthoek als PAD, waarbij elke hoek een kwartbocht krijgt: we stoppen
-// een stukje voor het hoekpunt, en buigen met dat hoekpunt als stuurpunt naar het
-// stukje erna. Dat werkt alleen omdat de rol een vaste maat heeft, want een
-// `path()` rekent in echte pixels en schaalt niet mee.
-function chamferPath(w: number, h: number, cut: number, r: number): string {
-  const pts: Array<[number, number]> = [
-    [cut, 0], [w - cut, 0],
-    [w, cut], [w, h - cut],
-    [w - cut, h], [cut, h],
-    [0, h - cut], [0, cut],
-  ];
-  const toward = (from: [number, number], to: [number, number]): [number, number] => {
-    const dx = to[0] - from[0];
-    const dy = to[1] - from[1];
-    const len = Math.hypot(dx, dy) || 1;
-    const t = Math.min(r, len / 2) / len;
-    return [+(from[0] + dx * t).toFixed(2), +(from[1] + dy * t).toFixed(2)];
-  };
-  let d = "";
-  pts.forEach((cur, i) => {
-    const prev = pts[(i - 1 + pts.length) % pts.length];
-    const next = pts[(i + 1) % pts.length];
-    const a = toward(cur, prev);
-    const b = toward(cur, next);
-    d += `${i === 0 ? "M" : "L"} ${a[0]} ${a[1]} Q ${cur[0]} ${cur[1]} ${b[0]} ${b[1]} `;
-  });
-  return `${d}Z`;
-}
-
-// De rol heeft een vaste maat; de binnenkant zit 2px binnen de buitenkant, dus
-// daar valt de schuine snede 2px korter uit.
 const REEL_W = 172;
 const REEL_H = 200;
 const CORNER_R = 5;

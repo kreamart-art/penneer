@@ -56,9 +56,16 @@ export function rampFrom(accent: string): Ramp {
 }
 
 /** De rand: licht aan de bovenkant, donker naar onderen. Een rand die overal even
- *  sterk is leest als een lijn, deze leest als een belicht voorwerp. */
-export function ringGradient(r: Ramp): string {
-  return `linear-gradient(170deg, ${r[3]} 0%, ${r[2]} 20%, ${r[1]} 52%, ${r[0]} 100%)`;
+ *  sterk is leest als een lijn, deze leest als een belicht voorwerp.
+ *
+ *  `inset` draait dat om. Dat is geen smaak maar natuurkunde: bij licht van boven
+ *  is de bovenrand van iets dat UITSTEEKT verlicht, en de bovenrand van een GAT
+ *  juist in de schaduw. Draai je dat niet om, dan blijft een groef eruit zien
+ *  alsof hij eruit komt. */
+export function ringGradient(r: Ramp, inset = false): string {
+  return inset
+    ? `linear-gradient(170deg, ${r[0]} 0%, ${r[1]} 48%, ${r[2]} 80%, ${r[3]} 100%)`
+    : `linear-gradient(170deg, ${r[3]} 0%, ${r[2]} 20%, ${r[1]} 52%, ${r[0]} 100%)`;
 }
 
 /** De belichting van bovenaf, over het vlak heen. Heel laag van dekking: hij mag
@@ -86,10 +93,10 @@ export function lineGradient(accent: string): string {
  *  Het zijn custom properties, geen gewone stijl: de rand en de belichting zijn
  *  pseudo-elementen (`.panel-neon::before/::after`) en die kun je niet inline
  *  aansturen. Via een variabele wel. */
-export function neonSkin(accent: string): React.CSSProperties {
+export function neonSkin(accent: string, inset = false): React.CSSProperties {
   const r = rampFrom(accent);
   return {
-    ["--ng-ring" as string]: ringGradient(r),
+    ["--ng-ring" as string]: ringGradient(r, inset),
     ["--ng-lit" as string]: litGradient(accent),
   } as React.CSSProperties;
 }
