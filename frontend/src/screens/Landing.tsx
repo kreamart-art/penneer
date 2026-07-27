@@ -122,12 +122,26 @@ export function Landing({
       // De ONDERKANT VAN HET SCHERM min de strook die de balk al opeist, niet
       // de onderkant van de kolom: die is precies zo hoog als de inhoud, dus
       // als het niet past staat hij al buiten beeld en meet je je eigen fout.
-      const onder = window.innerHeight - parseFloat(getComputedStyle(kolom).paddingBottom || "0");
+      //
+      // En het KLEINSTE venster van de drie die de browser aanbiedt. Op iOS
+      // geeft `innerHeight` de hoogte ZONDER de adresbalk, ook terwijl die er
+      // gewoon staat: reken je daarmee, dan maak je de kaart net zo veel te
+      // groot als die balk hoog is en moet je alsnog scrollen. `clientHeight`
+      // is het venster met de balk erbij, en dat is de maat waarop het moet
+      // passen.
+      const zicht = Math.min(
+        document.documentElement.clientHeight || Infinity,
+        window.innerHeight || Infinity,
+        window.visualViewport?.height ?? Infinity,
+      );
+      const onder = zicht - parseFloat(getComputedStyle(kolom).paddingBottom || "0");
       const r = vak.getBoundingClientRect();
       if (!r.width || !r.height) return;
       const ruimte = onder - r.top;
       if (ruimte <= 0) return;
-      const wil = Math.min(460, Math.floor((ruimte * r.width) / r.height));
+      // Vijf procent eraf. Precies passen is niet hetzelfde als mooi staan: zo
+      // blijft er lucht rond de sectie en zie je de achtergrond nog.
+      const wil = Math.min(460, Math.floor(((ruimte * r.width) / r.height) * 0.95));
       setKaartMax((oud) => (oud !== undefined && Math.abs(oud - wil) <= 3 ? oud : wil));
     };
     meet();
@@ -460,7 +474,7 @@ export function Landing({
                 // grotere maat, anders leest het als een blokje.
                 fontFamily: font.wide,
                 fontWeight: 400,
-                fontSize: 16.5,
+                fontSize: 15.5,
                 lineHeight: 1.2,
                 letterSpacing: 0.9,
                 color: "#CFC6E8",
@@ -521,7 +535,7 @@ export function Landing({
             />
           )}
           {account ? (
-            <p style={{ margin: 0, fontFamily: font.wide, fontSize: 16, letterSpacing: 0.8, color: colors.sub, textAlign: "center" }}>
+            <p style={{ margin: 0, fontFamily: font.wide, fontSize: 14.5, letterSpacing: 0.8, color: colors.sub, textAlign: "center" }}>
               {t("playingAs")} <span style={{ color: colors.gold, fontWeight: 700 }}>{account.name}</span>
             </p>
           ) : (
@@ -990,7 +1004,7 @@ function Tile({
               transform: "translateY(-50%)",
               fontFamily: font.display,
               fontWeight: 700,
-              fontSize: "clamp(13px, 4vw, 17px)",
+              fontSize: "clamp(12px, 3.6vw, 15.5px)",
               lineHeight: 1.15,
               letterSpacing: 0.2,
               textAlign: "center",
