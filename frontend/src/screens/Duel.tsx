@@ -610,13 +610,19 @@ function Clock({ left, tint }: { left: number; tint: string }) {
   );
 }
 
+// De zeshoek van de categorie-tab. Staat apart omdat zowel de rand-laag als de
+// vulling erop geknipt worden.
+const HEX_TAB = "polygon(14px 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 14px 100%, 0 50%)";
+
 /** De letter op zijn voetstuk: neon-omlijsting, hexagonale categorie-tab die op
  *  de rand rust, opstijgende stralen en een gloeiende schijf onder de letter. */
 function LetterStage({ letter, category, hint }: { letter: string; category: string; hint: string }) {
   return (
     <div style={{ position: "relative", marginTop: 12 }}>
-      {/* De tab rust op de bovenrand, dus hij staat buiten de kaart en trekt de
-          rand ter plekke weg met zijn eigen achtergrond. */}
+      {/* De tab rust op de bovenrand van de kaart en hoort bij hetzelfde frame,
+          dus hij krijgt dezelfde neon-omlijsting. Een `border` volgt geen
+          clip-path, dus de rand is een tweede, iets grotere gekniple laag
+          eronder: wat ertussenuit steekt IS de lijn. */}
       <div
         style={{
           position: "absolute",
@@ -624,15 +630,34 @@ function LetterStage({ letter, category, hint }: { letter: string; category: str
           left: "50%",
           transform: "translateX(-50%)",
           zIndex: 2,
-          padding: "6px 26px",
-          clipPath: "polygon(14px 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 14px 100%, 0 50%)",
-          background: `linear-gradient(180deg, #35205e, #241546)`,
+          padding: 1.5,
+          clipPath: HEX_TAB,
+          background: withAlpha(colors.violet, 0.75),
           boxShadow: `0 0 18px ${withAlpha(colors.violet, 0.5)}`,
         }}
       >
-        <span style={{ fontFamily: font.ui, fontSize: 12.5, fontWeight: 800, letterSpacing: 2.4, textTransform: "uppercase", color: colors.ink }}>
-          {category}
-        </span>
+        <div
+          style={{
+            padding: "6px 26px",
+            clipPath: HEX_TAB,
+            background: `linear-gradient(180deg, #2a1a4e, #1d1039)`,
+          }}
+        >
+          <span
+            style={{
+              fontFamily: font.ui,
+              fontSize: 12.5,
+              fontWeight: 800,
+              letterSpacing: 2.4,
+              textTransform: "uppercase",
+              color: "#FFFFFF",
+              // Zelfde neon als de lijnen, maar dan als gloed óm de letters.
+              textShadow: `0 0 8px ${withAlpha(colors.violet, 0.95)}, 0 0 18px ${withAlpha(colors.violet, 0.7)}`,
+            }}
+          >
+            {category}
+          </span>
+        </div>
       </div>
 
       <div

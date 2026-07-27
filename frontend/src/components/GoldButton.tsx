@@ -21,6 +21,13 @@ const PLATE_H = 0.8418;   // idem in de hoogte
 const PLATE_RATIO = (ASSET_W * PLATE_W) / (ASSET_H * PLATE_H); // breedte/hoogte van de plaat
 const OVER_X = (1 / PLATE_W - 1) / 2;                          // gloedmarge links en rechts
 
+const LETTER_SPACING = 2.2;
+// Het lichte bovenvlak van de plaat loopt in de asset van y 12 tot 161 van de
+// 196, dus het midden daarvan ligt 11.5px BOVEN het midden van het plaatje: de
+// donkere 3D-rand onderaan telt wel mee in de hoogte maar hoort niet bij het
+// vlak waar de tekst op staat.
+const FACE_OFFSET = -11.5 / ASSET_H;
+
 // Terugval als de art niet laadt: dezelfde vorm in CSS, zodat er nooit een
 // naamloze knop overblijft.
 const CHAMFER =
@@ -87,10 +94,18 @@ export function GoldButton({
           fontFamily: font.display,
           fontWeight: 700,
           fontSize: 18,
-          letterSpacing: 2.2,
+          letterSpacing: LETTER_SPACING,
           textTransform: "uppercase",
           color: "#4A2E04",
           textShadow: "0 1px 0 rgba(255,240,190,.45)",
+          // Twee kleine correcties, allebei nodig om het woord ECHT in het
+          // midden te krijgen:
+          // - horizontaal: letter-spacing zet ook ruimte NA de laatste letter,
+          //   dus schuift de tekst optisch een halve spatie naar links.
+          // - verticaal: de plaat heeft onderaan een donkere 3D-rand, dus het
+          //   lichte bovenvlak ligt hoger dan het midden van het plaatje.
+          marginLeft: LETTER_SPACING,
+          marginTop: `${FACE_OFFSET * 100}%`,
         }}
       >
         {label}
