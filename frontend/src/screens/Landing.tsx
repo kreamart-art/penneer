@@ -939,8 +939,8 @@ function LandingFX() {
     position: "absolute",
     fontFamily: font.display,
     fontWeight: 700,
-    // Vier procent: net genoeg om te vermoeden, te weinig om te lezen.
-    color: "rgba(206,192,240,.04)",
+    // Vijf procent: net genoeg om te vermoeden, te weinig om te lezen.
+    color: "rgba(206,192,240,.05)",
     userSelect: "none",
     lineHeight: 1,
   };
@@ -973,18 +973,22 @@ function LandingFX() {
           maskImage: "radial-gradient(circle at 50% 50%, transparent 9%, rgba(0,0,0,.85) 25%, transparent 56%)",
         }}
       />
+      {/* Groot genoeg om over de schermrand te lopen: dan zie je een stuk van een
+          letter en niet een letter in een hoek. */}
       <div className="drift-a" style={{ position: "absolute", inset: "-30px" }}>
-        <span style={{ ...letter, fontSize: 210, top: "4%", left: "-9%", transform: "rotate(-12deg)" }}>K</span>
-        <span style={{ ...letter, fontSize: 168, bottom: "3%", right: "-6%", transform: "rotate(9deg)" }}>R</span>
+        <span style={{ ...letter, fontSize: 300, top: "1%", left: "-14%", transform: "rotate(-11deg)" }}>K</span>
+        <span style={{ ...letter, fontSize: 240, bottom: "-2%", right: "-10%", transform: "rotate(8deg)" }}>R</span>
         <span style={dust("21%", "27%", 2.5, 0.16)} />
         <span style={dust("81%", "16%", 2, 0.13)} />
+        <span style={dust("58%", "44%", 1.6, 0.1)} />
       </div>
       <div className="drift-b" style={{ position: "absolute", inset: "-30px" }}>
-        <span style={{ ...letter, fontSize: 190, top: "46%", right: "-8%", transform: "rotate(13deg)" }}>N</span>
-        <span style={{ ...letter, fontSize: 150, bottom: "6%", left: "-5%", transform: "rotate(-8deg)" }}>E</span>
+        <span style={{ ...letter, fontSize: 285, top: "40%", right: "-13%", transform: "rotate(12deg)" }}>N</span>
+        <span style={{ ...letter, fontSize: 215, bottom: "2%", left: "-9%", transform: "rotate(-7deg)" }}>E</span>
         <span style={dust("13%", "68%", 2.5, 0.14)} />
         <span style={dust("66%", "82%", 2, 0.15)} />
         <span style={dust("39%", "12%", 1.8, 0.12)} />
+        <span style={dust("30%", "56%", 1.6, 0.1)} />
       </div>
     </div>
   );
