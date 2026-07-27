@@ -927,69 +927,62 @@ function Tile({
 // opposite directions (cheap parallax depth) carrying barely-visible alphabet
 // letters and a few static dust specks. zIndex -1 keeps it above the body
 // gradient but under everything interactive; pointer-events stay off.
-/** Het decor achter de main page. Vier letters die nauwelijks te zien zijn, een
- *  waaier stralen uit het midden van de bovenhelft, en wat warm goudstof.
+/** Het decor achter de main page: de achtergrond-art, met daarboven letters die
+ *  zweven.
  *
- *  De bovenste zestig procent hoort bij het logo, dus daar staat niets: de
- *  letters wijken naar de randen en de stralen zijn in het hart weggemaskerd.
- *  Alles blijft indigo en violet met een warme goudzweem; geen blauw, geen
- *  roze, geen neon, en geen vignet. */
+ *  De art loopt van de bovenkant tot de onderkant van het scherm. Hij is liggend
+ *  (3:2) en het scherm staat rechtop, dus `cover` schaalt hem op hoogte en
+ *  snijdt links en rechts bij; niets wordt uitgerekt.
+ *
+ *  Stof en stralen zitten al in de art, dus die tekenen we er niet nog eens
+ *  overheen. */
+const LETTERS: { c: string; size: number; op: number; pos: React.CSSProperties; rot: number; slow?: boolean }[] = [
+  { c: "K", size: 300, op: 0.055, pos: { top: "1%", left: "-14%" }, rot: -11 },
+  { c: "R", size: 240, op: 0.045, pos: { bottom: "-2%", right: "-10%" }, rot: 8 },
+  { c: "P", size: 150, op: 0.03, pos: { top: "24%", left: "6%" }, rot: -6 },
+  { c: "M", size: 120, op: 0.025, pos: { top: "8%", right: "12%" }, rot: 10 },
+  { c: "N", size: 285, op: 0.05, pos: { top: "40%", right: "-13%" }, rot: 12, slow: true },
+  { c: "E", size: 215, op: 0.04, pos: { bottom: "2%", left: "-9%" }, rot: -7, slow: true },
+  { c: "A", size: 132, op: 0.028, pos: { bottom: "24%", left: "34%" }, rot: 5, slow: true },
+  { c: "S", size: 96, op: 0.022, pos: { top: "58%", left: "14%" }, rot: -9, slow: true },
+];
+
 function LandingFX() {
-  const letter: React.CSSProperties = {
+  const letter = (op: number): React.CSSProperties => ({
     position: "absolute",
     fontFamily: font.display,
     fontWeight: 700,
-    // Vijf procent: net genoeg om te vermoeden, te weinig om te lezen.
-    color: "rgba(206,192,240,.05)",
+    // Een paar procent: net genoeg om te vermoeden, te weinig om te lezen.
+    color: `rgba(206,192,240,${op})`,
     userSelect: "none",
     lineHeight: 1,
-  };
-  const dust = (l: string, t: string, s: number, o: number): React.CSSProperties => ({
-    position: "absolute",
-    left: l,
-    top: t,
-    width: s,
-    height: s,
-    borderRadius: 999,
-    background: colors.goldHi,
-    opacity: o,
-    boxShadow: `0 0 ${s * 3}px ${withAlpha(colors.gold, 0.8)}`,
   });
+  const pick = (slow?: boolean) => LETTERS.filter((l) => !!l.slow === !!slow);
   return (
-    <div aria-hidden style={{ position: "fixed", inset: 0, zIndex: -1, overflow: "hidden", pointerEvents: "none" }}>
-      {/* De stralen. Weggemaskerd in het hart, zodat het midden leeg blijft, en
-          uitgedoofd naar buiten, zodat er nergens een rand ontstaat. */}
-      <div
-        style={{
-          position: "absolute",
-          left: "50%",
-          top: "-46vw",
-          width: "180vw",
-          height: "180vw",
-          transform: "translateX(-50%)",
-          background:
-            "repeating-conic-gradient(from 198deg at 50% 50%, rgba(255,206,128,.028) 0deg 2.4deg, transparent 2.4deg 15deg)",
-          WebkitMaskImage: "radial-gradient(circle at 50% 50%, transparent 9%, rgba(0,0,0,.85) 25%, transparent 56%)",
-          maskImage: "radial-gradient(circle at 50% 50%, transparent 9%, rgba(0,0,0,.85) 25%, transparent 56%)",
-        }}
-      />
-      {/* Groot genoeg om over de schermrand te lopen: dan zie je een stuk van een
-          letter en niet een letter in een hoek. */}
-      <div className="drift-a" style={{ position: "absolute", inset: "-30px" }}>
-        <span style={{ ...letter, fontSize: 300, top: "1%", left: "-14%", transform: "rotate(-11deg)" }}>K</span>
-        <span style={{ ...letter, fontSize: 240, bottom: "-2%", right: "-10%", transform: "rotate(8deg)" }}>R</span>
-        <span style={dust("21%", "27%", 2.5, 0.16)} />
-        <span style={dust("81%", "16%", 2, 0.13)} />
-        <span style={dust("58%", "44%", 1.6, 0.1)} />
-      </div>
-      <div className="drift-b" style={{ position: "absolute", inset: "-30px" }}>
-        <span style={{ ...letter, fontSize: 285, top: "40%", right: "-13%", transform: "rotate(12deg)" }}>N</span>
-        <span style={{ ...letter, fontSize: 215, bottom: "2%", left: "-9%", transform: "rotate(-7deg)" }}>E</span>
-        <span style={dust("13%", "68%", 2.5, 0.14)} />
-        <span style={dust("66%", "82%", 2, 0.15)} />
-        <span style={dust("39%", "12%", 1.8, 0.12)} />
-        <span style={dust("30%", "56%", 1.6, 0.1)} />
-      </div>
+    <div
+      aria-hidden
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: -1,
+        overflow: "hidden",
+        pointerEvents: "none",
+        backgroundImage: "url(/bg-main.webp)",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+        backgroundColor: "#06040e",
+      }}
+    >
+      {[false, true].map((slow) => (
+        <div key={String(slow)} className={slow ? "drift-b" : "drift-a"} style={{ position: "absolute", inset: "-30px" }}>
+          {pick(slow).map((l) => (
+            <span key={l.c} style={{ ...letter(l.op), ...l.pos, fontSize: l.size, transform: `rotate(${l.rot}deg)` }}>
+              {l.c}
+            </span>
+          ))}
+        </div>
+      ))}
     </div>
   );
 }
