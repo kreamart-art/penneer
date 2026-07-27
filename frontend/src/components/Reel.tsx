@@ -53,13 +53,15 @@ export function Reel({ state, letter, exclude = [], hard = false, skin = null }:
   // moet aanvoelen als een voorwerp dat op onthulling wacht, niet als een leeg
   // vlak. Vaste waarden uit de art-richtlijn; een skin overschrijft ze.
   const PLAIN = {
-    face: "linear-gradient(155deg, #B96DFF 0%, #8C3FFF 55%, #5B1FD6 100%)",
-    innerGlow: "rgba(190,120,255,.45)",
-    outerGlow: "rgba(140,70,255,.35)",
-    // De rand is hetzelfde verloop als het vraagteken. De lichte stukken zijn
-    // KORT gehouden: alleen vlak bij de hoeken een highlight, niet een halve
-    // rand die oplicht.
-    edge: "linear-gradient(135deg, #C98BFF 0%, #8C3FFF 7%, #5B1FD6 50%, #8C3FFF 93%, #C98BFF 100%)",
+    // Zelfde kleurenreeks als de energielijnen van de spelerbanner: fel violet in
+    // het midden, donker paars naar de randen. Zo horen rol, lijnen en pijlen
+    // zichtbaar bij elkaar.
+    face: "linear-gradient(155deg, #C46BFF 0%, #9A4DFF 42%, #6A2DFF 76%, #3A167E 100%)",
+    innerGlow: "rgba(154,77,255,.42)",
+    outerGlow: "rgba(106,45,255,.4)",
+    // Het lichte stuk is KORT: alleen waar het verloop door zijn top gaat licht
+    // de rand op, niet een halve rand die staat te schijnen.
+    edge: "linear-gradient(135deg, #3A167E 0%, #6A2DFF 14%, #9A4DFF 36%, #C46BFF 50%, #9A4DFF 64%, #6A2DFF 86%, #3A167E 100%)",
     fill: "radial-gradient(120% 100% at 50% 38%, #121A35 0%, #0A1023 100%)",
   };
   const plain = !skin;
@@ -86,7 +88,7 @@ export function Reel({ state, letter, exclude = [], hard = false, skin = null }:
         boxShadow: isLocked
           ? `0 0 44px ${withAlpha(th.glow, 0.6)}`
           : plain
-            ? `0 0 30px ${PLAIN.outerGlow}, 0 0 70px ${PLAIN.outerGlow}`
+            ? `0 0 12px ${PLAIN.outerGlow}, 0 0 30px rgba(106,45,255,.22)`
             : `0 0 26px ${withAlpha(th.glow, 0.35)}`,
         transition: "background .2s ease, box-shadow .25s ease",
       }}

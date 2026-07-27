@@ -61,11 +61,16 @@ export function Reveal({ game }: { game: GameApi }) {
         <AlphabetStrip used={room.used_letters} hard={room.settings.hard_letters} lockedLetter={letter} />
 
         <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 18 }}>
-          <TurnBanner
-            name={game.isActive ? null : active?.name ?? "?"}
-            label={game.isActive ? t("youSpin") : t("xSpinsRound", { name: active?.name ?? "?" })}
-            avatar={active ? <Avatar name={active.name} color={active.color} size={40} userId={active.user_id} hasAvatar={active.has_avatar} avatarVer={active.avatar_ver} frame={active.frame} /> : null}
-          />
+          {/* De banner hoort los boven de rol te hangen, niet erop te leunen. De
+              negatieve marge boven en de gelijke marge onder heffen elkaar op,
+              dus alleen de banner schuift omhoog; de rol blijft staan. */}
+          <div style={{ marginTop: -26, marginBottom: 26, display: "flex", justifyContent: "center", width: "100%" }}>
+            <TurnBanner
+              name={game.isActive ? null : active?.name ?? "?"}
+              label={game.isActive ? t("youSpin") : t("xSpinsRound", { name: active?.name ?? "?" })}
+              avatar={active ? <Avatar name={active.name} color={active.color} size={40} userId={active.user_id} hasAvatar={active.has_avatar} avatarVer={active.avatar_ver} frame={active.frame} /> : null}
+            />
+          </div>
 
           <Reel state={reelState} letter={letter} exclude={room.used_letters} hard={room.settings.hard_letters} skin={active?.reel_skin ?? null} />
 
@@ -158,36 +163,59 @@ function EnergyLine({ side }: { side: "top" | "bottom" }) {
   );
 }
 
-function Chevron() {
-  return (
-    <svg aria-hidden width={13} height={BANNER_H} viewBox={`0 0 13 ${BANNER_H}`} style={{ flexShrink: 0 }}>
+// De pijl hoort bij de lijnen, dus hij krijgt hetzelfde verloop en dezelfde
+// bloom: fel violet aan de kant van de balk, donkerder naar de punt toe. Het
+// verloop staat per pijl onder een eigen id; twee keer hetzelfde id in de DOM
+// gaat op termijn mis zodra er een uit beeld verdwijnt.
+function Chevron({ id }: { id: string }) {
+  const path = `M 2 2 L 11 ${BANNER_H / 2} L 2 ${BANNER_H - 2}`;
+  const svg = (extra?: React.CSSProperties) => (
+    <svg aria-hidden width={13} height={BANNER_H} viewBox={`0 0 13 ${BANNER_H}`} style={{ display: "block", ...extra }}>
+      <defs>
+        <linearGradient id={id} x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor="#C46BFF" />
+          <stop offset="45%" stopColor="#9A4DFF" />
+          <stop offset="100%" stopColor="#6A2DFF" />
+        </linearGradient>
+      </defs>
       <path
-        d={`M 2 2 L 11 ${BANNER_H / 2} L 2 ${BANNER_H - 2}`}
+        d={path}
         fill="none"
-        stroke="#9A4DFF"
+        stroke={`url(#${id})`}
         strokeWidth={2.5}
         strokeLinecap="round"
         strokeLinejoin="round"
       />
     </svg>
   );
+  return (
+    <span style={{ position: "relative", display: "flex", flexShrink: 0, width: 13, height: BANNER_H }}>
+      {/* De gloed is een vervaagde kopie erachter, geen drop-shadow: die laat iOS
+          de laag apart rasteren en dan zie je zijn rechthoek. */}
+      <span aria-hidden style={{ position: "absolute", inset: 0, filter: "blur(3.5px)", opacity: 0.6 }}>{svg()}</span>
+      {svg({ position: "relative" })}
+    </span>
+  );
 }
 
 function TurnBanner({ label, avatar }: { name: string | null; label: string; avatar: React.ReactNode }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", maxWidth: 350 }}>
+    // De balk is zo breed als wat erin staat: rekt hij op tot volle breedte, dan
+    // duwt de gecentreerde tekst zichzelf van de avatar af.
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, maxWidth: "100%" }}>
       <span style={{ transform: "scaleX(-1)", display: "flex" }}>
-        <Chevron />
+        <Chevron id="chev-left" />
       </span>
       <div
         style={{
           position: "relative",
-          flex: 1,
           minWidth: 0,
+          maxWidth: 300,
           height: BANNER_H,
           display: "flex",
           alignItems: "center",
           gap: 10,
+          paddingRight: 14,
           // Bewust geen achtergrond: tussen de twee lijnen hoort de arena door
           // te lopen.
           background: "transparent",
@@ -216,8 +244,7 @@ function TurnBanner({ label, avatar }: { name: string | null; label: string; ava
 
         <span
           style={{
-            flex: 1,
-            textAlign: "center",
+            minWidth: 0,
             fontFamily: font.display,
             fontWeight: 800,
             fontSize: 16.5,
@@ -232,7 +259,7 @@ function TurnBanner({ label, avatar }: { name: string | null; label: string; ava
           {label}
         </span>
       </div>
-      <Chevron />
+      <Chevron id="chev-right" />
     </div>
   );
 }
