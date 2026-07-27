@@ -15,6 +15,8 @@ import { useT } from "../i18n/i18n";
 import { EMOTE_PACKS_FOR_SALE, EMOTE_SRC } from "../components/emotes";
 import { reelClip, reelEdge, reelFace, reelTheme } from "../theme/reelSkins";
 import { colors, font, withAlpha } from "../theme/tokens";
+import { useTileSkin } from "../theme/tileSkin";
+import { CoinPlate } from "../components/CoinPlate";
 
 const AVATAR_ART_VERSION = 9;
 // The five single Draai-knoppen for sale, with their country-name i18n keys.
@@ -155,6 +157,7 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
   const aiActive = !!account?.ai_unlocked || !!game.state.room?.ai_referee || !!game.state.adminAi?.enabled;
   const owned = new Set(account?.owned_items ?? []);
   const coins = account?.coins ?? 0;
+  const skin = useTileSkin();
   const [status, setStatus] = useState<ShopStatus | null>(null);
   const [code, setCode] = useState("");
   const [buying, setBuying] = useState<string | null>(null);
@@ -222,12 +225,17 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
           <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>
             <ShoppingCart size={17} color={colors.gold} /> {t("shopTitle")}
           </span>
-          {account && (
-            <span style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 12px 4px 8px", borderRadius: 999, background: withAlpha(colors.gold, 0.12), border: `1px solid ${withAlpha(colors.gold, 0.4)}` }}>
-              <img src="/coin.webp" alt="" width={20} height={20} style={{ display: "block" }} />
-              <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15, color: colors.gold }}>{coins}</span>
-            </span>
-          )}
+          {account &&
+            (skin ? (
+              <span style={{ marginLeft: "auto" }}>
+                <CoinPlate coins={coins} width={116} />
+              </span>
+            ) : (
+              <span style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 12px 4px 8px", borderRadius: 999, background: withAlpha(colors.gold, 0.12), border: `1px solid ${withAlpha(colors.gold, 0.4)}` }}>
+                <img src="/coin.webp" alt="" width={20} height={20} style={{ display: "block" }} />
+                <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15, color: colors.gold }}>{coins}</span>
+              </span>
+            ))}
           <div style={{ marginLeft: account ? 6 : "auto" }}><MusicToggle /></div>
         </div>
       }

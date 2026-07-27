@@ -15,11 +15,18 @@ import { sound } from "../sound/sound";
 import { NeonText } from "../components/NeonText";
 import { neonSkin } from "../theme/neon";
 import { TILE_ART, plateShadow, shadowSrc, useTileSkin } from "../theme/tileSkin";
+import { CoinPlate } from "../components/CoinPlate";
 import { colors, font, radius, withAlpha } from "../theme/tokens";
 
-// Hoe breed de lijst-art van de skin op het scherm staat. `border-image` rekt
-// het hoekstuk met deze breedte mee, dus dit is meteen de maat van het sieraad.
-const FRAME_W = 22;
+// Een stuk van de lijst-art. Over de volle breedte, en de hoogte volgt uit de
+// verhouding van het plaatje, zodat er niets breder wordt getrokken.
+const framePart: React.CSSProperties = {
+  position: "absolute",
+  left: 0,
+  width: "100%",
+  zIndex: -1,
+  pointerEvents: "none",
+};
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
@@ -193,10 +200,20 @@ export function Landing({
           onClick={() => { sound.uiTap(); onShowShop(); }}
           aria-label={t("coinsTitle")}
           className="pressable"
-          style={{ display: "inline-flex", alignItems: "center", gap: 6, background: withAlpha(colors.gold, 0.12), border: `1px solid ${withAlpha(colors.gold, 0.4)}`, borderRadius: 999, cursor: "pointer", padding: "4px 12px 4px 5px" }}
+          style={
+            skin
+              ? { position: "relative", border: "none", background: "transparent", padding: 0, cursor: "pointer", width: 124, display: "block", lineHeight: 0 }
+              : { display: "inline-flex", alignItems: "center", gap: 6, background: withAlpha(colors.gold, 0.12), border: `1px solid ${withAlpha(colors.gold, 0.4)}`, borderRadius: 999, cursor: "pointer", padding: "4px 12px 4px 5px" }
+          }
         >
-          <img src="/coin.webp" alt="" width={24} height={24} style={{ display: "block" }} />
-          <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15, color: colors.gold }}>{account?.coins ?? 0}</span>
+          {skin ? (
+            <CoinPlate coins={account?.coins ?? 0} />
+          ) : (
+            <>
+              <img src="/coin.webp" alt="" width={24} height={24} style={{ display: "block" }} />
+              <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15, color: colors.gold }}>{account?.coins ?? 0}</span>
+            </>
+          )}
         </button>
         {/* right cluster is a column so the music mute note sits UNDER the gear */}
         <div style={{ position: "absolute", top: 4, right: 0, zIndex: 2, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 3 }}>
@@ -353,34 +370,30 @@ export function Landing({
             flexDirection: "column",
             gap: 10,
             animationDelay: "0.1s",
-            // Met de skin is de kaart de lijst-art. `border-image` snijdt hem in
-            // negenen: de hoekstukken blijven zoals ze zijn en alleen de randen
-            // en het midden rekken mee, dus het sieraad op de hoeken vervormt
-            // niet hoe hoog de kaart ook wordt.
+            // Met de skin is de lijst art, in drie stukken: kop, staart en een
+            // dun strookje ertussen. Kop en staart staan op ware verhouding
+            // (`width: 100%` en de hoogte volgt), dus de hoeksieraden en de
+            // randen worden NOOIT breder getrokken. Alleen het strookje rekt, en
+            // dat zijn twee verticale lijnen, die kun je onzichtbaar uitrekken.
             //
-            // Het VELD zit niet meer in de art maar hieronder, als één verloop.
-            // Een verloop dat in negenen wordt gesneden krijgt in elke strook
-            // een andere rekfactor: de randstrook perst 128 bronpixels in 22, het
-            // midden rekt er 1055 uit over de hele hoogte. De kleuren sluiten op
-            // de snijlijn precies aan, maar de HELLING springt, en dat zie je als
-            // een rechthoek in het vlak. Nu er niets meer te snijden valt, kan er
-            // ook niets meer knikken.
+            // Het VELD zit niet in de art maar hieronder, als één verloop. Snijd
+            // je een verloop in stukken, dan krijgt elk stuk een andere
+            // rekfactor: de kleuren sluiten op de snijlijn nog precies aan, maar
+            // de HELLING springt, en dat leest als een rechthoek in het vlak.
             ...(skin
               ? {
-                  // De lijst neemt de plaats in van de paginamarge: hij loopt
-                  // een stuk buiten de kolom, anders zouden de tegels een flinke
-                  // hap smaller worden puur omdat er een rand omheen staat.
-                  marginInline: -10,
-                  padding: 8,
-                  // Het verloop uit de art, nu in één stuk over de hele kaart.
+                  position: "relative",
+                  isolation: "isolate",
+                  padding: 15,
+                  // Het verloop uit de art, in één stuk over de hele kaart.
                   background:
                     "radial-gradient(125% 85% at 50% 44%, #311C66 0%, #24124F 52%, #1B0E44 100%)",
                   backdropFilter: "none",
                   WebkitBackdropFilter: "none",
-                  boxShadow: "0 24px 60px rgba(0,0,0,.45)",
-                  borderRadius: 18,
-                  border: `${FRAME_W}px solid transparent`,
-                  borderImage: "url(/tiles/frame.webp) 128 fill stretch",
+                  // Recht van onderen, zonder zijwaartse verschuiving.
+                  boxShadow: "0 12px 22px rgba(0,0,0,.5), 0 3px 6px rgba(0,0,0,.35)",
+                  borderRadius: 22,
+                  border: "none",
                 }
               : {
                   padding: 16,
@@ -392,6 +405,17 @@ export function Landing({
                 }),
           }}
         >
+          {/* De lijst. Het strookje ligt over de volle hoogte en tekent de twee
+              zijranden; kop en staart leggen daar de hoeksieraden overheen, dus
+              van dat overlappen zie je niets. `zIndex: -1` houdt ze boven de
+              achtergrond van de kaart maar onder de inhoud. */}
+          {skin && (
+            <>
+              <img aria-hidden alt="" src="/tiles/frame-mid.webp" style={{ ...framePart, top: 0, height: "100%" }} />
+              <img aria-hidden alt="" src="/tiles/frame-top.webp" style={{ ...framePart, top: 0 }} />
+              <img aria-hidden alt="" src="/tiles/frame-bot.webp" style={{ ...framePart, bottom: 0 }} />
+            </>
+          )}
           {account ? (
             <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13.5, color: colors.sub, textAlign: "center" }}>
               {t("playingAs")} <span style={{ color: colors.gold, fontWeight: 700 }}>{account.name}</span>
