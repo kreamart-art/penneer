@@ -186,9 +186,13 @@ export function Landing({
         wil = (ruimte * w) / h;
       }
       vorige.current = { w, h };
-      // Twee procent eraf op de uitkomst. Precies passen en mooi staan is niet
-      // hetzelfde: dit is de marge die er met het oog uit komt.
-      wil = Math.min(460, Math.max(220, Math.floor(wil * 0.98)));
+      // GEEN percentage op de uitkomst. Dat lijkt een onschuldige marge, maar
+      // het is er een die zichzelf opeet: zodra de kaart precies past is de
+      // correctie hierboven nul, en dan houd je elke meting `breedte x 0,98`
+      // over. Twee procent, nog eens twee procent, en zo krimpt hij door tot de
+      // ondergrens. De lucht die we willen zit al in `ruimte`, en die wordt er
+      // maar EEN keer af gehaald.
+      wil = Math.min(460, Math.max(220, Math.floor(wil)));
       setKaartMax((oud) => (oud !== undefined && Math.abs(oud - wil) <= 3 ? oud : wil));
     };
     // Een nieuw scherm is een nieuwe rekensom: de opgebouwde correctie hoort
