@@ -701,17 +701,20 @@ function Tile({
               position: "absolute",
               left: "10%",
               right: "10%",
-              // Het icoon staat in de bovenhelft van de plaat; het label hoort
-              // in de lege ruimte eronder.
-              top: "58%",
+              // Het icoon staat in de bovenhelft; het label hoort in de lege
+              // ruimte eronder, met zijn MIDDEN op de lijn uit TILE_ART.
+              top: tile.labelY ?? "66%",
+              transform: "translateY(-50%)",
               fontFamily: font.display,
               fontWeight: 700,
               fontSize: "clamp(13px, 4vw, 17px)",
               lineHeight: 1.15,
               letterSpacing: 0.2,
               textAlign: "center",
-              color: "#FFF6E2",
-              textShadow: "0 2px 6px rgba(0,0,0,.65), 0 0 14px rgba(0,0,0,.5)",
+              color: tile.dark ? "#171006" : "#FFF6E2",
+              textShadow: tile.dark
+                ? "0 1px 0 rgba(255,240,190,.5)"
+                : "0 2px 6px rgba(0,0,0,.65), 0 0 14px rgba(0,0,0,.5)",
             }}
           >
             {label}

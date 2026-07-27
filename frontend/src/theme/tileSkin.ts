@@ -45,11 +45,19 @@ export function useTileSkin(): boolean {
 }
 
 /** De plaat per modus. De DUEL-plaat heeft zijn woord al in de art staan, de
- *  rest niet: daar zetten we het label zelf onder het icoon. */
-export const TILE_ART: Record<string, { src: string; label: boolean }> = {
-  friends: { src: "/tiles/friends.webp", label: true },
-  bots: { src: "/tiles/bots.webp", label: true },
-  daily: { src: "/tiles/daily.webp", label: true },
-  train: { src: "/tiles/train.webp", label: true },
+ *  rest niet: daar zetten we het label zelf onder het icoon.
+ *
+ *  `labelY` is waar het MIDDEN van het label komt, als deel van de plaathoogte.
+ *  Bewust het midden en niet de bovenkant: een label van twee regels zou vanaf
+ *  een bovenkant naar beneden uitgroeien en dan lager hangen dan een label van
+ *  een regel. Zo staan ze allemaal op dezelfde lijn.
+ *
+ *  `dark` is voor platen die zo licht zijn dat witte letters erop vervagen. Op
+ *  goud leest bijna-zwart met een licht glansje beter dan wit met een schaduw. */
+export const TILE_ART: Record<string, { src: string; label: boolean; labelY?: string; dark?: boolean }> = {
+  friends: { src: "/tiles/friends.webp", label: true, labelY: "62%", dark: true },
+  bots: { src: "/tiles/bots.webp", label: true, labelY: "62%" },
+  daily: { src: "/tiles/daily.webp", label: true, labelY: "68%" },
+  train: { src: "/tiles/train.webp", label: true, labelY: "68%" },
   duel: { src: "/tiles/duel.webp", label: false },
 };
