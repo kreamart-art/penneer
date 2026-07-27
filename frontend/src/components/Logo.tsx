@@ -5,7 +5,11 @@ import { colors, withAlpha } from "../theme/tokens";
 export function Logo({ size = 120, glow = true }: { size?: number | string; glow?: boolean }) {
   // The raster art has a baked-in backdrop; a radial mask fades it out so the
   // glow melts into the page instead of stopping at a square edge.
-  const mask = "radial-gradient(circle at 50% 50%, #000 52%, transparent 72%)";
+    // De art heeft een ingebakken ondergrond. Het masker doezelt die uit, en dat
+  // gebeurt over een lange weg: één harde overgang leest als een rondje om de
+  // pen heen.
+  const mask =
+    "radial-gradient(circle at 50% 50%, #000 44%, rgba(0,0,0,.85) 56%, rgba(0,0,0,.45) 68%, rgba(0,0,0,.15) 80%, transparent 94%)";
   return (
     <img
       src="/logo.png"

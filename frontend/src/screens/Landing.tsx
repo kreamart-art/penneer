@@ -16,6 +16,7 @@ import { NeonText } from "../components/NeonText";
 import { neonSkin } from "../theme/neon";
 import { TILE_ART, plateShadow, shadowSrc, useTileSkin } from "../theme/tileSkin";
 import { CoinPlate } from "../components/CoinPlate";
+import { EmblemLight } from "../components/EmblemLight";
 import { colors, font, radius, withAlpha } from "../theme/tokens";
 
 // De lijst-art van de skin, in de drie maten uit `section main page.svg`:
@@ -28,6 +29,10 @@ const FRAMES = [
   { src: "/tiles/frame-2.webp", ratio: 1205 / 1468 },
   { src: "/tiles/frame-3.webp", ratio: 1205 / 1577 },
 ];
+
+// De maat van het embleem. Het licht erachter (EmblemLight) rekent in
+// percentages van deze maat via --em, dus alles schaalt als één geheel.
+const EMBLEM_SIZE = "clamp(112px, calc(40vh - 155px), 200px)";
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
@@ -312,40 +317,17 @@ export function Landing({
           <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
             {/* The logo IS the light source: breathing glow + slowly rotating
                 rays centered on the coin, logo floating on top of them. */}
-            <div style={{ position: "relative", display: "grid", placeItems: "center" }}>
-              <div
-                aria-hidden
-                className="breath-glow"
-                style={{
-                  position: "absolute",
-                  width: 300,
-                  height: 300,
-                  borderRadius: "50%",
-                  background: `radial-gradient(circle, ${withAlpha(colors.gold, 0.15)} 0%, ${withAlpha(colors.violet, 0.12)} 38%, transparent 68%)`,
-                }}
-              />
-              <div
-                aria-hidden
-                className="hero-rays"
-                style={{
-                  position: "absolute",
-                  width: 264,
-                  height: 264,
-                  borderRadius: "50%",
-                  background: `repeating-conic-gradient(${withAlpha(colors.gold, 0.045)} 0deg 7deg, transparent 7deg 27deg)`,
-                  WebkitMaskImage: "radial-gradient(circle, black 20%, transparent 62%)",
-                  maskImage: "radial-gradient(circle, black 20%, transparent 62%)",
-                }}
-              />
+            <div style={{ position: "relative", display: "grid", placeItems: "center", ["--em" as string]: EMBLEM_SIZE }}>
+              <EmblemLight />
               <div style={{ position: "relative", zIndex: 1, animation: "float-soft 4s ease-in-out infinite" }}>
-                <Logo size="clamp(112px, calc(40vh - 155px), 200px)" />
+                <Logo glow={false} size={EMBLEM_SIZE} />
               </div>
             </div>
             <h1
               style={{
                 // Negatief, zodat het woordmerk tegen het embleem aan kruipt en
                 // de twee als één merk lezen in plaats van als twee dingen.
-                margin: "-26px 0 0",
+                margin: "-46px 0 0",
                 // Cybergame (the studio face, already italic-shaped) is only
                 // this wordmark; vw-clamped so it never clips small phones.
                 // Cybergame is a very condensed face: it needs a much larger
@@ -565,6 +547,7 @@ function FriendsSheet({
   onClose: () => void;
 }) {
   const { t } = useT();
+  const skin = useTileSkin();
   return (
     <div
       onClick={onClose}
@@ -573,8 +556,15 @@ function FriendsSheet({
       <div
         className="pop-in"
         onClick={(e) => e.stopPropagation()}
-        style={{ position: "relative", width: "100%", maxWidth: 340, display: "flex", flexDirection: "column", gap: 12, padding: "24px 20px 18px", borderRadius: 24, background: "linear-gradient(180deg, #2a1c48, #160D30)", border: `1px solid ${withAlpha(colors.gold, 0.45)}`, boxShadow: "0 24px 80px rgba(0,0,0,.6)", textAlign: "center" }}
+        style={
+          skin
+            ? { position: "relative", isolation: "isolate", width: "100%", maxWidth: 340, display: "flex", flexDirection: "column", gap: 12, padding: "30px 26px 24px", textAlign: "center" }
+            : { position: "relative", width: "100%", maxWidth: 340, display: "flex", flexDirection: "column", gap: 12, padding: "24px 20px 18px", borderRadius: 24, background: "linear-gradient(180deg, #2a1c48, #160D30)", border: `1px solid ${withAlpha(colors.gold, 0.45)}`, boxShadow: "0 24px 80px rgba(0,0,0,.6)", textAlign: "center" }
+        }
       >
+        {skin && (
+          <img aria-hidden alt="" src="/tiles/frame-popup.webp" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", zIndex: -1, pointerEvents: "none", filter: "drop-shadow(0 18px 40px rgba(0,0,0,.55))" }} />
+        )}
         <button onClick={onClose} aria-label={t("back")} style={{ position: "absolute", top: 12, right: 12, background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 4 }}>
           <X size={19} />
         </button>
@@ -984,7 +974,7 @@ function LandingFX() {
           position: "absolute",
           inset: 0,
           background:
-            "radial-gradient(62% 34% at 50% 21%, rgba(4,1,12,0) 0%, rgba(4,1,12,0) 52%, rgba(4,1,12,.45) 76%, rgba(4,1,12,.82) 100%)",
+            "radial-gradient(94% 54% at 50% 21%, rgba(4,1,12,0) 0%, rgba(4,1,12,0) 32%, rgba(4,1,12,.07) 46%, rgba(4,1,12,.19) 58%, rgba(4,1,12,.34) 69%, rgba(4,1,12,.50) 79%, rgba(4,1,12,.65) 88%, rgba(4,1,12,.78) 100%)",
         }}
       />
       {[false, true].map((slow) => (
