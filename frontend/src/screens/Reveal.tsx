@@ -87,107 +87,116 @@ export function Reveal({ game }: { game: GameApi }) {
   );
 }
 
-/** Wie er draait: de spelerbanner. Aan elke kant twee pijltjes, en de boven- en
- *  onderrand zijn twee lijntjes die naar de uiteinden toe uitfaden met een witte
- *  highlight in het midden.
- *
- *  Die twee lijntjes kunnen geen `border` zijn: een border is overal even sterk
- *  en volgt bovendien geen clip-path. Het zijn losse laagjes met een horizontaal
- *  verloop, zodat ze in het midden oplichten en aan de punten oplossen.
- *
- *  De afwerking komt uit de aangeleverde art-specs (donkerpaarse vulling met
- *  ruis, ingehouden binnengloed, gouden kroontje, lichtveeg elke zes seconden).
- *  Die kwamen als React Native; dit is dezelfde vormgeving in de webstack.
+/** Wie er draait: geen dichte balk maar TWEE LIJNEN met er niets tussen, zodat
+ *  de arena er dwars doorheen te zien is. Aan elke kant staat een pijl, precies
+ *  zo hoog als de afstand tussen de twee lijnen.
  */
-const BANNER_CUT =
-  "polygon(16px 0, calc(100% - 16px) 0, 100% 50%, calc(100% - 16px) 100%, 16px 100%, 0 50%)";
+const BANNER_H = 54;
 
-/** Twee pijltjes naast elkaar, spiegelbaar. */
-function Chevrons({ dir }: { dir: 1 | -1 }) {
+// De lijn is geen streep maar een laagje licht. Een `border` of een enkele
+// achtergrond kan dat niet: dan is hij overal even sterk en even hard. Daarom
+// een stapeling die samen als gloeiende energie leest:
+//
+//  1. het paarse verloop, fel violet in het midden en donker naar de randen;
+//  2. een fijne lichte kern die door het midden van de lijn loopt;
+//  3. een dun helder randje bovenop, dat maakt het glasachtig;
+//  4. een zachte ronde oplichting waar de lijn de balk raakt;
+//  5. een kleine bloom eronder, net genoeg om te gloeien zonder wazig te worden.
+//
+// Het uitfaden aan de uiteinden doet EEN masker over die hele stapel. Zou elke
+// laag zijn eigen fade krijgen, dan lopen ze niet gelijk uit en zie je de laagjes
+// los van elkaar eindigen.
+const LINE_PURPLE =
+  "linear-gradient(90deg, #3A167E 0%, #6A2DFF 18%, #9A4DFF 36%, #C46BFF 50%, #9A4DFF 64%, #6A2DFF 82%, #3A167E 100%)";
+const LINE_FADE = "linear-gradient(90deg, transparent 0%, #000 12%, #000 88%, transparent 100%)";
+const LINE_H = 3;
+
+function EnergyLine({ side }: { side: "top" | "bottom" }) {
+  const fade = { WebkitMaskImage: LINE_FADE, maskImage: LINE_FADE } as React.CSSProperties;
   return (
-    <svg
-      aria-hidden
-      width={22}
-      height={26}
-      viewBox="0 0 22 26"
-      style={{ flexShrink: 0, transform: dir === -1 ? "scaleX(-1)" : undefined }}
-    >
-      {[0, 9].map((x, i) => (
-        <path
-          key={x}
-          d={`M ${x + 1} 3 L ${x + 9} 13 L ${x + 1} 23`}
-          fill="none"
-          stroke="#A855F7"
-          strokeWidth={3}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          // De buitenste is zwakker, zodat ze naar buiten toe wegvallen.
-          opacity={i === 0 ? 0.45 : 0.95}
-        />
-      ))}
+    <>
+      {/* De bloom ligt eronder en is bewust klein: een brede gloed maakt de lijn
+          juist vaag in plaats van verlicht. */}
+      <span
+        aria-hidden
+        style={{
+          position: "absolute",
+          [side]: -3,
+          left: 0,
+          right: 0,
+          height: LINE_H + 6,
+          background: LINE_PURPLE,
+          opacity: 0.5,
+          filter: "blur(3.5px)",
+          pointerEvents: "none",
+          ...fade,
+        }}
+      />
+      <span
+        aria-hidden
+        style={{
+          position: "absolute",
+          [side]: 0,
+          left: 0,
+          right: 0,
+          height: LINE_H,
+          backgroundImage: [
+            // 3: het glasrandje bovenop
+            "linear-gradient(180deg, rgba(255,255,255,.8) 0px, rgba(255,255,255,0) 1px)",
+            // 2: de lichte kern door het midden
+            "linear-gradient(180deg, transparent 1px, rgba(255,235,255,.6) 1px, rgba(255,235,255,.6) 2px, transparent 2px)",
+            // 4: de ronde oplichting in het midden
+            "radial-gradient(50% 320% at 50% 50%, rgba(255,255,255,.4) 0%, transparent 65%)",
+            // 1: het paarse verloop
+            LINE_PURPLE,
+          ].join(", "),
+          pointerEvents: "none",
+          ...fade,
+        }}
+      />
+    </>
+  );
+}
+
+function Chevron() {
+  return (
+    <svg aria-hidden width={13} height={BANNER_H} viewBox={`0 0 13 ${BANNER_H}`} style={{ flexShrink: 0 }}>
+      <path
+        d={`M 2 2 L 11 ${BANNER_H / 2} L 2 ${BANNER_H - 2}`}
+        fill="none"
+        stroke="#9A4DFF"
+        strokeWidth={2.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
 
 function TurnBanner({ label, avatar }: { name: string | null; label: string; avatar: React.ReactNode }) {
-  // Boven- en onderrand: wit in het midden, paars ernaast, weg bij de punten.
-  const edge: React.CSSProperties = {
-    position: "absolute",
-    left: 12,
-    right: 12,
-    height: 1.5,
-    background:
-      "linear-gradient(90deg, transparent 0%, rgba(168,85,247,.55) 18%, rgba(255,255,255,.95) 50%, rgba(168,85,247,.55) 82%, transparent 100%)",
-    pointerEvents: "none",
-  };
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", maxWidth: 360 }}>
-      <Chevrons dir={-1} />
+    <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", maxWidth: 350 }}>
+      <span style={{ transform: "scaleX(-1)", display: "flex" }}>
+        <Chevron />
+      </span>
       <div
         style={{
           position: "relative",
           flex: 1,
           minWidth: 0,
-          height: 58,
+          height: BANNER_H,
           display: "flex",
           alignItems: "center",
           gap: 10,
-          padding: "0 24px 0 20px",
-          overflow: "hidden",
-          clipPath: BANNER_CUT,
-          background: "linear-gradient(180deg, #37206D 0%, #2A124F 55%, #180C35 100%)",
-          boxShadow: "inset 0 0 26px rgba(168,85,247,.18)",
-          filter: "drop-shadow(0 8px 18px rgba(0,0,0,.45))",
+          // Bewust geen achtergrond: tussen de twee lijnen hoort de arena door
+          // te lopen.
+          background: "transparent",
         }}
       >
-        {/* Ruis: heel licht, tegen het vlakke plastic-gevoel van een egaal verloop. */}
-        <span
-          aria-hidden
-          style={{
-            position: "absolute",
-            inset: 0,
-            opacity: 0.5,
-            backgroundImage:
-              "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.06'/%3E%3C/svg%3E\")",
-          }}
-        />
-        <span aria-hidden style={{ ...edge, top: 0 }} />
-        <span aria-hidden style={{ ...edge, bottom: 0 }} />
-        {/* De lichtveeg, elke 6 seconden een keer. */}
-        <span
-          aria-hidden
-          style={{
-            position: "absolute",
-            top: 0,
-            bottom: 0,
-            left: 0,
-            width: 70,
-            background: "linear-gradient(90deg, transparent, rgba(255,255,255,.1), transparent)",
-            animation: "banner-sweep 6s ease-in-out infinite",
-          }}
-        />
+        <EnergyLine side="top" />
+        <EnergyLine side="bottom" />
 
-        {/* Avatar met kroontje, binnen de balk. */}
+        {/* Avatar met kroontje. */}
         <span style={{ position: "relative", display: "flex", flexShrink: 0 }}>
           {avatar}
           <span
@@ -214,7 +223,7 @@ function TurnBanner({ label, avatar }: { name: string | null; label: string; ava
             fontSize: 16.5,
             letterSpacing: 0.5,
             color: "#FFFFFF",
-            textShadow: "0 2px 6px rgba(0,0,0,.55)",
+            textShadow: "0 2px 8px rgba(0,0,0,.7)",
             whiteSpace: "nowrap",
             overflow: "hidden",
             textOverflow: "ellipsis",
@@ -223,7 +232,7 @@ function TurnBanner({ label, avatar }: { name: string | null; label: string; ava
           {label}
         </span>
       </div>
-      <Chevrons dir={1} />
+      <Chevron />
     </div>
   );
 }

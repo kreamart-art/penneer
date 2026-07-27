@@ -56,9 +56,10 @@ export function Reel({ state, letter, exclude = [], hard = false, skin = null }:
     face: "linear-gradient(155deg, #B96DFF 0%, #8C3FFF 55%, #5B1FD6 100%)",
     innerGlow: "rgba(190,120,255,.45)",
     outerGlow: "rgba(140,70,255,.35)",
-    // De rand is hetzelfde verloop als het vraagteken, met lichtere uiteinden
-    // zodat de hoeken oplichten.
-    edge: "linear-gradient(135deg, #C98BFF 0%, #8C3FFF 28%, #5B1FD6 50%, #8C3FFF 72%, #C98BFF 100%)",
+    // De rand is hetzelfde verloop als het vraagteken. De lichte stukken zijn
+    // KORT gehouden: alleen vlak bij de hoeken een highlight, niet een halve
+    // rand die oplicht.
+    edge: "linear-gradient(135deg, #C98BFF 0%, #8C3FFF 7%, #5B1FD6 50%, #8C3FFF 93%, #C98BFF 100%)",
     fill: "radial-gradient(120% 100% at 50% 38%, #121A35 0%, #0A1023 100%)",
   };
   const plain = !skin;
