@@ -17,6 +17,8 @@ export function NeonText({
   children,
   blur = 14,
   glow = 0.85,
+  depth = "full",
+  glowColor,
   style,
 }: {
   accent: string;
@@ -24,6 +26,14 @@ export function NeonText({
   /** Hoe ver de gloed uitwaaiert. Schaal mee met de lettergrootte. */
   blur?: number;
   glow?: number;
+  /** `full` loopt door tot de donkerste tint: mooi op iets dat zelf verlicht is,
+   *  zoals een letter op een kaart. `light` stopt bij de lichte tint, voor losse
+   *  tekst op een donkere achtergrond: daar zou de onderste helft van elke letter
+   *  anders wegvallen en wordt het geheel dof. */
+  depth?: "full" | "light";
+  /** Een afwijkende kleur voor de gloed. Handig als het VLAK licht moet blijven
+   *  maar de gloed eromheen juist verzadigd. */
+  glowColor?: string;
   style?: React.CSSProperties;
 }) {
   const ramp = rampFrom(accent);
@@ -31,14 +41,17 @@ export function NeonText({
     <span style={{ position: "relative", display: "inline-block", ...style }}>
       <span
         aria-hidden
-        style={{ position: "absolute", inset: 0, color: ramp[2], filter: `blur(${blur}px)`, opacity: glow, pointerEvents: "none" }}
+        style={{ position: "absolute", inset: 0, color: glowColor ?? ramp[2], filter: `blur(${blur}px)`, opacity: glow, pointerEvents: "none" }}
       >
         {children}
       </span>
       <span
         style={{
           position: "relative",
-          backgroundImage: faceGradient(accent),
+          backgroundImage:
+            depth === "light"
+              ? `linear-gradient(155deg, ${ramp[3]} 0%, ${ramp[3]} 24%, ${ramp[2]} 100%)`
+              : faceGradient(accent),
           WebkitBackgroundClip: "text",
           backgroundClip: "text",
           color: "transparent",

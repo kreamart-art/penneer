@@ -4,6 +4,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, Copy, Minus, Plus, Search, Send, Share2, UserPlus, X } from "lucide-react";
 import { Avatar } from "../components/Avatar";
+import { NeonText } from "../components/NeonText";
 import { Button } from "../components/Button";
 import { Chip } from "../components/Chip";
 import { InfoDot } from "../components/InfoDot";
@@ -234,9 +235,18 @@ export function Lobby({ game }: { game: GameApi }) {
         <Card style={{ textAlign: "center" }}>
           <SectionLabel>{t("roomcode")}</SectionLabel>
           <button onClick={shareCode} aria-label={t("shareCode")} style={{ display: "inline-flex", gap: 8, alignItems: "center", background: "transparent", border: "none", cursor: "pointer" }}>
-            <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 56, letterSpacing: 10, color: colors.gold, textShadow: `0 0 28px ${withAlpha(colors.gold, 0.5)}` }}>
+            {/* De code die je doorgeeft, met dezelfde behandeling als de letter
+                op de rol: een gouden verloop over de letters met de gloed als
+                vervaagde kopie erachter. Op dit formaat leest dat als metaal;
+                klein zou hetzelfde verloop de letters juist dof maken. */}
+            <NeonText
+              accent={colors.gold}
+              blur={20}
+              glow={0.7}
+              style={{ fontFamily: font.display, fontWeight: 700, fontSize: 56, letterSpacing: 10, lineHeight: 1 }}
+            >
               {room.code}
-            </span>
+            </NeonText>
             <span style={{ color: copied ? colors.green : colors.faint }}>{copied ? <Check size={22} /> : <Share2 size={21} />}</span>
           </button>
           <p style={{ margin: "6px 0 0", fontFamily: font.ui, fontSize: 13, color: colors.sub }}>{t("codeHint")}</p>

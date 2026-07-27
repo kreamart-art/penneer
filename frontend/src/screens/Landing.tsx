@@ -312,11 +312,15 @@ export function Landing({
                 whiteSpace: "nowrap",
               }}
             >
-              {/* Zelfde behandeling als de letter op de rol: een verloop over de
-                  letters met een gloed als vervaagde kopie erachter, in violet.
-                  Een text-shadow kon hier niet meer: die tekent over een verloop
-                  heen dat op de letters is geknipt. */}
-              <NeonText accent={colors.violet} blur={22} glow={0.8}>PEN NEER</NeonText>
+              {/* Zelfde behandeling als de letter op de rol, maar met de LICHTE
+                  variant van het verloop: het loopt van bijna wit naar licht
+                  violet en niet door naar donker paars. Losse letters op een
+                  donkere achtergrond hebben geen verlicht vlak onder zich, dus
+                  een donker uiteinde valt daar gewoon weg. De gloed blijft wel de
+                  volle violet, die zit erachter en hoeft niet leesbaar te zijn. */}
+              <NeonText accent="#C3B4FF" depth="light" glowColor={colors.violet} blur={26} glow={0.9}>
+                PEN NEER
+              </NeonText>
             </h1>
             <p
               style={{

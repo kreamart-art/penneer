@@ -1,7 +1,5 @@
 // Compact top bar: wordmark + room code + round indicator + chat + connection dot + exit.
 import { LogOut } from "lucide-react";
-import { NeonText } from "./NeonText";
-import { neonSkin } from "../theme/neon";
 import { useT } from "../i18n/i18n";
 import { colors, font, withAlpha } from "../theme/tokens";
 import { ChatButton } from "./Chat";
@@ -53,28 +51,19 @@ export function TopBar({ code, roundNo, totalRounds, connected, onLeave, game }:
         )}
         {code && (
           <span
-            className="neon-ring"
             style={{
-              // De roomcode is het enige wat je overtypt, dus hij mag opvallen:
-              // de letters krijgen dezelfde behandeling als de letter op de rol,
-              // en het vakje eromheen dezelfde verlooprand als de panelen. Beide
-              // in goud, de kleur die de code al had.
-              display: "inline-block",
+              fontFamily: font.display,
+              fontWeight: 700,
+              fontSize: 14,
+              letterSpacing: 2,
+              color: colors.gold,
               padding: "3px 10px",
               borderRadius: 8,
               background: withAlpha(colors.gold, 0.12),
-              ...neonSkin(colors.gold),
-              ["--ng-w" as string]: "1px",
-            } as React.CSSProperties}
+              border: `1px solid ${withAlpha(colors.gold, 0.35)}`,
+            }}
           >
-            <NeonText
-              accent={colors.gold}
-              blur={7}
-              glow={0.7}
-              style={{ fontFamily: font.display, fontWeight: 700, fontSize: 14, letterSpacing: 2 }}
-            >
-              {code}
-            </NeonText>
+            {code}
           </span>
         )}
         {game && <ChatButton game={game} />}
