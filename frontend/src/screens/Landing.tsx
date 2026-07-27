@@ -338,21 +338,21 @@ export function Landing({
                 }}
               />
               <div style={{ position: "relative", zIndex: 1, animation: "float-soft 4s ease-in-out infinite" }}>
-                <Logo size="clamp(100px, calc(34.5vh - 130px), 168px)" />
+                <Logo size="clamp(112px, calc(40vh - 155px), 200px)" />
               </div>
             </div>
             <h1
               style={{
                 // Negatief, zodat het woordmerk tegen het embleem aan kruipt en
                 // de twee als één merk lezen in plaats van als twee dingen.
-                margin: "-16px 0 0",
+                margin: "-26px 0 0",
                 // Cybergame (the studio face, already italic-shaped) is only
                 // this wordmark; vw-clamped so it never clips small phones.
                 // Cybergame is a very condensed face: it needs a much larger
                 // px size than Space Grotesk did to span the same hero width.
                 fontFamily: "'Cybergame', 'Space Grotesk', sans-serif",
                 fontWeight: 400,
-                fontSize: "min(60px, 15vw, 7.4vh)",
+                fontSize: "min(74px, 18vw, 8.2vh)",
                 letterSpacing: "0.14em",
                 whiteSpace: "nowrap",
               }}
