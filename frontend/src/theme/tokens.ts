@@ -39,6 +39,8 @@ export const appBackground =
 export const font = {
   display: '"Space Grotesk", system-ui, sans-serif',
   ui: '"Inter", system-ui, sans-serif',
+  // Smalle hoofdletters, voor korte kreten: de tagline, de spelernaam, koppen.
+  wide: '"Bebas Neue", "Space Grotesk", system-ui, sans-serif',
 } as const;
 
 // Reusable surface for translucent panels / cards.

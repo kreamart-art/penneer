@@ -5,8 +5,9 @@ import { useState } from "react";
 import { Music } from "lucide-react";
 import { sound } from "../sound/sound";
 import { colors, withAlpha } from "../theme/tokens";
+import { HexPlate } from "./HexPlate";
 
-export function MusicToggle({ size = 20, padding = 4 }: { size?: number; padding?: number }) {
+export function MusicToggle({ size = 20, padding = 4, plate = false }: { size?: number; padding?: number; plate?: boolean }) {
   const [muted, setMuted] = useState(sound.isMusicMuted());
   const toggle = () => {
     sound.toggleMusicMuted();
@@ -22,13 +23,15 @@ export function MusicToggle({ size = 20, padding = 4 }: { size?: number; padding
         background: "transparent",
         border: "none",
         cursor: "pointer",
-        color: muted ? colors.faint : colors.gold,
+        color: muted ? (plate ? colors.sub : colors.faint) : colors.gold,
         display: "flex",
         padding,
         lineHeight: 0,
       }}
     >
-      <Music size={size} />
+      <HexPlate on={plate}>
+        <Music size={size} />
+      </HexPlate>
       {muted && (
         // diagonal strike = "off"
         <span

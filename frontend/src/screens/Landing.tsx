@@ -16,6 +16,7 @@ import { NeonText } from "../components/NeonText";
 import { neonSkin } from "../theme/neon";
 import { TILE_ART, plateShadow, shadowSrc, useTileSkin } from "../theme/tileSkin";
 import { CoinPlate } from "../components/CoinPlate";
+import { HexPlate } from "../components/HexPlate";
 import { EmblemLight } from "../components/EmblemLight";
 import { colors, font, radius, withAlpha } from "../theme/tokens";
 
@@ -250,11 +251,13 @@ export function Landing({
             }}
             aria-label={t("missionsTitle")}
             className="pressable glowhover"
-            style={{ position: "relative", background: "transparent", border: "none", cursor: "pointer", color: colors.sub, display: "flex", padding: 9 }}
+            style={{ position: "relative", background: "transparent", border: "none", cursor: "pointer", color: skin ? colors.ink : colors.sub, display: "flex", padding: skin ? 0 : 9, lineHeight: 0 }}
           >
-            <Target size={23} />
+            <HexPlate on={skin}>
+              <Target size={23} />
+            </HexPlate>
             {missionsOpen > 0 && (
-              <span style={{ position: "absolute", top: 3, right: 3, minWidth: 15, height: 15, padding: "0 4px", borderRadius: 999, background: colors.gold, color: colors.bg0, fontFamily: font.ui, fontSize: 9.5, fontWeight: 800, lineHeight: "15px", textAlign: "center", boxShadow: `0 0 8px ${withAlpha(colors.gold, 0.6)}` }}>
+              <span style={{ position: "absolute", top: skin ? -1 : 3, right: skin ? -1 : 3, minWidth: 15, height: 15, padding: "0 4px", borderRadius: 999, background: colors.gold, color: colors.bg0, fontFamily: font.ui, fontSize: 9.5, fontWeight: 800, lineHeight: "15px", textAlign: "center", boxShadow: `0 0 8px ${withAlpha(colors.gold, 0.6)}` }}>
                 {missionsOpen}
               </span>
             )}
@@ -263,21 +266,25 @@ export function Landing({
             onClick={onShowSettings}
             aria-label={t("settings")}
             className="pressable glowhover"
-            style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.sub, display: "flex", padding: 9 }}
+            style={{ background: "transparent", border: "none", cursor: "pointer", color: skin ? colors.ink : colors.sub, display: "flex", padding: skin ? 0 : 9, lineHeight: 0 }}
           >
-            <SettingsIcon size={24} />
+            <HexPlate on={skin}>
+              <SettingsIcon size={24} />
+            </HexPlate>
           </button>
           </div>
-          <MusicToggle size={24} padding={9} />
+          <MusicToggle size={24} padding={skin ? 0 : 9} plate={skin} />
           {/* Icon-only: the rules live one tap away here and in Instellingen,
               so the main page needs no explaining line at the bottom. */}
           <button
             onClick={() => { sound.uiTap(); onShowRules(); }}
             aria-label={t("howItWorks")}
             className="pressable glowhover"
-            style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.sub, display: "flex", padding: 9 }}
+            style={{ background: "transparent", border: "none", cursor: "pointer", color: skin ? colors.ink : colors.sub, display: "flex", padding: skin ? 0 : 9, lineHeight: 0 }}
           >
-            <HelpCircle size={24} />
+            <HexPlate on={skin}>
+              <HelpCircle size={24} />
+            </HexPlate>
           </button>
         </div>
       </div>
@@ -331,7 +338,7 @@ export function Landing({
               style={{
                 // Negatief, zodat het woordmerk tegen het embleem aan kruipt en
                 // de twee als één merk lezen in plaats van als twee dingen.
-                margin: "-74px 0 0",
+                margin: "-64px 0 0",
                 // Cybergame (the studio face, already italic-shaped) is only
                 // this wordmark; vw-clamped so it never clips small phones.
                 // Cybergame is a very condensed face: it needs a much larger
@@ -355,15 +362,18 @@ export function Landing({
             </h1>
             <p
               style={{
-                margin: 0,
+                // Negatief, zodat de tagline dichter onder het woordmerk komt.
+                margin: "-12px 0 0",
                 textAlign: "center",
-                fontFamily: font.ui,
-                fontWeight: 500,
-                fontSize: 14,
-                lineHeight: 1.35,
-                letterSpacing: 0.3,
+                // Bebas Neue: smalle hoofdletters, dus meer letterafstand en een
+                // grotere maat, anders leest het als een blokje.
+                fontFamily: font.wide,
+                fontWeight: 400,
+                fontSize: 16.5,
+                lineHeight: 1.2,
+                letterSpacing: 0.9,
                 color: "#CFC6E8",
-                maxWidth: 300,
+                maxWidth: 320,
               }}
             >
               {t("tagline")}
@@ -419,7 +429,7 @@ export function Landing({
             />
           )}
           {account ? (
-            <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13.5, color: colors.sub, textAlign: "center" }}>
+            <p style={{ margin: 0, fontFamily: font.wide, fontSize: 16, letterSpacing: 0.8, color: colors.sub, textAlign: "center" }}>
               {t("playingAs")} <span style={{ color: colors.gold, fontWeight: 700 }}>{account.name}</span>
             </p>
           ) : (

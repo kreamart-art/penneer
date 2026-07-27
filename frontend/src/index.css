@@ -9,6 +9,15 @@
 /* Studio fonts (frontend/public/fonts). Cybergame is only the PEN NEER
    wordmark on the main page; Early GameBoy only the "Pennen neer!" splash.
    The italic file is registered as normal so fallbacks stay upright. */
+/* Bebas Neue: de smalle hoofdletter-stijl voor de tagline en de spelernaam op
+   de main page. Ook op de Duel-koppen, want die willen dezelfde toon. */
+@font-face {
+  font-family: "Bebas Neue";
+  src: url("/fonts/bebas-neue.woff2") format("woff2"), url("/fonts/bebas-neue.ttf") format("truetype");
+  font-weight: 400;
+  font-display: swap;
+}
+
 @font-face {
   font-family: "Cybergame";
   src: url("/fonts/cybergame-italic.ttf") format("truetype");
