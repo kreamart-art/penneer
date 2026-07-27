@@ -18,6 +18,29 @@
 import type React from "react";
 import { faceGradient, rampFrom } from "../theme/neon";
 
+/** De ZIJKANT van een geslagen letter: een stapel harde kopieën die stap voor
+ *  stap naar rechtsonder loopt, van licht bij de letter naar diep aan het eind.
+ *  Dat maakt het een vlak in plaats van een trap, en het is wat een woordmerk
+ *  massief laat lijken in plaats van geplakt.
+ *
+ *  Als `text-shadow`, want dat is de enige schaduw die de VORM van de glyph
+ *  volgt zonder een eigen laag te rasteren. Op de gloed kan het niet, daar
+ *  wordt hij over het geknipte verloop getekend; hier is er geen verloop
+ *  onder, dus hier mag het wel. */
+function sideStack(steps: number, step: number, near: string, far: string): string {
+  const hex = (c: string) => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16));
+  const A = hex(near);
+  const B = hex(far);
+  const parts: string[] = [];
+  for (let i = 1; i <= steps; i++) {
+    const t = i / steps;
+    const c = A.map((v, k) => Math.round(v + (B[k] - v) * t));
+    const d = (step * i).toFixed(3);
+    parts.push(`${d}em ${d}em 0 rgb(${c.join(",")})`);
+  }
+  return parts.join(", ");
+}
+
 export function NeonText({
   accent,
   children,
@@ -25,6 +48,7 @@ export function NeonText({
   glow = 0.85,
   depth = "full",
   glowColor,
+  side = 0,
   style,
 }: {
   accent: string;
@@ -37,6 +61,8 @@ export function NeonText({
    *  tekst op een donkere achtergrond: daar zou de onderste helft van elke letter
    *  anders wegvallen en wordt het geheel dof. */
   depth?: "full" | "light";
+  /** De violette zijkant onder de letter, in em zodat hij meeschaalt. 0 is uit. */
+  side?: number;
   /** Een afwijkende kleur voor de gloed. Handig als het VLAK licht moet blijven
    *  maar de gloed eromheen juist verzadigd. */
   glowColor?: string;
@@ -64,6 +90,23 @@ export function NeonText({
       >
         {children}
       </span>
+      {side > 0 && (
+        // De zijkant ligt tussen de gloed en het vlak in.
+        <span
+          aria-hidden
+          style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            whiteSpace: "nowrap",
+            color: "#4B2694",
+            textShadow: sideStack(18, side / 18, "#6C3ACD", "#22103F"),
+            pointerEvents: "none",
+          }}
+        >
+          {children}
+        </span>
+      )}
       <span
         style={{
           position: "relative",

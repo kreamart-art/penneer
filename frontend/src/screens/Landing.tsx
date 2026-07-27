@@ -356,9 +356,19 @@ export function Landing({
                   donkere achtergrond hebben geen verlicht vlak onder zich, dus
                   een donker uiteinde valt daar gewoon weg. De gloed blijft wel de
                   volle violet, die zit erachter en hoeft niet leesbaar te zijn. */}
-              <NeonText accent="#C3B4FF" depth="light" glowColor={colors.violet} blur={26} glow={0.9}>
-                PEN NEER
-              </NeonText>
+              {/* Twee woorden, twee lagen: de spatie uit het font is veel te
+                  breed voor een woordmerk. Zo bepaalt `gap` de tussenruimte, en
+                  de letterafstand zet ook achter de laatste letter ruimte, dus
+                  die halen we er rechts weer af. Anders staat het merk een halve
+                  letter naar links. */}
+              <span style={{ display: "inline-flex", alignItems: "baseline", gap: "0.03em" }}>
+                <NeonText accent="#C3B4FF" depth="light" glowColor={colors.violet} blur={26} glow={0.9} side={0.13}>
+                  PEN
+                </NeonText>
+                <NeonText accent="#C3B4FF" depth="light" glowColor={colors.violet} blur={26} glow={0.9} side={0.13} style={{ marginRight: "-0.14em" }}>
+                  NEER
+                </NeonText>
+              </span>
             </h1>
             <p
               style={{
