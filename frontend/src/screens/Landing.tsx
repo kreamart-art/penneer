@@ -694,7 +694,14 @@ function Tile({
           lineHeight: 0,
         }}
       >
-        <img src={tile.src} alt="" style={{ width: "100%", height: "auto", display: "block" }} />
+        {/* Vaste verhouding, zodat alle tegels even groot zijn ook voordat de
+            plaat geladen is. De vier vierkante platen staan op een gedeeld doek
+            (zie public/tiles); de Duel-balk heeft zijn eigen, bredere maat. */}
+        <img
+          src={tile.src}
+          alt=""
+          style={{ width: "100%", aspectRatio: wide ? "900 / 206" : "720 / 520", display: "block" }}
+        />
         {tile.label && (
           <span
             style={{
