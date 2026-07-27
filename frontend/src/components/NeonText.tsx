@@ -100,19 +100,26 @@ export function NeonText({
           position: "relative",
           backgroundImage:
             depth === "light"
-              ? // Het licht komt uit RECHTSBOVEN. Een hoek boven de 180 laat het
-                // verloop naar linksonder lopen, dus het lichte eind ligt
-                // rechtsboven; op 155 lag het nog linksboven. De lichte kop
-                // loopt door tot 30% zodat er een echt vlak van te zien is en
-                // niet alleen een randje.
+              ? // TWEE koppen op twee verschillende hoeken, dus twee lagen.
                 //
-                // Aan de andere kant een tweede kop, in donkerblauw. Die twee
-                // vaste blauwen staan er los in en komen niet uit de reeks: de
-                // reeks houdt de tint van het accent vast en dat is blauwviolet,
-                // dus zijn donkerste tint leest als paars en niet als blauw. Om
-                // ECHT blauw te zijn moet de tint mee opschuiven, en dat is een
-                // keuze voor dit woordmerk en niet iets wat de reeks moet doen.
-                `linear-gradient(205deg, ${ramp[3]} 0%, ${ramp[3]} 30%, ${ramp[2]} 58%, #3D4FE8 80%, #141A63 100%)`
+                // Dat moet wel: in één verloop liggen de uiteinden per definitie
+                // tegenover elkaar, dus licht rechtsboven zou de donkere kop
+                // linksonder vastpinnen. Als aparte laag erbovenop kan de donkere
+                // kop zijn eigen hoek hebben. De eerste in de lijst ligt bovenop,
+                // en omdat hij tot ver in het verloop doorzichtig is, blijft het
+                // licht eronder gewoon staan.
+                //
+                // De blauwen staan los in het verloop en komen niet uit de reeks:
+                // de reeks houdt de tint van het accent vast en dat is
+                // blauwviolet, dus zijn donkerste tint leest als paars en niet
+                // als blauw. Om ECHT blauw te zijn moet de tint mee opschuiven,
+                // en dat is een keuze voor dit woordmerk.
+                [
+                  // donkerblauwe kop, rechtsonder
+                  "linear-gradient(135deg, rgba(20,26,99,0) 44%, rgba(20,26,99,.55) 74%, rgba(12,16,72,.95) 100%)",
+                  // lichte kop, rechtsboven
+                  `linear-gradient(205deg, ${ramp[3]} 0%, ${ramp[3]} 30%, ${ramp[2]} 68%, #6A57F0 100%)`,
+                ].join(", ")
               : faceGradient(accent),
           WebkitBackgroundClip: "text",
           backgroundClip: "text",
