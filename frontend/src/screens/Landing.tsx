@@ -12,7 +12,7 @@ import { Screen, Card } from "../components/Layout";
 import type { GameApi } from "../net/socket";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
-import { Wordmark } from "../components/Wordmark";
+import { NeonText } from "../components/NeonText";
 import { neonSkin } from "../theme/neon";
 import { TILE_ART, plateShadow, shadowSrc, useTileSkin } from "../theme/tileSkin";
 import { CoinPlate } from "../components/CoinPlate";
@@ -354,8 +354,15 @@ export function Landing({
                 whiteSpace: "nowrap",
               }}
             >
-              {/* Gesmeed chroom met een violette zijkant. Zie Wordmark. */}
-              <Wordmark />
+              {/* Zelfde behandeling als de letter op de rol, maar met de LICHTE
+                  variant van het verloop: het loopt van bijna wit naar licht
+                  violet en niet door naar donker paars. Losse letters op een
+                  donkere achtergrond hebben geen verlicht vlak onder zich, dus
+                  een donker uiteinde valt daar gewoon weg. De gloed blijft wel de
+                  volle violet, die zit erachter en hoeft niet leesbaar te zijn. */}
+              <NeonText accent="#C3B4FF" depth="light" glowColor={colors.violet} blur={26} glow={0.9}>
+                PEN NEER
+              </NeonText>
             </h1>
             <p
               style={{
