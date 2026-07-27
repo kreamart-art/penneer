@@ -100,12 +100,18 @@ export function NeonText({
           position: "relative",
           backgroundImage:
             depth === "light"
-              ? `linear-gradient(155deg, ${ramp[3]} 0%, ${ramp[3]} 18%, ${ramp[2]} 62%, ${ramp[1]} 100%)`
+              ? // Het licht komt uit RECHTSBOVEN. Een hoek boven de 180 laat het
+                // verloop naar linksonder lopen, dus het lichte eind ligt
+                // rechtsboven; op 155 lag het nog linksboven. De lichte kop
+                // loopt door tot 34% zodat er een echt vlak van te zien is en
+                // niet alleen een randje.
+                `linear-gradient(205deg, ${ramp[3]} 0%, ${ramp[3]} 34%, ${ramp[2]} 72%, ${ramp[1]} 100%)`
               : faceGradient(accent),
           WebkitBackgroundClip: "text",
           backgroundClip: "text",
           color: "transparent",
-          textShadow: "-1px -1px 0 rgba(255,255,255,.3)",
+          // Het glansrandje ligt aan de kant waar het licht vandaan komt.
+          textShadow: depth === "light" ? "1px -1px 0 rgba(255,255,255,.3)" : "-1px -1px 0 rgba(255,255,255,.3)",
         }}
       >
         {children}
