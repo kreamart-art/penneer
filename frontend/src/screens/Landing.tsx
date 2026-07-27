@@ -702,7 +702,7 @@ function Tile({
           alt=""
           style={{
             width: "100%",
-            aspectRatio: wide ? "900 / 206" : "720 / 520",
+            aspectRatio: wide ? "900 / 190" : "720 / 520",
             display: "block",
             // De schaduw volgt de VORM van de plaat, niet zijn doos. Een
             // box-shadow zou een rechthoek achter een achthoekige plaat zetten;

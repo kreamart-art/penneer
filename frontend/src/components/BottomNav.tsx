@@ -5,15 +5,28 @@
 // The icons are lucide placeholders on purpose — they get swapped for the
 // studio's own art later, so each item keeps its own slot and label and the art
 // only has to drop into `icon`.
+import { useEffect, useRef, useState } from "react";
 import { Home, ShoppingCart, Trophy, UserRound, Users } from "lucide-react";
 import { Avatar } from "./Avatar";
 import type { GameApi } from "../net/socket";
 import { NeonLine } from "./NeonLine";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
+import { useTileSkin } from "../theme/tileSkin";
 import { colors, font, withAlpha } from "../theme/tokens";
 
 export type NavKey = "shop" | "leaderboard" | "home" | "friends" | "profile";
+
+// De maten van de plaat-art (`/tiles/navbar.webp`), uitgemeten op het bestand
+// zelf en daarom in procenten: dan blijven ze kloppen op elk formaat.
+//
+// De art heeft twee verzonken vakken en in het midden een gouden penning met
+// het huisje er al in getekend. Elk vak krijgt twee pictogrammen, het huisje
+// komt uit de art. Vandaar vijf posities waarvan er maar vier iets tekenen.
+const SLOTS = [11.8, 31.7, 50, 68.3, 88.2];
+const WELL_Y = 50.5; // verticale hartlijn van de vakken
+const PLATE_RATIO = "1200 / 174";
+const GAP = 8; // hoe hoog de plaat boven de onderrand zweeft
 
 export function BottomNav({
   game,
@@ -26,23 +39,122 @@ export function BottomNav({
 }) {
   const { t } = useT();
   const account = game.state.account;
+  const skin = useTileSkin();
 
-  const items: { key: NavKey; label: string; icon: React.ReactNode; badge?: number }[] = [
-    { key: "shop", label: t("shopTitle"), icon: <ShoppingCart size={28} strokeWidth={2.1} /> },
-    { key: "leaderboard", label: t("leaderboardTab"), icon: <Trophy size={28} strokeWidth={2.1} /> },
-    { key: "home", label: t("navHome"), icon: <Home size={31} strokeWidth={2.2} /> },
-    { key: "friends", label: t("friendsTab"), icon: <Users size={28} strokeWidth={2.1} /> },
+  // De plaat is art met een vaste verhouding, dus zijn hoogte hangt van de
+  // schermbreedte af. Hij meet zichzelf: de pictogrammen schalen mee en de
+  // pagina weet hoeveel ruimte ze onderaan moet vrijhouden.
+  const plate = useRef<HTMLDivElement | null>(null);
+  const [plateH, setPlateH] = useState(0);
+  useEffect(() => {
+    const el = plate.current;
+    if (!skin || !el) return;
+    const ro = new ResizeObserver(() => {
+      const h = el.offsetHeight;
+      setPlateH(h);
+      document.documentElement.style.setProperty("--nav-h", `${Math.round(h + GAP + 6)}px`);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [skin]);
+
+  // `s` is de pictogrammaat, `av` die van de avatar. De kale balk heeft een
+  // vaste hoogte en dus vaste maten; de plaat-skin schaalt mee met de breedte
+  // van het scherm en zet de avatar bewust groter dan de pictogrammen: een
+  // gezichtje moet je kunnen herkennen, een winkelwagentje alleen herkennen.
+  const items = (s: number, av = Math.round(s * 1.1)): { key: NavKey; label: string; icon: React.ReactNode; badge?: number }[] => [
+    { key: "shop", label: t("shopTitle"), icon: <ShoppingCart size={s} strokeWidth={2.1} /> },
+    { key: "leaderboard", label: t("leaderboardTab"), icon: <Trophy size={s} strokeWidth={2.1} /> },
+    { key: "home", label: t("navHome"), icon: <Home size={Math.round(s * 1.1)} strokeWidth={2.2} /> },
+    { key: "friends", label: t("friendsTab"), icon: <Users size={s} strokeWidth={2.1} /> },
     // Profile's icon IS the player's avatar, so the bar shows who you are.
     {
       key: "profile",
       label: t("profile"),
       icon: account ? (
-        <Avatar name={account.name} color={account.color} size={31} userId={account.id} hasAvatar={account.has_avatar} avatarVer={account.avatar_ver} />
+        <Avatar name={account.name} color={account.color} size={av} userId={account.id} hasAvatar={account.has_avatar} avatarVer={account.avatar_ver} />
       ) : (
-        <UserRound size={28} strokeWidth={2.1} />
+        <UserRound size={s} strokeWidth={2.1} />
       ),
     },
   ];
+
+  if (skin) {
+    // Vier tiende van de plaathoogte past ruim in een vak: het vak is twee derde
+    // hoog, dus er blijft aan weerskanten lucht staan. Tot de plaat is gemeten
+    // tekenen we nog geen pictogrammen, anders springen ze een frame later.
+    const s = Math.round(plateH * 0.4);
+    return (
+      <nav
+        style={{
+          position: "fixed",
+          left: 0,
+          right: 0,
+          // Zweeft: onder de plaat blijft lucht staan, boven de home-indicator.
+          bottom: `calc(${GAP}px + env(safe-area-inset-bottom))`,
+          zIndex: 40,
+          padding: "0 10px",
+          // De marges naast en onder de plaat horen bij het scherm erachter,
+          // niet bij de balk. Zonder dit zou die lucht taps opeten.
+          pointerEvents: "none",
+        }}
+      >
+        <div ref={plate} style={{ position: "relative", width: "100%", maxWidth: 460, margin: "0 auto", pointerEvents: "auto" }}>
+          <img
+            src="/tiles/navbar.webp"
+            alt=""
+            style={{
+              width: "100%",
+              aspectRatio: PLATE_RATIO,
+              display: "block",
+              // Dezelfde schaduw als onder de platen op de main page: hij volgt
+              // de VORM van de balk en niet zijn doos.
+              filter: "drop-shadow(0 6px 10px rgba(0,0,0,.55)) drop-shadow(0 2px 2px rgba(0,0,0,.4))",
+            }}
+          />
+          {plateH > 0 &&
+            items(s, Math.round(plateH * 0.56)).map(({ key, label, icon, badge }, i) => {
+              const on = active === key;
+              const home = key === "home";
+              return (
+                <button
+                  key={key}
+                  onClick={() => { sound.uiTap(); onSelect(key); }}
+                  aria-label={label}
+                  aria-current={on ? "page" : undefined}
+                  className="pressable"
+                  style={{
+                    position: "absolute",
+                    left: `${SLOTS[i]}%`,
+                    top: `${WELL_Y}%`,
+                    transform: "translate(-50%, -50%)",
+                    display: "grid",
+                    placeItems: "center",
+                    width: home ? plateH * 0.9 : plateH * 0.72,
+                    height: home ? plateH : plateH * 0.72,
+                    border: "none",
+                    background: "transparent",
+                    padding: 0,
+                    // Goud als je er bent, gedempt paarswit als je er niet bent.
+                    // Het huisje in het midden zit al in de art, dus die knop
+                    // tekent niets: hij vangt alleen de tap.
+                    color: on ? colors.gold : withAlpha("#E7DAFF", 0.6),
+                    cursor: "pointer",
+                  }}
+                >
+                  {!home && icon}
+                  {!!badge && (
+                    <span style={{ position: "absolute", top: 0, right: 0, minWidth: 15, height: 15, padding: "0 4px", borderRadius: 999, background: colors.gold, color: colors.bg0, fontFamily: font.ui, fontSize: 9, fontWeight: 800, lineHeight: "15px", textAlign: "center" }}>
+                      {badge > 9 ? "9+" : badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+        </div>
+      </nav>
+    );
+  }
 
   return (
     // Anchored to the VIEWPORT, the way SMPL does it. A sticky bar inside a
@@ -73,7 +185,7 @@ export function BottomNav({
           donker aan de uiteinden, oplichtend in het midden, met een klein glansje
           erop. Een `border` kan dat niet, die is overal even sterk. */}
       <NeonLine accent={colors.gold} side="top" />
-      {items.map(({ key, label, icon, badge }) => {
+      {items(28).map(({ key, label, icon, badge }) => {
         const on = active === key;
         const home = key === "home";
         return (

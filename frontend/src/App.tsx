@@ -5,6 +5,7 @@ import { useGame } from "./net/socket";
 import { useT } from "./i18n/i18n";
 import { sound } from "./sound/sound";
 import { colors } from "./theme/tokens";
+import { useTileSkin } from "./theme/tileSkin";
 import { Intro } from "./screens/Intro";
 import { LanguagePage } from "./screens/LanguagePage";
 import { Rules } from "./screens/Rules";
@@ -34,6 +35,7 @@ const INTRO_KEY = "penneer.introSeen";
 
 export default function App() {
   const game = useGame();
+  const tileSkin = useTileSkin();
   const { lang, t } = useT();
   const room = game.state.room;
   const [introDone, setIntroDone] = useState(() => sessionStorage.getItem(INTRO_KEY) === "1");
@@ -353,8 +355,12 @@ export default function App() {
       ? showHub
       : "home";
   useEffect(() => {
+    // Met de platen-skin is de balk art met een vaste verhouding, dus zijn
+    // hoogte hangt van de schermbreedte af. Hij meet zichzelf en zet `--nav-h`
+    // dan zelf; wij blijven eraf zolang hij in beeld is.
+    if (navKey !== null && tileSkin) return;
     document.documentElement.style.setProperty("--nav-h", navKey === null ? "0px" : "58px");
-  }, [navKey]);
+  }, [navKey, tileSkin]);
   const goNav = (key: NavKey) => {
     setShowShop(key === "shop");
     setShowHub(key === "home" || key === "shop" ? null : key);
