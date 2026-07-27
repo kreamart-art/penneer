@@ -700,7 +700,16 @@ function Tile({
         <img
           src={tile.src}
           alt=""
-          style={{ width: "100%", aspectRatio: wide ? "900 / 206" : "720 / 520", display: "block" }}
+          style={{
+            width: "100%",
+            aspectRatio: wide ? "900 / 206" : "720 / 520",
+            display: "block",
+            // De schaduw volgt de VORM van de plaat, niet zijn doos. Een
+            // box-shadow zou een rechthoek achter een achthoekige plaat zetten;
+            // `drop-shadow` gebruikt het alfakanaal en tekent bovendien buiten de
+            // doos, dus hij wordt niet afgeknipt zoals een blur dat wel wordt.
+            filter: "drop-shadow(0 5px 7px rgba(0,0,0,.5)) drop-shadow(0 1px 1px rgba(0,0,0,.45))",
+          }}
         />
         {tile.label && (
           <span
