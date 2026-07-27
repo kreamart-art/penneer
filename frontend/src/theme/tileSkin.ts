@@ -4,7 +4,7 @@
 // Instellingen, en hij wordt lokaal bewaard, niet op het account: er is nog
 // niets besloten, dus er hoeft ook niets naar de server en niets te migreren.
 // Wordt hij de nieuwe standaard, dan verhuist deze vlag naar het account.
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 
 const KEY = "penneer.tileSkin";
 const EVENT = "penneer:tileskin";
@@ -43,6 +43,28 @@ export function useTileSkin(): boolean {
   }, []);
   return on;
 }
+
+/** De schaduw onder een plaat: dezelfde art nog een keer, zwartgemaakt en
+ *  vervaagd, absoluut achter het origineel.
+ *
+ *  Waarom niet gewoon `filter: drop-shadow()`? Dat is korter en het klopt op de
+ *  desktop, maar Safari op iOS rastert zo'n laag apart en tekent hem als
+ *  RECHTHOEK. Dan staan er zwarte hoekjes rond elke plek waar de plaat is
+ *  afgeschuind. `brightness(0)` maakt elke pixel zwart en laat het alfakanaal
+ *  staan, dus deze schaduw volgt de vorm en werkt overal hetzelfde.
+ *
+ *  Vraagt om een ouder met `position: relative` die door de echte plaat op maat
+ *  wordt gehouden. */
+export const plateShadow: CSSProperties = {
+  position: "absolute",
+  inset: 0,
+  width: "100%",
+  height: "100%",
+  filter: "brightness(0) blur(7px)",
+  opacity: 0.55,
+  transform: "translateY(5px)",
+  pointerEvents: "none",
+};
 
 /** De plaat per modus. De DUEL-plaat heeft zijn woord al in de art staan, de
  *  rest niet: daar zetten we het label zelf onder het icoon.

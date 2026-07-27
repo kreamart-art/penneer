@@ -12,7 +12,7 @@ import type { GameApi } from "../net/socket";
 import { NeonLine } from "./NeonLine";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
-import { useTileSkin } from "../theme/tileSkin";
+import { plateShadow, useTileSkin } from "../theme/tileSkin";
 import { colors, font, withAlpha } from "../theme/tokens";
 
 export type NavKey = "shop" | "leaderboard" | "home" | "friends" | "profile";
@@ -100,16 +100,18 @@ export function BottomNav({
         }}
       >
         <div ref={plate} style={{ position: "relative", width: "100%", maxWidth: 460, margin: "0 auto", pointerEvents: "auto" }}>
+          {/* Dezelfde schaduw als onder de platen op de main page: een tweede,
+              zwartgemaakte en vervaagde kopie, zodat hij de VORM van de balk
+              volgt en niet zijn doos. Zie `plateShadow`. */}
+          <img aria-hidden src="/tiles/navbar.webp" alt="" style={plateShadow} />
           <img
             src="/tiles/navbar.webp"
             alt=""
             style={{
+              position: "relative",
               width: "100%",
               aspectRatio: PLATE_RATIO,
               display: "block",
-              // Dezelfde schaduw als onder de platen op de main page: hij volgt
-              // de VORM van de balk en niet zijn doos.
-              filter: "drop-shadow(0 6px 10px rgba(0,0,0,.55)) drop-shadow(0 2px 2px rgba(0,0,0,.4))",
             }}
           />
           {plateH > 0 &&

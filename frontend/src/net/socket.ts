@@ -576,7 +576,9 @@ function reducer(state: ClientState, action: Action): ClientState {
       // The reel resets at the start of every turn.
       return { ...state, spinning: false };
     case "spin_started":
-      return { ...state, spinning: true };
+      // De rol gaat draaien: de chat valt weg. Anders staat het paneel over de
+      // letter heen en ben je te laat om mee te doen aan de ronde.
+      return { ...state, spinning: true, chatOpen: false };
     case "letter_locked": {
       // Snap the reel immediately. room_state follows after the lock beat, but
       // patch the letter now so the Reel can show it during that beat.
