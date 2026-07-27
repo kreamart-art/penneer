@@ -17,6 +17,10 @@ import { neonSkin } from "../theme/neon";
 import { TILE_ART, plateShadow, shadowSrc, useTileSkin } from "../theme/tileSkin";
 import { colors, font, radius, withAlpha } from "../theme/tokens";
 
+// Hoe breed de lijst-art van de skin op het scherm staat. `border-image` rekt
+// het hoekstuk met deze breedte mee, dus dit is meteen de maat van het sieraad.
+const FRAME_W = 28;
+
 const inputStyle: React.CSSProperties = {
   width: "100%",
   boxSizing: "border-box",
@@ -47,6 +51,7 @@ export function Landing({
   onShowDuel: () => void;
 }) {
   const { t } = useT();
+  const skin = useTileSkin();
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [mode, setMode] = useState<"none" | "join">("none");
@@ -347,13 +352,35 @@ export function Landing({
             display: "flex",
             flexDirection: "column",
             gap: 10,
-            padding: 16,
             animationDelay: "0.1s",
-            background: "linear-gradient(180deg, rgba(255,255,255,.09), rgba(255,255,255,.028))",
-            border: "1px solid rgba(255,255,255,.15)",
-            boxShadow: "inset 0 1px 0 rgba(255,255,255,.17), 0 30px 70px rgba(0,0,0,.45), 0 8px 24px rgba(0,0,0,.3)",
-            backdropFilter: "blur(16px)",
-            WebkitBackdropFilter: "blur(16px)",
+            // Met de skin is de kaart de lijst-art. `border-image` snijdt hem in
+            // negenen: de hoekstukken blijven zoals ze zijn en alleen de randen
+            // en het midden rekken mee, dus het sieraad op de hoeken vervormt
+            // niet hoe hoog de kaart ook wordt. De rand zelf is doorzichtig,
+            // want de art vult hem.
+            ...(skin
+              ? {
+                  // De lijst neemt de plaats in van de paginamarge: hij loopt
+                  // een stuk buiten de kolom, anders zouden de tegels een flinke
+                  // hap smaller worden puur omdat er een rand omheen staat.
+                  marginInline: -10,
+                  padding: 8,
+                  background: "none",
+                  backdropFilter: "none",
+                  WebkitBackdropFilter: "none",
+                  boxShadow: "none",
+                  borderRadius: 0,
+                  border: `${FRAME_W}px solid transparent`,
+                  borderImage: "url(/tiles/frame.webp) 128 fill stretch",
+                }
+              : {
+                  padding: 16,
+                  background: "linear-gradient(180deg, rgba(255,255,255,.09), rgba(255,255,255,.028))",
+                  border: "1px solid rgba(255,255,255,.15)",
+                  boxShadow: "inset 0 1px 0 rgba(255,255,255,.17), 0 30px 70px rgba(0,0,0,.45), 0 8px 24px rgba(0,0,0,.3)",
+                  backdropFilter: "blur(16px)",
+                  WebkitBackdropFilter: "blur(16px)",
+                }),
           }}
         >
           {account ? (
