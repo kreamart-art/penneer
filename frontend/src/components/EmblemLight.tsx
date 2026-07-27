@@ -49,7 +49,21 @@ function fan(steps: number[][], soft = 0.5): string {
 // verschillen en die elkaar langzaam kruisen.
 const BREED = fan([[7, 19], [3, 11], [11, 24], [5, 14], [2.5, 9], [9, 21], [4, 12], [6.5, 17], [3, 15], [10, 20], [3.5, 10], [7.5, 16]]);
 const MIDDEL = fan([[2.4, 8], [1.3, 5], [3.6, 11], [1.8, 6], [1, 4], [2.8, 9], [1.5, 5], [2.2, 7], [1.1, 6], [3.2, 10], [1.4, 5], [2, 7], [1.2, 4], [2.6, 8], [1.6, 6]], 0.4);
+const UIT = fan([[4, 62], [2.6, 78], [3.2, 70], [2, 84], [3.6, 54]], 0.45);
 const SPIES = fan([[0.9, 4], [0.6, 3], [1.3, 5], [0.7, 3.5], [0.5, 2.5], [1.1, 4.5], [0.6, 3], [1, 4], [0.5, 3], [1.4, 5], [0.6, 3], [0.8, 3.5], [0.5, 2.5], [1.2, 4.5], [0.7, 3], [0.9, 4], [0.5, 3], [1.1, 4]], 0.3);
+
+/** De verf van een straal. `reik` schaalt alle stops op, dus daarmee bepaal je
+ *  hoe ver een laag komt: het masker geeft de vorm, de verf de lengte. */
+function straal(sterk: number, reik: number): string {
+  const st = (p: number) => (p * reik).toFixed(1) + "%";
+  return `radial-gradient(circle closest-side, transparent 0%, rgba(255,198,40,${0.12 * sterk}) ${st(15)}, rgba(255,190,16,${0.58 * sterk}) ${st(24)}, rgba(255,158,18,${0.42 * sterk}) ${st(35)}, rgba(240,118,28,${0.24 * sterk}) ${st(47)}, rgba(186,82,146,${0.13 * sterk}) ${st(60)}, rgba(112,54,196,${0.055 * sterk}) ${st(74)}, transparent ${st(90)})`;
+}
+
+/** Dezelfde straal in de felle tint, voor de highlight-laag. */
+function highlight(sterk: number, reik: number): string {
+  const st = (p: number) => (p * reik).toFixed(1) + "%";
+  return `radial-gradient(circle closest-side, transparent 0%, rgba(255,220,80,${0.22 * sterk}) ${st(16)}, rgba(255,206,24,${0.82 * sterk}) ${st(25)}, rgba(255,172,14,${0.56 * sterk}) ${st(36)}, rgba(255,132,26,${0.3 * sterk}) ${st(50)}, rgba(214,92,60,${0.12 * sterk}) ${st(64)}, transparent ${st(82)})`;
+}
 
 export function EmblemLight() {
   return (
@@ -72,9 +86,10 @@ export function EmblemLight() {
              transform, en dat wist de translate waarmee de laag gecentreerd
              staat. Vandaar de wikkel: die doet de plaatsing, de kern de draai. */}
       {[
-        { masker: BREED, maat: 2.4, sterk: 1, sec: 120, terug: false },
-        { masker: MIDDEL, maat: 2.83, sterk: 0.62, sec: 190, terug: true },
-        { masker: SPIES, maat: 3.25, sterk: 0.4, sec: 260, terug: false },
+        { masker: BREED, maat: 2.4, sterk: 1, reik: 0.6, sec: 120, terug: false },
+        { masker: MIDDEL, maat: 2.83, sterk: 0.62, reik: 0.72, sec: 190, terug: true },
+        { masker: SPIES, maat: 3.25, sterk: 0.4, reik: 0.5, sec: 260, terug: false },
+        { masker: UIT, maat: 3.25, sterk: 0.8, reik: 1, sec: 165, terug: true },
       ].map((w, i) => (
         <div
           key={`fan${i}`}
@@ -87,7 +102,7 @@ export function EmblemLight() {
               width: "100%",
               height: "100%",
               borderRadius: "50%",
-              background: `radial-gradient(circle closest-side, transparent 0%, rgba(255,198,40,${0.12 * w.sterk}) 15%, rgba(255,190,16,${0.58 * w.sterk}) 24%, rgba(255,158,18,${0.42 * w.sterk}) 35%, rgba(240,118,28,${0.24 * w.sterk}) 47%, rgba(186,82,146,${0.13 * w.sterk}) 60%, rgba(112,54,196,${0.055 * w.sterk}) 74%, transparent 90%)`,
+              background: straal(w.sterk, w.reik),
               WebkitMaskImage: w.masker,
               maskImage: w.masker,
               animationDuration: `${w.sec}s`,
@@ -103,8 +118,8 @@ export function EmblemLight() {
               eronder. Dus de zone blijft staan en de stralen draaien erdoorheen,
               zoals licht dat door een fellere plek trekt. */}
       {[
-        { masker: BREED, maat: 2.4, sterk: 1, sec: 120, terug: false },
-        { masker: MIDDEL, maat: 2.83, sterk: 0.7, sec: 190, terug: true },
+        { masker: BREED, maat: 2.4, sterk: 1, reik: 0.6, sec: 120, terug: false },
+        { masker: UIT, maat: 3.25, sterk: 0.75, reik: 1, sec: 165, terug: true },
       ].map((w, i) => (
         <div
           key={`hi${i}`}
@@ -123,7 +138,7 @@ export function EmblemLight() {
               width: "100%",
               height: "100%",
               borderRadius: "50%",
-              background: `radial-gradient(circle closest-side, transparent 0%, rgba(255,220,80,${0.22 * w.sterk}) 16%, rgba(255,206,24,${0.82 * w.sterk}) 25%, rgba(255,172,14,${0.56 * w.sterk}) 36%, rgba(255,132,26,${0.3 * w.sterk}) 50%, rgba(214,92,60,${0.12 * w.sterk}) 64%, transparent 82%)`,
+              background: highlight(w.sterk, w.reik),
               WebkitMaskImage: w.masker,
               maskImage: w.masker,
               animationDuration: `${w.sec}s`,
@@ -142,7 +157,7 @@ export function EmblemLight() {
               dus de straal die over een vast punt schuift. */}
       {[
         { masker: BREED, maat: 2.4, sec: 120, terug: false },
-        { masker: MIDDEL, maat: 2.83, sec: 190, terug: true },
+        { masker: UIT, maat: 3.25, sec: 165, terug: true },
       ].map((w, i) => (
         <div
           key={`tip${i}`}
