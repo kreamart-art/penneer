@@ -14,7 +14,7 @@ import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { NeonText } from "../components/NeonText";
 import { neonSkin } from "../theme/neon";
-import { TILE_ART, plateShadow, useTileSkin } from "../theme/tileSkin";
+import { TILE_ART, plateShadow, shadowSrc, useTileSkin } from "../theme/tileSkin";
 import { colors, font, radius, withAlpha } from "../theme/tokens";
 
 const inputStyle: React.CSSProperties = {
@@ -694,11 +694,8 @@ function Tile({
           lineHeight: 0,
         }}
       >
-        {/* De schaduw is een tweede, zwartgemaakte en vervaagde kopie van de
-            plaat zelf. Zo volgt hij de VORM en niet de doos, zonder
-            `drop-shadow`: die tekent Safari op iOS als aparte laag en dan zie
-            je zwarte hoekjes staan waar de plaat is afgeschuind. */}
-        <img aria-hidden src={tile.src} alt="" style={plateShadow} />
+        {/* De schaduw is een eigen plaatje, geen CSS-effect. Zie `plateShadow`. */}
+        <img aria-hidden src={shadowSrc(tile.src)} alt="" style={plateShadow} />
         {/* Vaste verhouding, zodat alle tegels even groot zijn ook voordat de
             plaat geladen is. De vier vierkante platen staan op een gedeeld doek
             (zie public/tiles); de Duel-balk heeft zijn eigen, bredere maat. */}

@@ -8,6 +8,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Home, ShoppingCart, Trophy, UserRound, Users } from "lucide-react";
 import { Avatar } from "./Avatar";
+import { FriendsIcon, ShopIcon, TrophyIcon } from "./NavIcons";
 import type { GameApi } from "../net/socket";
 import { NeonLine } from "./NeonLine";
 import { useT } from "../i18n/i18n";
@@ -84,6 +85,13 @@ export function BottomNav({
     // hoog, dus er blijft aan weerskanten lucht staan. Tot de plaat is gemeten
     // tekenen we nog geen pictogrammen, anders springen ze een frame later.
     const s = Math.round(plateH * 0.4);
+    // De skin krijgt getekende, gevulde pictogrammen in plaats van lijntjes.
+    // Zie NavIcons: naast art van goud leest een lijnpictogram als een tekening.
+    const art: Partial<Record<NavKey, (on: boolean) => React.ReactNode>> = {
+      shop: (on) => <ShopIcon on={on} size={Math.round(s * 1.15)} />,
+      leaderboard: (on) => <TrophyIcon on={on} size={Math.round(s * 1.15)} />,
+      friends: (on) => <FriendsIcon on={on} size={Math.round(s * 1.15)} />,
+    };
     return (
       <nav
         style={{
@@ -100,10 +108,9 @@ export function BottomNav({
         }}
       >
         <div ref={plate} style={{ position: "relative", width: "100%", maxWidth: 460, margin: "0 auto", pointerEvents: "auto" }}>
-          {/* Dezelfde schaduw als onder de platen op de main page: een tweede,
-              zwartgemaakte en vervaagde kopie, zodat hij de VORM van de balk
-              volgt en niet zijn doos. Zie `plateShadow`. */}
-          <img aria-hidden src="/tiles/navbar.webp" alt="" style={plateShadow} />
+          {/* Dezelfde schaduw als onder de platen op de main page: een eigen
+              plaatje, geen CSS-effect. Zie `plateShadow`. */}
+          <img aria-hidden src="/tiles/navbar-shadow.webp" alt="" style={plateShadow} />
           <img
             src="/tiles/navbar.webp"
             alt=""
@@ -144,7 +151,7 @@ export function BottomNav({
                     cursor: "pointer",
                   }}
                 >
-                  {!home && icon}
+                  {!home && (art[key] ? art[key]!(on) : icon)}
                   {!!badge && (
                     <span style={{ position: "absolute", top: 0, right: 0, minWidth: 15, height: 15, padding: "0 4px", borderRadius: 999, background: colors.gold, color: colors.bg0, fontFamily: font.ui, fontSize: 9, fontWeight: 800, lineHeight: "15px", textAlign: "center" }}>
                       {badge > 9 ? "9+" : badge}

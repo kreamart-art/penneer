@@ -44,27 +44,33 @@ export function useTileSkin(): boolean {
   return on;
 }
 
-/** De schaduw onder een plaat: dezelfde art nog een keer, zwartgemaakt en
- *  vervaagd, absoluut achter het origineel.
+/** De schaduw onder een plaat is een EIGEN plaatje (`*-shadow.webp`), geen
+ *  CSS-effect.
  *
- *  Waarom niet gewoon `filter: drop-shadow()`? Dat is korter en het klopt op de
- *  desktop, maar Safari op iOS rastert zo'n laag apart en tekent hem als
- *  RECHTHOEK. Dan staan er zwarte hoekjes rond elke plek waar de plaat is
- *  afgeschuind. `brightness(0)` maakt elke pixel zwart en laat het alfakanaal
- *  staan, dus deze schaduw volgt de vorm en werkt overal hetzelfde.
+ *  Twee dingen die het niet werden. `filter: drop-shadow()` tekent Safari op
+ *  iOS als aparte laag met een RECHTHOEK, dus zwarte hoekjes rond elke
+ *  afschuining. Daarna een zwartgemaakte, vervaagde kopie met
+ *  `brightness(0) blur()`: op de desktop precies goed, op iOS een dichte zwarte
+ *  rechthoek, want Safari rekent een filter over een plaatje met alfa tegen
+ *  zwart af in plaats van tegen niets. Een gewoon plaatje kan niet stuk.
  *
- *  Vraagt om een ouder met `position: relative` die door de echte plaat op maat
- *  wordt gehouden. */
+ *  Het schaduwdoek is aan elke kant 12% ruimer dan de plaat, voor alle platen
+ *  hetzelfde, zodat deze ene stijl overal past. Vraagt om een ouder met
+ *  `position: relative` die door de echte plaat op maat wordt gehouden. */
+const SHADOW_PAD = 12;
 export const plateShadow: CSSProperties = {
   position: "absolute",
-  inset: 0,
-  width: "100%",
-  height: "100%",
-  filter: "brightness(0) blur(7px)",
-  opacity: 0.55,
-  transform: "translateY(5px)",
+  top: `${-SHADOW_PAD}%`,
+  left: `${-SHADOW_PAD}%`,
+  width: `${100 + 2 * SHADOW_PAD}%`,
+  height: `${100 + 2 * SHADOW_PAD}%`,
   pointerEvents: "none",
 };
+
+/** Het schaduwplaatje dat bij een plaat hoort. */
+export function shadowSrc(src: string): string {
+  return src.replace(/\.webp$/, "-shadow.webp");
+}
 
 /** De plaat per modus. De DUEL-plaat heeft zijn woord al in de art staan, de
  *  rest niet: daar zetten we het label zelf onder het icoon.
