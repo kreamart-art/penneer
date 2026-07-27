@@ -57,13 +57,13 @@ export function EmblemLight() {
         className="breath-glow"
         style={{
           ...laag,
-          width: "calc(var(--em) * 1.45)",
-          height: "calc(var(--em) * 1.8)",
+          width: "calc(var(--em) * 2.3)",
+          height: "calc(var(--em) * 2.3)",
           borderRadius: "50%",
           background: [
-            "radial-gradient(52% 44% at 34% 40%, rgba(78,40,150,.16), transparent 72%)",
-            "radial-gradient(46% 52% at 68% 58%, rgba(52,26,110,.15), transparent 74%)",
-            "radial-gradient(64% 40% at 52% 30%, rgba(96,48,168,.11), transparent 76%)",
+            "radial-gradient(42% 42% at 36% 38%, rgba(78,40,150,.13), transparent 78%)",
+            "radial-gradient(38% 38% at 66% 60%, rgba(52,26,110,.12), transparent 80%)",
+            "radial-gradient(46% 46% at 52% 32%, rgba(96,48,168,.09), transparent 82%)",
           ].join(", "),
           animationDuration: "13s",
         }}
@@ -75,7 +75,7 @@ export function EmblemLight() {
         style={{
           ...laag,
           width: "calc(var(--em) * 1.9)",
-          height: "calc(var(--em) * 2.7)",
+          height: "calc(var(--em) * 1.9)",
           background:
             "radial-gradient(circle, rgba(146,74,224,.34) 0%, rgba(128,62,210,.28) 16%, rgba(112,54,196,.22) 30%, rgba(98,46,176,.165) 42%, rgba(88,40,158,.12) 52%, rgba(72,32,136,.08) 62%, rgba(58,26,116,.05) 72%, rgba(42,20,90,.026) 81%, rgba(30,14,68,.012) 90%, transparent 98%)",
         }}
@@ -90,7 +90,7 @@ export function EmblemLight() {
         style={{
           ...laag,
           width: "calc(var(--em) * 1.7)",
-          height: "calc(var(--em) * 2.9)",
+          height: "calc(var(--em) * 1.7)",
           background:
             "radial-gradient(circle, rgba(255,235,184,.6) 0%, rgba(255,194,61,.44) 16%, rgba(226,158,36,.28) 30%, rgba(176,124,23,.18) 42%, rgba(140,84,120,.12) 54%, rgba(112,54,196,.065) 66%, rgba(70,32,140,.025) 78%, transparent 92%)",
           WebkitMaskImage: BREED,
@@ -103,8 +103,8 @@ export function EmblemLight() {
         className="hero-rays"
         style={{
           ...laag,
-          width: "calc(var(--em) * 2.4)",
-          height: "calc(var(--em) * 2.4)",
+          width: "calc(var(--em) * 1.45)",
+          height: "calc(var(--em) * 1.45)",
           background:
             "radial-gradient(circle, rgba(255,235,184,.55) 0%, rgba(255,194,61,.38) 18%, rgba(200,138,28,.2) 34%, rgba(150,90,150,.1) 50%, rgba(112,54,196,.045) 64%, transparent 84%)",
           WebkitMaskImage: FIJN,
@@ -121,7 +121,7 @@ export function EmblemLight() {
         style={{
           ...laag,
           width: "calc(var(--em) * 1.15)",
-          height: "calc(var(--em) * 2.0)",
+          height: "calc(var(--em) * 1.15)",
           background:
             "radial-gradient(circle, rgba(255,194,61,.34) 0%, rgba(246,178,48,.27) 12%, rgba(226,158,36,.2) 24%, rgba(200,138,28,.14) 36%, rgba(176,124,23,.093) 47%, rgba(146,100,18,.058) 58%, rgba(112,74,12,.032) 69%, rgba(82,52,8,.015) 80%, rgba(74,46,4,.006) 89%, transparent 97%)",
         }}
@@ -134,7 +134,7 @@ export function EmblemLight() {
         style={{
           ...laag,
           width: "calc(var(--em) * 0.62)",
-          height: "calc(var(--em) * 1.04)",
+          height: "calc(var(--em) * 0.62)",
           background:
             "radial-gradient(circle, rgba(255,235,184,.88) 0%, rgba(255,222,140,.7) 10%, rgba(255,194,61,.52) 22%, rgba(255,194,61,.33) 34%, rgba(232,163,32,.19) 46%, rgba(190,132,24,.1) 58%, rgba(150,104,18,.048) 70%, rgba(110,74,12,.018) 82%, transparent 96%)",
           animationDuration: "5.5s",

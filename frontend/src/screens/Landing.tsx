@@ -982,7 +982,7 @@ function LandingFX() {
           position: "absolute",
           inset: 0,
           background:
-            "radial-gradient(94% 54% at 50% 21%, rgba(4,1,12,0) 0%, rgba(4,1,12,0) 32%, rgba(4,1,12,.07) 46%, rgba(4,1,12,.19) 58%, rgba(4,1,12,.34) 69%, rgba(4,1,12,.50) 79%, rgba(4,1,12,.65) 88%, rgba(4,1,12,.78) 100%)",
+            "radial-gradient(circle 112% at 50% 26%, rgba(4,1,12,0) 0%, rgba(4,1,12,0) 26%, rgba(4,1,12,.03) 38%, rgba(4,1,12,.08) 48%, rgba(4,1,12,.16) 57%, rgba(4,1,12,.26) 66%, rgba(4,1,12,.38) 74%, rgba(4,1,12,.50) 82%, rgba(4,1,12,.62) 90%, rgba(4,1,12,.72) 100%)",
         }}
       />
       {/* De lichtbundels aan de zijkant, in de stijl van de strepen in de
