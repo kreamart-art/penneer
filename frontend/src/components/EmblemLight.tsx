@@ -65,9 +65,37 @@ function highlight(sterk: number, reik: number): string {
   return `radial-gradient(circle closest-side, transparent 0%, rgba(255,220,80,${0.22 * sterk}) ${st(16)}, rgba(255,206,24,${0.82 * sterk}) ${st(25)}, rgba(255,172,14,${0.56 * sterk}) ${st(36)}, rgba(255,132,26,${0.3 * sterk}) ${st(50)}, rgba(214,92,60,${0.12 * sterk}) ${st(64)}, transparent ${st(82)})`;
 }
 
+const HOLE =
+  "radial-gradient(circle closest-side at 50% 50%, transparent 0%, transparent 10.6%, #000 12.6%, #000 100%)";
+
 export function EmblemLight() {
   return (
-    <>
+    // Al het licht in één laag met een GAT erin, precies zo groot als de
+    // binnenring van de munt. Daardoor houdt de gloed op bij die ring en zie je
+    // binnen het logo gewoon de achtergrond.
+    //
+    // De munt vult iets meer dan de helft van zijn doos: het goud loopt van 40
+    // tot 52 procent van de halve breedte, dus de binnenrand van de ring zit op
+    // 0,20 keer de embleemmaat. Deze doos is 3,4 keer zo groot, dus het gat is
+    // 0,20 / (0,5 x 3,4) = 11,8 procent van de straal.
+    //
+    // Het masker moet de hele doos van de kinderen dekken; daarom is deze laag
+    // net iets ruimer dan de grootste waaier, en staat `mask-repeat` op geen,
+    // anders tegelt het gat zich verder naar buiten als extra ringen.
+    <div
+      aria-hidden
+      style={{
+        ...laag,
+        width: "calc(var(--em) * 3.4)",
+        height: "calc(var(--em) * 3.4)",
+        // Onder de munt maar boven de achtergrond van de zwevende laag.
+        zIndex: -1,
+        WebkitMaskImage: HOLE,
+        maskImage: HOLE,
+        WebkitMaskRepeat: "no-repeat",
+        maskRepeat: "no-repeat",
+      }}
+    >
       {/* 3. Koninklijk paars. De grootste laag, dooft uit in donker indigo. */}
       <div
         aria-hidden
@@ -265,6 +293,6 @@ export function EmblemLight() {
           }}
         />
       ))}
-    </>
+    </div>
   );
 }

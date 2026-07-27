@@ -317,9 +317,13 @@ export function Landing({
           <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
             {/* The logo IS the light source: breathing glow + slowly rotating
                 rays centered on the coin, logo floating on top of them. */}
+            {/* Het licht zit BINNEN de zwevende laag, niet ernaast: het gat in de
+                gloed valt samen met de binnenring van de munt, en als de munt
+                deint en het licht niet, dan schuift dat gat van de ring af. Nu
+                deinen ze samen. */}
             <div style={{ position: "relative", display: "grid", placeItems: "center", ["--em" as string]: EMBLEM_SIZE }}>
-              <EmblemLight />
-              <div style={{ position: "relative", zIndex: 1, animation: "float-soft 4s ease-in-out infinite" }}>
+              <div style={{ position: "relative", isolation: "isolate", animation: "float-soft 4s ease-in-out infinite" }}>
+                <EmblemLight />
                 <Logo glow={false} size={EMBLEM_SIZE} />
               </div>
             </div>
