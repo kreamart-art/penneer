@@ -186,7 +186,9 @@ export function Landing({
         wil = (ruimte * w) / h;
       }
       vorige.current = { w, h };
-      wil = Math.min(460, Math.max(220, Math.floor(wil)));
+      // Twee procent eraf op de uitkomst. Precies passen en mooi staan is niet
+      // hetzelfde: dit is de marge die er met het oog uit komt.
+      wil = Math.min(460, Math.max(220, Math.floor(wil * 0.98)));
       setKaartMax((oud) => (oud !== undefined && Math.abs(oud - wil) <= 3 ? oud : wil));
     };
     // Een nieuw scherm is een nieuwe rekensom: de opgebouwde correctie hoort
