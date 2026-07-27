@@ -59,10 +59,10 @@ export function EmblemLight() {
         aria-hidden
         style={{
           ...laag,
-          width: "calc(var(--em) * 1.9)",
-          height: "calc(var(--em) * 1.9)",
+          width: "calc(var(--em) * 2.69)",
+          height: "calc(var(--em) * 2.69)",
           background:
-            "radial-gradient(circle, rgba(146,74,224,.34) 0%, rgba(128,62,210,.28) 16%, rgba(112,54,196,.22) 30%, rgba(98,46,176,.165) 42%, rgba(88,40,158,.12) 52%, rgba(72,32,136,.08) 62%, rgba(58,26,116,.05) 72%, rgba(42,20,90,.026) 81%, rgba(30,14,68,.012) 90%, transparent 98%)",
+            "radial-gradient(circle closest-side, rgba(146,74,224,.34) 0%, rgba(128,62,210,.28) 16%, rgba(112,54,196,.22) 30%, rgba(98,46,176,.165) 42%, rgba(88,40,158,.12) 52%, rgba(72,32,136,.08) 62%, rgba(58,26,116,.05) 72%, rgba(42,20,90,.026) 81%, rgba(30,14,68,.012) 90%, transparent 98%)",
         }}
       />
 
@@ -72,9 +72,9 @@ export function EmblemLight() {
              transform, en dat wist de translate waarmee de laag gecentreerd
              staat. Vandaar de wikkel: die doet de plaatsing, de kern de draai. */}
       {[
-        { masker: BREED, maat: 1.7, sterk: 1, sec: 120, terug: false },
-        { masker: MIDDEL, maat: 2.0, sterk: 0.62, sec: 190, terug: true },
-        { masker: SPIES, maat: 2.3, sterk: 0.4, sec: 260, terug: false },
+        { masker: BREED, maat: 2.4, sterk: 1, sec: 120, terug: false },
+        { masker: MIDDEL, maat: 2.83, sterk: 0.62, sec: 190, terug: true },
+        { masker: SPIES, maat: 3.25, sterk: 0.4, sec: 260, terug: false },
       ].map((w, i) => (
         <div
           key={`fan${i}`}
@@ -87,7 +87,7 @@ export function EmblemLight() {
               width: "100%",
               height: "100%",
               borderRadius: "50%",
-              background: `radial-gradient(circle, transparent 0%, rgba(255,198,40,${0.12 * w.sterk}) 15%, rgba(255,190,16,${0.58 * w.sterk}) 24%, rgba(255,158,18,${0.42 * w.sterk}) 35%, rgba(240,118,28,${0.24 * w.sterk}) 47%, rgba(186,82,146,${0.13 * w.sterk}) 60%, rgba(112,54,196,${0.055 * w.sterk}) 74%, transparent 90%)`,
+              background: `radial-gradient(circle closest-side, transparent 0%, rgba(255,198,40,${0.12 * w.sterk}) 15%, rgba(255,190,16,${0.58 * w.sterk}) 24%, rgba(255,158,18,${0.42 * w.sterk}) 35%, rgba(240,118,28,${0.24 * w.sterk}) 47%, rgba(186,82,146,${0.13 * w.sterk}) 60%, rgba(112,54,196,${0.055 * w.sterk}) 74%, transparent 90%)`,
               WebkitMaskImage: w.masker,
               maskImage: w.masker,
               animationDuration: `${w.sec}s`,
@@ -103,8 +103,8 @@ export function EmblemLight() {
               eronder. Dus de zone blijft staan en de stralen draaien erdoorheen,
               zoals licht dat door een fellere plek trekt. */}
       {[
-        { masker: BREED, maat: 1.7, sterk: 1, sec: 120, terug: false },
-        { masker: MIDDEL, maat: 2.0, sterk: 0.7, sec: 190, terug: true },
+        { masker: BREED, maat: 2.4, sterk: 1, sec: 120, terug: false },
+        { masker: MIDDEL, maat: 2.83, sterk: 0.7, sec: 190, terug: true },
       ].map((w, i) => (
         <div
           key={`hi${i}`}
@@ -123,7 +123,7 @@ export function EmblemLight() {
               width: "100%",
               height: "100%",
               borderRadius: "50%",
-              background: `radial-gradient(circle, transparent 0%, rgba(255,220,80,${0.22 * w.sterk}) 16%, rgba(255,206,24,${0.82 * w.sterk}) 25%, rgba(255,172,14,${0.56 * w.sterk}) 36%, rgba(255,132,26,${0.3 * w.sterk}) 50%, rgba(214,92,60,${0.12 * w.sterk}) 64%, transparent 82%)`,
+              background: `radial-gradient(circle closest-side, transparent 0%, rgba(255,220,80,${0.22 * w.sterk}) 16%, rgba(255,206,24,${0.82 * w.sterk}) 25%, rgba(255,172,14,${0.56 * w.sterk}) 36%, rgba(255,132,26,${0.3 * w.sterk}) 50%, rgba(214,92,60,${0.12 * w.sterk}) 64%, transparent 82%)`,
               WebkitMaskImage: w.masker,
               maskImage: w.masker,
               animationDuration: `${w.sec}s`,
@@ -139,10 +139,10 @@ export function EmblemLight() {
         aria-hidden
         style={{
           ...laag,
-          width: "calc(var(--em) * 1.15)",
-          height: "calc(var(--em) * 1.15)",
+          width: "calc(var(--em) * 1.63)",
+          height: "calc(var(--em) * 1.63)",
           background:
-            "radial-gradient(circle, rgba(255,206,24,.4) 0%, rgba(255,190,16,.32) 12%, rgba(252,168,14,.24) 24%, rgba(240,140,16,.17) 36%, rgba(214,116,18,.11) 47%, rgba(180,92,20,.068) 58%, rgba(140,68,20,.037) 69%, rgba(100,48,16,.017) 80%, rgba(74,46,4,.007) 89%, transparent 97%)",
+            "radial-gradient(circle closest-side, rgba(255,206,24,.4) 0%, rgba(255,190,16,.32) 12%, rgba(252,168,14,.24) 24%, rgba(240,140,16,.17) 36%, rgba(214,116,18,.11) 47%, rgba(180,92,20,.068) 58%, rgba(140,68,20,.037) 69%, rgba(100,48,16,.017) 80%, rgba(74,46,4,.007) 89%, transparent 97%)",
         }}
       />
 
@@ -152,10 +152,10 @@ export function EmblemLight() {
         className="breath-glow"
         style={{
           ...laag,
-          width: "calc(var(--em) * 0.62)",
-          height: "calc(var(--em) * 0.62)",
+          width: "calc(var(--em) * 0.88)",
+          height: "calc(var(--em) * 0.88)",
           background:
-            "radial-gradient(circle, rgba(255,251,236,.9) 0%, rgba(255,232,128,.76) 9%, rgba(255,212,32,.58) 20%, rgba(255,196,16,.4) 32%, rgba(255,168,14,.24) 44%, rgba(238,128,18,.13) 56%, rgba(196,96,16,.06) 68%, rgba(150,70,12,.022) 81%, transparent 95%)",
+            "radial-gradient(circle closest-side, rgba(255,251,236,.9) 0%, rgba(255,232,128,.76) 9%, rgba(255,212,32,.58) 20%, rgba(255,196,16,.4) 32%, rgba(255,168,14,.24) 44%, rgba(238,128,18,.13) 56%, rgba(196,96,16,.06) 68%, rgba(150,70,12,.022) 81%, transparent 95%)",
           animationDuration: "5.5s",
         }}
       />
