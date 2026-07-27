@@ -43,9 +43,8 @@ function fan(steps: number[][], soft = 0.5): string {
   return `conic-gradient(${parts.join(", ")})`;
 }
 
-// Brede bundels en fijne spiesen, twee waaiers die tegen elkaar in draaien.
+// Eén waaier, met bundels van ongelijke dikte.
 const BREED = fan([[7, 19], [3, 11], [11, 24], [5, 14], [2.5, 9], [9, 21], [4, 12], [6.5, 17], [3, 15], [10, 20], [3.5, 10], [7.5, 16]]);
-const FIJN = fan([[1.6, 7], [1, 5], [2.4, 9], [1.2, 6], [0.8, 4], [2, 8], [1.1, 5], [1.8, 7], [0.9, 6], [2.2, 8], [1, 5], [1.5, 6], [0.8, 4], [2.6, 9]], 0.35);
 
 export function EmblemLight() {
   return (
@@ -62,38 +61,32 @@ export function EmblemLight() {
         }}
       />
 
-      {/* 4. De stralen. Goud bij de kern, paars naar buiten: de conic is het
-             masker, het radiale verloop is de verf, want een conic kan zijn
-             kleur niet met de straal laten meelopen. */}
+      {/* 4. De stralen. Eén waaier, precies om het hart van de pen.
+             De draaiing zit op een BINNENSTE laag: `ray-spin` schrijft transform,
+             en dat wist de translate waarmee de laag gecentreerd staat. Vandaar
+             de wikkel: die doet de plaatsing, de kern doet de draai. */}
       <div
         aria-hidden
-        className="hero-rays"
         style={{
           ...laag,
           width: "calc(var(--em) * 1.7)",
           height: "calc(var(--em) * 1.7)",
-          background:
-            "radial-gradient(circle, rgba(255,235,184,.6) 0%, rgba(255,194,61,.44) 16%, rgba(226,158,36,.28) 30%, rgba(176,124,23,.18) 42%, rgba(140,84,120,.12) 54%, rgba(112,54,196,.065) 66%, rgba(70,32,140,.025) 78%, transparent 92%)",
-          WebkitMaskImage: BREED,
-          maskImage: BREED,
-          animationDuration: "120s",
         }}
-      />
-      <div
-        aria-hidden
-        className="hero-rays"
-        style={{
-          ...laag,
-          width: "calc(var(--em) * 1.45)",
-          height: "calc(var(--em) * 1.45)",
-          background:
-            "radial-gradient(circle, rgba(255,235,184,.55) 0%, rgba(255,194,61,.38) 18%, rgba(200,138,28,.2) 34%, rgba(150,90,150,.1) 50%, rgba(112,54,196,.045) 64%, transparent 84%)",
-          WebkitMaskImage: FIJN,
-          maskImage: FIJN,
-          animationDuration: "170s",
-          animationDirection: "reverse",
-        }}
-      />
+      >
+        <div
+          className="hero-rays"
+          style={{
+            width: "100%",
+            height: "100%",
+            borderRadius: "50%",
+            background:
+              "radial-gradient(circle, rgba(255,235,184,.6) 0%, rgba(255,194,61,.44) 16%, rgba(226,158,36,.28) 30%, rgba(176,124,23,.18) 42%, rgba(140,84,120,.12) 54%, rgba(112,54,196,.065) 66%, rgba(70,32,140,.025) 78%, transparent 92%)",
+            WebkitMaskImage: BREED,
+            maskImage: BREED,
+            animationDuration: "120s",
+          }}
+        />
+      </div>
 
       {/* 2. Gesmeed goud. Amber en oranje, niet geel: het geel gaat eruit door de
              rode kant hoger te houden dan de groene. */}
