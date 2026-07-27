@@ -16,7 +16,7 @@ import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { makeProfileCard, shareOrDownload } from "../util/shareCard";
 import { ClubEmblem, CLUB_EMBLEM_IDS } from "../components/ClubEmblem";
-import { reelTheme } from "../theme/reelSkins";
+import { reelEdge, reelFace, reelTheme } from "../theme/reelSkins";
 import { colors, font, playerColors, radius, withAlpha } from "../theme/tokens";
 
 const inputStyle: React.CSSProperties = {
@@ -867,16 +867,29 @@ function ReelTile({ id, active, locked, label, onClick }: {
           boxShadow: active ? `0 0 12px ${withAlpha(colors.gold, 0.5)}` : "none",
         }}
       >
+        {/* Zelfde opbouw als de echte rol: de rand is een laag met het verloop
+            eronder, en de letter draagt hetzelfde verloop. Anders belooft het
+            keuzevakje iets anders dan je in het spel krijgt. */}
         <div
           style={{
-            width: "62%", aspectRatio: "6 / 7", borderRadius: 10,
-            background: th.bg, border: `2px solid ${th.border}`,
-            boxShadow: `0 0 10px ${withAlpha(th.glow, 0.4)}, inset 0 3px 9px rgba(0,0,0,.6)`,
-            display: "grid", placeItems: "center",
+            width: "62%", aspectRatio: "6 / 7", borderRadius: 10, padding: 2,
+            background: reelEdge(th.ramp),
+            boxShadow: `0 0 10px ${withAlpha(th.glow, 0.4)}`,
             opacity: locked ? 0.35 : 1, filter: locked ? "grayscale(0.5)" : "none",
           }}
         >
-          <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 26, lineHeight: 1, color: th.letter, textShadow: `0 0 10px ${withAlpha(th.glow, 0.8)}` }}>A</span>
+          <div style={{ width: "100%", height: "100%", borderRadius: 8, background: th.bg, boxShadow: "inset 0 3px 9px rgba(0,0,0,.6)", display: "grid", placeItems: "center" }}>
+            <span
+              style={{
+                fontFamily: font.display, fontWeight: 700, fontSize: 26, lineHeight: 1,
+                backgroundImage: reelFace(th.ramp),
+                WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent",
+                textShadow: "-1px -1px 0 rgba(255,255,255,.3)",
+              }}
+            >
+              A
+            </span>
+          </div>
         </div>
         {locked && (
           <span style={{ position: "absolute", right: 5, bottom: 5, width: 20, height: 20, borderRadius: 7, display: "grid", placeItems: "center", background: withAlpha("#000000", 0.55), color: colors.gold }}>

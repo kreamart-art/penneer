@@ -5,8 +5,8 @@
 // sees the active spelleider's skin.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { sound } from "../sound/sound";
-import { reelTheme } from "../theme/reelSkins";
-import { colors, font, withAlpha } from "../theme/tokens";
+import { reelEdge, reelFace, reelTheme, type ReelRamp } from "../theme/reelSkins";
+import { font, withAlpha } from "../theme/tokens";
 
 const STD_POOL = "ABCDEFGHIJKLMNOPRSTUVWZ".split("");
 const FULL_POOL = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
@@ -89,29 +89,13 @@ export function Reel({ state, letter, exclude = [], hard = false, skin = null }:
   const isSpin = state === "spinning";
   const th = reelTheme(skin);
 
-  // De STANDAARDROL (zonder skin) heeft zijn eigen, uitgewerkte look: de kaart
-  // moet aanvoelen als een voorwerp dat op onthulling wacht, niet als een leeg
-  // vlak. Vaste waarden uit de art-richtlijn; een skin overschrijft ze.
-  const PLAIN = {
-    // Zelfde kleurenreeks als de energielijnen van de spelerbanner: fel violet in
-    // het midden, donker paars naar de randen. Zo horen rol, lijnen en pijlen
-    // zichtbaar bij elkaar.
-    face: "linear-gradient(155deg, #C46BFF 0%, #9A4DFF 42%, #6A2DFF 76%, #3A167E 100%)",
-    innerGlow: "rgba(154,77,255,.42)",
-    outerGlow: "rgba(106,45,255,.4)",
-    // Het lichte stuk is KORT: alleen waar het verloop door zijn top gaat licht
-    // de rand op, niet een halve rand die staat te schijnen.
-    edge: "linear-gradient(135deg, #3A167E 0%, #6A2DFF 14%, #9A4DFF 36%, #C46BFF 50%, #9A4DFF 64%, #6A2DFF 86%, #3A167E 100%)",
-    fill: "radial-gradient(120% 100% at 50% 38%, #121A35 0%, #0A1023 100%)",
-  };
-  const plain = !skin;
-  // Skinned reels show their color on the border even before lock, so the
-  // theme reads at a glance.
-  const idleBorder = skin ? withAlpha(th.border, 0.45) : PLAIN.edge;
-
-  // Een `border` volgt geen clip-path, dus de rand is een tweede, iets grotere
-  // geknipte laag eronder: wat ertussenuit steekt IS de lijn.
-  const line = isLocked ? th.border : idleBorder;
+  // Elke rol, met of zonder skin, wordt uit dezelfde reeks getekend. De
+  // standaardrol wacht in violet en slaat pas om naar goud zodra de letter valt;
+  // een skin gebruikt zijn eigen reeks in beide toestanden.
+  const ramp: ReelRamp = isLocked ? th.ramp : th.idleRamp ?? th.ramp;
+  const edge = reelEdge(ramp);
+  const face = reelFace(ramp);
+  const fill = !isLocked && th.idleFill ? th.idleFill : th.bg;
 
   return (
     <div
@@ -121,12 +105,10 @@ export function Reel({ state, letter, exclude = [], hard = false, skin = null }:
         height: 200,
         padding: 2,
         clipPath: CLIP_OUTER,
-        background: line,
+        background: edge,
         boxShadow: isLocked
           ? `0 0 44px ${withAlpha(th.glow, 0.6)}`
-          : plain
-            ? `0 0 12px ${PLAIN.outerGlow}, 0 0 30px rgba(106,45,255,.22)`
-            : `0 0 26px ${withAlpha(th.glow, 0.35)}`,
+          : `0 0 12px ${withAlpha(ramp[1], 0.5)}, 0 0 30px ${withAlpha(ramp[1], 0.22)}`,
         transition: "background .2s ease, box-shadow .25s ease",
       }}
     >
@@ -136,10 +118,10 @@ export function Reel({ state, letter, exclude = [], hard = false, skin = null }:
         width: "100%",
         height: "100%",
         clipPath: CLIP_INNER,
-        background: plain && !isLocked ? PLAIN.fill : th.bg,
-        boxShadow: plain && !isLocked
-          ? `inset 0 0 34px ${PLAIN.innerGlow}, inset 0 8px 26px rgba(0,0,0,.55)`
-          : "inset 0 8px 26px rgba(0,0,0,.65)",
+        background: fill,
+        boxShadow: isLocked
+          ? "inset 0 8px 26px rgba(0,0,0,.65)"
+          : `inset 0 0 34px ${withAlpha(ramp[2], 0.3)}, inset 0 8px 26px rgba(0,0,0,.55)`,
         overflow: "hidden",
         display: "grid",
         placeItems: "center",
@@ -171,25 +153,25 @@ export function Reel({ state, letter, exclude = [], hard = false, skin = null }:
           pointerEvents: "none",
         }}
       />
-      {/* Het vraagteken krijgt zijn gloed van een vervaagde kopie erachter, niet
-          van een filter: een drop-shadow laat iOS de laag apart rasteren en dan
-          zie je zijn rechthoek over de kaart heen. */}
-      {plain && state === "idle" && (
-        <div
-          aria-hidden
-          style={{
-            position: "absolute",
-            fontFamily: font.display,
-            fontWeight: 700,
-            fontSize: 116,
-            lineHeight: 1,
-            color: PLAIN.innerGlow,
-            filter: "blur(14px)",
-          }}
-        >
-          ?
-        </div>
-      )}
+      {/* De gloed van het teken is een vervaagde kopie erachter, geen filter op
+          het teken zelf: een drop-shadow laat iOS de laag apart rasteren en dan
+          zie je zijn rechthoek over de kaart heen. En text-shadow kan hier niet,
+          want die tekent OVER een verloop dat op de letter is geknipt. */}
+      <div
+        aria-hidden
+        style={{
+          position: "absolute",
+          fontFamily: font.display,
+          fontWeight: 700,
+          fontSize: 116,
+          lineHeight: 1,
+          color: isLocked ? th.glow : withAlpha(ramp[2], 0.55),
+          filter: `blur(${isLocked ? 20 : 14}px)`,
+          opacity: isLocked ? 0.95 : isSpin ? 0.7 : 1,
+        }}
+      >
+        {display}
+      </div>
       <div
         key={isLocked ? `lock-${letter}` : "spin"}
         style={{
@@ -198,22 +180,13 @@ export function Reel({ state, letter, exclude = [], hard = false, skin = null }:
           fontWeight: 700,
           fontSize: 116,
           lineHeight: 1,
-          ...(plain && state === "idle"
-            ? {
-                backgroundImage: PLAIN.face,
-                WebkitBackgroundClip: "text",
-                backgroundClip: "text",
-                color: "transparent",
-                // Klein glanslichtje linksboven, zodat het glyph bol lijkt.
-                textShadow: "-1px -1px 0 rgba(255,255,255,.35)",
-              }
-            : { color: state === "idle" ? withAlpha(colors.faint, 0.5) : th.letter }),
+          backgroundImage: face,
+          WebkitBackgroundClip: "text",
+          backgroundClip: "text",
+          color: "transparent",
+          // Klein glanslichtje linksboven, zodat het teken bol lijkt.
+          textShadow: "-1px -1px 0 rgba(255,255,255,.3)",
           filter: isSpin ? "blur(1.5px)" : "none",
-          ...(isLocked
-            ? { textShadow: `0 0 30px ${withAlpha(th.glow, 0.9)}, 0 0 60px ${withAlpha(th.glow, 0.5)}` }
-            : isSpin
-              ? { textShadow: `0 0 22px ${withAlpha(th.glow, 0.5)}` }
-              : null),
           animation: isSpin
             ? "reel-flick .12s linear infinite"
             : isLocked
