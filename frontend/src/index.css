@@ -82,19 +82,21 @@ body::before {
      midden van de bovenhelft, met een warme goudzweem in het hart ervan. Geen
      hoekvlekken meer: het licht komt uit het midden, want daar komt het logo.
      Alles blijft indigo en violet; niets loopt naar blauw, roze of neon. */
-  background-color: #0d0420;
+  /* Donker en met contrast: marineblauw dat naar zwart valt, met het licht
+     alleen daar waar het embleem staat. Niet één egaal violet vlak. */
+  background-color: #06040e;
   background-image:
     /* korrel over alles heen */
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
-    /* de hoeken lopen zacht naar donker, zodat het violet in het midden blijft */
-    radial-gradient(125% 95% at 50% 42%, transparent 40%, rgba(5, 1, 14, 0.58) 100%),
+    /* de randen vallen stevig naar zwart */
+    radial-gradient(112% 78% at 50% 32%, transparent 24%, rgba(2, 1, 7, 0.88) 100%),
     /* warme kern waar het embleem staat */
-    radial-gradient(40% 22% at 50% 26%, rgba(255, 190, 96, 0.07), transparent 70%),
-    /* de grote violette bloei die de bovenhelft optilt */
-    radial-gradient(92% 54% at 50% 30%, rgba(126, 64, 208, 0.34), transparent 76%),
-    /* bredere sfeer eromheen */
-    radial-gradient(145% 88% at 50% 22%, rgba(74, 32, 140, 0.3), transparent 78%),
-    linear-gradient(180deg, #180a34 0%, #1d0b3d 26%, #1b0938 52%, #130726 76%, #0c0419 100%);
+    radial-gradient(30% 16% at 50% 25%, rgba(255, 186, 90, 0.09), transparent 72%),
+    /* de bloei zelf: strak, alleen boven het midden */
+    radial-gradient(56% 31% at 50% 26%, rgba(104, 64, 196, 0.4), transparent 74%),
+    /* marineblauwe sfeer eromheen */
+    radial-gradient(105% 60% at 50% 30%, rgba(38, 40, 112, 0.34), transparent 78%),
+    linear-gradient(180deg, #100c24 0%, #14102c 30%, #0e0b20 60%, #090714 82%, #06040e 100%);
   background-repeat: repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat;
   background-position: top left, top, top, top, top, top;
   background-size: 160px 160px, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%;
