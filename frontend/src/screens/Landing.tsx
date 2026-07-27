@@ -34,6 +34,14 @@ const FRAMES = [
 // percentages van deze maat via --em, dus alles schaalt als één geheel.
 const EMBLEM_SIZE = "clamp(112px, calc(64vh - 315px), 215px)";
 
+// De lichtbundels aan de zijkant. Hoek, lengte en sterkte lopen uiteen, anders
+// leest het als een streepjespatroon in plaats van als licht.
+const SIDE_BEAMS = [
+  { top: "50%", hoek: 38, len: "62vw", dik: 18, op: 0.22 },
+  { top: "57%", hoek: 45, len: "46vw", dik: 11, op: 0.15 },
+  { top: "44%", hoek: 31, len: "38vw", dik: 24, op: 0.1 },
+];
+
 const inputStyle: React.CSSProperties = {
   width: "100%",
   boxSizing: "border-box",
@@ -977,27 +985,27 @@ function LandingFX() {
             "radial-gradient(94% 54% at 50% 21%, rgba(4,1,12,0) 0%, rgba(4,1,12,0) 32%, rgba(4,1,12,.07) 46%, rgba(4,1,12,.19) 58%, rgba(4,1,12,.34) 69%, rgba(4,1,12,.50) 79%, rgba(4,1,12,.65) 88%, rgba(4,1,12,.78) 100%)",
         }}
       />
-      {/* De art heeft rechts halverwege een paar lichtstrepen; dit is hun
-          spiegelbeeld links, in dezelfde stijl, zodat het beeld symmetrisch is. */}
-      {[
-        { top: "52%", hoek: 38, len: "58vw", dik: 16, op: 0.2 },
-        { top: "58%", hoek: 44, len: "44vw", dik: 10, op: 0.14 },
-        { top: "47%", hoek: 33, len: "36vw", dik: 22, op: 0.1 },
-      ].map((b, i) => (
-        <div
-          key={`beam${i}`}
-          style={{
-            position: "absolute",
-            left: "-12vw",
-            top: b.top,
-            width: b.len,
-            height: b.dik,
-            transform: `rotate(${b.hoek}deg)`,
-            transformOrigin: "0 50%",
-            background: `radial-gradient(50% 30% at 42% 50%, rgba(255,214,140,${b.op}) 0%, rgba(255,186,96,${b.op * 0.5}) 40%, transparent 76%)`,
-          }}
-        />
-      ))}
+      {/* De lichtbundels aan de zijkant, in de stijl van de strepen in de
+          achtergrond-art: een fel dun hart met een zachte mantel. Ze staan aan
+          BEIDE kanten op dezelfde hoogte en met dezelfde hoek, gespiegeld, zodat
+          het beeld in balans is. */}
+      {SIDE_BEAMS.map((b, i) =>
+        [-1, 1].map((kant) => (
+          <div
+            key={`beam${i}${kant}`}
+            style={{
+              position: "absolute",
+              [kant < 0 ? "left" : "right"]: "-14vw",
+              top: b.top,
+              width: b.len,
+              height: b.dik,
+              transform: `rotate(${kant * b.hoek}deg)`,
+              transformOrigin: kant < 0 ? "0 50%" : "100% 50%",
+              background: `radial-gradient(50% 34% at ${kant < 0 ? 40 : 60}% 50%, rgba(255,216,146,${b.op}) 0%, rgba(255,188,98,${b.op * 0.5}) 38%, rgba(198,122,150,${b.op * 0.2}) 62%, transparent 84%)`,
+            }}
+          />
+        )),
+      )}
       {[false, true].map((slow) => (
         <div key={String(slow)} className={slow ? "drift-b" : "drift-a"} style={{ position: "absolute", inset: "-30px" }}>
           {pick(slow).map((l) => (
