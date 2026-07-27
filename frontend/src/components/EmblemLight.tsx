@@ -43,8 +43,13 @@ function fan(steps: number[][], soft = 0.5): string {
   return `conic-gradient(${parts.join(", ")})`;
 }
 
-// Eén waaier, met bundels van ongelijke dikte.
+// Drie waaiers over elkaar, elk met een eigen patroon, eigen dekking en een
+// eigen draaisnelheid. Eén waaier geeft elke straal dezelfde sterkte, want ze
+// delen dan één verflaag; met drie lagen krijg je stralen die van elkaar
+// verschillen en die elkaar langzaam kruisen.
 const BREED = fan([[7, 19], [3, 11], [11, 24], [5, 14], [2.5, 9], [9, 21], [4, 12], [6.5, 17], [3, 15], [10, 20], [3.5, 10], [7.5, 16]]);
+const MIDDEL = fan([[2.4, 8], [1.3, 5], [3.6, 11], [1.8, 6], [1, 4], [2.8, 9], [1.5, 5], [2.2, 7], [1.1, 6], [3.2, 10], [1.4, 5], [2, 7], [1.2, 4], [2.6, 8], [1.6, 6]], 0.4);
+const SPIES = fan([[0.9, 4], [0.6, 3], [1.3, 5], [0.7, 3.5], [0.5, 2.5], [1.1, 4.5], [0.6, 3], [1, 4], [0.5, 3], [1.4, 5], [0.6, 3], [0.8, 3.5], [0.5, 2.5], [1.2, 4.5], [0.7, 3], [0.9, 4], [0.5, 3], [1.1, 4]], 0.3);
 
 export function EmblemLight() {
   return (
@@ -61,32 +66,36 @@ export function EmblemLight() {
         }}
       />
 
-      {/* 4. De stralen. Eén waaier, precies om het hart van de pen.
-             De draaiing zit op een BINNENSTE laag: `ray-spin` schrijft transform,
-             en dat wist de translate waarmee de laag gecentreerd staat. Vandaar
-             de wikkel: die doet de plaatsing, de kern doet de draai. */}
-      <div
-        aria-hidden
-        style={{
-          ...laag,
-          width: "calc(var(--em) * 1.7)",
-          height: "calc(var(--em) * 1.7)",
-        }}
-      >
+      {/* 4. De stralen. Drie waaiers om het hart van de pen, van breed naar
+             spiesdun, elk lichter dan de vorige en op zijn eigen tempo.
+             De draaiing zit op een BINNENSTE laag: de draai-animatie schrijft
+             transform, en dat wist de translate waarmee de laag gecentreerd
+             staat. Vandaar de wikkel: die doet de plaatsing, de kern de draai. */}
+      {[
+        { masker: BREED, maat: 1.7, sterk: 1, sec: 120, terug: false },
+        { masker: MIDDEL, maat: 2.0, sterk: 0.62, sec: 190, terug: true },
+        { masker: SPIES, maat: 2.3, sterk: 0.4, sec: 260, terug: false },
+      ].map((w, i) => (
         <div
-          className="hero-rays"
-          style={{
-            width: "100%",
-            height: "100%",
-            borderRadius: "50%",
-            background:
-              "radial-gradient(circle, rgba(255,235,184,.6) 0%, rgba(255,194,61,.44) 16%, rgba(226,158,36,.28) 30%, rgba(176,124,23,.18) 42%, rgba(140,84,120,.12) 54%, rgba(112,54,196,.065) 66%, rgba(70,32,140,.025) 78%, transparent 92%)",
-            WebkitMaskImage: BREED,
-            maskImage: BREED,
-            animationDuration: "120s",
-          }}
-        />
-      </div>
+          key={`fan${i}`}
+          aria-hidden
+          style={{ ...laag, width: `calc(var(--em) * ${w.maat})`, height: `calc(var(--em) * ${w.maat})` }}
+        >
+          <div
+            className="hero-rays"
+            style={{
+              width: "100%",
+              height: "100%",
+              borderRadius: "50%",
+              background: `radial-gradient(circle, rgba(255,235,184,${0.6 * w.sterk}) 0%, rgba(255,194,61,${0.44 * w.sterk}) 16%, rgba(226,158,36,${0.28 * w.sterk}) 30%, rgba(176,124,23,${0.18 * w.sterk}) 42%, rgba(140,84,120,${0.12 * w.sterk}) 54%, rgba(112,54,196,${0.065 * w.sterk}) 66%, rgba(70,32,140,${0.025 * w.sterk}) 78%, transparent 92%)`,
+              WebkitMaskImage: w.masker,
+              maskImage: w.masker,
+              animationDuration: `${w.sec}s`,
+              animationDirection: w.terug ? "reverse" : undefined,
+            }}
+          />
+        </div>
+      ))}
 
       {/* 2. Gesmeed goud. Amber en oranje, niet geel: het geel gaat eruit door de
              rode kant hoger te houden dan de groene. */}
