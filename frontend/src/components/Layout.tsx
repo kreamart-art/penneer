@@ -3,7 +3,7 @@ import React from "react";
 import { useT } from "../i18n/i18n";
 import { colors, font, panelStyle } from "../theme/tokens";
 
-export function Screen({ children, top }: { children: React.ReactNode; top?: React.ReactNode }) {
+export function Screen({ children, top, maxWidth = 460 }: { children: React.ReactNode; top?: React.ReactNode; maxWidth?: number | string }) {
   return (
     <div
       style={{
@@ -17,10 +17,13 @@ export function Screen({ children, top }: { children: React.ReactNode; top?: Rea
     >
       {top}
       <div
+        // Het merkje maakt deze doos vindbaar voor wie wil weten hoeveel ruimte
+        // er onder de inhoud gereserveerd is (de main page meet daarop).
+        data-schermkolom=""
         style={{
           flex: 1,
           width: "100%",
-          maxWidth: 460,
+          maxWidth,
           margin: "0 auto",
           // --nav-h reserves the strip the fixed bottom bar covers (0 when hidden).
           padding: "6px 16px calc(10px + var(--nav-h, 0px) + env(safe-area-inset-bottom))",

@@ -69,7 +69,12 @@ body,
    own stop heights, so the middle of the screen is pixel-identical to what it
    always was; the sides just lost the ellipse's extra darkening. */
 html {
-  background-color: #09002c;
+  /* Dezelfde kleur als de ONDERRAND van het decor: de nevel op zijn donkerste
+     plek met het vignet er al overheen gerekend. Zo valt een strookje dat op
+     wat voor manier dan ook onbeschilderd blijft niet op. Vroeger stond hier
+     het marineblauw van het oude verloop, en dat was precies de balk die je op
+     een iPhone onderaan zag staan. */
+  background-color: #050211;
 }
 
 /* The backdrop is anchored to the VIEWPORT, exactly like the bottom bar, and
@@ -84,7 +89,20 @@ html {
 body::before {
   content: "";
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  /* NIET `inset: 0`. Een vaste laag wordt op iOS afgemeten aan de KLEINE
+     viewport, die met de adresbalk erbij. Schuift die balk weg bij het
+     scrollen, dan wordt het zichtbare venster hoger en blijft er onderaan een
+     strook over die niemand beschildert: dat is de balk die soms wel en soms
+     niet in beeld staat. Vandaar de GROTE viewport (`lvh`) plus een royale
+     marge. `vh` staat er als terugval voor browsers zonder `lvh`; op iOS is dat
+     al de grote viewport, dus daar klopt hij ook.
+     Zo'n overschot kost niets: een vaste laag telt niet mee voor de hoogte
+     waarover je kunt scrollen. */
+  height: calc(100vh + 200px);
+  height: calc(100lvh + 200px);
   z-index: -1;
   pointer-events: none;
   /* Het decor voor de intro en alle subpagina's: de art uit de UI-map. Een

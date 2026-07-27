@@ -33,7 +33,12 @@ const FRAMES = [
 
 // De maat van het embleem. Het licht erachter (EmblemLight) rekent in
 // percentages van deze maat via --em, dus alles schaalt als één geheel.
-const EMBLEM_SIZE = "clamp(112px, calc(64vh - 315px), 215px)";
+// De maat van het embleem. Steiler dan een gewone clamp: op een hoog scherm
+// blijft hij op zijn volle 215, en zodra het scherm korter wordt krimpt hij snel
+// mee. Dat is precies waar de ruimte vandaan moet komen, want de kaart eronder
+// heeft een vaste verhouding en kan niet lager zonder ook smaller te worden.
+const EMBLEM_SIZE = "clamp(100px, calc(80vh - 452px), 215px)";
+
 
 // De zeshoek van de knopjes, met de punt naar boven, net als de knopplaten.
 const HEX = "polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)";
@@ -90,6 +95,50 @@ export function Landing({
     ro.observe(el);
     return () => ro.disconnect();
   }, [skin]);
+  // De kaart mag nooit lager staan dan wat er in beeld past: de main page hoort
+  // op een scherm te passen zonder te scrollen.
+  //
+  // Dat is GEMETEN en niet uitgerekend. Een formule zou moeten weten hoe hoog
+  // het embleem is, hoe groot het woordmerk uitvalt, of "Speel met vrienden" op
+  // een of twee regels komt, welke van de drie maten lijst-art gekozen wordt en
+  // hoe hoog de balk onderaan is. Dat zijn vijf dingen die elk hun eigen kant op
+  // schalen, en elke constante die je daarvoor kiest klopt op precies een
+  // toestel. De ruimte onder de kaart aflezen en de kaart daarnaar breed maken
+  // klopt op alle.
+  //
+  // De bovenkant van de kaart hangt niet af van de kaart zelf (die staat onder
+  // het logo in een kolom), dus dit draait niet in zichzelf rond. Wat wel kan
+  // veranderen is de VERHOUDING zodra een label anders afbreekt; daarom kijkt
+  // een ResizeObserver mee en corrigeert hij na. De drempel van drie pixels
+  // voorkomt dat hij tussen twee bijna gelijke maten blijft heen en weer gaan.
+  const kaartVak = useRef<HTMLDivElement | null>(null);
+  const [kaartMax, setKaartMax] = useState<number | undefined>(undefined);
+  useEffect(() => {
+    const meet = () => {
+      const vak = kaartVak.current;
+      if (!vak) return;
+      const kolom = vak.closest("[data-schermkolom]") as HTMLElement | null;
+      if (!kolom) return;
+      // De ONDERKANT VAN HET SCHERM min de strook die de balk al opeist, niet
+      // de onderkant van de kolom: die is precies zo hoog als de inhoud, dus
+      // als het niet past staat hij al buiten beeld en meet je je eigen fout.
+      const onder = window.innerHeight - parseFloat(getComputedStyle(kolom).paddingBottom || "0");
+      const r = vak.getBoundingClientRect();
+      if (!r.width || !r.height) return;
+      const ruimte = onder - r.top;
+      if (ruimte <= 0) return;
+      const wil = Math.min(460, Math.floor((ruimte * r.width) / r.height));
+      setKaartMax((oud) => (oud !== undefined && Math.abs(oud - wil) <= 3 ? oud : wil));
+    };
+    meet();
+    const ro = new ResizeObserver(meet);
+    if (kaartVak.current) ro.observe(kaartVak.current);
+    window.addEventListener("resize", meet);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", meet);
+    };
+  }, []);
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [mode, setMode] = useState<"none" | "join">("none");
@@ -330,7 +379,7 @@ export function Landing({
               />
             ))}
           </div>
-          <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+          <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, ["--em" as string]: EMBLEM_SIZE }}>
             {/* The logo IS the light source: breathing glow + slowly rotating
                 rays centered on the coin, logo floating on top of them. */}
             {/* Het licht zit BINNEN de zwevende laag, niet ernaast: het gat in de
@@ -367,7 +416,10 @@ export function Landing({
               style={{
                 // Negatief, zodat het woordmerk tegen het embleem aan kruipt en
                 // de twee als één merk lezen in plaats van als twee dingen.
-                margin: "-64px 0 0",
+                // In verhouding tot het embleem en niet in vaste pixels: krimpt
+                // de munt op een laag scherm, dan schuift het woordmerk anders
+                // even ver door en staat de pen erachter.
+                margin: "calc(var(--em) * -0.3) 0 0",
                 // Cybergame (the studio face, already italic-shaped) is only
                 // this wordmark; vw-clamped so it never clips small phones.
                 // Cybergame is a very condensed face: it needs a much larger
@@ -420,6 +472,7 @@ export function Landing({
           </div>
         </div>
 
+        <div ref={kaartVak} style={{ width: "100%", maxWidth: kaartMax, marginInline: "auto" }}>
         <Card
           className="reveal-rise"
           style={{
@@ -558,6 +611,7 @@ export function Landing({
             </>
           )}
         </Card>
+        </div>
 
         {game.state.error && (
           <p style={{ textAlign: "center", color: colors.red, fontFamily: font.ui, fontSize: 14, margin: 0 }}>{game.state.error}</p>
