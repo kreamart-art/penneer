@@ -19,7 +19,13 @@ import { sound } from "../sound/sound";
 import { colors, font, withAlpha } from "../theme/tokens";
 
 // Het gloeiende podium zit op 77.1% van de hoogte van de plaat (gemeten: de
-// helderste beeldrij). Op 76% van het scherm landt het onder de Draai-knop.
+// helderste beeldrij); op 79% van het scherm landt het onder de Draai-knop.
+//
+// De plaat VULT het scherm bewust niet. De bron is 1774px breed, en een hoog
+// telefoonscherm helemaal vullen met het podium zo laag kost ruim 3x zoom: dan
+// wordt hij zichtbaar wazig. Op 185% blijft hij scherp (op een 390-scherm met
+// DPR 3 is dat 1.75x opblazen, tegen 4.2x toen hij het scherm moest vullen) en
+// lopen zijn uitgefadede randen netjes over in de arena-ondergrond.
 const PODIUM = 0.771;
 
 export function Reveal({ game }: { game: GameApi }) {
@@ -49,7 +55,7 @@ export function Reveal({ game }: { game: GameApi }) {
 
   return (
     <Screen top={<div style={{ position: "relative", zIndex: 1 }}><TopBar code={room.code} roundNo={room.round_no} totalRounds={room.settings.rounds} connected={game.state.status === "open"} onLeave={game.leaveRoom} game={game} /></div>}>
-      <Arena src="/game-bg.webp" podium={PODIUM} at="76%" fill glowAt="70%" />
+      <Arena src="/game-bg.webp" podium={PODIUM} at="79%" width="240%" glowAt="70%" />
       <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column" }}>
         <AlphabetStrip used={room.used_letters} hard={room.settings.hard_letters} lockedLetter={letter} />
 
