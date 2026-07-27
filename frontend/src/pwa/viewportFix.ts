@@ -1,54 +1,123 @@
-// iOS-only launch-glitch fix voor de geïnstalleerde PWA.
+// iOS-only launch-glitch fix voor de geinstalleerde PWA.
 //
 // WebKit lanceert een standalone web-app soms tegen een VEROUDERDE, te korte
 // layout-viewport (alsof er nog browser-chrome onder de pagina zit). Alles wat
 // aan de viewport hangt, de vaste navigatiebalk, de fixed achtergrondlaag en
 // 100dvh, wordt dan te hoog gelegd en onderaan blijft een onbeschilderde
 // strook staan, tot de EERSTE swipe WebKit de echte hoogte laat herberekenen.
-// Dit is een WebKit-bug en geen CSS van ons: exact dezelfde paint staat na
-// een swipe wel goed.
+// Dit is een WebKit-bug en geen CSS van ons: exact dezelfde paint staat na een
+// swipe wel goed.
 //
-// De genezing is dus die swipe zelf geven. Maak het document heel even 2px
-// scrollbaar (onzichtbare spacer), scroll 1px heen en terug (echte
-// scroll-events, dus een viewport-herberekening) en ruim de spacer weer op.
+// v1.52.1 probeerde alleen een scroll-zetje en dat was niet genoeg. Nu drie
+// hamers achter elkaar, van hard naar zacht, want welke aanslaat verschilt per
+// iOS-versie:
+//   1. de viewport-meta hertekenen (dwingt WebKit tot een echte herberekening)
+//   2. het document even hoger maken en 1px scrollen (de swipe nabootsen)
+//   3. een geforceerde reflow, zodat de nieuwe hoogte ook echt geschilderd wordt
+// Alle drie zijn onzichtbaar en veranderen niets aan de layout die overblijft.
+//
+// Er hangt ook een meetlijn aan: standalone iOS stuurt zijn viewport-cijfers
+// naar de server (0/400/1200ms na de start, en nog eens na de eerste aanraking),
+// zodat we in de logs zien of de hamer werkte in plaats van het te moeten raden.
 import { isIos, isStandalone } from "./install";
 
-const stale = (): boolean => {
-  // Alleen staand relevant (het spel is portrait); liggend en iPad-split-view
-  // hebben legitiem kleinere hoogtes en blijven erbuiten.
-  if (window.innerWidth > window.innerHeight) return false;
-  // screen.width/height staan op iOS vast in portret-orientatie, dus de lange
-  // kant is de hoogte die een standalone app (viewport-fit=cover) moet krijgen.
-  const expected = Math.max(screen.width, screen.height);
-  return window.innerHeight + 1 < expected;
-};
+const MAX_REPORTS = 6;
+let sent = 0;
 
-const nudge = (): void => {
+interface Snapshot {
+  tag: string;
+  inner: number;
+  client: number;
+  visual: number;
+  screen: number;
+  dpr: number;
+  scrollY: number;
+  ua: string;
+}
+
+function snapshot(tag: string): Snapshot {
+  const vv = window.visualViewport;
+  return {
+    tag,
+    inner: Math.round(window.innerHeight),
+    client: document.documentElement.clientHeight,
+    visual: vv ? Math.round(vv.height) : -1,
+    // screen.width/height staan op iOS vast in portret-orientatie, dus de lange
+    // kant is de hoogte die een standalone app (viewport-fit=cover) moet krijgen.
+    screen: Math.max(screen.width, screen.height),
+    dpr: window.devicePixelRatio,
+    scrollY: Math.round(window.scrollY),
+    ua: navigator.userAgent.slice(0, 120),
+  };
+}
+
+function report(tag: string): void {
+  if (sent >= MAX_REPORTS) return;
+  sent += 1;
+  try {
+    void fetch("/api/debug/viewport", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(snapshot(tag)),
+      keepalive: true,
+    }).catch(() => {});
+  } catch {
+    /* diagnose mag nooit iets breken */
+  }
+}
+
+/** Is de viewport korter dan het scherm? Alleen zinvol in portret. */
+function tooShort(): boolean {
+  if (window.innerWidth > window.innerHeight) return false;
+  return window.innerHeight + 1 < Math.max(screen.width, screen.height);
+}
+
+function hammer(): void {
+  // 1. viewport-meta hertekenen. Een gewijzigde en meteen teruggezette content
+  //    dwingt WebKit de viewport opnieuw op te meten; dit is de zwaarste zet en
+  //    de enige die op sommige iOS-versies aanslaat.
+  const meta = document.querySelector('meta[name="viewport"]');
+  const original = meta?.getAttribute("content") ?? null;
+  if (meta && original) {
+    meta.setAttribute("content", `${original}, height=${Math.max(screen.width, screen.height)}`);
+    requestAnimationFrame(() => meta.setAttribute("content", original));
+  }
+
+  // 2. de swipe nabootsen: heel even scrollbaar maken, 1px heen en terug.
   const spacer = document.createElement("div");
   spacer.style.cssText = "position:absolute;top:0;left:0;width:1px;pointer-events:none;visibility:hidden;";
   spacer.style.height = `${window.innerHeight + 2}px`;
   document.body.appendChild(spacer);
   window.scrollTo(0, 1);
   window.scrollTo(0, 0);
+
+  // 3. geforceerde reflow, zodat de herberekende hoogte ook geschilderd wordt.
+  void document.documentElement.offsetHeight;
   requestAnimationFrame(() => spacer.remove());
-};
+}
 
 /** Waak bij het opstarten en bij terugkeer uit de achtergrond; duw de viewport
- *  recht zodra hij te kort blijkt. Doet niets wanneer alles al klopt. */
+ *  recht en meet of het hielp. Doet niets buiten de iOS-app. */
 export function armViewportHealer(): void {
   if (!isIos() || !isStandalone()) return;
-  const heal = () => {
-    // Een paar pogingen kort na elkaar: de verkeerde hoogte verschijnt soms
-    // pas na de splash-overgang. Elke poging checkt eerst; nooit een lus.
-    for (const ms of [0, 250, 900]) {
-      window.setTimeout(() => {
-        if (stale()) nudge();
-      }, ms);
-    }
+
+  const beat = (tag: string) => {
+    const before = tooShort();
+    // Onvoorwaardelijk slaan: de hamers zijn onzichtbaar en gratis, en de
+    // hoogte-check zelf kan net zo goed op verouderde cijfers zitten als de
+    // layout die we proberen te repareren.
+    hammer();
+    window.setTimeout(() => report(`${tag}${before ? "-kort" : "-ok"}`), 60);
   };
-  heal();
-  window.addEventListener("pageshow", heal);
+
+  for (const ms of [0, 400, 1200]) window.setTimeout(() => beat(`start${ms}`), ms);
+
+  // De eerste echte aanraking is precies het moment waarop het vanzelf goed
+  // ging; die meting vertelt ons de "juiste" hoogte om tegen af te zetten.
+  window.addEventListener("touchend", () => report("na-aanraking"), { once: true, passive: true });
+
+  window.addEventListener("pageshow", () => beat("pageshow"));
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") heal();
+    if (document.visibilityState === "visible") beat("terug");
   });
 }

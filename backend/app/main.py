@@ -39,6 +39,22 @@ async def healthz() -> dict:
     return {"ok": True}
 
 
+@app.post("/api/debug/viewport")
+async def debug_viewport(request: Request) -> Response:
+    """Meetlijn voor de iOS-PWA launch-bug (de balk die te hoog start).
+
+    De app kan op een echte iPhone niet gedebugd worden vanaf deze kant, dus
+    stuurt standalone iOS zijn viewport-cijfers hierheen en lezen we ze uit de
+    containerlogs. Tijdelijk; mag weg zodra de oorzaak vaststaat."""
+    try:
+        body = await request.json()
+    except Exception:
+        return Response(status_code=204)
+    keep = {k: body.get(k) for k in ("tag", "inner", "client", "visual", "screen", "dpr", "scrollY")}
+    print(f"[viewport] {keep} ua={str(body.get('ua'))[:80]}", flush=True)
+    return Response(status_code=204)
+
+
 @app.on_event("startup")
 async def _seed_rarity_table() -> None:
     """Cold start for Duel: fold the stored dagronde answers into the rarity
