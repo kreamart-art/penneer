@@ -338,19 +338,21 @@ export function Landing({
                 }}
               />
               <div style={{ position: "relative", zIndex: 1, animation: "float-soft 4s ease-in-out infinite" }}>
-                <Logo size="min(132px, 14.5vh)" />
+                <Logo size="clamp(100px, calc(34.5vh - 130px), 168px)" />
               </div>
             </div>
             <h1
               style={{
-                margin: 0,
+                // Negatief, zodat het woordmerk tegen het embleem aan kruipt en
+                // de twee als één merk lezen in plaats van als twee dingen.
+                margin: "-16px 0 0",
                 // Cybergame (the studio face, already italic-shaped) is only
                 // this wordmark; vw-clamped so it never clips small phones.
                 // Cybergame is a very condensed face: it needs a much larger
                 // px size than Space Grotesk did to span the same hero width.
                 fontFamily: "'Cybergame', 'Space Grotesk', sans-serif",
                 fontWeight: 400,
-                fontSize: "min(60px, 15vw)",
+                fontSize: "min(60px, 15vw, 7.4vh)",
                 letterSpacing: "0.14em",
                 whiteSpace: "nowrap",
               }}
@@ -400,7 +402,7 @@ export function Landing({
                   // Iets breder dan de kolom en wat meer lucht boven en onder,
                   // zodat de lijst niet strak om de tegels heen zit.
                   marginInline: -4,
-                  padding: "26px 18px 30px",
+                  padding: "clamp(8px, calc(12.4vh - 74.8px), 26px) 18px clamp(10px, calc(13.8vh - 82.1px), 30px)",
                   background: "none",
                   backdropFilter: "none",
                   WebkitBackdropFilter: "none",
@@ -974,6 +976,17 @@ function LandingFX() {
         backgroundColor: "#06040e",
       }}
     >
+      {/* De ovale lichtplek. Binnen de ovaal blijft de art zoals hij is; daar
+          waar de ovaal ophoudt begint de fade naar zwart. Hij ligt over de art
+          maar onder de letters, zodat die niet mee wegzakken. */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          background:
+            "radial-gradient(62% 34% at 50% 21%, rgba(4,1,12,0) 0%, rgba(4,1,12,0) 52%, rgba(4,1,12,.45) 76%, rgba(4,1,12,.82) 100%)",
+        }}
+      />
       {[false, true].map((slow) => (
         <div key={String(slow)} className={slow ? "drift-b" : "drift-a"} style={{ position: "absolute", inset: "-30px" }}>
           {pick(slow).map((l) => (
