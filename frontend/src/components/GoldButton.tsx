@@ -42,6 +42,21 @@ export const GOLD_RATIO = (ASSET_W * FACE_W) / (ASSET_H * FACE_H);
  *  breedte af in plaats van platter te worden. */
 export const GOLD_MIN_WIDTH = Math.round(44 * GOLD_RATIO);
 
+/** De plaat is BREDER dan de knop, want de gloed hoort eromheen. Een knop op
+ *  volle breedte duwt die gloed dus van het scherm af. Deze breedte laat er
+ *  precies genoeg naast over. */
+export const GOLD_FIT = `${(FACE_W * 100).toFixed(2)}%`;
+/** En een plafond, anders wordt de knop op een tablet een banier van 200 pixels
+ *  hoog: de hoogte volgt immers uit de breedte. */
+export const GOLD_MAX_WIDTH = 320;
+
+/** Breedte-regels die elke gouden knop op volle breedte deelt. */
+export const goldWidth = {
+  width: `min(${GOLD_FIT}, ${GOLD_MAX_WIDTH}px)`,
+  marginLeft: "auto",
+  marginRight: "auto",
+} as const;
+
 /** Terugval als de art niet laadt: dezelfde vorm in CSS, zodat er nooit een
  *  naamloze knop overblijft. */
 export const GOLD_FALLBACK = {
@@ -93,7 +108,7 @@ export function GoldButton({
       className="pressable"
       style={{
         position: "relative",
-        width: "100%",
+        ...(art ? goldWidth : { width: "100%" }),
         aspectRatio: art ? `${GOLD_RATIO}` : undefined,
         minHeight: art ? undefined : 54,
         border: "none",

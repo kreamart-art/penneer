@@ -6,7 +6,7 @@
 // "Speel met vrienden" op de main page hoort daar bewust niet bij: dat is een
 // tegel, geen knop, en die houdt zijn eigen vlakke goud.
 import React, { useState } from "react";
-import { GoldPlate, GOLD_FALLBACK, GOLD_MIN_WIDTH, GOLD_RATIO } from "./GoldButton";
+import { GoldPlate, GOLD_FALLBACK, GOLD_MAX_WIDTH, GOLD_MIN_WIDTH, GOLD_RATIO, goldWidth } from "./GoldButton";
 import { colors, font, radius } from "../theme/tokens";
 
 type Variant = "primary" | "gold" | "danger" | "ghost";
@@ -76,12 +76,14 @@ export function Button({ variant = "primary", full, style, children, disabled, .
         display: gold ? "grid" : undefined,
         placeItems: gold ? "center" : undefined,
         textAlign: "center",
-        width: full ? "100%" : undefined,
         // Niet uitrekken: de hoogte volgt uit de breedte, in de verhouding van
-        // de plaat. De minimumbreedte houdt korte knoppen leesbaar, want anders
-        // zou "Terug" een streepje van 12 pixels hoog worden.
+        // de plaat. De minimumbreedte houdt korte knoppen leesbaar (anders werd
+        // "Terug" een streepje van 12 pixels hoog), de maximumbreedte houdt de
+        // gloed binnen het scherm en de knop op een tablet normaal van formaat.
+        ...(gold && full ? goldWidth : { width: full ? "100%" : undefined }),
         aspectRatio: gold ? `${GOLD_RATIO}` : undefined,
         minWidth: gold ? GOLD_MIN_WIDTH : undefined,
+        maxWidth: gold ? GOLD_MAX_WIDTH : undefined,
         cursor: disabled ? "not-allowed" : "pointer",
         opacity: disabled ? 0.5 : 1,
         boxShadow: down || depth === 0 ? `0 0 0 ${p.shadow}` : `0 ${depth}px 0 ${p.shadow}`,
