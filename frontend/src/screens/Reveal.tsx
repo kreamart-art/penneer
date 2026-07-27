@@ -64,7 +64,7 @@ export function Reveal({ game }: { game: GameApi }) {
           <TurnBanner
             name={game.isActive ? null : active?.name ?? "?"}
             label={game.isActive ? t("youSpin") : t("xSpinsRound", { name: active?.name ?? "?" })}
-            avatar={active ? <Avatar name={active.name} color={active.color} size={52} userId={active.user_id} hasAvatar={active.has_avatar} avatarVer={active.avatar_ver} frame={active.frame} /> : null}
+            avatar={active ? <Avatar name={active.name} color={active.color} size={40} userId={active.user_id} hasAvatar={active.has_avatar} avatarVer={active.avatar_ver} frame={active.frame} /> : null}
           />
 
           <Reel state={reelState} letter={letter} exclude={room.used_letters} hard={room.settings.hard_letters} skin={active?.reel_skin ?? null} />
@@ -87,56 +87,77 @@ export function Reveal({ game }: { game: GameApi }) {
   );
 }
 
-/** Wie er draait: de spelerbanner. Vormgegeven naar de aangeleverde specs
- *  (AAA-mobielspel, donker paars, ingehouden neon): afgeschuinde hoeken links en
- *  rechts, dunne verloopsrand, avatar die over de linkerrand heen valt met een
- *  gloeiende rode ring en een kroontje erboven, en een lichtveeg die er elke zes
- *  seconden overheen trekt.
+/** Wie er draait: de spelerbanner. Aan elke kant twee pijltjes, en de boven- en
+ *  onderrand zijn twee lijntjes die naar de uiteinden toe uitfaden met een witte
+ *  highlight in het midden.
  *
- *  De specs kwamen als React Native met Reanimated en LinearGradient; die
- *  bestaan hier niet, dus dit is dezelfde vormgeving in de webstack van de app:
- *  clip-path voor de schuine hoeken, een tweede geknipte laag eronder voor de
- *  verloopsrand (een `border` volgt geen clip-path), en CSS-keyframes voor de
- *  beweging.
+ *  Die twee lijntjes kunnen geen `border` zijn: een border is overal even sterk
+ *  en volgt bovendien geen clip-path. Het zijn losse laagjes met een horizontaal
+ *  verloop, zodat ze in het midden oplichten en aan de punten oplossen.
+ *
+ *  De afwerking komt uit de aangeleverde art-specs (donkerpaarse vulling met
+ *  ruis, ingehouden binnengloed, gouden kroontje, lichtveeg elke zes seconden).
+ *  Die kwamen als React Native; dit is dezelfde vormgeving in de webstack.
  */
 const BANNER_CUT =
-  "polygon(20px 0, calc(100% - 20px) 0, 100% 20px, 100% calc(100% - 20px), calc(100% - 20px) 100%, 20px 100%, 0 calc(100% - 20px), 0 20px)";
+  "polygon(16px 0, calc(100% - 16px) 0, 100% 50%, calc(100% - 16px) 100%, 16px 100%, 0 50%)";
+
+/** Twee pijltjes naast elkaar, spiegelbaar. */
+function Chevrons({ dir }: { dir: 1 | -1 }) {
+  return (
+    <svg
+      aria-hidden
+      width={22}
+      height={26}
+      viewBox="0 0 22 26"
+      style={{ flexShrink: 0, transform: dir === -1 ? "scaleX(-1)" : undefined }}
+    >
+      {[0, 9].map((x, i) => (
+        <path
+          key={x}
+          d={`M ${x + 1} 3 L ${x + 9} 13 L ${x + 1} 23`}
+          fill="none"
+          stroke="#A855F7"
+          strokeWidth={3}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          // De buitenste is zwakker, zodat ze naar buiten toe wegvallen.
+          opacity={i === 0 ? 0.45 : 0.95}
+        />
+      ))}
+    </svg>
+  );
+}
 
 function TurnBanner({ label, avatar }: { name: string | null; label: string; avatar: React.ReactNode }) {
-  const corner = (pos: React.CSSProperties): React.CSSProperties => ({
+  // Boven- en onderrand: wit in het midden, paars ernaast, weg bij de punten.
+  const edge: React.CSSProperties = {
     position: "absolute",
-    width: 12,
-    height: 12,
-    opacity: 0.5,
+    left: 12,
+    right: 12,
+    height: 1.5,
+    background:
+      "linear-gradient(90deg, transparent 0%, rgba(168,85,247,.55) 18%, rgba(255,255,255,.95) 50%, rgba(168,85,247,.55) 82%, transparent 100%)",
     pointerEvents: "none",
-    ...pos,
-  });
+  };
   return (
-    // Buitenlaag = de verloopsrand; de binnenlaag laat er 1.5px van vrij.
-    <div
-      style={{
-        position: "relative",
-        width: "100%",
-        maxWidth: 360,
-        padding: 1.5,
-        clipPath: BANNER_CUT,
-        background: "linear-gradient(135deg, #8B5CF6, #5B21B6)",
-        filter: "drop-shadow(0 8px 18px rgba(0,0,0,.45))",
-        marginTop: 8,
-      }}
-    >
+    <div style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", maxWidth: 360 }}>
+      <Chevrons dir={-1} />
       <div
         style={{
           position: "relative",
-          height: 74,
+          flex: 1,
+          minWidth: 0,
+          height: 58,
           display: "flex",
           alignItems: "center",
-          gap: 12,
-          padding: "0 18px 0 40px",
+          gap: 10,
+          padding: "0 24px 0 20px",
           overflow: "hidden",
           clipPath: BANNER_CUT,
           background: "linear-gradient(180deg, #37206D 0%, #2A124F 55%, #180C35 100%)",
           boxShadow: "inset 0 0 26px rgba(168,85,247,.18)",
+          filter: "drop-shadow(0 8px 18px rgba(0,0,0,.45))",
         }}
       >
         {/* Ruis: heel licht, tegen het vlakke plastic-gevoel van een egaal verloop. */}
@@ -150,19 +171,8 @@ function TurnBanner({ label, avatar }: { name: string | null; label: string; ava
               "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.06'/%3E%3C/svg%3E\")",
           }}
         />
-        {/* Gloed die over de bovenrand schuift. */}
-        <span
-          aria-hidden
-          style={{
-            position: "absolute",
-            top: 0,
-            left: "10%",
-            right: "10%",
-            height: 1.5,
-            background: "linear-gradient(90deg, transparent, rgba(168,85,247,.9), transparent)",
-            animation: "banner-edge 7s ease-in-out infinite",
-          }}
-        />
+        <span aria-hidden style={{ ...edge, top: 0 }} />
+        <span aria-hidden style={{ ...edge, bottom: 0 }} />
         {/* De lichtveeg, elke 6 seconden een keer. */}
         <span
           aria-hidden
@@ -176,41 +186,22 @@ function TurnBanner({ label, avatar }: { name: string | null; label: string; ava
             animation: "banner-sweep 6s ease-in-out infinite",
           }}
         />
-        {/* Kleine hoekjes linksboven en rechtsonder. */}
-        <span aria-hidden style={{ ...corner({ top: 6, left: 26, borderTop: `1px solid ${withAlpha("#A855F7", 0.8)}`, borderLeft: `1px solid ${withAlpha("#A855F7", 0.8)}` }) }} />
-        <span aria-hidden style={{ ...corner({ bottom: 6, right: 10, borderBottom: `1px solid ${withAlpha("#A855F7", 0.8)}`, borderRight: `1px solid ${withAlpha("#A855F7", 0.8)}` }) }} />
 
-        {/* De avatar valt over de linkerrand heen, met een dikke gloeiende ring. */}
-        <span
-          style={{
-            position: "absolute",
-            left: -14,
-            top: "50%",
-            transform: "translateY(-50%)",
-            width: 60,
-            height: 60,
-            borderRadius: "50%",
-            display: "grid",
-            placeItems: "center",
-            background: "#180C35",
-            border: "3px solid #FF3B3B",
-            boxShadow: "0 0 16px rgba(255,59,59,.55)",
-          }}
-        >
-          <span style={{ borderRadius: "50%", overflow: "hidden", display: "grid", placeItems: "center" }}>{avatar}</span>
-          {/* Kroontje zweeft rechtsboven de avatar, met een zachte gouden gloed. */}
+        {/* Avatar met kroontje, binnen de balk. */}
+        <span style={{ position: "relative", display: "flex", flexShrink: 0 }}>
+          {avatar}
           <span
             aria-hidden
             style={{
               position: "absolute",
-              top: -11,
-              right: -6,
+              top: -12,
+              right: -5,
               color: colors.gold,
               filter: `drop-shadow(0 0 6px ${withAlpha(colors.gold, 0.85)})`,
               display: "flex",
             }}
           >
-            <Crown size={20} strokeWidth={2.4} fill="currentColor" />
+            <Crown size={18} strokeWidth={2.4} fill="currentColor" />
           </span>
         </span>
 
@@ -220,8 +211,8 @@ function TurnBanner({ label, avatar }: { name: string | null; label: string; ava
             textAlign: "center",
             fontFamily: font.display,
             fontWeight: 800,
-            fontSize: 17,
-            letterSpacing: 0.6,
+            fontSize: 16.5,
+            letterSpacing: 0.5,
             color: "#FFFFFF",
             textShadow: "0 2px 6px rgba(0,0,0,.55)",
             whiteSpace: "nowrap",
@@ -232,6 +223,7 @@ function TurnBanner({ label, avatar }: { name: string | null; label: string; ava
           {label}
         </span>
       </div>
+      <Chevrons dir={1} />
     </div>
   );
 }
