@@ -86,15 +86,23 @@ export function EmblemLight() {
              transform, en dat wist de translate waarmee de laag gecentreerd
              staat. Vandaar de wikkel: die doet de plaatsing, de kern de draai. */}
       {[
-        { masker: BREED, maat: 2.4, sterk: 1, reik: 0.6, sec: 120, terug: false },
-        { masker: MIDDEL, maat: 2.83, sterk: 0.62, reik: 0.72, sec: 190, terug: true },
-        { masker: SPIES, maat: 3.25, sterk: 0.4, reik: 0.5, sec: 260, terug: false },
-        { masker: UIT, maat: 3.25, sterk: 0.8, reik: 1, sec: 165, terug: true },
+        { masker: BREED, maat: 2.4, sterk: 1, reik: 0.6, sec: 120, terug: false, min: 0.82, adem: 9, wacht: 0 },
+        { masker: MIDDEL, maat: 2.83, sterk: 0.62, reik: 0.72, sec: 190, terug: true, min: 0.88, adem: 13, wacht: 2.5 },
+        { masker: SPIES, maat: 3.25, sterk: 0.4, reik: 0.5, sec: 260, terug: false, min: 0.8, adem: 7, wacht: 4 },
+        { masker: UIT, maat: 3.25, sterk: 0.8, reik: 0.85, sec: 165, terug: true, min: 0.68, adem: 17, wacht: 1.2 },
       ].map((w, i) => (
         <div
           key={`fan${i}`}
           aria-hidden
-          style={{ ...laag, width: `calc(var(--em) * ${w.maat})`, height: `calc(var(--em) * ${w.maat})` }}
+          className="ray-breathe"
+          style={{
+            ...laag,
+            width: `calc(var(--em) * ${w.maat})`,
+            height: `calc(var(--em) * ${w.maat})`,
+            ["--ray-min" as string]: w.min,
+            animationDuration: `${w.adem}s`,
+            animationDelay: `${w.wacht}s`,
+          }}
         >
           <div
             className="hero-rays"
@@ -118,16 +126,20 @@ export function EmblemLight() {
               eronder. Dus de zone blijft staan en de stralen draaien erdoorheen,
               zoals licht dat door een fellere plek trekt. */}
       {[
-        { masker: BREED, maat: 2.4, sterk: 1, reik: 0.6, sec: 120, terug: false },
-        { masker: UIT, maat: 3.25, sterk: 0.75, reik: 1, sec: 165, terug: true },
+        { masker: BREED, maat: 2.4, sterk: 1, reik: 0.6, sec: 120, terug: false, min: 0.82, adem: 9, wacht: 0 },
+        { masker: UIT, maat: 3.25, sterk: 0.75, reik: 0.85, sec: 165, terug: true, min: 0.68, adem: 17, wacht: 1.2 },
       ].map((w, i) => (
         <div
           key={`hi${i}`}
           aria-hidden
+          className="ray-breathe"
           style={{
             ...laag,
             width: `calc(var(--em) * ${w.maat})`,
             height: `calc(var(--em) * ${w.maat})`,
+            ["--ray-min" as string]: w.min,
+            animationDuration: `${w.adem}s`,
+            animationDelay: `${w.wacht}s`,
             WebkitMaskImage: "linear-gradient(180deg, #000 0%, #000 20%, rgba(0,0,0,.55) 40%, rgba(0,0,0,.18) 58%, transparent 76%)",
             maskImage: "linear-gradient(180deg, #000 0%, #000 20%, rgba(0,0,0,.55) 40%, rgba(0,0,0,.18) 58%, transparent 76%)",
           }}
@@ -156,13 +168,21 @@ export function EmblemLight() {
               terug zodat het vlekje blijft staan waar het staat. Wat je ziet is
               dus de straal die over een vast punt schuift. */}
       {[
-        { masker: BREED, maat: 2.4, sec: 120, terug: false },
-        { masker: UIT, maat: 3.25, sec: 165, terug: true },
+        { masker: BREED, maat: 2.4, sec: 120, terug: false, min: 0.82, adem: 9, wacht: 0 },
+        { masker: UIT, maat: 3.25, sec: 165, terug: true, min: 0.68, adem: 17, wacht: 1.2 },
       ].map((w, i) => (
         <div
           key={`tip${i}`}
           aria-hidden
-          style={{ ...laag, width: `calc(var(--em) * ${w.maat})`, height: `calc(var(--em) * ${w.maat})` }}
+          className="ray-breathe"
+          style={{
+            ...laag,
+            width: `calc(var(--em) * ${w.maat})`,
+            height: `calc(var(--em) * ${w.maat})`,
+            ["--ray-min" as string]: w.min,
+            animationDuration: `${w.adem}s`,
+            animationDelay: `${w.wacht}s`,
+          }}
         >
           <div
             className="hero-rays"

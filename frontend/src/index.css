@@ -296,6 +296,17 @@ input:focus {
   pointer-events: none;
 }
 
+/* Stralen die langer en korter worden. De translate hoort in de keyframes: een
+   animatie op transform wist de translate waarmee de laag gecentreerd staat. */
+@keyframes ray-breathe {
+  0%, 100% { transform: translate(-50%, -50%) scale(var(--ray-min, 0.82)); }
+  50% { transform: translate(-50%, -50%) scale(1); }
+}
+.ray-breathe {
+  animation: ray-breathe 9s ease-in-out infinite;
+  pointer-events: none;
+}
+
 /* Breathing glow behind the hero. */
 @keyframes breath-glow {
   0%, 100% { opacity: 0.55; }
