@@ -26,6 +26,11 @@ export type NavKey = "shop" | "leaderboard" | "home" | "friends" | "profile";
 // Opnieuw uitgemeten op de nieuwe art: het linkervak loopt van 1,9 tot 40,7
 // procent, het rechter van 59,4 tot 98,1, en beide hebben hun hartlijn op 50,3.
 // Twee pictogrammen per vak, dus op een kwart en driekwart van elk vak.
+// De versie van de pictogram-art. Bump dit zodra je een bestand op DEZELFDE
+// naam vervangt. De service worker bewaart plaatjes cache-first en ruimt pas op
+// bij zijn volgende activatie, dus alleen zijn versie ophogen laat er nog een
+// laadbeurt de oude bytes doorheen. Een andere URL kan dat niet gebeuren.
+const NAV_ART = 2;
 const SLOTS = [11.6, 31.0, 50, 69.1, 88.4];
 const WELL_Y = 50.3; // verticale hartlijn van de vakken
 const PLATE_RATIO = "3955 / 578";
@@ -95,9 +100,9 @@ export function BottomNav({
     // verschil tussen gekozen en niet gekozen is alleen belichting.
     const maat = Math.round(s * 1.12);
     const art: Partial<Record<NavKey, (on: boolean) => React.ReactNode>> = {
-      shop: (on) => <NavArt src="/ui/nav/shop.webp" on={on} size={maat} />,
-      leaderboard: (on) => <NavArt src="/ui/nav/trophy.webp" on={on} size={maat} />,
-      friends: (on) => <NavArt src="/ui/nav/friends.webp" on={on} size={maat} />,
+      shop: (on) => <NavArt src={`/ui/nav/shop.webp?v=${NAV_ART}`} on={on} size={maat} />,
+      leaderboard: (on) => <NavArt src={`/ui/nav/trophy.webp?v=${NAV_ART}`} on={on} size={maat} />,
+      friends: (on) => <NavArt src={`/ui/nav/friends.webp?v=${NAV_ART}`} on={on} size={maat} />,
     };
     return (
       <nav

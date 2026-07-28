@@ -161,7 +161,7 @@ export function Hub({ game, section, onBack, onShowShop, onOpenInbox, onChalleng
           )}
           {/* De muziekknop staat op de main page al op zo'n plaat; hier stond hij
               er als enige naast en dat viel op. */}
-          <MusicToggle plate size={16} padding={0} />
+          <MusicToggle plate plateSize={HEX} size={16} padding={0} />
         </div>
       }
     >
