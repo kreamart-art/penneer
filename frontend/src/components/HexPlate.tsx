@@ -12,6 +12,9 @@ const RATIO = 513 / 460; // hoogte / breedte van de art (inclusief zijn eigen gl
 // hangt het net te laag.
 const HART_X = "50.2%";
 const HART_Y = "47.6%";
+// Bump zodra je een plaat op DEZELFDE naam vervangt: de service worker bewaart
+// plaatjes cache-first en ruimt pas op bij zijn volgende activatie.
+const PLAAT_ART = 1;
 
 export function HexPlate({
   on,
@@ -37,10 +40,22 @@ export function HexPlate({
         ...style,
       }}
     >
+      {/* De rustende plaat, met de opgelichte er BOVENOP. Die is er altijd, hij
+          staat alleen op nul; zo hoeft de browser bij het indrukken niets in te
+          laden en is de overgang een vervaging in plaats van een sprong. De twee
+          bestanden zijn op dezelfde doos en dezelfde hartlijn uitgesneden, dus ze
+          vallen precies over elkaar. */}
       <img
         aria-hidden
         alt=""
         src="/tiles/hexbutton.webp"
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}
+      />
+      <img
+        aria-hidden
+        alt=""
+        src={`/tiles/hexbutton-on.webp?v=${PLAAT_ART}`}
+        className="hex-aan"
         style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}
       />
       <span

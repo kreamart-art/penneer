@@ -295,6 +295,30 @@ input:focus {
   filter: drop-shadow(0 0 9px rgba(255, 194, 61, 0.4));
 }
 
+/* De opgelichte zeshoek ligt altijd al klaar op nul en vervaagt erin bij aanraken
+   of zweven. Op een telefoon is er geen hover, dus `:active` doet daar het werk;
+   op de desktop komt `:hover` erbij. Beide via de knop eromheen, want het is de
+   KNOP die je aanraakt en niet het plaatje. */
+.hex-aan {
+  opacity: 0;
+  transition: opacity 0.16s ease;
+}
+button:active .hex-aan,
+a:active .hex-aan {
+  opacity: 1;
+}
+@media (hover: hover) {
+  button:hover .hex-aan,
+  a:hover .hex-aan {
+    opacity: 1;
+  }
+}
+/* De plaat licht al op, dus de helderheidssprong van `pressable` zou er
+   bovenop komen; het indrukken blijft, het extra licht niet. */
+.pressable:active:has(.hex-aan) {
+  filter: none;
+}
+
 /* Gloss sweep across the gold hero tile, every few seconds. */
 @keyframes tile-shimmer {
   0% { transform: translateX(-140%) skewX(-18deg); }
