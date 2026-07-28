@@ -211,16 +211,33 @@ function Popup({
         <span
           style={{
             position: "absolute",
-            left: "50%",
-            top: "0.8%",
-            transform: "translateX(calc(-50% + 1.1px))",
+            // Op het BORDJE en niet op de sectie. Het bordje in de art zit niet
+            // precies in het midden en niet precies bovenaan: gemeten loopt het
+            // van 32,4% tot 64,5% breed en van 0,2% tot 8,8% hoog, dus zijn hart
+            // ligt op 48,4% en 4,5%. Daar gaat het woord staan, midden op midden.
+            left: "48.4%",
+            top: "4.5%",
+            transform: "translate(-50%, -50%)",
             fontFamily: font.wide,
             fontSize: "clamp(13px, 3.9vw, 17px)",
             letterSpacing: 2.2,
             lineHeight: 1.15,
           }}
         >
-          <NeonText accent="#FFC23D" depth="light" flat drop={0.11}>
+          {/* De negatieve marge is precies de letterafstand. Die zet ook ACHTER
+              de laatste letter ruimte, en die ruimte telt mee in de doos die we
+              centreren; het woord staat dan altijd een halve letterafstand te
+              ver naar links. Er af halen is exact, een handmatig correctietal
+              klopt maar bij een lettergrootte. */}
+          <NeonText
+            accent="#9B8CFF"
+            depth="light"
+            glowColor="#6C4BFF"
+            blur={7}
+            glow={0.9}
+            drop={0.1}
+            style={{ marginRight: -2.2 }}
+          >
             PREMIUM
           </NeonText>
         </span>
@@ -295,7 +312,7 @@ function Popup({
           {/* De ladder als strookje in plaats van als kader. Een kader eromheen
               maakt er een tweede paneel van binnen een paneel, en dat vrat de
               hoogte die de kop nodig heeft. Het opschrift ligt nu OP de lijn. */}
-          <div style={{ marginTop: -2, position: "relative", display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ marginTop: 12, position: "relative", display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ flex: 1, height: 1, background: `linear-gradient(90deg, transparent, ${withAlpha(colors.gold, 0.45)})` }} />
             <span
               style={{
