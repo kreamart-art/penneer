@@ -985,7 +985,7 @@ class AccountManager:
         before = {p["user_id"]: _level_of(self.db.stats_of(p["user_id"])) for p in players}
         playing_count = len(playing_ids)
         day = daily.today()
-        self.db.record_game(room.code, room.round_no, room.settings.lenient_spelling, players)
+        gid = self.db.record_game(room.code, room.round_no, room.settings.lenient_spelling, players)
         for p in players:
             uid = p["user_id"]
             stats = self.db.stats_of(uid)
@@ -1026,10 +1026,17 @@ class AccountManager:
             # Ceremony payload: exact XP delta (game + mission rewards), level
             # and rank before/after, plus what was earned this match.
             after = _level_of(self.db.stats_of(uid))
+            xp_gained = max(0, after["xp"] - before[uid]["xp"])
+            # Munten komen niet uit het potje zelf maar uit de levels die je er
+            # mee haalde, dus het verschil tussen wat je bij beide niveaus
+            # tegoed hebt.
+            munten = max(0, self.db.coins_owed(after["level"]) - self.db.coins_owed(before[uid]["level"]))
+            if gid:
+                self.db.set_game_rewards(gid, uid, xp_gained, munten)
             await self._push(uid, {
                 "type": "match_summary",
                 "won": bool(p["is_winner"]),
-                "xp_gained": max(0, after["xp"] - before[uid]["xp"]),
+                "xp_gained": xp_gained,
                 "level_before": before[uid],
                 "level_after": after,
                 "badges": earned,

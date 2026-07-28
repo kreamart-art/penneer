@@ -618,9 +618,17 @@ function HistoryCard({ game, meId, vitrine }: { game: GameApi; meId: string; vit
         const anderen = g.players.filter((p) => p.user_id !== meId).sort((a, b) => b.score - a.score);
         const tegen = anderen[0];
         const rest = Math.max(0, g.player_count - 2);
-        const zij = (
-          <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 14, color: colors.ink, flexShrink: 0 }}>
-            {g.score}
+        // De kroon staat bij de score van wie WON. De spelers komen gesorteerd
+        // binnen, dus als ik niet won, is de beste ander de winnaar.
+        const naam = (p: { name: string }) => (
+          <span style={{ fontFamily: font.ui, fontWeight: 600, fontSize: 11, color: colors.sub, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>
+            {p.name}
+          </span>
+        );
+        const score = (n: number, won: boolean) => (
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontFamily: font.display, fontWeight: 800, fontSize: 14, lineHeight: 1.1, color: colors.ink }}>
+            {n}
+            {won && <Crown size={11} color={colors.gold} fill={colors.gold} style={{ flexShrink: 0 }} />}
           </span>
         );
         return (
@@ -634,36 +642,71 @@ function HistoryCard({ game, meId, vitrine }: { game: GameApi; meId: string; vit
             // De lijn zelf staat bijna uit; wat je ziet is de kern in het midden
             // met zijn hoogsel, zoals de lijn boven "jij draait deze ronde".
             sterkte={0.3}
-            binnen={{ display: "flex", alignItems: "center", gap: 8, padding: "3px 7px" }}
+            binnen={{ display: "flex", alignItems: "center", gap: 7, padding: "5px 8px" }}
           >
             <PlekWapen plek={g.place} />
-            <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
-                {ik && (
-                  <Avatar name={ik.name} color={ik.color} size={20} userId={ik.user_id} hasAvatar={ik.has_avatar} avatarVer={ik.avatar_ver} />
-                )}
-                <span style={{ display: "flex", alignItems: "center", gap: 4, minWidth: 0, flex: 1 }}>
-                  {g.is_winner && <Crown size={12} color={colors.gold} style={{ flexShrink: 0 }} />}
-                  {zij}
-                </span>
-                {tegen ? (
-                  <>
-                    <span style={{ fontFamily: font.wide, fontSize: 10, letterSpacing: 0.8, color: colors.faint, flexShrink: 0 }}>VS</span>
-                    <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 14, color: colors.sub, flexShrink: 0 }}>
-                      {tegen.score}
-                    </span>
-                    <Avatar name={tegen.name} color={tegen.color} size={20} userId={tegen.user_id} hasAvatar={tegen.has_avatar} avatarVer={tegen.avatar_ver} />
-                    {rest > 0 && (
-                      <span style={{ fontFamily: font.ui, fontSize: 11, color: colors.faint, flexShrink: 0 }}>+{rest}</span>
-                    )}
-                  </>
-                ) : null}
-              </div>
-              <div style={{ fontFamily: font.ui, fontSize: 10.5, color: colors.faint, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {tegen ? `${t("historyVs", { name: tegen.name })} · ` : ""}
-                {fmtDate(g.finished_at)} · {g.rounds === 1 ? t("historyRound1") : t("historyRounds", { n: g.rounds })}
+            {/* Mijn hoek: portret, met naam boven en score onder. De twee
+                spelersblokken zijn elkaars spiegelbeeld en allebei even breed,
+                zodat de VS vanzelf in het MIDDEN van de lijst hangt. */}
+            <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 6 }}>
+              {ik && (
+                <Avatar name={ik.name} color={ik.color} size={26} userId={ik.user_id} hasAvatar={ik.has_avatar} avatarVer={ik.avatar_ver} />
+              )}
+              <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 1 }}>
+                {ik && naam(ik)}
+                {score(g.score, g.is_winner)}
               </div>
             </div>
+            {tegen && (
+              <span
+                style={{
+                  fontFamily: font.wide,
+                  fontSize: 12,
+                  letterSpacing: 1,
+                  color: "#F0E9FF",
+                  textShadow: "0 0 8px rgba(200,139,255,.5)",
+                  flexShrink: 0,
+                }}
+              >
+                VS
+              </span>
+            )}
+            {tegen ? (
+              <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6 }}>
+                <div style={{ minWidth: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 1 }}>
+                  {naam(tegen)}
+                  {score(tegen.score, !g.is_winner)}
+                </div>
+                <span style={{ position: "relative", flexShrink: 0, display: "flex" }}>
+                  <Avatar name={tegen.name} color={tegen.color} size={26} userId={tegen.user_id} hasAvatar={tegen.has_avatar} avatarVer={tegen.avatar_ver} />
+                  {rest > 0 && (
+                    // Meer tegenstanders dan er passen: de beste staat er, de
+                    // teller hangt als een muntje aan diens portret.
+                    <span style={{ position: "absolute", right: -4, bottom: -3, minWidth: 13, height: 13, padding: "0 2px", borderRadius: 7, background: "rgba(10,4,26,.92)", border: `1px solid ${withAlpha(GOUD[2], 0.5)}`, display: "grid", placeItems: "center", fontFamily: font.ui, fontWeight: 700, fontSize: 8, color: GOUD[3] }}>
+                      +{rest}
+                    </span>
+                  )}
+                </span>
+              </div>
+            ) : (
+              <div style={{ flex: 1 }} />
+            )}
+            {/* Wat het potje opleverde. Voor oude potjes is dat niet meer te
+                achterhalen (allebei nul): dan valt de kolom weg in plaats van
+                nullen te tonen. */}
+            {(g.xp > 0 || g.coins > 0) && (
+              <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 1, paddingLeft: 2 }}>
+                <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 11.5, lineHeight: 1.15, color: colors.ink }}>
+                  +{g.xp} <span style={{ color: GOUD[2] }}>XP</span>
+                </span>
+                {g.coins > 0 && (
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontFamily: font.display, fontWeight: 800, fontSize: 11.5, lineHeight: 1.15, color: GOUD[3] }}>
+                    <img src="/coin.webp" alt="" width={12} height={12} style={{ display: "block" }} />
+                    +{g.coins}
+                  </span>
+                )}
+              </div>
+            )}
           </NeonKader>
         );
       })}

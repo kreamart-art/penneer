@@ -649,6 +649,18 @@ class Database:
             )
             self._conn.commit()
 
+        # Wat een potje je heeft OPGELEVERD. Tot nu toe rekenden we dat alleen
+        # uit voor de ceremonie meteen na afloop en gooiden we het daarna weg;
+        # de historie kon er dus niets mee. Oude rijen houden 0, want voor die
+        # potjes is het niet meer te achterhalen.
+        gp = {r["name"] for r in self._conn.execute("PRAGMA table_info(game_players)").fetchall()}
+        if "xp" not in gp:
+            self._conn.execute("ALTER TABLE game_players ADD COLUMN xp INTEGER NOT NULL DEFAULT 0")
+            self._conn.commit()
+        if "coins" not in gp:
+            self._conn.execute("ALTER TABLE game_players ADD COLUMN coins INTEGER NOT NULL DEFAULT 0")
+            self._conn.commit()
+
     def _exec(self, sql: str, args: tuple = ()) -> sqlite3.Cursor:
         cur = self._conn.execute(sql, args)
         self._conn.commit()
@@ -1099,6 +1111,17 @@ class Database:
                     (gid, p["user_id"], p["score"], int(p["is_winner"]), p.get("uniques", 0), p.get("dubbels", 0)),
                 )
         return gid
+
+    def set_game_rewards(self, game_id: str, user_id: str, xp: int, coins: int) -> None:
+        """Wat dit potje opleverde, achteraf bijgeschreven. Het kan niet in
+        `record_game` zelf: de XP volgt uit je statistieken en die veranderen
+        pas DOOR het wegschrijven van dit potje, dus het verschil is er nog niet
+        op het moment dat de rij ontstaat."""
+        with self._lock:
+            self._exec(
+                "UPDATE game_players SET xp=?, coins=? WHERE game_id=? AND user_id=?",
+                (max(0, int(xp)), max(0, int(coins)), game_id, user_id),
+            )
 
     def stats_of(self, user_id: str) -> dict:
         with self._lock:
@@ -1816,7 +1839,8 @@ class Database:
         with self._lock:
             games = self._q(
                 """
-                SELECT g.id, g.finished_at, g.rounds, gp.score, gp.is_winner
+                SELECT g.id, g.finished_at, g.rounds, gp.score, gp.is_winner,
+                       gp.xp, gp.coins
                 FROM game_players gp JOIN games g ON g.id = gp.game_id
                 WHERE gp.user_id = ? ORDER BY g.finished_at DESC LIMIT ?
                 """,
@@ -1843,6 +1867,8 @@ class Database:
                     "place": place,
                     "player_count": len(players),
                     "players": players,
+                    "xp": int(g["xp"] or 0),
+                    "coins": int(g["coins"] or 0),
                 })
         return out
 

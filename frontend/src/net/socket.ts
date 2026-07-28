@@ -210,6 +210,10 @@ export interface HistoryGame {
   place: number;
   player_count: number;
   players: HistoryPlayer[];
+  /** Wat dit potje opleverde. Nul voor potjes van voor v2.8.0: die zijn niet
+   *  meer te achterhalen, dus dan blijft de hoek leeg. */
+  xp: number;
+  coins: number;
 }
 
 export interface Settings {
