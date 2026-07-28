@@ -7,7 +7,6 @@ import { Avatar, RANK_RING } from "../components/Avatar";
 import { Plek } from "../components/ProfileShowcase";
 import { HexArt } from "../components/HexArt";
 import { GOUD, KADER_LIJN_LOOP, KADER_LIJN_XP, NeonKader, Paneel, PlekWapen, Prestatie, RingFoto, RingPortret, SCHILD_KLEUREN, SectieKop, SierKop, StatKaart, type SchildKleur } from "../components/ProfileHero";
-import { isTester } from "../util/testers";
 import { AvatarZoom } from "../components/AvatarZoom";
 import { Button } from "../components/Button";
 import { MicButton } from "../components/MicButton";
@@ -928,9 +927,10 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
   const colorInputRef = useRef<HTMLInputElement | null>(null);
   const colorDebounce = useRef<number | undefined>(undefined);
 
-  // De vitrine: het nieuwe profiel. Staat nog niet voor iedereen open, dus wie
-  // niet op de testerslijst staat krijgt het profiel dat live staat.
-  const vitrine = isTester(account?.name);
+  // De vitrine: het nieuwe profiel. Staat sinds v2.12.0 voor IEDEREEN open.
+  // De oude weergave staat er nog onder (de `vitrine`-vertakkingen), zodat
+  // terugvallen een wijziging van deze ene regel is en geen herbouw.
+  const vitrine = true;
 
   useEffect(() => setName(account?.name ?? ""), [account?.name]);
 
