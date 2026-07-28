@@ -8,7 +8,7 @@ import { ArrowLeft, BookOpen, CalendarDays, Camera, Check, ChevronDown, Copy, Cr
 import { Avatar, RANK_RING } from "../components/Avatar";
 import { Plek } from "../components/ProfileShowcase";
 import { HexArt } from "../components/HexArt";
-import { GOUD, KADER_LIJN_LOOP, KADER_LIJN_XP, NeonKader, Paneel, PlekWapen, Prestatie, RingFoto, RingPortret, SCHILD_KLEUREN, SectieKop, SierKop, StatKaart, type SchildKleur } from "../components/ProfileHero";
+import { GOUD, KADER_LIJN_LOOP, KADER_LIJN_ROOD, KADER_LIJN_XP, NeonKader, Paneel, PlekWapen, Prestatie, RingFoto, RingPortret, SCHILD_KLEUREN, SectieKop, SierKop, StatKaart, type SchildKleur } from "../components/ProfileHero";
 import { AvatarZoom } from "../components/AvatarZoom";
 import { Button } from "../components/Button";
 import { MicButton } from "../components/MicButton";
@@ -2057,12 +2057,20 @@ function ClubScreen({ game, onBack, embedded }: { game: GameApi; onBack?: () => 
             </div>
           </Card>
         ) : (
-          <button
-            onClick={() => setConfirmLeave(true)}
-            style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, background: "transparent", border: `1px solid ${withAlpha(colors.red, 0.4)}`, cursor: "pointer", color: colors.redHi, fontFamily: font.ui, fontSize: 13, fontWeight: 600, borderRadius: 10, padding: "9px 12px" }}
-          >
-            <LogOut size={15} /> {t("clubLeaveBtn")}
-          </button>
+          // Zo breed als zijn eigen tekst en niet zo breed als de sectie: een
+          // knop die iets ongedaan maakt hoort niet net zo groot te zijn als de
+          // knoppen waarmee je iets doet.
+          <div style={{ display: "flex", justifyContent: "center" }}>
+            <NeonKader radius={999} dik={0.5} vulling="geen" animeer lijn={KADER_LIJN_ROOD} gloed={`0 0 12px ${withAlpha(colors.red, 0.35)}`} binnen={{ padding: 0 }}>
+              <button
+                onClick={() => setConfirmLeave(true)}
+                className="pressable"
+                style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, background: "transparent", border: "none", cursor: "pointer", color: colors.redHi, fontFamily: font.ui, fontSize: 13, fontWeight: 600, padding: "7px 16px" }}
+              >
+                <LogOut size={14} /> {t("clubLeaveBtn")}
+              </button>
+            </NeonKader>
+          </div>
         )}
 
         {emblemOpen && (
@@ -2747,7 +2755,12 @@ function FriendsTab({ game, onChallenge }: { game: GameApi; onChallenge: (userId
                 )}
               </div>
             ))}
-            {pendingOut.map((f) => row(f, <span style={{ fontFamily: font.ui, fontSize: 12, color: colors.faint }}>{t("pendingOut")}</span>))}
+            {pendingOut.map((f) => row(f, (
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontFamily: font.ui, fontSize: 12, color: colors.faint }}>{t("pendingOut")}</span>
+                {smallBtn(t("withdrawRequest"), () => game.friendRemove(f.id))}
+              </div>
+            )))}
           </Lijst>
         )}
         {results.length > 0 && (

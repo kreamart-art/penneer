@@ -260,6 +260,18 @@ export const KADER_LIJN_XP =
 
 // Dezelfde wandeling, maar rond: hij eindigt op de kleur waarmee hij begint,
 // zodat de lus naadloos is. Zonder dat zie je bij elke ronde een sprong.
+/** Dezelfde rondlopende lijn, maar dan in rood. Voor de enige knop die iets
+ *  ONGEDAAN maakt: hij hoort bij de rest, maar je moet in een oogopslag zien
+ *  dat hij een andere kant op werkt. Begint en eindigt op dezelfde tint, want
+ *  anders zie je elke ronde een sprong. */
+/** En in groen, voor wat je al bezit. Zelfde opbouw, zelfde begin- en
+ *  eindtint, zodat de ronde naadloos doorloopt. */
+export const KADER_LIJN_GROEN =
+  "linear-gradient(115deg, #B8F5A8 0%, #57D96A 14%, #1E9A43 32%, #7BEA8C 50%, #35C255 68%, #147C36 84%, #B8F5A8 100%)";
+
+export const KADER_LIJN_ROOD =
+  "linear-gradient(115deg, #FF8A6B 0%, #F4543C 14%, #C9200F 32%, #FF6B4A 50%, #E23A22 68%, #A81607 84%, #FF8A6B 100%)";
+
 export const KADER_LIJN_LOOP =
   "linear-gradient(115deg, #FFCF4A 0%, #FFB347 9%, #C88BFF 30%, #9A4BF0 44%, #FF6FBC 62%, #E0409A 74%, #C88BFF 86%, #FFCF4A 100%)";
 

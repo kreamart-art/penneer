@@ -17,6 +17,7 @@ import { reelClip, reelEdge, reelFace, reelTheme } from "../theme/reelSkins";
 import { colors, font, withAlpha } from "../theme/tokens";
 import { useTileSkin } from "../theme/tileSkin";
 import { PilKeuze } from "./Hub";
+import { KADER_LIJN_GROEN, NeonKader } from "../components/ProfileHero";
 import { CoinPlate } from "../components/CoinPlate";
 
 const AVATAR_ART_VERSION = 9;
@@ -84,7 +85,19 @@ function CoinItem({ title, owned, price, coins, onBuy, children }: {
   const { t } = useT();
   const affordable = coins >= price;
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: 10, borderRadius: 16, background: withAlpha("#000000", 0.22), border: `1px solid ${owned ? withAlpha(colors.green, 0.5) : colors.panelBorder}` }}>
+    // Elk product in een eigen lijst met rondlopende kleuren. Bezit je het al,
+    // dan loopt diezelfde lijst in GROEN en staat hij stil: het is dan geen
+    // aanbod meer, dus hij hoeft ook geen aandacht meer te trekken.
+    <NeonKader
+      radius={16}
+      dik={0.5}
+      vulling="geen"
+      animeer={!owned}
+      lijn={owned ? KADER_LIJN_GROEN : undefined}
+      gloed={owned ? `0 0 12px ${withAlpha(colors.green, 0.3)}` : undefined}
+      binnen={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: 10, height: "100%", boxSizing: "border-box" }}
+      style={{ height: "100%" }}
+    >
       <div style={{ width: "100%", aspectRatio: "1 / 1", display: "grid", placeItems: "center", overflow: "hidden" }}>{children}</div>
       <span style={{ fontFamily: font.ui, fontSize: 12.5, fontWeight: 600, color: colors.ink, textAlign: "center", lineHeight: 1.2 }}>{title}</span>
       {owned ? (
@@ -107,7 +120,7 @@ function CoinItem({ title, owned, price, coins, onBuy, children }: {
           <Coins n={price} color={affordable ? colors.gold : colors.faint} size={15} />
         </button>
       )}
-    </div>
+    </NeonKader>
   );
 }
 
@@ -311,22 +324,32 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
               <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink }}>{t("shopCoinsHeader")}</div>
               <div style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint }}>{t("shopCoinsLead")}</div>
             </div>
-            {status && !status.enabled ? (
+            {/* De vakjes staan er ALTIJD, ook zolang betalen nog niet aanstaat.
+                Je moet kunnen zien wat er te koop komt; de melding erboven zegt
+                dat het nog niet kan en de knoppen staan dan uit. */}
+            {status && !status.enabled && (
               <Card><p style={{ margin: 0, textAlign: "center", fontFamily: font.ui, fontSize: 12.5, color: colors.faint, lineHeight: 1.5 }}>{t("shopPaypalSoon")}</p></Card>
-            ) : (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
-                {(status?.bundles ?? []).map((b, i) => (
-                  <div key={b.product} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "14px 10px", borderRadius: 16, background: withAlpha("#000000", 0.22), border: `1px solid ${i === 3 ? withAlpha(colors.gold, 0.55) : colors.panelBorder}`, position: "relative" }}>
-                    {i === 3 && <span style={{ position: "absolute", top: 8, right: 8, fontFamily: font.ui, fontSize: 9.5, fontWeight: 800, letterSpacing: 0.4, textTransform: "uppercase", color: colors.gold }}>{t("shopBestValue")}</span>}
-                    <img src="/coins-stack.webp" alt="" style={{ width: 66, height: 66, objectFit: "contain", display: "block" }} />
-                    <Coins n={b.coins} size={19} />
-                    <Button variant="gold" full disabled={!account || buying !== null} onClick={() => startPaypal(b.product)}>
-                      {buying === b.product ? t("shopOpeningPaypal") : money(b.price, status?.currency ?? "EUR")}
-                    </Button>
-                  </div>
-                ))}
-              </div>
             )}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
+              {(status?.bundles ?? []).map((b, i) => (
+                <NeonKader
+                  key={b.product}
+                  radius={16}
+                  dik={i === 3 ? 0.7 : 0.5}
+                  vulling="geen"
+                  animeer
+                  binnen={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "14px 10px", position: "relative", height: "100%", boxSizing: "border-box" }}
+                  style={{ height: "100%" }}
+                >
+                  {i === 3 && <span style={{ position: "absolute", top: 8, right: 8, fontFamily: font.ui, fontSize: 9.5, fontWeight: 800, letterSpacing: 0.4, textTransform: "uppercase", color: colors.gold }}>{t("shopBestValue")}</span>}
+                  <img src="/coins-stack.webp" alt="" style={{ width: 66, height: 66, objectFit: "contain", display: "block" }} />
+                  <Coins n={b.coins} size={19} />
+                  <Button variant="gold" full disabled={!account || buying !== null || !status?.enabled} onClick={() => startPaypal(b.product)}>
+                    {buying === b.product ? t("shopOpeningPaypal") : money(b.price, status?.currency ?? "EUR")}
+                  </Button>
+                </NeonKader>
+              ))}
+            </div>
           </div>
         )}
 
