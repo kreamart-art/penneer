@@ -344,7 +344,10 @@ function XpRij({ level }: { level: LevelInfo }) {
           zodat de tekst TEGEN de balk staat: de lucht die een gewone regel
           eromheen zet, telt hier als losse ruimte. */}
       <span style={{ textAlign: "right", lineHeight: 1, marginBottom: -5, fontFamily: font.display, fontWeight: 700, fontSize: 13, color: "#FFFFFF" }}>
-        {nu} <span style={{ color: GOUD[2] }}>/ {span} XP</span>
+        {/* Alleen het GETAL waar je naartoe werkt is goud. De schuine streep en
+            de eenheid zijn leesteken, geen informatie, dus die horen bij de rest
+            van de regel. */}
+        {nu} / <span style={{ color: GOUD[2] }}>{span}</span> XP
       </span>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         {/* De zeshoek draagt een dikke gouden lijst, dus het VAK binnenin is
@@ -473,6 +476,9 @@ function CollapsibleCard({
         lijn={KADER_LIJN_LOOP}
         gloed="none"
         animeer
+        // De lijst om een sectie mag er nauwelijks zijn: hij bakent af en houdt
+        // verder zijn mond. Wat erin staat is het onderwerp.
+        sterkte={0.32}
         // De statistiekkaartjes zijn 74 breed in kolommen van 84, dus ze staan
         // vijf pixels van de kolomrand af. Zet je deze lijst tegen die rand, dan
         // steekt hij precies die vijf pixels uit ten opzichte van wat je erboven
@@ -622,6 +628,9 @@ function HistoryCard({ game, meId, vitrine }: { game: GameApi; meId: string; vit
             key={`${g.finished_at}-${i}`}
             hoek={11}
             dik={0.3}
+            // De lijn zelf staat bijna uit; wat je ziet is de kern in het midden
+            // met zijn hoogsel, zoals de lijn boven "jij draait deze ronde".
+            sterkte={0.3}
             binnen={{ display: "flex", alignItems: "center", gap: 8, padding: "3px 7px" }}
           >
             <PlekWapen plek={g.place} />
@@ -919,12 +928,45 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
   // Het formulier: naam en kleur. In de vitrine zit het achter het potloodje,
   // in het huidige profiel staat het gewoon naast je portret. Eén keer
   // opgeschreven, want de knoppen doen in beide gevallen hetzelfde.
-  const naamEnKleur = (
+  //
+  // `klaar` is de weg terug: geef je die mee, dan staat de opslaanknop er ALTIJD
+  // en klapt het paneel zichzelf dicht zodra je hem gebruikt. Zonder die functie
+  // is het het oude gedrag: de knop verschijnt pas als de naam is veranderd,
+  // want daar staat het formulier gewoon open en is er niets om te sluiten.
+  const maakNaamEnKleur = (klaar?: () => void) => (
     <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1 }}>
       <div style={{ display: "flex", gap: 8 }}>
         <input style={{ ...inputStyle, flex: 1, padding: "8px 11px" }} value={name} maxLength={20} onChange={(e) => setName(e.target.value)} />
-        {name.trim() !== account.name && (
-          <Button variant="primary" onClick={() => game.updateAccount({ name })}>{t("save")}</Button>
+        {(klaar || name.trim() !== account.name) && (
+          // Een vinkje en geen woord: de knop staat naast het veld dat hij
+          // afsluit, dus wat hij doet is uit zijn plek al duidelijk. Even hoog
+          // als dat veld, want anders staat er een blok naast een regel. Zelfde
+          // gouden lijst als het potlood waarmee je dit paneel opendeed.
+          <button
+            onClick={() => {
+              sound.uiTap();
+              if (name.trim() && name.trim() !== account.name) game.updateAccount({ name });
+              klaar?.();
+            }}
+            aria-label={t("save")}
+            className="pressable"
+            style={{
+              width: 36,
+              flexShrink: 0,
+              alignSelf: "stretch",
+              display: "grid",
+              placeItems: "center",
+              borderRadius: 10,
+              border: `1px solid ${withAlpha(GOUD[2], 0.55)}`,
+              background: `linear-gradient(180deg, ${withAlpha(GOUD[2], 0.26)} 0%, ${withAlpha(GOUD[1], 0.12)} 100%)`,
+              boxShadow: `inset 0 1px 0 ${withAlpha("#FFFFFF", 0.16)}, 0 2px 6px rgba(0,0,0,.35)`,
+              color: GOUD[3],
+              cursor: "pointer",
+              padding: 0,
+            }}
+          >
+            <Check size={16} strokeWidth={3} />
+          </button>
         )}
       </div>
       <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
@@ -1033,7 +1075,7 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
                 <Pencil size={12} />
               </span>
             </button>
-            {naamEnKleur}
+            {maakNaamEnKleur()}
           </div>
           {fotoVeld}
           <div style={{ borderTop: `1px solid ${colors.hairline}`, paddingTop: 14, display: "flex", flexDirection: "column", gap: 14 }}>
@@ -1104,22 +1146,28 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
             </RingPortret>
           </button>
 
-          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "flex-start", gap: 5, paddingTop: 2 }}>
+          {/* De kolom hangt niet aan de bovenkant van de ring maar zakt mee naar
+              het midden ervan: naam, rang en titel horen op OOGHOOGTE van het
+              portret te staan, niet erboven. */}
+          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "flex-start", gap: 5, paddingTop: 20 }}>
 
           {/* naam + potlood */}
-          <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ fontFamily: font.ui, fontWeight: 600, fontSize: 14, color: colors.sub }}>{account.name}</span>
             <button
               onClick={() => { sound.uiTap(); setEditOpen((v) => !v); }}
               aria-label={t("save")}
               aria-expanded={editOpen}
+              // Even hoog als de regel ernaast. Een knop die boven en onder de
+              // tekst uitsteekt maakt van de naam een bijschrift bij de knop, en
+              // het is andersom.
               style={{
-                width: 24,
-                height: 24,
+                width: 18,
+                height: 18,
                 flexShrink: 0,
                 display: "grid",
                 placeItems: "center",
-                borderRadius: 8,
+                borderRadius: 6,
                 border: `1px solid ${withAlpha(GOUD[2], editOpen ? 0.9 : 0.4)}`,
                 background: editOpen ? withAlpha(GOUD[2], 0.22) : "rgba(0,0,0,.3)",
                 color: GOUD[2],
@@ -1127,7 +1175,7 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
                 padding: 0,
               }}
             >
-              <Pencil size={12} />
+              <Pencil size={10} />
             </button>
           </div>
 
@@ -1187,7 +1235,21 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
       {/* Het formulier is er alleen als je erom vraagt. Zo blijft de kaart een
           vitrine en wordt hij geen instellingenscherm. */}
       {editOpen && (
-        <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>{naamEnKleur}</Card>
+        // Dezelfde lijst als om de secties, met de kleuren die rondlopen: het
+        // paneel hoort bij de vitrine en niet bij een instellingenscherm.
+        <NeonKader
+          radius={16}
+          vulling="geen"
+          dik={0.35}
+          lijn={KADER_LIJN_LOOP}
+          gloed="none"
+          animeer
+          sterkte={0.55}
+          style={{ marginInline: 5 }}
+          binnen={{ display: "flex", flexDirection: "column", gap: 10, padding: 12 }}
+        >
+          {maakNaamEnKleur(() => setEditOpen(false))}
+        </NeonKader>
       )}
 
       {fotoVeld}
@@ -1217,6 +1279,9 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
         lijn={KADER_LIJN_LOOP}
         gloed="none"
         animeer
+        // De lijst om een sectie mag er nauwelijks zijn: hij bakent af en houdt
+        // verder zijn mond. Wat erin staat is het onderwerp.
+        sterkte={0.32}
         style={{ marginInline: 5 }}
         binnen={{ padding: "10px 11px 11px", display: "flex", flexDirection: "column", gap: 9 }}
       >

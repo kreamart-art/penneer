@@ -268,6 +268,33 @@ export const KADER_LIJN_LOOP =
 const KADER_GLANS =
   "linear-gradient(90deg, transparent 26%, rgba(255,250,235,.55) 50%, transparent 74%)";
 
+// De lichte KERN in het midden van de lijn, zoals de energielijn boven "jij
+// draait deze ronde" op het draaischerm. Daar is de lijn overal donker en licht
+// alleen het midden op, met een smal bijna-wit streepje bovenop precies die
+// kern. Dat leest als een gloeiende draad in plaats van als een getekend randje.
+//
+// Twee lagen, en dat is geen omslachtigheid: de kern is gekleurd en breed, het
+// streepje is bijna wit en smal. In een verloop kan dat niet, want lagen delen
+// daar hun begrenzing.
+const kern = (half: number, sterk: number) =>
+  [
+    `linear-gradient(90deg, transparent ${50 - half}%,`,
+    `rgba(138,80,240,${sterk * 0.5}) ${50 - half * 0.45}%,`,
+    `rgba(196,158,255,${sterk}) 50%,`,
+    `rgba(138,80,240,${sterk * 0.5}) ${50 + half * 0.45}%,`,
+    `transparent ${50 + half}%)`,
+  ].join(" ");
+// Het streepje bovenop is KORTER dan de kern eronder: alleen de top van de
+// welving vangt het licht. Even lang zou het een vlak worden in plaats van een
+// hoogsel.
+const glansKern = (half: number, sterk: number) =>
+  `linear-gradient(90deg, transparent ${50 - half}%, rgba(231,216,255,${sterk}) 50%, transparent ${50 + half}%)`;
+// De kern staat HOGER dan de lijn eronder, en dat is de hele opzet: de lijn is
+// er bijna niet en het glinsterpunt in het midden is wat je ziet. Andersom, een
+// egale lijn met een vleugje midden erop, is precies wat het niet moet zijn.
+const KADER_KERN = kern(26, 0.62);
+const KADER_KERN_GLANS = glansKern(13, 0.55);
+
 /** De schuine hoek van de rol-skin, maar dan in procenten EN pixels door
  *  elkaar, zodat hij meeschaalt met de doos. `polygon()` accepteert lengtes, dus
  *  de afsnijding blijft even groot terwijl het vlak breder of smaller wordt.
@@ -302,6 +329,7 @@ export function NeonKader({
   hoek,
   gloed = "0 0 10px rgba(139,83,255,.26), 0 3px 12px rgba(0,0,0,.38)",
   animeer = false,
+  sterkte = 1,
 }: {
   children: ReactNode;
   style?: CSSProperties;
@@ -320,6 +348,10 @@ export function NeonKader({
   /** Laat de kleuren van de lijn rondlopen. Gebruik dan een reeks die eindigt
    *  op de kleur waarmee hij begint, anders zie je elke ronde een sprong. */
   animeer?: boolean;
+  /** Hoe hard de lijn aanstaat, van 0 tot 1. Alle ringlagen schalen mee, dus de
+   *  verhouding tussen lijn, bloom en glans blijft staan en alleen het geheel
+   *  zakt weg. Terugdraaien op de lijn zelf zou die verhouding kapotmaken. */
+  sterkte?: number;
   /** De afsnijding van de hoeken, in pixels, zoals de rol-skin. Zonder deze
    *  blijft het een gewone ronding. Met een afsnijding wordt de lijst glazig:
    *  een dun waas met een vervaging erachter, want glas hoort iets te doen met
@@ -419,14 +451,18 @@ export function NeonKader({
           //   en een binnenschaduw onderaan, waardoor het dikte krijgt.
           backdropFilter: hoek ? "blur(7px) saturate(170%)" : undefined,
           WebkitBackdropFilter: hoek ? "blur(7px) saturate(170%)" : undefined,
-          boxShadow: hoek ? "inset 0 -6px 10px rgba(8,3,22,.35), inset 0 1px 0 rgba(255,255,255,.14)" : undefined,
+          boxShadow: hoek ? "inset 0 -6px 10px rgba(8,3,22,.22), inset 0 1px 0 rgba(255,255,255,.08)" : undefined,
           backgroundImage:
             vulling === "geen" && !hoek
               ? undefined
               : hoek
                 ? [
-                    "linear-gradient(135deg, rgba(255,255,255,.13) 0%, rgba(255,255,255,.04) 34%, rgba(255,255,255,0) 56%)",
-                    "linear-gradient(180deg, rgba(150,110,235,.10) 0%, rgba(40,18,80,.12) 60%, rgba(14,6,32,.18) 100%)",
+                    // Rond de vijf procent. Genoeg om te zien dat er iets voor
+                    // de achtergrond hangt, te weinig om een vlak te worden. Het
+                    // GLAS zit hem niet in de dekking maar in de vervaging en de
+                    // verzadiging hieronder; die blijven dus staan.
+                    "linear-gradient(135deg, rgba(255,255,255,.07) 0%, rgba(255,255,255,.02) 34%, rgba(255,255,255,0) 56%)",
+                    "linear-gradient(180deg, rgba(150,110,235,.05) 0%, rgba(40,18,80,.05) 60%, rgba(14,6,32,.08) 100%)",
                   ].join(", ")
                 : "linear-gradient(180deg, rgba(66,36,116,.20) 0%, rgba(30,14,58,.26) 50%, rgba(16,7,34,.30) 100%)",
           ...binnen,
@@ -453,18 +489,27 @@ export function NeonKader({
       >
         {hoek ? (
           <>
-            <span aria-hidden style={{ position: "absolute", inset: 0, clipPath: ringPad(Math.max(1, dik + 1.4)), backgroundImage: lijn, filter: "blur(3px)", opacity: 0.3, pointerEvents: "none" }} />
-            <span aria-hidden style={{ position: "absolute", inset: 0, clipPath: ringPad(Math.max(0.8, dik)), backgroundImage: lijn, opacity: 0.85, pointerEvents: "none" }} />
-            <span aria-hidden style={{ position: "absolute", inset: 0, clipPath: ringPad(Math.max(0.8, dik)), backgroundImage: KADER_GLANS, pointerEvents: "none" }} />
+            <span aria-hidden style={{ position: "absolute", inset: 0, clipPath: ringPad(Math.max(1, dik + 1.4)), backgroundImage: lijn, filter: "blur(3px)", opacity: 0.3 * sterkte, pointerEvents: "none" }} />
+            <span aria-hidden style={{ position: "absolute", inset: 0, clipPath: ringPad(Math.max(0.8, dik)), backgroundImage: lijn, opacity: 0.85 * sterkte, pointerEvents: "none" }} />
+            <span aria-hidden style={{ position: "absolute", inset: 0, clipPath: ringPad(Math.max(0.8, dik)), backgroundImage: KADER_GLANS, opacity: sterkte, pointerEvents: "none" }} />
           </>
         ) : (
           <>
-            <span className={animeer ? "kader-loop" : undefined} aria-hidden style={{ ...ring(dik + 1.4), backgroundImage: lijn, filter: "blur(3px)", opacity: 0.26 }} />
-            <span className={animeer ? "kader-loop" : undefined} aria-hidden style={{ ...ring(dik), backgroundImage: lijn, opacity: 0.68 }} />
-            <span aria-hidden style={{ ...ring(dik), backgroundImage: KADER_GLANS }} />
+            <span className={animeer ? "kader-loop" : undefined} aria-hidden style={{ ...ring(dik + 1.4), backgroundImage: lijn, filter: "blur(3px)", opacity: 0.26 * sterkte }} />
+            <span className={animeer ? "kader-loop" : undefined} aria-hidden style={{ ...ring(dik), backgroundImage: lijn, opacity: 0.68 * sterkte }} />
+            <span aria-hidden style={{ ...ring(dik), backgroundImage: KADER_GLANS, opacity: sterkte }} />
           </>
         )}
       </span>
+      {/* De KERN, buiten het textuurmasker. Dat masker dooft juist het midden van
+          de lange randen, en dat is precies waar deze hoort te zitten: eronder
+          zou hij weggepoetst worden door de laag die hem moet dragen. */}
+      {hoek && (
+        <>
+          <span aria-hidden style={{ position: "absolute", inset: 0, clipPath: ringPad(Math.max(0.8, dik)), backgroundImage: KADER_KERN, pointerEvents: "none" }} />
+          <span aria-hidden style={{ position: "absolute", inset: 0, clipPath: ringPad(Math.max(0.8, dik)), backgroundImage: KADER_KERN_GLANS, pointerEvents: "none" }} />
+        </>
+      )}
     </div>
   );
 }
