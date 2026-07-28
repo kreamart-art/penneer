@@ -228,8 +228,8 @@ function Popup({
             className="pressable pop-in"
             style={{
               position: "absolute",
-              right: "7.5%",
-              top: "5.5%",
+              right: "5%",
+              top: "7.5%",
               width: "8%",
               zIndex: 2,
               background: "transparent",
@@ -266,7 +266,7 @@ function Popup({
               >
                 SAMEN
                 <br />
-                SPELEN.
+                SPELEN
               </h2>
               <p
                 style={{
