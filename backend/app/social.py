@@ -23,7 +23,8 @@ from .db import (get_db, LEVEL_BUZZERS, BUZZER_SKIN_IDS, LEVEL_FOR_BUZZER, LEVEL
 from .models import PLAYER_COLORS
 
 BASE_URL = os.environ.get("PENNEER_BASE_URL", "https://penneer.artnomad.nl")
-WEEK = 7 * 24 * 3600
+DAY = 24 * 3600
+WEEK = 7 * DAY
 
 # Level curve: xp is earned from points, wins and games; level n starts at
 # 50*n*(n-1) xp (L2=100, L3=300, L4=600, ...). Ranks are named tiers by level;
@@ -708,9 +709,26 @@ class AccountManager:
             period = "all"
             since, until = 0.0, None
         rows = self.db.leaderboard(since=since, until=until)
+
+        # Hoeveel plekken je de laatste 24 uur bent gestegen. Daar is GEEN
+        # opslag voor nodig: de ranglijst wordt toch al uit de potjes zelf
+        # gerekend, dus reken hem ook een keer met een venster dat een dag eerder
+        # ophoudt en vergelijk je plek. Momentopnames wegschrijven zou een tabel
+        # plus een taak vragen die op tijd draait, en dan is de uitkomst nog
+        # afhankelijk van of die taak gelopen heeft.
+        uid = self.user_of(ws)
+        stijging = None
+        if uid:
+            toen = time.time() - DAY
+            eerder = self.db.leaderboard(since=since, until=toen, limit=500)
+            nu_rij = next((i for i, r in enumerate(rows) if r["id"] == uid), None)
+            toen_rij = next((i for i, r in enumerate(eerder) if r["id"] == uid), None)
+            if nu_rij is not None and toen_rij is not None:
+                stijging = toen_rij - nu_rij   # lager rijnummer = hoger op de lijst
         await self._send(ws, {
             "type": "leaderboard",
             "period": period,
+            "climb": stijging,
             "rows": [{**self._public(r), "points": r["points"], "games": r["games"], "wins": r["wins"]} for r in rows],
         })
 

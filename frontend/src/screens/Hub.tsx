@@ -2,7 +2,7 @@
 // Reached from the Landing. A profile is optional: guests see the create form.
 import { Fragment, useEffect, useRef, useState } from "react";
 import { CloseIcon } from "../components/CloseIcon";
-import { ArrowLeft, Award, BookOpen, Camera, Check, ChevronDown, CircleDot, Copy, Crown, Flame, Gem, Lock, LogOut, Medal, MessageCircle, MoreVertical, Pencil, Percent, Plus, Rocket, Search, Send, Settings as SettingsIcon, Share2, Shield, ShoppingCart, Smile, Sparkles, Star, Swords, Target, Trash2, Trophy, UserPlus, Users, X, Zap, ZoomIn, ZoomOut } from "lucide-react";
+import { ArrowLeft, Award, BookOpen, CalendarDays, Camera, Check, ChevronDown, CircleDot, Copy, Crown, Flame, Gem, Lock, LogOut, Medal, MessageCircle, MoreVertical, Pencil, Percent, Plus, Rocket, Search, Send, Settings as SettingsIcon, Share2, Shield, ShoppingCart, Smile, Sparkles, Star, Swords, Target, Trash2, Trophy, UserPlus, Users, X, Zap, ZoomIn, ZoomOut } from "lucide-react";
 import { Avatar, RANK_RING } from "../components/Avatar";
 import { Plek } from "../components/ProfileShowcase";
 import { HexArt } from "../components/HexArt";
@@ -18,7 +18,7 @@ import { HexPlate } from "../components/HexPlate";
 import { MusicToggle } from "../components/MusicToggle";
 import { Toggle } from "../components/Toggle";
 import { Screen, Card } from "../components/Layout";
-import type { AccountStats, Friend, GameApi, InboxItem, LevelInfo } from "../net/socket";
+import type { AccountStats, Friend, GameApi, InboxItem, LeaderboardRow, LevelInfo } from "../net/socket";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { makeProfileCard, shareOrDownload } from "../util/shareCard";
@@ -2831,7 +2831,17 @@ export function GlasRij({ wapen, children, binnen }: { wapen?: React.ReactNode; 
 function LeaderboardTab({ game }: { game: GameApi }) {
   const { t } = useT();
   const lb = game.state.leaderboard;
+  const account = game.state.account;
   const period = lb?.period ?? "week";
+  const rows = lb?.rows ?? [];
+  const top = Math.max(1, rows[0]?.points ?? 1);
+  const mijnPlek = rows.findIndex((r) => r.id === account?.id);
+  const ik = mijnPlek >= 0 ? rows[mijnPlek] : null;
+  // Het doel is de speler BOVEN je, en als je eerste staat je voorsprong op de
+  // tweede. Dat is echt en het zegt bovendien iets: een los rond getal als doel
+  // vertelt je niets over waar je staat.
+  const boven = mijnPlek > 0 ? rows[mijnPlek - 1] : null;
+  const tweede = rows[1] ?? null;
   return (
     <>
       <div style={{ display: "flex", gap: 6 }}>
@@ -2839,34 +2849,292 @@ function LeaderboardTab({ game }: { game: GameApi }) {
           <button
             key={p}
             onClick={() => game.loadLeaderboard(p)}
+            className="pressable"
             style={{
               flex: 1, padding: "9px 4px", borderRadius: radius.button, cursor: "pointer",
-              border: `1px solid ${period === p ? withAlpha(colors.violet, 0.6) : colors.panelBorder}`,
-              background: period === p ? withAlpha(colors.violet, 0.18) : "transparent",
+              // Doorzichtig, ook als hij aan staat. Het verschil zit in de LIJN
+              // en de gloed eromheen, niet in een vlak dat oplicht: een gevulde
+              // knop naast twee lege leest als een ander soort knop.
+              background: "transparent",
+              border: `1px solid ${period === p ? withAlpha("#C46BFF", 0.75) : colors.panelBorder}`,
+              boxShadow: period === p ? `0 0 12px ${withAlpha("#9A4BF0", 0.5)}, inset 0 0 10px ${withAlpha("#9A4BF0", 0.22)}` : "none",
               color: period === p ? colors.ink : colors.sub, fontFamily: font.ui, fontSize: 12.5, fontWeight: 600,
+              transition: "box-shadow .2s ease, border-color .2s ease",
             }}
           >
             {p === "week" ? t("thisWeek") : p === "month" ? t("seasonChip") : t("allTime")}
           </button>
         ))}
       </div>
-      <Card style={{ display: "flex", flexDirection: "column", gap: 3, padding: "13px 7px 14px" }}>
-        {!lb || lb.rows.length === 0 ? (
+
+      <Card style={{ display: "flex", flexDirection: "column", gap: 5, padding: "13px 7px 14px" }}>
+        {rows.length === 0 ? (
           <p style={{ margin: 0, paddingInline: 6, fontFamily: font.ui, fontSize: 13, color: colors.faint }}>{t("lbEmpty")}</p>
         ) : (
-          lb.rows.map((r, i) => (
-            <GlasRij
-              key={r.id}
-              wapen={<PlekWapen plek={i + 1} maat={26} />}
-            >
-              <Avatar name={r.name} color={r.color} size={30} userId={r.id} hasAvatar={r.has_avatar} avatarVer={r.avatar_ver} />
-              <span style={{ flex: 1, fontFamily: font.ui, fontWeight: 600, fontSize: 14, color: colors.ink, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</span>
-              <span style={{ fontFamily: font.ui, fontSize: 11.5, color: colors.faint }}>{r.wins}W</span>
-              <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 16, color: i === 0 ? colors.gold : colors.ink, minWidth: 44, textAlign: "right" }}>{r.points}</span>
-            </GlasRij>
-          ))
+          rows.map((r, i) => <RangRij key={r.id} r={r} plek={i + 1} deel={r.points / top} />)
         )}
       </Card>
+
+      {/* Jouw cijfers over DEZE periode, niet over al je potjes: de lijst gaat
+          over een week of een maand, dus de samenvatting eronder ook. */}
+      {ik && (
+        <Card style={{ display: "flex", alignItems: "stretch", padding: "13px 4px" }}>
+          {/* Je stijging van de laatste 24 uur. Heb je nog geen dag historie op
+              deze lijst, dan is er niets te vergelijken en staat er hoeveel
+              potjes je speelde: liever iets dat klopt dan een nul die suggereert
+              dat je stil stond. */}
+          {lb?.climb != null ? (
+            <Cijfer
+              art="stijging"
+              waarde={`${lb.climb > 0 ? "+" : ""}${lb.climb}`}
+              label={t("lbClimb")}
+              // Ook op NUL groen: het cijfer hoort bij het groene pictogram
+              // ernaast, en een grijze nul leest als "uit" terwijl er niets uit
+              // staat. Alleen een daling wijkt af, want dat is een ander bericht.
+              kleur={lb.climb < 0 ? colors.red : undefined}
+            />
+          ) : (
+            <Cijfer art="games" waarde={`${ik.games}`} label={t("lbGames")} />
+          )}
+          <Scheiding />
+          <Cijfer art="vlam" waarde={`${account?.stats.streak ?? 0}`} label={t("statStreak")} />
+          <Scheiding />
+          <Cijfer art="krans" waarde={`${ik.points}`} label={t("lbYourScore")} />
+        </Card>
+      )}
+
+      {/* De aanmoediging. Het doel is de speler boven je; sta je eerste, dan is
+          het je voorsprong die je moet vasthouden. */}
+      {ik && (boven || tweede) && (
+        <Card
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 13,
+            padding: "14px 15px",
+            position: "relative",
+            overflow: "hidden",
+            // Licht uit de LINKERBOVENHOEK, net als overal in deze stijl, en het
+            // reikt tot over de helft: houdt het te vroeg op, dan leest het als
+            // een vlek in de hoek in plaats van als belichting.
+            backgroundImage: "radial-gradient(125% 155% at 0% 0%, rgba(255,196,90,.1) 0%, rgba(196,107,255,.06) 36%, rgba(154,75,240,.025) 64%, transparent 88%)",
+          }}
+        >
+          <HexArt maat={54} style={{ flexShrink: 0 }}>
+            <img src="/ui/stat/ster.webp" alt="" aria-hidden style={{ width: 27, height: 27, display: "block" }} />
+          </HexArt>
+          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 5 }}>
+            <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 15.5, color: colors.ink }}>
+              {boven ? t("lbChaseTitle") : t("lbLeadTitle")}
+            </span>
+            <span style={{ fontFamily: font.ui, fontSize: 12.5, lineHeight: 1.45, color: colors.sub }}>
+              {boven
+                ? t("lbChaseBody", { n: boven.points - ik.points, name: boven.name })
+                : t("lbLeadBody", { n: ik.points - (tweede?.points ?? 0) })}
+            </span>
+            {/* Jaag je iemand na, dan is de balk hoe ver je al bent van zijn
+                totaal. Sta je eerste, dan is het je VOORSPRONG, en dan zegt
+                "235 / 235" niets: dan hoort er te staan hoeveel je voorstaat. */}
+            <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+              <NeonKader radius={999} dik={0.4} vulling="geen" gloed="none" style={{ flex: 1 }} binnen={{ height: 9, background: "rgba(0,0,0,.45)", boxShadow: "inset 0 1px 3px rgba(0,0,0,.6)" }}>
+                <div
+                  style={{
+                    width: `${Math.round(Math.min(1, Math.max(0.04, boven ? ik.points / Math.max(1, boven.points) : (ik.points - (tweede?.points ?? 0)) / Math.max(1, ik.points))) * 100)}%`,
+                    height: "100%",
+                    borderRadius: 999,
+                    background: `linear-gradient(90deg, ${GOUD[1]}, ${GOUD[2]} 60%, ${GOUD[3]})`,
+                    transition: "width .4s ease",
+                  }}
+                />
+              </NeonKader>
+              <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 12.5, color: colors.sub, flexShrink: 0 }}>
+                {boven ? (
+                  <>{ik.points} <span style={{ color: colors.faint }}>/ {boven.points}</span></>
+                ) : (
+                  <span style={{ color: GOUD[2] }}>+{ik.points - (tweede?.points ?? 0)}</span>
+                )}
+              </span>
+            </div>
+          </div>
+          {/* De kist staat er als BELOFTE, niet als knop: hij zegt waar je het
+              voor doet zonder iets te beweren wat er nog niet is. */}
+          <img src="/ui/kist.webp" alt="" aria-hidden style={{ width: 52, flexShrink: 0, alignSelf: "flex-end", marginBottom: -2 }} />
+        </Card>
+      )}
+
+      {/* Altijd zichtbaar. Ik had hem eerst aan de seizoentab gehangen, maar de
+          aftelling gaat niet over het VENSTER waar je naar kijkt: het seizoen
+          loopt door welke tab je ook openhebt, en dat is precies iets wat je
+          wilt weten zonder ernaar te zoeken. */}
+      <SeizoenRij />
     </>
+  );
+}
+
+/** Een regel in de ranglijst: wimpel, portret, naam met een scorebalk, winsten,
+ *  punten en de beker. De nummer EEN krijgt goud en een gloed; de rest staat in
+ *  dezelfde lijst maar dan uit. */
+function RangRij({ r, plek, deel }: { r: LeaderboardRow; plek: number; deel: number }) {
+  const eerste = plek === 1;
+  const metaal = plek === 1 ? "goud" : plek === 2 ? "zilver" : plek === 3 ? "brons" : "overig";
+  return (
+    <NeonKader
+      hoek={11}
+      dik={eerste ? 0.55 : 0.3}
+      vulling="geen"
+      sterkte={eerste ? 0.9 : 0.3}
+      // Alleen de koploper krijgt de gouden kappen. Geeft iedereen ze, dan zijn
+      // ze geen onderscheiding meer maar lijstwerk.
+      eindkap={eerste}
+      lijn={eerste ? `linear-gradient(115deg, ${GOUD[3]} 0%, ${GOUD[2]} 34%, ${GOUD[1]} 72%, ${GOUD[2]} 100%)` : undefined}
+      gloed={eerste ? `0 0 14px ${withAlpha(GOUD[2], 0.3)}` : "none"}
+      style={{ marginInline: 7 }}
+      binnen={{ display: "flex", alignItems: "center", gap: 6, minHeight: eerste ? 66 : 60, padding: "6px 7px 6px 44px" }}
+    >
+      <span style={{ position: "absolute", left: 11, top: 0, display: "flex" }}>
+        <PlekWapen plek={plek} maat={26} />
+      </span>
+      {/* Streepjes scheiden wat NIET bij elkaar hoort. Portret, naam en balk
+          gaan samen: dat is een speler. Daarna elk cijfer op zichzelf. */}
+      <Scheiding />
+      <Avatar name={r.name} color={r.color} size={eerste ? 44 : 40} userId={r.id} hasAvatar={r.has_avatar} avatarVer={r.avatar_ver} />
+      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 5 }}>
+        <span style={{ fontFamily: font.ui, fontWeight: 700, fontSize: 14.5, color: colors.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</span>
+        {/* De balk zegt in EEN blik hoe ver iemand van de koploper af staat.
+            Zonder die balk zijn het losse getallen die je met elkaar moet
+            vergelijken, en dat doet niemand. */}
+        <span style={{ height: 4, borderRadius: 999, background: "rgba(0,0,0,.42)", overflow: "hidden" }}>
+          <span
+            style={{
+              display: "block",
+              width: `${Math.round(Math.max(0.06, deel) * 100)}%`,
+              height: "100%",
+              borderRadius: 999,
+              background: eerste
+                ? `linear-gradient(90deg, ${GOUD[1]}, ${GOUD[2]} 55%, ${GOUD[3]})`
+                : `linear-gradient(90deg, ${colors.violet}, #C46BFF)`,
+              boxShadow: eerste ? `0 0 7px ${withAlpha(GOUD[2], 0.55)}` : `0 0 6px ${withAlpha("#C46BFF", 0.45)}`,
+            }}
+          />
+        </span>
+      </div>
+      <span style={{ fontFamily: font.ui, fontSize: 11.5, color: colors.faint, flexShrink: 0 }}>{r.wins}W</span>
+      <Scheiding />
+      <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: eerste ? 18 : 16, color: eerste ? GOUD[2] : colors.ink, minWidth: 34, textAlign: "right" }}>{r.points}</span>
+      <Scheiding />
+      {/* De DOOS is voor iedereen even breed en alleen het plaatje erin verschilt.
+          Zou de doos meekrimpen, dan schuift het streepje ervoor mee en lopen de
+          kolommen niet meer door; en juist omdat die streepjes een verticale
+          lijn vormen, valt een verschuiving van een paar pixels op. */}
+      <span style={{ width: 32, flexShrink: 0, marginRight: -1, display: "grid", placeItems: "center" }}>
+        <img
+          src={`/ui/beker/${metaal}.webp?v=${BEKER_ART}`}
+          alt=""
+          aria-hidden
+          style={{ width: eerste ? 32 : 26, display: "block", filter: eerste ? "brightness(1.06)" : "brightness(.86) saturate(.9)" }}
+        />
+      </span>
+    </NeonKader>
+  );
+}
+
+const BEKER_ART = 2;
+
+/** De kleur van elk pictogram, GEMETEN aan de art zelf en niet gekozen.
+ *
+ *  Wat je als "de kleur" van een tekening ziet is niet het gemiddelde (dat trekt
+ *  naar de donkere randen) en ook niet het lichtste punt (dat is bijna wit), maar
+ *  het verzadigde deel op middelhoge helderheid: het vlak, zonder de schaduw en
+ *  zonder de glans. `tekst` is het midden tussen dat vlak en zijn felste tint,
+ *  want een getal op een donkere achtergrond mag een slag lichter zijn dan het
+ *  voorwerp; `gloed` is het vlak zelf, want daar gloeit het voorwerp mee. */
+const ART_KLEUR: Record<string, { tekst: string; gloed: string }> = {
+  stijging: { tekst: "#95DC0E", gloed: "#7CCB0A" },
+  vlam:     { tekst: "#E8A317", gloed: "#D68011" },
+  krans:    { tekst: "#AC7BE9", gloed: "#9969DE" },
+  games:    { tekst: "#E7A821", gloed: "#D58B17" },
+};
+
+/** Een cijfer in de samenvattingsbalk. */
+function Cijfer({ art, icoon, waarde, label, kleur }: { art?: string; icoon?: React.ReactNode; waarde: string; label: string; kleur?: string }) {
+  const uitArt = art ? ART_KLEUR[art] : undefined;
+  const tekst = kleur ?? uitArt?.tekst ?? colors.ink;
+  const gloed = uitArt?.gloed;
+  return (
+    <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+        {/* De getekende penningen uit de statistieken. Naast art van goud leest
+            een lijnpictogram als een tekening naast een voorwerp; die staat er
+            dus alleen zolang de art voor dat cijfer nog niet bestaat.
+            De gloed is een HALO erachter en geen drop-shadow: die laat iOS de
+            laag apart rasteren en dan zie je zijn rechthoek over het pictogram
+            heen. Hij draagt de kleur van het pictogram zelf, anders gloeit er
+            iets anders dan er staat. */}
+        {art ? (
+          <span style={{ position: "relative", width: 34, height: 34, display: "grid", placeItems: "center" }}>
+            {gloed && (
+              <span
+                aria-hidden
+                style={{
+                  position: "absolute",
+                  inset: "8%",
+                  borderRadius: "50%",
+                  background: `radial-gradient(closest-side, ${withAlpha(gloed, 0.55)} 0%, ${withAlpha(gloed, 0.18)} 58%, transparent 100%)`,
+                  filter: "blur(4px)",
+                }}
+              />
+            )}
+            <img src={`/ui/stat/${art}.webp`} alt="" aria-hidden style={{ position: "relative", width: 34, height: 34, display: "block" }} />
+          </span>
+        ) : (
+          icoon
+        )}
+        <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 20, lineHeight: 1, color: tekst }}>{waarde}</span>
+      </span>
+      <span style={{ fontFamily: font.ui, fontSize: 11, color: colors.faint, textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>{label}</span>
+    </div>
+  );
+}
+
+/** De scheiding tussen twee cijfers: dezelfde groef als in de potjesrijen. */
+function Scheiding() {
+  return (
+    <span
+      aria-hidden
+      style={{
+        alignSelf: "stretch",
+        flexShrink: 0,
+        width: 2,
+        marginBlock: 2,
+        backgroundImage: "linear-gradient(90deg, rgba(8,3,20,.7) 0, rgba(8,3,20,.7) 1px, rgba(255,255,255,.13) 1px, rgba(255,255,255,.13) 2px)",
+        WebkitMaskImage: "linear-gradient(180deg, transparent 0%, #000 26%, #000 74%, transparent 100%)",
+        maskImage: "linear-gradient(180deg, transparent 0%, #000 26%, #000 74%, transparent 100%)",
+      }}
+    />
+  );
+}
+
+/** Hoe lang het seizoen nog duurt. Het seizoen is een kalendermaand, dus dat is
+ *  gewoon te rekenen: geen extra veld van de server nodig. */
+function SeizoenRij() {
+  const { t } = useT();
+  const [nu, setNu] = useState(() => Date.now());
+  useEffect(() => {
+    const id = window.setInterval(() => setNu(Date.now()), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
+  const d = new Date(nu);
+  const eind = new Date(d.getFullYear(), d.getMonth() + 1, 1).getTime();
+  const over = Math.max(0, eind - nu);
+  const dagen = Math.floor(over / 86_400_000);
+  const uren = Math.floor((over % 86_400_000) / 3_600_000);
+  const min = Math.floor((over % 3_600_000) / 60_000);
+  return (
+    <Card style={{ display: "flex", alignItems: "center", gap: 11, padding: "13px 15px", borderRadius: 12 }}>
+      <CalendarDays size={18} color={colors.violet} style={{ flexShrink: 0 }} />
+      <span style={{ flex: 1, fontFamily: font.ui, fontSize: 13, color: colors.sub }}>
+        {t("lbSeasonEnds", { d: dagen, h: uren, m: min })}
+      </span>
+    </Card>
   );
 }

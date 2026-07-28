@@ -324,7 +324,9 @@ export interface ClientState {
   blocked: PublicUser[];
   inbox: InboxItem[];
   searchResults: PublicUser[];
-  leaderboard: { period: "all" | "week" | "month"; rows: LeaderboardRow[] } | null;
+  /** `climb` is hoeveel plekken JIJ de laatste 24 uur bent gestegen (negatief =
+   *  gezakt, null = je stond er toen of nu niet in). */
+  leaderboard: { period: "all" | "week" | "month"; rows: LeaderboardRow[]; climb: number | null } | null;
   club: ClubBoard | null; // the club board for the open club view
   viewedProfile: PublicProfile | null;
   history: HistoryGame[];
@@ -407,7 +409,7 @@ type ServerMessage =
   | { type: "dm"; message: DmMessage }
   | { type: "dm_thread"; user_id: string; messages: DmMessage[] }
   | { type: "dm_threads"; threads: DmThreadSummary[] }
-  | { type: "leaderboard"; period: "all" | "week" | "month"; rows: LeaderboardRow[] }
+  | { type: "leaderboard"; period: "all" | "week" | "month"; rows: LeaderboardRow[]; climb: number | null }
   | { type: "club"; club: ClubSummary | null; period: "month" | "all"; members: ClubMember[] }
   | { type: "presence"; user_id: string; online: boolean }
   | { type: "login_link_sent" }
@@ -669,7 +671,7 @@ function reducer(state: ClientState, action: Action): ClientState {
     case "dm_threads":
       return { ...state, dmThreads: msg.threads };
     case "leaderboard":
-      return { ...state, leaderboard: { period: msg.period, rows: msg.rows } };
+      return { ...state, leaderboard: { period: msg.period, rows: msg.rows, climb: msg.climb ?? null } };
     case "club":
       return { ...state, club: { club: msg.club, period: msg.period, members: msg.members } };
     case "presence":

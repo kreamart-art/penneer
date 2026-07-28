@@ -188,12 +188,13 @@ body.lijst::after {
   background-color: #06040e;
   background-image:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
-    radial-gradient(120% 76% at 50% 26%, transparent 30%, rgba(2, 1, 7, 0.78) 100%),
+    linear-gradient(180deg, rgba(6, 4, 14, 0.6) 0%, rgba(6, 4, 14, 0.5) 45%, rgba(6, 4, 14, 0.68) 100%),
+    radial-gradient(112% 70% at 50% 22%, transparent 18%, rgba(2, 1, 7, 0.92) 100%),
     url("/ui/lijst-bg.webp"),
     linear-gradient(180deg, #150e2e 0%, #100a24 50%, #06040e 100%);
-  background-repeat: repeat, no-repeat, no-repeat, no-repeat;
-  background-position: top left, top, center top, top;
-  background-size: 160px 160px, 100% 100%, cover, 100% 100%;
+  background-repeat: repeat, no-repeat, no-repeat, no-repeat, no-repeat;
+  background-position: top left, top, top, center top, top;
+  background-size: 160px 160px, 100% 100%, 100% 100%, cover, 100% 100%;
 }
 
 body {

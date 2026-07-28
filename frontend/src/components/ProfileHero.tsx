@@ -403,8 +403,13 @@ export function NeonKader({
   }, [hoek]);
   const ringPad = (d: number): string | undefined => {
     if (!hoek || !maat) return undefined;
-    const buiten = chamferPath(maat.w, maat.h, hoek, 2);
-    const binnen = chamferPath(maat.w - d * 2, maat.h - d * 2, Math.max(1, hoek - d), 2);
+    // De knik is ZACHT en niet scherp: een punt van precies 45 graden leest als
+    // een fout in de tekening, een kleine bocht als gesmeed metaal. De straal
+    // schaalt mee met de afsnijding, want op een grote schuine hoek is een
+    // vaste bocht van twee pixels niet te zien.
+    const r = Math.max(2, hoek * 0.2);
+    const buiten = chamferPath(maat.w, maat.h, hoek, r);
+    const binnen = chamferPath(maat.w - d * 2, maat.h - d * 2, Math.max(1, hoek - d), r);
     // De binnenste contour verschoven naar zijn plek, zodat de wand overal even
     // dik is.
     return `path(evenodd, "${buiten} M ${d} ${d} ${binnen.replace(/^M /, "m ").replace(/M /g, "m ")}")`;
