@@ -32,6 +32,10 @@ export type NavKey = "shop" | "leaderboard" | "home" | "friends" | "profile";
 // laadbeurt de oude bytes doorheen. Een andere URL kan dat niet gebeuren.
 const NAV_ART = 2;
 const SLOTS = [11.6, 31.0, 50, 69.1, 88.4];
+// De scheiding staat MIDDEN tussen de twee pictogrammen van een vak, dus op het
+// gemiddelde van hun posities. Twee vakken, twee groeven; over het gouden
+// middenstuk hoort er geen, dat scheidt zichzelf al.
+const GROEVEN = [(SLOTS[0] + SLOTS[1]) / 2, (SLOTS[3] + SLOTS[4]) / 2];
 const WELL_Y = 50.3; // verticale hartlijn van de vakken
 const PLATE_RATIO = "3955 / 578";
 const GAP = 8; // hoe hoog de plaat boven de onderrand zweeft
@@ -130,6 +134,29 @@ export function BottomNav({
               display: "block",
             }}
           />
+          {/* Dezelfde groef als tussen de vakken van een potjesrij: donkere
+              linkerwand, lichte rechter, want het licht komt van linksboven en
+              valt dus op de rechterkant van een gleuf. Boven en onder vervaagd,
+              zodat hij vrij in het vak hangt in plaats van de randen te raken. */}
+          {plateH > 0 &&
+            GROEVEN.map((x) => (
+              <span
+                key={x}
+                aria-hidden
+                style={{
+                  position: "absolute",
+                  left: `${x}%`,
+                  top: `${WELL_Y}%`,
+                  transform: "translate(-50%, -50%)",
+                  width: 2,
+                  height: plateH * 0.46,
+                  backgroundImage: "linear-gradient(90deg, rgba(8,3,20,.75) 0, rgba(8,3,20,.75) 1px, rgba(255,255,255,.14) 1px, rgba(255,255,255,.14) 2px)",
+                  WebkitMaskImage: "linear-gradient(180deg, transparent 0%, #000 26%, #000 74%, transparent 100%)",
+                  maskImage: "linear-gradient(180deg, transparent 0%, #000 26%, #000 74%, transparent 100%)",
+                  pointerEvents: "none",
+                }}
+              />
+            ))}
           {plateH > 0 &&
             items(s, Math.round(plateH * 0.6)).map(({ key, label, icon, badge }, i) => {
               const on = active === key;
