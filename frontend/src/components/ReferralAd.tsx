@@ -200,7 +200,7 @@ function Popup({
           src="/ads/chest.webp"
           alt=""
           aria-hidden
-          style={{ position: "absolute", right: "3%", top: "6%", width: "37%", zIndex: 0, pointerEvents: "none" }}
+          style={{ position: "absolute", right: "1%", top: "5%", width: "48%", zIndex: 0, pointerEvents: "none" }}
         />
 
         {/* Het bordje bovenaan, in dezelfde behandeling als het woordmerk op de
@@ -279,7 +279,7 @@ function Popup({
                   // advertentiekop moet zijn. Wel met een eigen regelafstand,
                   // want dit font zet zijn hoofdletters hoog in de regel.
                   fontFamily: '"KA1", "Bebas Neue", sans-serif',
-                  fontSize: "clamp(21px, 7.4vw, 32px)",
+                  fontSize: "clamp(25px, 8.7vw, 38px)",
                   lineHeight: 1.16,
                   letterSpacing: 0.5,
                   backgroundImage: "linear-gradient(168deg, #FFEBB8 0%, #FFC23D 46%, #E39A12 100%)",
@@ -295,7 +295,7 @@ function Popup({
               </h2>
               <p
                 style={{
-                  margin: "10px 0 0",
+                  margin: "20px 0 0",
                   // De smalle hoofdletterstijl die eerst de kop droeg. Naast
                   // een blokkerige kop leest die rustiger dan een gewone zin.
                   fontFamily: font.wide,
