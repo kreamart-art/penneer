@@ -242,9 +242,13 @@ export const KADER_LIJN_KLEUR = [
 // leest het als een streepjeslijn en niet als materiaal.
 const KADER_TEXTUUR = [
   "linear-gradient(100deg,",
-  "rgba(0,0,0,.18) 0%, #000 5%, rgba(0,0,0,.10) 15%, #000 25%,",
-  "rgba(0,0,0,.62) 34%, #000 43%, rgba(0,0,0,.08) 53%, #000 62%,",
-  "rgba(0,0,0,.48) 70%, #000 80%, rgba(0,0,0,.12) 90%, rgba(0,0,0,.55) 100%)",
+  // Lange overgangen en gedoofde stukken die even AANHOUDEN. Twee stops vlak na
+  // elkaar geeft een strakke knip; hier ligt er tussen elke top en elk dal
+  // twaalf tot achttien procent, en de dalen zijn zelf ook breed.
+  "rgba(0,0,0,.10) 0%, rgba(0,0,0,.10) 5%, #000 19%, #000 25%,",
+  "rgba(0,0,0,.08) 38%, rgba(0,0,0,.08) 46%, #000 60%,",
+  "rgba(0,0,0,.18) 73%, rgba(0,0,0,.18) 80%, #000 93%,",
+  "rgba(0,0,0,.30) 100%)",
 ].join(" ");
 
 // De glans: bijna wit, en ALLEEN in het midden van de boven- en onderrand. Daar
