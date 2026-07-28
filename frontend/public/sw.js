@@ -10,7 +10,7 @@
 //    briefly-stale shell can still boot from cache instead of going black.
 //  - Every activation purges ALL old caches (drops any poisoned shell).
 // Never touches the WebSocket or the API.
-const CACHE = "penneer-v42"; // v42: nieuwe balk-pictogrammen
+const CACHE = "penneer-v43"; // v43: balk-pictogrammen op hoge resolutie
 
 self.addEventListener("install", () => {
   self.skipWaiting();
