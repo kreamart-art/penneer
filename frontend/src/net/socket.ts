@@ -166,6 +166,12 @@ export interface Friend extends PublicUser {
   requested_by: string;
 }
 
+/** Iemand met wie je onlangs speelde en die nog geen vriend is. */
+export interface Coplayer extends PublicUser {
+  samen: number;   // hoeveel potjes samen in dit venster
+  laatst: number;  // wanneer voor het laatst
+}
+
 export interface InboxItem {
   type: "invite" | "challenge" | "friend_request" | "club_invite";
   id?: string; // invite id
@@ -321,6 +327,8 @@ export interface ClientState {
   // Account + social state (all null/empty for guests).
   account: Account | null;
   friends: Friend[];
+  /** Oud-medespelers: mensen uit eerdere potjes die nog geen vriend zijn. */
+  coplayers: Coplayer[];
   blocked: PublicUser[];
   inbox: InboxItem[];
   searchResults: PublicUser[];
@@ -401,6 +409,7 @@ type ServerMessage =
   | { type: "chat_history"; messages: ChatMessage[] }
   | { type: "account"; account: Account | null; token?: string; deleted?: boolean }
   | { type: "friends"; friends: Friend[] }
+  | { type: "coplayers"; users: Coplayer[] }
   | { type: "blocked"; users: PublicUser[] }
   | { type: "inbox"; items: InboxItem[] }
   | { type: "user_search"; users: PublicUser[] }
@@ -497,6 +506,7 @@ const initialState: ClientState = {
   chatTyping: {},
   account: null,
   friends: [],
+  coplayers: [],
   blocked: [],
   inbox: [],
   searchResults: [],
@@ -555,7 +565,7 @@ function reducer(state: ClientState, action: Action): ClientState {
     return { ...state, chatOpen: action.open, chatSeen: action.open ? state.chat.length : state.chatSeen };
   }
   if (action.type === "accountLogout") {
-    return { ...state, account: null, friends: [], inbox: [], searchResults: [], viewedProfile: null };
+    return { ...state, account: null, friends: [], coplayers: [], inbox: [], searchResults: [], viewedProfile: null };
   }
   if (action.type === "clearJoin") {
     return { ...state, joinRoomCode: null };
@@ -624,6 +634,8 @@ function reducer(state: ClientState, action: Action): ClientState {
     }
     case "friends":
       return { ...state, friends: msg.friends };
+    case "coplayers":
+      return { ...state, coplayers: msg.users };
     case "blocked":
       return { ...state, blocked: msg.users };
     case "inbox": {
@@ -790,6 +802,7 @@ export interface GameApi {
   clearDmBanner: () => void;
   dmRefreshThreads: () => void;
   refreshFriends: () => void;
+  refreshCoplayers: () => void;
   friendRequest: (user_id: string) => void;
   friendRespond: (user_id: string, accept: boolean) => void;
   friendRemove: (user_id: string) => void;
@@ -1030,6 +1043,7 @@ export function useGame(): GameApi {
     clearDmBanner: () => dispatch({ type: "clearDmBanner" }),
     dmRefreshThreads: () => send({ type: "dm_threads" }),
     refreshFriends: () => send({ type: "friends_list" }),
+    refreshCoplayers: () => send({ type: "coplayers_list" }),
     friendRequest: (user_id) => send({ type: "friend_request", user_id }),
     friendRespond: (user_id, accept) => send({ type: "friend_respond", user_id, accept }),
     friendRemove: (user_id) => send({ type: "friend_remove", user_id }),

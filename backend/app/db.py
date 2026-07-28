@@ -1007,6 +1007,50 @@ class Database:
         with self._lock:
             self._exec("DELETE FROM blocks WHERE user_id=? AND blocked_id=?", (user_id, other_id))
 
+    def coplayers_of(self, user_id: str, days: int = 30, limit: int = 12) -> list[dict]:
+        """Mensen met wie je onlangs een potje speelde en die nog geen vriend zijn.
+
+        Waarom dit bestaat: speel je een leuk potje met iemand die je niet als
+        vriend hebt, dan is die daarna onvindbaar. Je zou zijn naam moeten
+        onthouden, hem opzoeken, een verzoek sturen en wachten tot hij accepteert
+        voordat je hem kunt uitnodigen; in de praktijk gebeurt dat niet.
+
+        Vrienden en verzoeken vallen af (die staan al in de lijst erboven), en
+        geblokkeerden in BEIDE richtingen. Een venster van dertig dagen houdt het
+        bij mensen die je je nog herinnert: een medespeler van een half jaar
+        geleden uitnodigen leest als een vreemde.
+
+        Gesorteerd op hoe RECENT en daarna op hoe vaak: iemand van gisteren is
+        relevanter dan iemand van drie weken terug met wie je vaker speelde.
+        """
+        sinds = time.time() - days * 86400
+        with self._lock:
+            rows = self._q(
+                """
+                SELECT u.id, u.name, u.color, u.avatar_ver, u.avatar IS NOT NULL AS has_avatar,
+                       MAX(g.finished_at) AS laatst, COUNT(*) AS samen
+                FROM game_players mij
+                JOIN games g        ON g.id = mij.game_id
+                JOIN game_players hen ON hen.game_id = mij.game_id AND hen.user_id <> mij.user_id
+                JOIN users u        ON u.id = hen.user_id
+                WHERE mij.user_id = ? AND g.finished_at >= ?
+                  -- De vriendentabel bewaart EEN rij per paar, met a < b; welke
+                  -- van de twee jij bent ligt dus niet vast. Vandaar allebei de
+                  -- kanten, en dat geldt ook voor geblokkeerd: wie jou blokkeert
+                  -- hoort net zo goed uit deze lijst te verdwijnen als wie jij
+                  -- blokkeert.
+                  AND hen.user_id NOT IN (SELECT b FROM friends WHERE a = ?)
+                  AND hen.user_id NOT IN (SELECT a FROM friends WHERE b = ?)
+                  AND hen.user_id NOT IN (SELECT blocked_id FROM blocks WHERE user_id = ?)
+                  AND hen.user_id NOT IN (SELECT user_id FROM blocks WHERE blocked_id = ?)
+                GROUP BY u.id
+                ORDER BY laatst DESC, samen DESC
+                LIMIT ?
+                """,
+                (user_id, sinds, user_id, user_id, user_id, user_id, limit),
+            )
+        return [dict(r) for r in rows]
+
     def blocked_of(self, user_id: str) -> list[dict]:
         """Users this user has blocked."""
         with self._lock:

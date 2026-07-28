@@ -2,7 +2,7 @@
 // no-timer, rounds, categories + deelcode, hard letters, max players, spectators),
 // testbots, and per-device language + sound toggles.
 import { useEffect, useRef, useState } from "react";
-import { Check, Copy, Minus, Plus, Search, Send, Share2, UserPlus, X } from "lucide-react";
+import { Check, Copy, History, Minus, Plus, Search, Send, Share2, UserPlus, X } from "lucide-react";
 import { Avatar } from "../components/Avatar";
 import { NeonText } from "../components/NeonText";
 import { Button } from "../components/Button";
@@ -13,7 +13,7 @@ import { Toggle } from "../components/Toggle";
 import { Screen, Card } from "../components/Layout";
 import { TopBar } from "../components/TopBar";
 import { ProfileViewModal } from "./Hub";
-import type { GameApi } from "../net/socket";
+import type { GameApi, PublicUser } from "../net/socket";
 import { ALL_CATEGORY_KEYS, subLabelKey, useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { decodeDeelcode, encodeDeelcode } from "../util/deelcode";
@@ -39,6 +39,40 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
+/** Een persoon in de uitnodigenlijst. Vrienden en oud-medespelers tekenen
+ *  hetzelfde, dus dit staat op EEN plek; het enige verschil is een regeltje
+ *  eronder met hoe vaak je samen speelde. */
+function Rij({
+  u, sent, bij, onInvite,
+}: {
+  u: PublicUser; sent: boolean; bij?: string; onInvite: () => void;
+}) {
+  const { t } = useT();
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <div style={{ position: "relative" }}>
+        <Avatar name={u.name} color={u.color} size={32} userId={u.id} hasAvatar={u.has_avatar} avatarVer={u.avatar_ver} />
+        <span style={{ position: "absolute", bottom: -2, right: -2, width: 9, height: 9, borderRadius: "50%", background: u.online ? colors.green : colors.faint, border: `2px solid ${colors.bg1}` }} />
+      </div>
+      <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 1 }}>
+        <span style={{ fontFamily: font.ui, fontWeight: 600, fontSize: 14, color: colors.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.name}</span>
+        {bij && <span style={{ fontFamily: font.ui, fontSize: 11, color: colors.faint }}>{bij}</span>}
+      </span>
+      {sent ? (
+        <span style={{ fontFamily: font.ui, fontSize: 12, color: colors.green }}>{t("inviteSentShort")}</span>
+      ) : (
+        <button
+          onClick={onInvite}
+          className="pressable"
+          style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "7px 11px", borderRadius: 9, border: "none", background: colors.gold, color: colors.bg0, fontFamily: font.ui, fontWeight: 700, fontSize: 12, cursor: "pointer" }}
+        >
+          <Send size={12} /> {t("inviteToRoom")}
+        </button>
+      )}
+    </div>
+  );
+}
+
 // Invite online friends into this room (accounts only; guests see nothing).
 function InviteFriends({ game }: { game: GameApi }) {
   const { t } = useT();
@@ -48,14 +82,17 @@ function InviteFriends({ game }: { game: GameApi }) {
   const [q, setQ] = useState("");
 
   useEffect(() => {
-    if (account) game.refreshFriends();
+    if (!account) return;
+    game.refreshFriends();
+    game.refreshCoplayers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [!!account]);
 
   if (!account) return null;
   const inRoom = new Set(room.players.map((p) => p.user_id).filter(Boolean));
   const candidates = game.state.friends.filter((f) => f.status === "accepted" && !inRoom.has(f.id));
-  if (candidates.length === 0) return null;
+  const oud = game.state.coplayers.filter((c) => !inRoom.has(c.id));
+  if (candidates.length === 0 && oud.length === 0) return null;
   // Search only earns its place once there are more than three to scroll through.
   const searchable = candidates.length > 3;
   const shown = q.trim() ? candidates.filter((f) => f.name.toLowerCase().includes(q.trim().toLowerCase())) : candidates;
@@ -64,7 +101,7 @@ function InviteFriends({ game }: { game: GameApi }) {
     <Card>
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
         <span style={{ flex: 1, fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint, display: "flex", alignItems: "center", gap: 6 }}>
-          <UserPlus size={13} /> {t("inviteFriends")}
+          <UserPlus size={13} /> {candidates.length ? t("inviteFriends") : t("invitePeople")}
         </span>
         {searchable && (
           <div style={{ display: "flex", alignItems: "center", gap: 6, flex: "0 1 160px", background: withAlpha("#000000", 0.25), border: `1px solid ${colors.panelBorder}`, borderRadius: 999, padding: "5px 10px" }}>
@@ -84,28 +121,35 @@ function InviteFriends({ game }: { game: GameApi }) {
           <span style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint, padding: "4px 0" }}>{t("searchNoMatch")}</span>
         )}
         {shown.map((f) => (
-          <div key={f.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ position: "relative" }}>
-              <Avatar name={f.name} color={f.color} size={32} userId={f.id} hasAvatar={f.has_avatar} avatarVer={f.avatar_ver} />
-              <span style={{ position: "absolute", bottom: -2, right: -2, width: 9, height: 9, borderRadius: "50%", background: f.online ? colors.green : colors.faint, border: `2px solid ${colors.bg1}` }} />
-            </div>
-            <span style={{ flex: 1, fontFamily: font.ui, fontWeight: 600, fontSize: 14, color: colors.ink, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
-            {sent[f.id] ? (
-              <span style={{ fontFamily: font.ui, fontSize: 12, color: colors.green }}>{t("inviteSentShort")}</span>
-            ) : (
-              <button
-                onClick={() => {
-                  game.inviteSend(f.id, "invite");
-                  setSent((s) => ({ ...s, [f.id]: true }));
-                }}
-                style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "7px 11px", borderRadius: 9, border: "none", background: colors.gold, color: colors.bg0, fontFamily: font.ui, fontWeight: 700, fontSize: 12, cursor: "pointer" }}
-              >
-                <Send size={12} /> {t("inviteToRoom")}
-              </button>
-            )}
-          </div>
+          <Rij key={f.id} u={f} sent={!!sent[f.id]} onInvite={() => { game.inviteSend(f.id, "invite"); setSent((s) => ({ ...s, [f.id]: true })); }} />
         ))}
       </div>
+
+      {/* Oud-medespelers. Speel je een leuk potje met iemand die je niet als
+          vriend hebt, dan is die daarna onvindbaar: je zou zijn naam moeten
+          onthouden, hem opzoeken, een verzoek sturen en wachten tot hij
+          accepteert. Hier staat hij gewoon. */}
+      {oud.length > 0 && (
+        <>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "14px 0 10px" }}>
+            <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint, display: "flex", alignItems: "center", gap: 6 }}>
+              <History size={13} /> {t("invitePlayedBefore")}
+            </span>
+            <span style={{ flex: 1, height: 1, background: colors.hairline }} />
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: oud.length > 3 ? 150 : undefined, overflowY: oud.length > 3 ? "auto" : undefined, paddingRight: oud.length > 3 ? 4 : 0 }}>
+            {oud.map((c) => (
+              <Rij
+                key={c.id}
+                u={c}
+                sent={!!sent[c.id]}
+                bij={c.samen > 1 ? t("invitePlayedN", { n: c.samen }) : undefined}
+                onInvite={() => { game.inviteSend(c.id, "invite"); setSent((s) => ({ ...s, [c.id]: true })); }}
+              />
+            ))}
+          </div>
+        </>
+      )}
     </Card>
   );
 }

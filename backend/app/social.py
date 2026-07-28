@@ -247,6 +247,7 @@ class AccountManager:
             "dm_thread": self.dm_thread,
             "dm_threads": self.dm_threads,
             "friends_list": self.friends_list,
+            "coplayers_list": self.coplayers_list,
             "friend_request": self.friend_request,
             "friend_respond": self.friend_respond,
             "friend_remove": self.friend_remove,
@@ -547,6 +548,17 @@ class AccountManager:
         await self._send(ws, {
             "type": "friends",
             "friends": [{**self._public(f), "status": f["status"], "requested_by": f["requested_by"]} for f in friends],
+        })
+
+    async def coplayers_list(self, ws: Any, data: dict) -> None:
+        """Mensen met wie je onlangs speelde en die nog geen vriend zijn."""
+        uid = self.user_of(ws)
+        if not uid:
+            return
+        rijen = self.db.coplayers_of(uid)
+        await self._send(ws, {
+            "type": "coplayers",
+            "users": [{**self._public(r), "samen": r["samen"], "laatst": r["laatst"]} for r in rijen],
         })
 
     async def friend_request(self, ws: Any, data: dict) -> None:

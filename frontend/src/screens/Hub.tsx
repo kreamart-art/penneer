@@ -80,6 +80,11 @@ export function Hub({ game, section, onBack, onShowShop, onOpenInbox, onChalleng
         ringColor: RANK_RING[lvl.rank] ?? null,
         rankTitle: t(`rank_${lvl.rank}`),
         levelText: t("profileCardLevel", { n: lvl.level }),
+        level: lvl.level,
+        shield: account.shield || "paars",
+        xpNow: Math.max(0, lvl.xp - lvl.level_start),
+        xpSpan: Math.max(1, lvl.next_level - lvl.level_start),
+        xpLabel: `${Math.max(0, lvl.xp - lvl.level_start)} / ${Math.max(1, lvl.next_level - lvl.level_start)} XP`,
         stats: [
           [t("statGames"), String(account.stats.games)],
           [t("statWins"), String(account.stats.wins)],
