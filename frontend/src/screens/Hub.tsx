@@ -4,7 +4,7 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import { CloseIcon } from "../components/CloseIcon";
 import { ArrowLeft, Award, BookOpen, Camera, Check, ChevronDown, CircleDot, Copy, Crown, Flame, Gem, Lock, LogOut, Medal, MessageCircle, MoreVertical, Pencil, Percent, Plus, Rocket, Search, Send, Settings as SettingsIcon, Share2, Shield, ShoppingCart, Smile, Sparkles, Star, Swords, Target, Trash2, Trophy, UserPlus, Users, X, Zap, ZoomIn, ZoomOut } from "lucide-react";
 import { Avatar, RANK_RING } from "../components/Avatar";
-import { GoudLijn, Plek } from "../components/ProfileShowcase";
+import { Plek } from "../components/ProfileShowcase";
 import { GOUD, Paneel, PlekWapen, Prestatie, SectieKop, SierKop, StatKaart } from "../components/ProfileHero";
 import { isTester } from "../util/testers";
 import { AvatarZoom } from "../components/AvatarZoom";
@@ -1061,9 +1061,12 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
           potloodje ernaast klapt het formulier pas open. De avatar zelf blijft
           de ingang naar het foto-menu. */}
       <div style={{ position: "relative", paddingTop: 14 }}>
-        <Paneel padding="34px 16px 16px">
-          {/* portret met level-schild */}
-          <div style={{ display: "flex", justifyContent: "center" }}>
+        <Paneel>
+          {/* Een breed vlak vraagt om een brede indeling: het portret links, en
+              rechts alles wat je over jezelf leest. Onder elkaar zou het niet
+              passen zonder de art uit te rekken. */}
+          <div style={{ display: "flex", alignItems: "center", gap: 14, height: "100%" }}>
+          <div style={{ display: "flex", justifyContent: "center", flexShrink: 0, paddingLeft: 8, paddingBottom: 12 }}>
             <button
               onClick={() => { sound.uiTap(); setAvatarMenuOpen(true); }}
               disabled={busy}
@@ -1071,43 +1074,21 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
               className="pressable"
               style={{ position: "relative", background: "transparent", border: "none", padding: 0, cursor: "pointer" }}
             >
-              {/* De lauwerkrans: twee gebogen takjes links en rechts van het
-                  portret. Een gesloten ring zou met de rangring om de avatar
-                  vechten (twee ringen om hetzelfde ding zijn niet te
-                  onderscheiden), dus het blijft bij de twee zijkanten. */}
-              <span aria-hidden style={{ position: "absolute", inset: -24, display: "grid", placeItems: "center", pointerEvents: "none" }}>
-                <svg width={132} height={104} viewBox="0 0 132 104" fill="none">
-                  <defs>
-                    <linearGradient id="lauwer" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={GOUD[3]} />
-                      <stop offset="55%" stopColor={GOUD[2]} />
-                      <stop offset="100%" stopColor={GOUD[0]} />
-                    </linearGradient>
-                  </defs>
-                  {/* De takken staan ver genoeg naar buiten om NIET onder het
-                      portret te verdwijnen: het portret is 84 breed en ligt in
-                      het midden, dus alles binnen x 24..108 wordt bedekt. */}
-                  {[0, 1].map((kant) => (
-                    <g key={kant} transform={kant ? "translate(132,0) scale(-1,1)" : undefined}>
-                      <path d="M17 20 C6 38 7 66 20 84" stroke="url(#lauwer)" strokeWidth={2.4} strokeLinecap="round" fill="none" />
-                      {[26, 40, 54, 68].map((y, i) => (
-                        <ellipse key={y} cx={9 - i * 0.4} cy={y} rx={5.4} ry={3} transform={`rotate(${-40 + i * 13} ${9 - i * 0.4} ${y})`} fill="url(#lauwer)" opacity={0.92} />
-                      ))}
-                    </g>
-                  ))}
-                </svg>
-              </span>
-              <Avatar name={account.name} color={account.color} size={84} userId={account.id} hasAvatar={account.has_avatar} avatarVer={account.avatar_ver} frame={account.avatar_frame} glow />
+              {/* Geen lauwerkrans meer. Het portret draagt al een rangring en er
+                  hangt al een schild onder; met de sierlijst van de sectie
+                  eromheen worden dat vier ringen om hetzelfde ding, en dan
+                  onderscheid je er geen enkele meer. */}
+              <Avatar name={account.name} color={account.color} size={72} userId={account.id} hasAvatar={account.has_avatar} avatarVer={account.avatar_ver} frame={account.avatar_frame} glow />
               {/* Het level hangt ONDER het portret als schild. Daar valt het op
                   zonder de foto te bedekken, en een schild leest als rang. */}
               <span
                 style={{
                   position: "absolute",
                   left: "50%",
-                  bottom: -21,
+                  bottom: -17,
                   transform: "translateX(-50%)",
-                  width: 40,
-                  height: 42,
+                  width: 34,
+                  height: 36,
                   display: "grid",
                   placeItems: "center",
                   clipPath: "polygon(0% 0%, 100% 0%, 100% 70%, 50% 100%, 0% 70%)",
@@ -1125,9 +1106,9 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
                     backgroundImage: "radial-gradient(80% 60% at 50% 12%, rgba(255,243,181,.22), transparent 66%), linear-gradient(180deg, #4A2A78 0%, #22103C 100%)",
                     fontFamily: font.display,
                     fontWeight: 800,
-                    fontSize: 16,
+                    fontSize: 14,
                     color: GOUD[3],
-                    paddingBottom: 5,
+                    paddingBottom: 4,
                   }}
                 >
                   {account.level.level}
@@ -1136,8 +1117,10 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
             </button>
           </div>
 
+          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 5 }}>
+
           {/* naam + potlood */}
-          <div style={{ marginTop: 22, display: "flex", alignItems: "center", justifyContent: "center", gap: 7 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
             <span style={{ fontFamily: font.ui, fontWeight: 600, fontSize: 14, color: colors.sub }}>{account.name}</span>
             <button
               onClick={() => { sound.uiTap(); setEditOpen((v) => !v); }}
@@ -1165,11 +1148,9 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
               krijgt de ruimte en het goud. */}
           <div
             style={{
-              marginTop: 6,
-              textAlign: "center",
               fontFamily: font.display,
               fontWeight: 800,
-              fontSize: "clamp(23px, 7.2vw, 30px)",
+              fontSize: "clamp(18px, 5.6vw, 24px)",
               lineHeight: 1.05,
               letterSpacing: 0.5,
               textTransform: "uppercase",
@@ -1184,7 +1165,7 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
 
           {/* De pil eronder: je gekozen titel als je er een hebt, anders hoe ver
               je medaillekast is. Iets dat over JOU gaat en niet over het spel. */}
-          <div style={{ marginTop: 9, display: "flex", justifyContent: "center" }}>
+          <div style={{ display: "flex" }}>
             <span
               style={{
                 display: "inline-flex",
@@ -1218,11 +1199,10 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
             </span>
           </div>
 
-          {/* scheiding, dan de voortgang */}
-          <div style={{ margin: "14px 0 12px" }}>
-            <GoudLijn />
-          </div>
+          {/* de voortgang sluit de kolom af */}
           <XpRij level={account.level} />
+          </div>
+          </div>
         </Paneel>
 
       </div>

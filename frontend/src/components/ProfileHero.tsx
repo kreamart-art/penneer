@@ -18,20 +18,27 @@ export const GOUD = ["#4A2E04", "#B07C17", "#FFC23D", "#FFEBB8"] as const;
 
 const goudVlak = `linear-gradient(160deg, ${GOUD[3]} 0%, ${GOUD[2]} 38%, ${GOUD[1]} 72%, ${GOUD[0]} 100%)`;
 
-/** Het paneel van de heldenkaart: de art uit de UI-map, ongeknipt.
+/** Het paneel van de heldenkaart: de art uit de UI-map, ongeknipt en onvervormd.
  *
- *  Het hele plaatje is de achtergrond en wordt op de doos gespannen. Dat houdt
- *  de art zoals ze getekend is, ruit en al. Een `border-image` zou de hoeken op
- *  maat houden, maar dan komt de ruit in het uitrekbare middenstuk van de
- *  bovenrand terecht en smeert hij uit tot een gouden streep; die kant is
- *  geprobeerd en zag er slechter uit dan een beetje meerekken. */
-export function Paneel({ children, style, padding = 14 }: { children: ReactNode; style?: CSSProperties; padding?: number | string }) {
+ *  De verhouding staat vast op die van het bestand (3835 op 2289). Daardoor
+ *  wordt er niets uitgerekt en blijven de hoekstenen en de ruit precies zoals ze
+ *  getekend zijn. De prijs is dat de INHOUD zich naar het paneel moet voegen en
+ *  niet andersom: het is een breed vlak, dus de indeling is breed. Vandaar het
+ *  portret links en alles wat je over jezelf leest rechts.
+ *
+ *  De randen in procenten, gemeten aan de art zelf: de lijst is 2% van de
+ *  breedte, 6,3% van de hoogte bovenaan (daar steekt de ruit doorheen) en 4,2%
+ *  onderaan. Er zit wat lucht bij opgeteld zodat tekst niet tegen goud plakt. */
+export const PANEEL_VERHOUDING = 3835 / 2289;
+
+export function Paneel({ children, style }: { children: ReactNode; style?: CSSProperties }) {
   return (
     <div
       style={{
         position: "relative",
         boxSizing: "border-box",
-        padding,
+        aspectRatio: `${3835} / ${2289}`,
+        padding: "8.6% 5% 6.6%",
         backgroundImage: "url(/ui/profile-frame.webp)",
         backgroundSize: "100% 100%",
         backgroundRepeat: "no-repeat",
