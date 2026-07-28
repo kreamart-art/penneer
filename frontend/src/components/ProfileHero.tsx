@@ -18,84 +18,38 @@ export const GOUD = ["#4A2E04", "#B07C17", "#FFC23D", "#FFEBB8"] as const;
 
 const goudVlak = `linear-gradient(160deg, ${GOUD[3]} 0%, ${GOUD[2]} 38%, ${GOUD[1]} 72%, ${GOUD[0]} 100%)`;
 
-/** Vier gouden haakjes in de hoeken van een paneel. Ze maken van een rechthoek
- *  een gesmeed ding, en anders dan een doorlopende rand trekken ze de aandacht
- *  naar de hoeken in plaats van naar de omtrek. */
-function Hoeken({ maat = 14, dik = 2.5 }: { maat?: number; dik?: number }) {
-  const arm = (s: CSSProperties): CSSProperties => ({
-    position: "absolute",
-    background: goudVlak,
-    borderRadius: 1,
-    ...s,
-  });
-  const hoek = (v: CSSProperties, h1: CSSProperties, h2: CSSProperties) => (
-    <span aria-hidden style={{ position: "absolute", ...v }}>
-      <span style={arm(h1)} />
-      <span style={arm(h2)} />
-    </span>
-  );
-  return (
-    <>
-      {hoek({ left: 5, top: 5 }, { width: maat, height: dik }, { width: dik, height: maat })}
-      {hoek({ right: 5, top: 5 }, { width: maat, height: dik, right: 0 }, { width: dik, height: maat, right: 0 })}
-      {hoek({ left: 5, bottom: 5 }, { width: maat, height: dik, bottom: 0 }, { width: dik, height: maat, bottom: 0 })}
-      {hoek({ right: 5, bottom: 5 }, { width: maat, height: dik, right: 0, bottom: 0 }, { width: dik, height: maat, right: 0, bottom: 0 })}
-    </>
-  );
-}
-
-/** Een paneel dat als voorwerp leest. Zie de toelichting bovenaan dit bestand. */
-export function Paneel({
-  children,
-  style,
-  padding = 14,
-  hoeken = true,
-  accent = GOUD[2],
-}: {
-  children: ReactNode;
-  style?: CSSProperties;
-  padding?: number | string;
-  hoeken?: boolean;
-  accent?: string;
-}) {
+/** Het paneel van de heldenkaart: de echte lijst uit de UI-map.
+ *
+ *  Net als bij de statistiekkaartjes ligt de art er als `border-image` op, met
+ *  een snede van 52 van de 767 pixels. Uitrekken als achtergrond zou niet
+ *  kunnen: de art is breed getekend (1,7 op 1) en de kaart is bijna vierkant,
+ *  dus dan worden de hoekstenen plat.
+ *
+ *  De ruit boven in het midden is UIT de lijst gehaald en ligt er als eigen
+ *  laagje op. In een `border-image` zit hij namelijk in het middenstuk van de
+ *  bovenrand, en dat middenstuk wordt over de hele breedte uitgerekt: dan smeer
+ *  je één ruit uit tot een gouden streep. */
+export function Paneel({ children, style, padding = 14 }: { children: ReactNode; style?: CSSProperties; padding?: number | string }) {
   return (
     <div
       style={{
         position: "relative",
-        borderRadius: 18,
-        padding: 1.5,
-        background: `linear-gradient(168deg, ${withAlpha(accent, 0.8)} 0%, ${withAlpha(accent, 0.25)} 32%, rgba(0,0,0,.5) 70%, ${withAlpha(accent, 0.38)} 100%)`,
-        boxShadow: "0 14px 30px rgba(0,0,0,.45), 0 3px 8px rgba(0,0,0,.3)",
+        boxSizing: "border-box",
+        padding,
+        borderStyle: "solid",
+        borderWidth: 15,
+        borderImage: "url(/ui/profile-frame.webp) 52 fill stretch",
+        filter: "drop-shadow(0 12px 26px rgba(0,0,0,.5))",
         ...style,
       }}
     >
-      <div
-        style={{
-          position: "relative",
-          borderRadius: 16.5,
-          padding,
-          overflow: "hidden",
-          backgroundImage: [
-            "radial-gradient(120% 90% at 50% 0%, rgba(255,243,181,.08), transparent 62%)",
-            "radial-gradient(130% 110% at 50% 44%, transparent 50%, rgba(6,3,18,.55) 100%)",
-            "linear-gradient(180deg, #2E1F52 0%, #241641 46%, #170D2E 100%)",
-          ].join(", "),
-        }}
-      >
-        <span
-          aria-hidden
-          style={{
-            position: "absolute",
-            left: "14%",
-            right: "14%",
-            top: 0,
-            height: 1.5,
-            background: `linear-gradient(90deg, transparent, ${withAlpha("#FFF3B5", 0.7)}, transparent)`,
-          }}
-        />
-        {hoeken && <Hoeken />}
-        {children}
-      </div>
+      <img
+        src="/ui/profile-gem.webp"
+        alt=""
+        aria-hidden
+        style={{ position: "absolute", left: "50%", top: -7, transform: "translateX(-50%)", width: 76, pointerEvents: "none" }}
+      />
+      {children}
     </div>
   );
 }
@@ -183,8 +137,11 @@ export function StatKaart({ icoon, art, waarde, label }: { icoon: ReactNode; art
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        justifyContent: "center",
-        gap: 3,
+        // De inhoud hangt aan de BOVENkant en staat niet in het midden: het
+        // teken hoort vlak onder de lijst te zitten, met de lucht onderaan.
+        // Zwevend in het midden lijkt het kaartje half leeg.
+        justifyContent: "flex-start",
+        gap: 2,
         boxSizing: "border-box",
         textAlign: "center",
         borderStyle: "solid",
@@ -194,9 +151,9 @@ export function StatKaart({ icoon, art, waarde, label }: { icoon: ReactNode; art
       }}
     >
       {art ? (
-        <img src={art} alt="" aria-hidden style={{ width: 19, height: 19, objectFit: "contain", flexShrink: 0 }} />
+        <img src={art} alt="" aria-hidden style={{ width: 29, height: 29, objectFit: "contain", flexShrink: 0 }} />
       ) : (
-        <span style={{ color: GOUD[2], height: 19, display: "grid", placeItems: "center", flexShrink: 0 }}>{icoon}</span>
+        <span style={{ color: GOUD[2], height: 29, display: "grid", placeItems: "center", flexShrink: 0 }}>{icoon}</span>
       )}
       {/* Het cijfer is wit en niet goud: het goud zit al in de lijst en in het
           teken, dus een derde gouden ding maakt het kaartje één brij. Wit is
@@ -204,9 +161,10 @@ export function StatKaart({ icoon, art, waarde, label }: { icoon: ReactNode; art
           getal, precies waar het hoort. */}
       <div
         style={{
+          marginTop: 1,
           fontFamily: font.display,
           fontWeight: 800,
-          fontSize: 22,
+          fontSize: 21,
           lineHeight: 1,
           color: "#FFFFFF",
           textShadow: "0 2px 4px rgba(0,0,0,.55)",
@@ -214,7 +172,24 @@ export function StatKaart({ icoon, art, waarde, label }: { icoon: ReactNode; art
       >
         {waarde}
       </div>
-      <div style={{ fontFamily: font.ui, fontWeight: 500, fontSize: 9.5, lineHeight: 1.15, color: withAlpha("#FFFFFF", 0.92) }}>{label}</div>
+      {/* Het label blijft op één regel. Wikkelt er eentje om, dan is dat kaartje
+          hoger van binnen dan de rest en moet het teken overal kleiner om die
+          ene uitzondering; liever knijpt de letter dan het teken. */}
+      <div
+        style={{
+          maxWidth: "100%",
+          fontFamily: font.ui,
+          fontWeight: 500,
+          fontSize: 9,
+          lineHeight: 1.15,
+          color: withAlpha("#FFFFFF", 0.92),
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+        }}
+      >
+        {label}
+      </div>
     </div>
   );
 }

@@ -1060,8 +1060,8 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
           Bewerken zit niet meer in de weg: de naam staat als naam en het
           potloodje ernaast klapt het formulier pas open. De avatar zelf blijft
           de ingang naar het foto-menu. */}
-      <div style={{ position: "relative", paddingTop: 20 }}>
-        <Paneel padding="46px 15px 15px">
+      <div style={{ position: "relative", paddingTop: 14 }}>
+        <Paneel padding="34px 16px 16px">
           {/* portret met level-schild */}
           <div style={{ display: "flex", justifyContent: "center" }}>
             <button
@@ -1225,28 +1225,6 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
           <XpRij level={account.level} />
         </Paneel>
 
-        {/* De kroon steekt boven het paneel uit. Iets dat over de rand heen
-            komt maakt van een rechthoek een voorwerp; blijft hij binnen de
-            lijn, dan is het gewoon een plaatje op een kaart. */}
-        <span
-          aria-hidden
-          style={{ position: "absolute", left: "50%", top: -4, transform: "translateX(-50%)", filter: `drop-shadow(0 3px 7px rgba(0,0,0,.55))`, pointerEvents: "none" }}
-        >
-          <svg width={62} height={42} viewBox="0 0 62 42" fill="none">
-            <defs>
-              <linearGradient id="kroon" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={GOUD[3]} />
-                <stop offset="45%" stopColor={GOUD[2]} />
-                <stop offset="100%" stopColor={GOUD[0]} />
-              </linearGradient>
-            </defs>
-            <path d="M5 34 L2 9 L17 20 L31 3 L45 20 L60 9 L57 34 Z" fill="url(#kroon)" stroke={GOUD[0]} strokeWidth={1.2} strokeLinejoin="round" />
-            <rect x="5" y="33" width="52" height="6" rx="2" fill="url(#kroon)" stroke={GOUD[0]} strokeWidth={1} />
-            {[[2, 9], [31, 3], [60, 9]].map(([cx, cy]) => (
-              <circle key={cx} cx={cx} cy={cy} r={3} fill={GOUD[3]} stroke={GOUD[0]} strokeWidth={0.9} />
-            ))}
-          </svg>
-        </span>
       </div>
 
       {/* Het formulier is er alleen als je erom vraagt. Zo blijft de kaart een
