@@ -661,6 +661,24 @@ class Database:
             self._conn.execute("ALTER TABLE game_players ADD COLUMN coins INTEGER NOT NULL DEFAULT 0")
             self._conn.commit()
 
+        # Bestaande potjes alsnog hun XP geven. Die is exact terug te rekenen,
+        # want de formule leest alleen dingen die in de rij zelf staan: XP is
+        # punten plus 40 als je won plus 15 voor het spelen. Elk potje levert dus
+        # minstens 15 op, en xp = 0 betekent daarom "nooit ingevuld" en niet
+        # "niets verdiend". Vandaar dat dit geen tweede keer over dezelfde rij
+        # loopt.
+        #
+        # De MUNTEN blijven leeg. Die volgen uit de levels die je met een potje
+        # haalde, en daar zit ook missie-XP in verwerkt; wanneer die precies
+        # binnenkwam is niet meer te achterhalen. Een gokje zou op de verkeerde
+        # rij landen, en een verkeerd getal is erger dan geen getal.
+        gevuld = self._conn.execute(
+            "UPDATE game_players SET xp = score + 40 * is_winner + 15 WHERE xp = 0"
+        ).rowcount
+        if gevuld:
+            self._conn.commit()
+            print(f"historie: {gevuld} potjes met terugwerkende kracht hun XP gegeven")
+
     def _exec(self, sql: str, args: tuple = ()) -> sqlite3.Cursor:
         cur = self._conn.execute(sql, args)
         self._conn.commit()

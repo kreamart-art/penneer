@@ -8,6 +8,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Home, ShoppingCart, Trophy, UserRound, Users } from "lucide-react";
 import { Avatar } from "./Avatar";
+import { ShopIcon } from "./NavIcons";
 import type { GameApi } from "../net/socket";
 import { NeonLine } from "./NeonLine";
 import { useT } from "../i18n/i18n";
@@ -87,14 +88,18 @@ export function BottomNav({
     // vak goed zonder de rand te raken; op 0,4 stond het er verloren in. Tot de
     // plaat is gemeten tekenen we nog niets, anders springen ze een frame later.
     const s = Math.round(plateH * 0.5);
-    // De skin krijgt de art uit de UI-map. Het zijn parelwitte pictogrammen met
-    // gouden accenten; de actieve krijgt een gouden gloed en de rest staat
-    // gedempt. Kleur kan niet, want het is art en geen lijntekening, dus het
-    // verschil zit in helderheid en gloed.
+    // De skin krijgt de art uit de UI-map, omgezet naar het goud van de app: de
+    // vorm en het licht van de tekening blijven staan, alleen het materiaal is
+    // anders. Parelwit stond er los bij op een plaat die zelf al goud omrand is.
+    //
+    // Voor de winkel zit er geen wagentje in het vel, dus dat is de getekende
+    // versie. Die staat in dezelfde gouden reeks, en daardoor valt het verschil
+    // tussen tekening en art niet op: de KLEUR is wat ze bij elkaar houdt.
+    const maat = Math.round(s * 1.04);
     const art: Partial<Record<NavKey, (on: boolean) => React.ReactNode>> = {
-      shop: (on) => <NavArt src="/ui/nav/shop.webp" on={on} size={Math.round(s * 1.24)} />,
-      leaderboard: (on) => <NavArt src="/ui/nav/trophy.webp" on={on} size={Math.round(s * 1.24)} />,
-      friends: (on) => <NavArt src="/ui/nav/friends.webp" on={on} size={Math.round(s * 1.24)} />,
+      shop: (on) => <NavGloed on={on} size={maat}><ShopIcon on size={maat} /></NavGloed>,
+      leaderboard: (on) => <NavArt src="/ui/nav/trophy.webp" on={on} size={maat} />,
+      friends: (on) => <NavArt src="/ui/nav/friends.webp" on={on} size={maat} />,
     };
     return (
       <nav
@@ -233,36 +238,48 @@ export function BottomNav({
   );
 }
 
-/** Een pictogram uit de UI-map in de onderbalk.
+/** De gloed onder een gekozen pictogram in de onderbalk.
  *
- *  De art is parelwit met gouden accenten en die kleur staat vast, dus de
- *  actieve staat is geen kleurwissel maar LICHT: iets voller, iets warmer, met
- *  een gouden gloed eronder. De gloed is een tweede kopie erachter en geen
- *  drop-shadow, want die laat iOS de laag apart rasteren en dan zie je zijn
- *  rechthoek over het pictogram heen. */
-function NavArt({ src, on, size }: { src: string; on: boolean; size: number }) {
+ *  Alles is goud, dus de actieve staat is geen kleurwissel maar LICHT: de rest
+ *  zakt weg in de schaduw en de gekozen licht op. Hetzelfde materiaal, andere
+ *  belichting. */
+function NavGloed({ on, size, children }: { on: boolean; size: number; children: React.ReactNode }) {
   return (
-    <span style={{ position: "relative", width: size, height: size, display: "block" }}>
+    <span
+      style={{
+        position: "relative",
+        width: size,
+        height: size,
+        display: "grid",
+        placeItems: "center",
+        // Een halo achter het pictogram in plaats van een drop-shadow: die laat
+        // iOS de laag apart rasteren en dan zie je zijn rechthoek eroverheen.
+        filter: on ? "none" : "brightness(.62) saturate(.72)",
+      }}
+    >
       {on && (
-        <img
-          src={src}
-          alt=""
+        <span
           aria-hidden
-          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", filter: "blur(5px) brightness(1.5) sepia(1) saturate(4) hue-rotate(-14deg)", opacity: 0.75 }}
+          style={{
+            position: "absolute",
+            inset: "12%",
+            borderRadius: "50%",
+            background: `radial-gradient(closest-side, ${withAlpha(colors.gold, 0.5)} 0%, ${withAlpha(colors.gold, 0.18)} 55%, transparent 100%)`,
+            filter: "blur(4px)",
+          }}
         />
       )}
-      <img
-        src={src}
-        alt=""
-        style={{
-          position: "relative",
-          width: "100%",
-          height: "100%",
-          display: "block",
-          filter: on ? "brightness(1.12) saturate(1.15)" : "brightness(.68) saturate(.7)",
-        }}
-      />
+      <span style={{ position: "relative", display: "grid", placeItems: "center" }}>{children}</span>
     </span>
+  );
+}
+
+/** Een pictogram uit de UI-map, in het goud van de app gezet. */
+function NavArt({ src, on, size }: { src: string; on: boolean; size: number }) {
+  return (
+    <NavGloed on={on} size={size}>
+      <img src={src} alt="" style={{ width: size, height: size, display: "block" }} />
+    </NavGloed>
   );
 }
 
