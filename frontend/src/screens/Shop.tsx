@@ -16,6 +16,7 @@ import { EMOTE_PACKS_FOR_SALE, EMOTE_SRC } from "../components/emotes";
 import { reelClip, reelEdge, reelFace, reelTheme } from "../theme/reelSkins";
 import { colors, font, withAlpha } from "../theme/tokens";
 import { useTileSkin } from "../theme/tileSkin";
+import { PilKeuze } from "./Hub";
 import { CoinPlate } from "../components/CoinPlate";
 
 const AVATAR_ART_VERSION = 9;
@@ -163,6 +164,13 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
   const [buying, setBuying] = useState<string | null>(null);
   const shopResult = game.state.shopResult;
   const prices = status?.coin_prices ?? {};
+  // Welk vak van de winkel je open hebt. De AI staat erbuiten, want die staat
+  // altijd bovenaan.
+  const [vak, setVak] = useState<"coins" | "cats" | "buzzers" | "reels" | "emotes" | "avatars">("coins");
+  // Wie de AI al heeft ziet hem niet meer in de winkel. Op het testaccount
+  // blijft hij staan, want daar wordt het uiterlijk gecontroleerd.
+  const testAccount = (account?.name ?? "").toLowerCase().startsWith("kream");
+  const toonAi = !aiActive || testAccount;
 
   useEffect(() => {
     let alive = true;
@@ -215,6 +223,15 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
   const buzzPrice = prices.bz01 ?? 8;
   const packPrice = prices.avpack1 ?? 40;
 
+  const tabs = [
+    { key: "coins" as const, label: t("shopTabCoins") },
+    { key: "buzzers" as const, label: t("shopTabBuzzers") },
+    { key: "reels" as const, label: t("shopTabReels") },
+    { key: "emotes" as const, label: t("shopTabEmotes") },
+    { key: "avatars" as const, label: t("shopTabAvatars") },
+    ...(catsForSale.length > 0 ? [{ key: "cats" as const, label: t("shopTabCats") }] : []),
+  ];
+
   return (
     <Screen
       top={
@@ -245,55 +262,147 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
           <Card><p style={{ margin: 0, textAlign: "center", fontFamily: font.ui, fontSize: 13.5, color: colors.faint, lineHeight: 1.5 }}>{t("shopNeedProfile")}</p></Card>
         )}
 
-        {/* ---- Coins kopen (PayPal bundles) ---- */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <div>
-            <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink }}>{t("shopCoinsHeader")}</div>
-            <div style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint }}>{t("shopCoinsLead")}</div>
-          </div>
-          {status && !status.enabled ? (
-            <Card><p style={{ margin: 0, textAlign: "center", fontFamily: font.ui, fontSize: 12.5, color: colors.faint, lineHeight: 1.5 }}>{t("shopPaypalSoon")}</p></Card>
-          ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
-              {(status?.bundles ?? []).map((b, i) => (
-                <div key={b.product} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "14px 10px", borderRadius: 16, background: withAlpha("#000000", 0.22), border: `1px solid ${i === 3 ? withAlpha(colors.gold, 0.55) : colors.panelBorder}`, position: "relative" }}>
-                  {i === 3 && <span style={{ position: "absolute", top: 8, right: 8, fontFamily: font.ui, fontSize: 9.5, fontWeight: 800, letterSpacing: 0.4, textTransform: "uppercase", color: colors.gold }}>{t("shopBestValue")}</span>}
-                  <img src="/coins-stack.webp" alt="" style={{ width: 66, height: 66, objectFit: "contain", display: "block" }} />
-                  <Coins n={b.coins} size={19} />
-                  <Button variant="gold" full disabled={!account || buying !== null} onClick={() => startPaypal(b.product)}>
-                    {buying === b.product ? t("shopOpeningPaypal") : money(b.price, status?.currency ?? "EUR")}
-                  </Button>
-                </div>
+        {/* De AI-scheidsrechter staat BOVEN de tabjes. Hij is het enige in de
+            winkel dat het spel zelf verandert, de rest is uiterlijk. En wie hem
+            al heeft ziet hem niet meer: iets wat je bezit hoort niet in een
+            winkel te blijven staan. */}
+        {toonAi && (
+          <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ width: 52, height: 52, borderRadius: 16, display: "grid", placeItems: "center", background: withAlpha(colors.gold, 0.14), border: `1px solid ${withAlpha(colors.gold, 0.45)}`, color: colors.gold }}>
+                <Bot size={26} />
+              </span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>{t("shopAiTitle")}</div>
+                <div style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint }}>{t("shopAiTag")}</div>
+              </div>
+              {status?.enabled && !aiActive && (
+                <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 18, color: colors.gold }}>{money(status.ai_price ?? status.price, status.currency)}</div>
+              )}
+            </div>
+            <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13.5, color: colors.sub, lineHeight: 1.55 }}>{t("shopAiBody")}</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {[t("shopAiPoint1"), t("shopAiPoint2"), t("shopAiPoint3")].map((p) => (
+                <span key={p} style={{ display: "inline-flex", alignItems: "center", gap: 8, fontFamily: font.ui, fontSize: 13, color: colors.ink }}>
+                  <Check size={14} color={colors.green} /> {p}
+                </span>
               ))}
             </div>
-          )}
-        </div>
+            {aiActive ? (
+              <div style={{ textAlign: "center", padding: "10px 0 2px", fontFamily: font.ui, fontSize: 13.5, color: colors.green }}>{t("shopAiActive")}</div>
+            ) : !account ? null : status?.enabled ? (
+              <Button variant="gold" full disabled={buying !== null} onClick={() => startPaypal("ai")}>
+                {buying === "ai" ? t("shopOpeningPaypal") : `${t("shopBuyPaypal")} · ${money(status.ai_price ?? status.price, status.currency)}`}
+              </Button>
+            ) : (
+              <div style={{ textAlign: "center", padding: "6px 0 2px", fontFamily: font.ui, fontSize: 12.5, color: colors.faint, lineHeight: 1.5 }}>{t("shopPaypalSoon")}</div>
+            )}
+          </Card>
+        )}
 
-        {/* ---- Eigen categorieen (coins, per stuk) ----
-             Ze komen van de server (de admin maakt ze), niet uit een lijst in de
-             code. Wie er een bezit kan hem als HOST in zijn lobby aanzetten, en
-             dan speelt iedereen in die room mee, ook wie hem niet gekocht heeft. */}
-        {catsForSale.length > 0 && (
+        {/* De winkel was zes secties onder elkaar en dus een rol van een halve
+            meter. Nu kies je er een met de pil en is de pagina zo lang als die
+            ene sectie. */}
+        <PilKeuze schuif actief={vak} onKies={setVak} opties={tabs} />
+
+        {vak === "coins" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <div>
-              <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink }}>{t("shopCatsHeader")}</div>
-              <div style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint }}>{t("shopCatsLead")}</div>
+              <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink }}>{t("shopCoinsHeader")}</div>
+              <div style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint }}>{t("shopCoinsLead")}</div>
+            </div>
+            {status && !status.enabled ? (
+              <Card><p style={{ margin: 0, textAlign: "center", fontFamily: font.ui, fontSize: 12.5, color: colors.faint, lineHeight: 1.5 }}>{t("shopPaypalSoon")}</p></Card>
+            ) : (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
+                {(status?.bundles ?? []).map((b, i) => (
+                  <div key={b.product} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "14px 10px", borderRadius: 16, background: withAlpha("#000000", 0.22), border: `1px solid ${i === 3 ? withAlpha(colors.gold, 0.55) : colors.panelBorder}`, position: "relative" }}>
+                    {i === 3 && <span style={{ position: "absolute", top: 8, right: 8, fontFamily: font.ui, fontSize: 9.5, fontWeight: 800, letterSpacing: 0.4, textTransform: "uppercase", color: colors.gold }}>{t("shopBestValue")}</span>}
+                    <img src="/coins-stack.webp" alt="" style={{ width: 66, height: 66, objectFit: "contain", display: "block" }} />
+                    <Coins n={b.coins} size={19} />
+                    <Button variant="gold" full disabled={!account || buying !== null} onClick={() => startPaypal(b.product)}>
+                      {buying === b.product ? t("shopOpeningPaypal") : money(b.price, status?.currency ?? "EUR")}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {vak === "cats" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div>
+                <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink }}>{t("shopCatsHeader")}</div>
+                <div style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint }}>{t("shopCatsLead")}</div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+                {catsForSale.map((c) => (
+                  <CoinItem
+                    key={c.id}
+                    title={c.name}
+                    owned={c.owned || owned.has(`cat:${c.id}`)}
+                    price={c.price}
+                    coins={coins}
+                    onBuy={() => game.buyItemCoins(`cat:${c.id}`)}
+                  >
+                    <div style={{ display: "grid", placeItems: "center", width: "100%", height: "100%", gap: 3 }}>
+                      <ListChecks size={26} color={colors.gold} />
+                      <span style={{ fontFamily: font.ui, fontSize: 10, color: colors.faint }}>
+                        {c.checked ? t("catChecked") : t("catOpenList")}
+                      </span>
+                    </div>
+                  </CoinItem>
+                ))}
+              </div>
+            </div>
+        )}
+
+        {vak === "buzzers" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div>
+              <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink }}>{t("shopBuzzHeader")}</div>
+              <div style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint }}>{t("shopBuzzLead")}</div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
-              {catsForSale.map((c) => (
-                <CoinItem
-                  key={c.id}
-                  title={c.name}
-                  owned={c.owned || owned.has(`cat:${c.id}`)}
-                  price={c.price}
-                  coins={coins}
-                  onBuy={() => game.buyItemCoins(`cat:${c.id}`)}
-                >
-                  <div style={{ display: "grid", placeItems: "center", width: "100%", height: "100%", gap: 3 }}>
-                    <ListChecks size={26} color={colors.gold} />
-                    <span style={{ fontFamily: font.ui, fontSize: 10, color: colors.faint }}>
-                      {c.checked ? t("catChecked") : t("catOpenList")}
-                    </span>
+              {BUZZERS_FOR_SALE.map((bz) => (
+                <CoinItem key={bz.id} title={t(bz.name)} owned={owned.has(bz.id)} price={prices[bz.id] ?? buzzPrice} coins={coins} onBuy={() => game.buyItemCoins(bz.id)}>
+                  <img src={`/buzzers/${bz.id}.webp`} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
+                </CoinItem>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {vak === "reels" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div>
+              <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink }}>{t("shopReelsHeader")}</div>
+              <div style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint }}>{t("shopReelsLead")}</div>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+              {REELS_FOR_SALE.map((rs) => (
+                <CoinItem key={rs.id} title={t(rs.name)} owned={owned.has(rs.id)} price={prices[rs.id] ?? 100} coins={coins} onBuy={() => game.buyItemCoins(rs.id)}>
+                  <ReelSwatch id={rs.id} />
+                </CoinItem>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {vak === "emotes" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div>
+              <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink }}>{t("shopEmotesHeader")}</div>
+              <div style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint }}>{t("shopEmotesLead")}</div>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
+              {EMOTE_PACKS_FOR_SALE.map((pk) => (
+                <CoinItem key={pk.id} title={t(pk.name)} owned={owned.has(pk.id)} price={prices[pk.id] ?? 200} coins={coins} onBuy={() => game.buyItemCoins(pk.id)}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 2, width: "100%" }}>
+                    {pk.emotes.slice(0, 6).map((id) => (
+                      <img key={id} src={EMOTE_SRC(id)} alt="" loading="lazy" style={{ width: "100%", aspectRatio: "1 / 1", objectFit: "contain", display: "block" }} />
+                    ))}
                   </div>
                 </CoinItem>
               ))}
@@ -301,108 +410,27 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
           </div>
         )}
 
-        {/* ---- Draai-knoppen (coins, single) ---- */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <div>
-            <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink }}>{t("shopBuzzHeader")}</div>
-            <div style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint }}>{t("shopBuzzLead")}</div>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
-            {BUZZERS_FOR_SALE.map((bz) => (
-              <CoinItem key={bz.id} title={t(bz.name)} owned={owned.has(bz.id)} price={prices[bz.id] ?? buzzPrice} coins={coins} onBuy={() => game.buyItemCoins(bz.id)}>
-                <img src={`/buzzers/${bz.id}.webp`} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
-              </CoinItem>
-            ))}
-          </div>
-        </div>
-
-        {/* ---- Rol-skins (coins, single) ---- */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <div>
-            <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink }}>{t("shopReelsHeader")}</div>
-            <div style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint }}>{t("shopReelsLead")}</div>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
-            {REELS_FOR_SALE.map((rs) => (
-              <CoinItem key={rs.id} title={t(rs.name)} owned={owned.has(rs.id)} price={prices[rs.id] ?? 100} coins={coins} onBuy={() => game.buyItemCoins(rs.id)}>
-                <ReelSwatch id={rs.id} />
-              </CoinItem>
-            ))}
-          </div>
-        </div>
-
-        {/* ---- Chat-emotes (coins, per pack) ---- */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <div>
-            <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink }}>{t("shopEmotesHeader")}</div>
-            <div style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint }}>{t("shopEmotesLead")}</div>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
-            {EMOTE_PACKS_FOR_SALE.map((pk) => (
-              <CoinItem key={pk.id} title={t(pk.name)} owned={owned.has(pk.id)} price={prices[pk.id] ?? 200} coins={coins} onBuy={() => game.buyItemCoins(pk.id)}>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 2, width: "100%" }}>
-                  {pk.emotes.slice(0, 6).map((id) => (
-                    <img key={id} src={EMOTE_SRC(id)} alt="" loading="lazy" style={{ width: "100%", aspectRatio: "1 / 1", objectFit: "contain", display: "block" }} />
-                  ))}
-                </div>
-              </CoinItem>
-            ))}
-          </div>
-        </div>
-
-        {/* ---- Avatar-packs (coins) ---- */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <div>
-            <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink }}>{t("shopAvatarsHeader")}</div>
-            <div style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint }}>{t("shopAvatarsLead")}</div>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
-            {AVATAR_PACKS.map((pk) => (
-              <CoinItem key={pk.id} title={t(pk.name)} owned={owned.has(pk.id)} price={prices[pk.id] ?? packPrice} coins={coins} onBuy={() => game.buyItemCoins(pk.id)}>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 4, width: "100%" }}>
-                  {pk.preview.map((n) => (
-                    <div key={n} style={{ aspectRatio: "1 / 1", borderRadius: 8, overflow: "hidden", border: `1px solid ${colors.panelBorder}` }}>
-                      <img src={`/avatars/av${n}.jpg?v=${AVATAR_ART_VERSION}`} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-                    </div>
-                  ))}
-                </div>
-              </CoinItem>
-            ))}
-          </div>
-        </div>
-
-        {/* ---- AI referee (PayPal) ---- */}
-        <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <span style={{ width: 52, height: 52, borderRadius: 16, display: "grid", placeItems: "center", background: withAlpha(colors.gold, 0.14), border: `1px solid ${withAlpha(colors.gold, 0.45)}`, color: colors.gold }}>
-              <Bot size={26} />
-            </span>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>{t("shopAiTitle")}</div>
-              <div style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint }}>{t("shopAiTag")}</div>
+        {vak === "avatars" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div>
+              <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink }}>{t("shopAvatarsHeader")}</div>
+              <div style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint }}>{t("shopAvatarsLead")}</div>
             </div>
-            {status?.enabled && !aiActive && (
-              <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 18, color: colors.gold }}>{money(status.ai_price ?? status.price, status.currency)}</div>
-            )}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
+              {AVATAR_PACKS.map((pk) => (
+                <CoinItem key={pk.id} title={t(pk.name)} owned={owned.has(pk.id)} price={prices[pk.id] ?? packPrice} coins={coins} onBuy={() => game.buyItemCoins(pk.id)}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 4, width: "100%" }}>
+                    {pk.preview.map((n) => (
+                      <div key={n} style={{ aspectRatio: "1 / 1", borderRadius: 8, overflow: "hidden", border: `1px solid ${colors.panelBorder}` }}>
+                        <img src={`/avatars/av${n}.jpg?v=${AVATAR_ART_VERSION}`} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                      </div>
+                    ))}
+                  </div>
+                </CoinItem>
+              ))}
+            </div>
           </div>
-          <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13.5, color: colors.sub, lineHeight: 1.55 }}>{t("shopAiBody")}</p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {[t("shopAiPoint1"), t("shopAiPoint2"), t("shopAiPoint3")].map((p) => (
-              <span key={p} style={{ display: "inline-flex", alignItems: "center", gap: 8, fontFamily: font.ui, fontSize: 13, color: colors.ink }}>
-                <Check size={14} color={colors.green} /> {p}
-              </span>
-            ))}
-          </div>
-          {aiActive ? (
-            <div style={{ textAlign: "center", padding: "10px 0 2px", fontFamily: font.ui, fontSize: 13.5, color: colors.green }}>{t("shopAiActive")}</div>
-          ) : !account ? null : status?.enabled ? (
-            <Button variant="gold" full disabled={buying !== null} onClick={() => startPaypal("ai")}>
-              {buying === "ai" ? t("shopOpeningPaypal") : `${t("shopBuyPaypal")} · ${money(status.ai_price ?? status.price, status.currency)}`}
-            </Button>
-          ) : (
-            <div style={{ textAlign: "center", padding: "6px 0 2px", fontFamily: font.ui, fontSize: 12.5, color: colors.faint, lineHeight: 1.5 }}>{t("shopPaypalSoon")}</div>
-          )}
-        </Card>
+        )}
 
         {/* Redeem an AI code. */}
         {!!account && (

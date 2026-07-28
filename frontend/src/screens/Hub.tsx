@@ -3103,19 +3103,22 @@ export function PeriodeKnoppen<T extends string>({ opties, actief, onKies }: { o
 /** Twee keuzes in EEN pil met de neon-lijst, zoals de prestatieteller op het
  *  profiel. Twee losse knoppen naast elkaar lezen als twee dingen; in één pil
  *  lees je het als één schakelaar met twee standen. */
-export function PilKeuze<T extends string>({ opties, actief, onKies }: { opties: { key: T; label: string; icoon?: React.ReactNode }[]; actief: T; onKies: (k: T) => void }) {
+export function PilKeuze<T extends string>({ opties, actief, onKies, schuif }: { opties: { key: T; label: string; icoon?: React.ReactNode }[]; actief: T; onKies: (k: T) => void; schuif?: boolean }) {
   return (
-    <div style={{ display: "flex", justifyContent: "center" }}>
+    <div style={{ display: "flex", justifyContent: "center", maxWidth: "100%" }}>
       {/* Buitenring en binnenknop delen dezelfde neonlijn als de periodeknoppen
           op de ranglijst: doorzichtig, een violette lijn en een gloed binnen en
           buiten. De ring om de pil staat altijd aan, de knop erin licht op als
           hij gekozen is. Zo is het verschil de LIJN, niet een gevuld vlak. */}
       <div
+        className={schuif ? "zachtscroll" : undefined}
         style={{
-          display: "inline-flex", alignItems: "center", gap: 4, padding: 4, borderRadius: 999,
+          display: schuif ? "flex" : "inline-flex", alignItems: "center", gap: 4, padding: 4, borderRadius: 999,
           background: "transparent",
           border: `1px solid ${withAlpha("#C46BFF", 0.55)}`,
           boxShadow: `0 0 14px ${withAlpha("#9A4BF0", 0.4)}, inset 0 0 12px ${withAlpha("#9A4BF0", 0.16)}`,
+          maxWidth: schuif ? "100%" : undefined,
+          overflowX: schuif ? "auto" : undefined,
         }}
       >
         {opties.map((o) => {
@@ -3127,7 +3130,8 @@ export function PilKeuze<T extends string>({ opties, actief, onKies }: { opties:
               className="pressable"
               style={{
                 display: "inline-flex", alignItems: "center", gap: 6,
-                padding: "7px 20px", borderRadius: 999, cursor: "pointer",
+                padding: schuif ? "7px 14px" : "7px 20px", borderRadius: 999, cursor: "pointer",
+                flexShrink: 0, whiteSpace: "nowrap",
                 background: "transparent",
                 border: `1px solid ${aan ? withAlpha("#C46BFF", 0.75) : "transparent"}`,
                 boxShadow: aan ? `0 0 12px ${withAlpha("#9A4BF0", 0.5)}, inset 0 0 10px ${withAlpha("#9A4BF0", 0.22)}` : "none",
