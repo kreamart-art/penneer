@@ -14,6 +14,7 @@ import { MicButton } from "../components/MicButton";
 import { VoiceNote } from "../components/VoiceNote";
 import { EmotePicker } from "../components/EmotePicker";
 import { EMOTE_SRC, FREE_EMOTE_PACKS } from "../components/emotes";
+import { HexPlate } from "../components/HexPlate";
 import { MusicToggle } from "../components/MusicToggle";
 import { Toggle } from "../components/Toggle";
 import { Screen, Card } from "../components/Layout";
@@ -113,7 +114,11 @@ export function Hub({ game, section, onBack, onShowShop, onOpenInbox, onChalleng
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
 
-  const topIconBtn: React.CSSProperties = { background: "transparent", border: "none", cursor: "pointer", color: colors.sub, display: "flex", padding: 6 };
+  // De knoppen in de bovenbalk staan op de paarse zeshoek van de main page, net
+  // als de knoppen naast het logo. Losse pictogrammen op een lege balk hoorden
+  // nergens bij; op een plaat zijn het knoppen.
+  const topIconBtn: React.CSSProperties = { background: "transparent", border: "none", cursor: "pointer", color: colors.sub, display: "flex", padding: 0 };
+  const HEX = 38;
 
   // Profielinstellingen open its own full screen.
   if (settingsOpen && account) {
@@ -131,24 +136,32 @@ export function Hub({ game, section, onBack, onShowShop, onOpenInbox, onChalleng
           {account && (
             <>
               {section === "profile" && (
-                <button onClick={() => { sound.uiTap(); onOpenInbox(); }} aria-label={t("inboxTab")} title={t("inboxTab")} style={{ ...topIconBtn, position: "relative" }}>
-                  <Send size={19} />
+                <button onClick={() => { sound.uiTap(); onOpenInbox(); }} aria-label={t("inboxTab")} title={t("inboxTab")} className="pressable" style={{ ...topIconBtn, position: "relative" }}>
+                  <HexPlate on size={HEX}>
+                    <Send size={17} />
+                  </HexPlate>
                   {inboxCount > 0 && (
-                    <span style={{ position: "absolute", top: -1, right: -3, minWidth: 16, height: 16, padding: "0 4px", borderRadius: 999, background: colors.gold, color: colors.bg0, fontFamily: font.ui, fontSize: 10, fontWeight: 800, lineHeight: "16px", textAlign: "center" }}>
+                    <span style={{ position: "absolute", top: -2, right: -4, minWidth: 16, height: 16, padding: "0 4px", borderRadius: 999, background: colors.gold, color: colors.bg0, fontFamily: font.ui, fontSize: 10, fontWeight: 800, lineHeight: "16px", textAlign: "center" }}>
                       {inboxCount > 9 ? "9+" : inboxCount}
                     </span>
                   )}
                 </button>
               )}
-              <button onClick={shareCard} disabled={sharing} aria-label={t("shareProfile")} title={t("shareProfile")} style={{ ...topIconBtn, opacity: sharing ? 0.5 : 1 }}>
-                <Share2 size={18} />
+              <button onClick={shareCard} disabled={sharing} aria-label={t("shareProfile")} title={t("shareProfile")} className="pressable" style={{ ...topIconBtn, opacity: sharing ? 0.5 : 1 }}>
+                <HexPlate on size={HEX}>
+                  <Share2 size={16} />
+                </HexPlate>
               </button>
-              <button onClick={() => { sound.uiTap(); setSettingsOpen(true); }} aria-label={t("profileSettings")} title={t("profileSettings")} style={topIconBtn}>
-                <SettingsIcon size={18} />
+              <button onClick={() => { sound.uiTap(); setSettingsOpen(true); }} aria-label={t("profileSettings")} title={t("profileSettings")} className="pressable" style={topIconBtn}>
+                <HexPlate on size={HEX}>
+                  <SettingsIcon size={16} />
+                </HexPlate>
               </button>
             </>
           )}
-          <MusicToggle />
+          {/* De muziekknop staat op de main page al op zo'n plaat; hier stond hij
+              er als enige naast en dat viel op. */}
+          <MusicToggle plate size={16} padding={0} />
         </div>
       }
     >

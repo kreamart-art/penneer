@@ -8,7 +8,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Home, ShoppingCart, Trophy, UserRound, Users } from "lucide-react";
 import { Avatar } from "./Avatar";
-import { ShopIcon } from "./NavIcons";
 import type { GameApi } from "../net/socket";
 import { NeonLine } from "./NeonLine";
 import { useT } from "../i18n/i18n";
@@ -92,12 +91,11 @@ export function BottomNav({
     // vorm en het licht van de tekening blijven staan, alleen het materiaal is
     // anders. Parelwit stond er los bij op een plaat die zelf al goud omrand is.
     //
-    // Voor de winkel zit er geen wagentje in het vel, dus dat is de getekende
-    // versie. Die staat in dezelfde gouden reeks, en daardoor valt het verschil
-    // tussen tekening en art niet op: de KLEUR is wat ze bij elkaar houdt.
-    const maat = Math.round(s * 1.04);
+    // De art draagt zijn eigen warme halo, dus die hoeft er niet omheen; het
+    // verschil tussen gekozen en niet gekozen is alleen belichting.
+    const maat = Math.round(s * 1.12);
     const art: Partial<Record<NavKey, (on: boolean) => React.ReactNode>> = {
-      shop: (on) => <NavGloed on={on} size={maat}><ShopIcon on size={maat} /></NavGloed>,
+      shop: (on) => <NavArt src="/ui/nav/shop.webp" on={on} size={maat} />,
       leaderboard: (on) => <NavArt src="/ui/nav/trophy.webp" on={on} size={maat} />,
       friends: (on) => <NavArt src="/ui/nav/friends.webp" on={on} size={maat} />,
     };
@@ -238,48 +236,24 @@ export function BottomNav({
   );
 }
 
-/** De gloed onder een gekozen pictogram in de onderbalk.
+/** Een pictogram uit de UI-map in de onderbalk.
  *
- *  Alles is goud, dus de actieve staat is geen kleurwissel maar LICHT: de rest
- *  zakt weg in de schaduw en de gekozen licht op. Hetzelfde materiaal, andere
- *  belichting. */
-function NavGloed({ on, size, children }: { on: boolean; size: number; children: React.ReactNode }) {
-  return (
-    <span
-      style={{
-        position: "relative",
-        width: size,
-        height: size,
-        display: "grid",
-        placeItems: "center",
-        // Een halo achter het pictogram in plaats van een drop-shadow: die laat
-        // iOS de laag apart rasteren en dan zie je zijn rechthoek eroverheen.
-        filter: on ? "none" : "brightness(.62) saturate(.72)",
-      }}
-    >
-      {on && (
-        <span
-          aria-hidden
-          style={{
-            position: "absolute",
-            inset: "12%",
-            borderRadius: "50%",
-            background: `radial-gradient(closest-side, ${withAlpha(colors.gold, 0.5)} 0%, ${withAlpha(colors.gold, 0.18)} 55%, transparent 100%)`,
-            filter: "blur(4px)",
-          }}
-        />
-      )}
-      <span style={{ position: "relative", display: "grid", placeItems: "center" }}>{children}</span>
-    </span>
-  );
-}
-
-/** Een pictogram uit de UI-map, in het goud van de app gezet. */
+ *  Alles is goud, dus de gekozen plek is geen kleurwissel maar LICHT: de rest
+ *  zakt weg in de schaduw en de gekozen staat vol aan. Hetzelfde materiaal,
+ *  andere belichting. De halo zit al in de art getekend, dus er hoeft er geen
+ *  omheen; dat zou de gloed verdubbelen. */
 function NavArt({ src, on, size }: { src: string; on: boolean; size: number }) {
   return (
-    <NavGloed on={on} size={size}>
-      <img src={src} alt="" style={{ width: size, height: size, display: "block" }} />
-    </NavGloed>
+    <img
+      src={src}
+      alt=""
+      style={{
+        width: size,
+        height: size,
+        display: "block",
+        filter: on ? "brightness(1.06)" : "brightness(.55) saturate(.68)",
+      }}
+    />
   );
 }
 
