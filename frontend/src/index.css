@@ -168,6 +168,34 @@ body.profiel::after {
   background-size: 160px 160px, 100% 100%, cover, 100% 100%;
 }
 
+/* De ranglijst en de vrienden delen hun eigen decor. Zelfde opbouw als het
+   profiel hierboven, en om dezelfde reden een tweede pseudo-element in plaats
+   van een omgezette `background-image`: ::after wordt NA ::before getekend en
+   wint dus op dezelfde z-index, zodat de sub-pagina-achtergrond gewoon blijft
+   staan voor alle andere schermen. Dezelfde geometrie als ::before: grote
+   viewport plus marge, want anders blijft er op iOS onderaan een strook over
+   zodra de adresbalk wegschuift. */
+body.lijst::after {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: calc(100vh + 200px);
+  height: calc(100lvh + 200px);
+  z-index: -1;
+  pointer-events: none;
+  background-color: #06040e;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
+    radial-gradient(120% 76% at 50% 26%, transparent 30%, rgba(2, 1, 7, 0.78) 100%),
+    url("/ui/lijst-bg.webp"),
+    linear-gradient(180deg, #150e2e 0%, #100a24 50%, #06040e 100%);
+  background-repeat: repeat, no-repeat, no-repeat, no-repeat;
+  background-position: top left, top, center top, top;
+  background-size: 160px 160px, 100% 100%, cover, 100% 100%;
+}
+
 body {
   font-family: "Inter", system-ui, sans-serif;
   background: transparent;

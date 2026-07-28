@@ -114,6 +114,17 @@ export function Hub({ game, section, onBack, onShowShop, onOpenInbox, onChalleng
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
 
+  // De ranglijst en de vrienden delen hun eigen decor. Net als bij het profiel
+  // gaat de klasse op de BODY en niet op een laag hierbinnen: de achtergrond
+  // moet ook onder de bovenbalk en de tabbalk door lopen, en die staan buiten
+  // dit onderdeel.
+  useEffect(() => {
+    const aan = tab === "leaderboard" || tab === "friends";
+    if (!aan) return;
+    document.body.classList.add("lijst");
+    return () => document.body.classList.remove("lijst");
+  }, [tab]);
+
   // De knoppen in de bovenbalk staan op de paarse zeshoek van de main page, net
   // als de knoppen naast het logo. Losse pictogrammen op een lege balk hoorden
   // nergens bij; op een plaat zijn het knoppen.
