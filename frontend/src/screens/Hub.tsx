@@ -642,15 +642,21 @@ function HistoryCard({ game, meId, vitrine }: { game: GameApi; meId: string; vit
             // De lijn zelf staat bijna uit; wat je ziet is de kern in het midden
             // met zijn hoogsel, zoals de lijn boven "jij draait deze ronde".
             sterkte={0.3}
-            binnen={{ display: "flex", alignItems: "center", gap: 7, padding: "5px 8px" }}
+            eindkap
+            binnen={{ display: "flex", alignItems: "center", gap: 5, minHeight: 46, padding: "5px 8px 5px 46px" }}
           >
-            <PlekWapen plek={g.place} />
+            {/* Het wapen hangt AAN de bovenlijn en begint op het knikpunt van de
+                schuine hoek: los in de rij zwevend leek hij nergens bij te
+                horen. Vandaar absoluut, op de hoekmaat van de lijst. */}
+            <span style={{ position: "absolute", left: 11, top: 0, display: "flex" }}>
+              <PlekWapen plek={g.place} maat={31} />
+            </span>
             {/* Mijn hoek: portret, met naam boven en score onder. De twee
                 spelersblokken zijn elkaars spiegelbeeld en allebei even breed,
                 zodat de VS vanzelf in het MIDDEN van de lijst hangt. */}
             <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 6 }}>
               {ik && (
-                <Avatar name={ik.name} color={ik.color} size={26} userId={ik.user_id} hasAvatar={ik.has_avatar} avatarVer={ik.avatar_ver} />
+                <Avatar name={ik.name} color={ik.color} size={34} userId={ik.user_id} hasAvatar={ik.has_avatar} avatarVer={ik.avatar_ver} />
               )}
               <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 1 }}>
                 {ik && naam(ik)}
@@ -661,10 +667,10 @@ function HistoryCard({ game, meId, vitrine }: { game: GameApi; meId: string; vit
               <span
                 style={{
                   fontFamily: font.wide,
-                  fontSize: 12,
-                  letterSpacing: 1,
+                  fontSize: 17,
+                  letterSpacing: 1.2,
                   color: "#F0E9FF",
-                  textShadow: "0 0 8px rgba(200,139,255,.5)",
+                  textShadow: "0 0 9px rgba(200,139,255,.55)",
                   flexShrink: 0,
                 }}
               >
@@ -678,7 +684,7 @@ function HistoryCard({ game, meId, vitrine }: { game: GameApi; meId: string; vit
                   {score(tegen.score, !g.is_winner)}
                 </div>
                 <span style={{ position: "relative", flexShrink: 0, display: "flex" }}>
-                  <Avatar name={tegen.name} color={tegen.color} size={26} userId={tegen.user_id} hasAvatar={tegen.has_avatar} avatarVer={tegen.avatar_ver} />
+                  <Avatar name={tegen.name} color={tegen.color} size={34} userId={tegen.user_id} hasAvatar={tegen.has_avatar} avatarVer={tegen.avatar_ver} />
                   {rest > 0 && (
                     // Meer tegenstanders dan er passen: de beste staat er, de
                     // teller hangt als een muntje aan diens portret.
@@ -695,7 +701,26 @@ function HistoryCard({ game, meId, vitrine }: { game: GameApi; meId: string; vit
                 achterhalen (allebei nul): dan valt de kolom weg in plaats van
                 nullen te tonen. */}
             {(g.xp > 0 || g.coins > 0) && (
-              <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 1, paddingLeft: 2 }}>
+              // De streep ervoor is een GROEF, geen lijn: de linkerwand donker
+              // en de rechter licht, want het licht komt van linksboven en valt
+              // dus op de rechterkant van een gleuf. Boven en onder vervaagd,
+              // zodat hij vrij in het vlak hangt in plaats van de randen te
+              // raken.
+              <span
+                aria-hidden
+                style={{
+                  alignSelf: "stretch",
+                  flexShrink: 0,
+                  width: 2,
+                  marginBlock: 3,
+                  backgroundImage: "linear-gradient(90deg, rgba(8,3,20,.7) 0, rgba(8,3,20,.7) 1px, rgba(255,255,255,.13) 1px, rgba(255,255,255,.13) 2px)",
+                  WebkitMaskImage: "linear-gradient(180deg, transparent 0%, #000 26%, #000 74%, transparent 100%)",
+                  maskImage: "linear-gradient(180deg, transparent 0%, #000 26%, #000 74%, transparent 100%)",
+                }}
+              />
+            )}
+            {(g.xp > 0 || g.coins > 0) && (
+              <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 1 }}>
                 <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 11.5, lineHeight: 1.15, color: colors.ink }}>
                   +{g.xp} <span style={{ color: GOUD[2] }}>XP</span>
                 </span>

@@ -11,7 +11,7 @@
 // De gouden hoekjes zijn geen plaatjes maar vier kleine haakjes; zo schalen ze
 // mee en kosten ze niets.
 import type { CSSProperties, ReactNode } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { chamferPath } from "../theme/reelSkins";
 import { ChevronRight, Check, Lock } from "lucide-react";
 import { colors, font, withAlpha } from "../theme/tokens";
@@ -330,6 +330,7 @@ export function NeonKader({
   gloed = "0 0 10px rgba(139,83,255,.26), 0 3px 12px rgba(0,0,0,.38)",
   animeer = false,
   sterkte = 1,
+  eindkap = false,
 }: {
   children: ReactNode;
   style?: CSSProperties;
@@ -352,6 +353,10 @@ export function NeonKader({
    *  verhouding tussen lijn, bloom en glans blijft staan en alleen het geheel
    *  zakt weg. Terugdraaien op de lijn zelf zou die verhouding kapotmaken. */
   sterkte?: number;
+  /** Gouden kappen op de twee schuine uiteindes, zoals de pijlen naast "jij
+   *  draait deze ronde": geen kader maar hetzelfde principe. Alleen met een
+   *  afsnijding, want de kap volgt precies die contour. */
+  eindkap?: boolean;
   /** De afsnijding van de hoeken, in pixels, zoals de rol-skin. Zonder deze
    *  blijft het een gewone ronding. Met een afsnijding wordt de lijst glazig:
    *  een dun waas met een vervaging erachter, want glas hoort iets te doen met
@@ -381,6 +386,7 @@ export function NeonKader({
   // buitenste en de binnenste, met de even-oneven-regel. Dat vraagt echte
   // pixels, dus de doos meet zichzelf op.
   const doos = useRef<HTMLDivElement | null>(null);
+  const kapId = useId();
   const [maat, setMaat] = useState<{ w: number; h: number } | null>(null);
   useEffect(() => {
     const el = doos.current;
@@ -513,6 +519,43 @@ export function NeonKader({
           <span aria-hidden style={{ position: "absolute", inset: 0, clipPath: ringPad(Math.max(0.8, dik)), backgroundImage: KADER_KERN_GLANS, pointerEvents: "none" }} />
         </>
       )}
+      {/* De gouden eindkappen: de contour van het schuine uiteinde als los
+          sieraad, zoals de pijlen naast "jij draait deze ronde". Zelfde
+          principe als daar en als de lijn zelf: een vervaagde kopie eronder als
+          gloed, het goud erop, en een lichte kern op de staander. Buiten het
+          textuurmasker, want een kap die halverwege dooft is geen kap. */}
+      {eindkap && hoek && maat && (() => {
+        const c = hoek;
+        const { w, h } = maat;
+        const arm = 5; // hoe ver de kap over de lange rand doorloopt
+        const links = `M ${c + arm} 0 L ${c} 0 L 0 ${c} L 0 ${h - c} L ${c} ${h} L ${c + arm} ${h}`;
+        const rechts = `M ${w - c - arm} 0 L ${w - c} 0 L ${w} ${c} L ${w} ${h - c} L ${w - c} ${h} L ${w - c - arm} ${h}`;
+        const kap = (extra?: CSSProperties) => (
+          <svg aria-hidden width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ position: "absolute", inset: 0, overflow: "visible", pointerEvents: "none", ...extra }}>
+            <defs>
+              <linearGradient id={kapId} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#FFEBB8" />
+                <stop offset="38%" stopColor="#FFCF4A" />
+                <stop offset="72%" stopColor="#E2A33C" />
+                <stop offset="100%" stopColor="#9C6B1F" />
+              </linearGradient>
+            </defs>
+            <path d={links} fill="none" stroke={`url(#${kapId})`} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" />
+            <path d={rechts} fill="none" stroke={`url(#${kapId})`} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" />
+            {/* de kern: alleen de staander vangt het licht, niet de armen */}
+            <path d={`M 0 ${c + 3} L 0 ${h - c - 3}`} fill="none" stroke="#FFF6DF" strokeWidth={0.9} opacity={0.8} strokeLinecap="round" />
+            <path d={`M ${w} ${c + 3} L ${w} ${h - c - 3}`} fill="none" stroke="#FFF6DF" strokeWidth={0.9} opacity={0.8} strokeLinecap="round" />
+          </svg>
+        );
+        return (
+          <>
+            {/* De gloed is een vervaagde kopie erachter, geen drop-shadow: die
+                laat iOS de laag apart rasteren en dan zie je zijn rechthoek. */}
+            <span aria-hidden style={{ position: "absolute", inset: 0, filter: "blur(3px)", opacity: 0.65, pointerEvents: "none" }}>{kap()}</span>
+            {kap()}
+          </>
+        );
+      })()}
     </div>
   );
 }
@@ -676,7 +719,7 @@ export function StatKaart({ icoon, art, waarde, label }: { icoon: ReactNode; art
 
 /** De plaatsingspenning links in een potje-rij. Goud voor de eerste plek, zilver
  *  en brons daarna, en daarna paars: alleen het podium verdient metaal. */
-export function PlekWapen({ plek }: { plek: number }) {
+export function PlekWapen({ plek, maat = 38 }: { plek: number; maat?: number }) {
   const metaal =
     plek === 1
       ? [GOUD[3], GOUD[2], GOUD[1]]
@@ -688,8 +731,8 @@ export function PlekWapen({ plek }: { plek: number }) {
   return (
     <span
       style={{
-        width: 38,
-        height: 40,
+        width: maat,
+        height: Math.round(maat * (40 / 38)),
         flexShrink: 0,
         display: "grid",
         placeItems: "center",
@@ -700,7 +743,7 @@ export function PlekWapen({ plek }: { plek: number }) {
           : "linear-gradient(162deg, rgba(255,255,255,.2), rgba(0,0,0,.4))",
         fontFamily: font.display,
         fontWeight: 800,
-        fontSize: 13,
+        fontSize: Math.round(maat * (13 / 38)),
         color: plek === 1 ? "#3A2500" : plek === 2 ? "#241640" : plek === 3 ? "#3A1C05" : colors.sub,
         textShadow: metaal ? "0 1px 0 rgba(255,255,255,.4)" : "none",
       }}
