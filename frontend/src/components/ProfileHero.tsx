@@ -338,8 +338,8 @@ export function NeonKader({
           eronder schijnt door een doorschijnend paneel heen, en
           `background-clip: border-box` betekent "over de hele doos" en niet
           "alleen de rand". */}
-      <span aria-hidden style={{ ...ringLaag(KADER_R, dik + 1.4), backgroundImage: KADER_LIJN, filter: "blur(3px)", opacity: 0.32 }} />
-      <span aria-hidden style={{ ...ringLaag(KADER_R, dik), backgroundImage: KADER_LIJN, opacity: 0.8 }} />
+      <span aria-hidden style={{ ...ringLaag(KADER_R, dik + 1.4), backgroundImage: KADER_LIJN, filter: "blur(3px)", opacity: 0.26 }} />
+      <span aria-hidden style={{ ...ringLaag(KADER_R, dik), backgroundImage: KADER_LIJN, opacity: 0.68 }} />
       <span aria-hidden style={{ ...ringLaag(KADER_R, dik), backgroundImage: KADER_GLANS }} />
     </div>
   );
