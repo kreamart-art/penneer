@@ -5,7 +5,7 @@
 // De arena-plaat staat er met zijn podium precies onder de Draai-knop, zodat de
 // knop op het toneel staat in plaats van op een lege achtergrond.
 import { useEffect, useRef } from "react";
-import { Crown, Hand } from "lucide-react";
+import { Hand } from "lucide-react";
 import { AlphabetStrip } from "../components/AlphabetStrip";
 import { Arena, ARENA } from "../components/Arena";
 import { Avatar } from "../components/Avatar";
@@ -14,6 +14,7 @@ import { Reel } from "../components/Reel";
 import { Screen } from "../components/Layout";
 import { TopBar } from "../components/TopBar";
 import type { GameApi } from "../net/socket";
+import { ArtIcoon } from "../components/ArtIcoon";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { colors, font, withAlpha } from "../theme/tokens";
@@ -270,7 +271,7 @@ function TurnBanner({ label, avatar }: { name: string | null; label: string; ava
               display: "flex",
             }}
           >
-            <Crown size={18} strokeWidth={2.4} fill="currentColor" />
+            <ArtIcoon naam="kroon" size={20} />
           </span>
         </span>
 

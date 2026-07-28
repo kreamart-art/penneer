@@ -1,9 +1,9 @@
 // Player token — rounded-square filled with the player's color at low alpha,
 // 2px colored border, soft colored glow, initial in Space Grotesk. Gold crown
 // badge top-right for host / round winner (§8).
-import { Crown } from "lucide-react";
+import { ArtIcoon } from "./ArtIcoon";
 import { neonSkin } from "../theme/neon";
-import { colors, font, withAlpha } from "../theme/tokens";
+import { font, withAlpha } from "../theme/tokens";
 
 // De kleur per rang. Werd ooit als ring om de avatar getekend, maar dat lag over
 // het frame dat je zelf koos: twee ringen om dezelfde avatar zijn niet uit elkaar
@@ -137,16 +137,8 @@ export function Avatar({ name, color, size = 40, crown, dim, userId, hasAvatar, 
         />
       )}
       {crown && (
-        <div
-          style={{
-            position: "absolute",
-            top: -9,
-            right: -7,
-            color: colors.gold,
-            filter: `drop-shadow(0 0 6px ${withAlpha(colors.gold, 0.7)})`,
-          }}
-        >
-          <Crown size={Math.max(14, size * 0.42)} fill={colors.gold} strokeWidth={1.5} />
+        <div style={{ position: "absolute", top: -9, right: -7 }}>
+          <ArtIcoon naam="kroon" size={Math.max(15, Math.round(size * 0.44))} />
         </div>
       )}
     </div>

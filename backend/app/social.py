@@ -262,6 +262,7 @@ class AccountManager:
             "club_get": self.club_get,
             "club_invite": self.club_invite,
             "club_set_emblem": self.club_set_emblem,
+            "club_rename": self.club_rename,
             "set_lenient": self.set_lenient,
             "set_buzzer_skin": self.set_buzzer_skin,
             "set_reel_skin": self.set_reel_skin,
@@ -814,6 +815,17 @@ class AccountManager:
         em = em if isinstance(em, str) and em else None
         if not self.db.set_club_emblem(uid, em):
             await self._send(ws, {"type": "error", "message": "Alleen de eigenaar kan het embleem kiezen."})
+            return
+        await self._send(ws, await self._account_payload(ws, uid))
+        await self._send(ws, self._club_payload(uid, data.get("period") or "month"))
+
+    async def club_rename(self, ws: Any, data: dict) -> None:
+        """De eigenaar past de clubnaam aan."""
+        uid = self.user_of(ws)
+        if not uid:
+            return
+        if not self.db.rename_club(uid, str(data.get("name") or "")):
+            await self._send(ws, {"type": "error", "message": "Alleen de eigenaar kan de naam wijzigen."})
             return
         await self._send(ws, await self._account_payload(ws, uid))
         await self._send(ws, self._club_payload(uid, data.get("period") or "month"))

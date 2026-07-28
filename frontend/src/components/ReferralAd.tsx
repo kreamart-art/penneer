@@ -57,7 +57,7 @@ function resterend(tot: number): string {
   return `NOG ${m}M`;
 }
 
-export function ReferralAd() {
+export function ReferralAd({ sectie = false }: { sectie?: boolean } = {}) {
   const [info, setInfo] = useState<Info | null>(null);
   // "groot" is de popup, "pil" is het randje, "uit" is helemaal weg (alleen
   // tijdens het laden).
@@ -107,7 +107,7 @@ export function ReferralAd() {
           } catch {
             /* geen opslag */
           }
-          setVorm(alGezien ? "pil" : "groot");
+          setVorm(sectie || !alGezien ? "groot" : "pil");
         }
       })
       .catch(() => {});
@@ -202,7 +202,7 @@ export function ReferralAd() {
   };
 
   if (vorm === "uit" || !info) return null;
-  if (vorm === "pil") {
+  if (vorm === "pil" && !sectie) {
     return <Pil uitgeklapt={uitgeklapt} teHalen={teHalen(info).length} top={pilTop} eindigt={info.ends_at} onTik={() => {
       sound.uiTap();
       if (uitgeklapt) setVorm("groot");
@@ -214,6 +214,7 @@ export function ReferralAd() {
       info={info}
       bezig={bezig}
       naar={naar}
+      sectie={sectie}
       onSluit={sluit}
       onDeel={deel}
       onHaalOp={haalOp}
@@ -227,6 +228,7 @@ function Popup({
   info,
   bezig,
   naar,
+  sectie = false,
   onSluit,
   onDeel,
   onHaalOp,
@@ -234,6 +236,7 @@ function Popup({
   info: Info;
   bezig: boolean;
   naar: { x: number; y: number } | null;
+  sectie?: boolean;
   onSluit: (vanaf?: DOMRect) => void;
   onDeel: () => void;
   onHaalOp: (t: Tier) => void;
@@ -259,10 +262,9 @@ function Popup({
     }, 3000);
     return () => window.clearTimeout(id);
   }, []);
-  return (
-    <div
-      onClick={weg}
-      style={{
+  const laag = sectie
+    ? ({ display: "block" } as const)
+    : ({
         position: "fixed",
         inset: 0,
         zIndex: 130,
@@ -274,16 +276,21 @@ function Popup({
         display: "grid",
         placeItems: "center",
         padding: 14,
-      }}
+      } as const);
+  return (
+    <div
+      onClick={sectie ? undefined : weg}
+      style={laag}
     >
       <div
         ref={doos}
         onClick={(e) => e.stopPropagation()}
-        className={naar ? undefined : "pop-in"}
+        className={naar || sectie ? undefined : "pop-in"}
         style={{
           position: "relative",
           width: "100%",
           maxWidth: 380,
+          marginInline: sectie ? "auto" : undefined,
           // De reis naar de pil. Bij het wegtikken wordt hier de afstand tot de
           // plek van de pil ingevuld; hij krimpt er dan naartoe in plaats van
           // ter plekke te verdwijnen.
@@ -359,7 +366,7 @@ function Popup({
           </NeonText>
         </span>
 
-        {magSluiten && (
+        {magSluiten && !sectie && (
           <button
             onClick={weg}
             aria-label="Sluiten"
@@ -471,7 +478,7 @@ function Popup({
               </Button>
             )}
           </div>
-          <button
+          {!sectie && <button
             onClick={weg}
             style={{
               margin: "7px auto 0",
@@ -487,7 +494,7 @@ function Popup({
             }}
           >
             MISSCHIEN LATER
-          </button>
+          </button>}
         </div>
       </div>
     </div>

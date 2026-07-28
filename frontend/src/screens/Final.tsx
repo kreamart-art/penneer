@@ -2,7 +2,8 @@
 // XP count-up with level bar, level-up, rank-up, badges, missions), full
 // scoreboard, share, replay.
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Award, Share2, Star, Target } from "lucide-react";
+import { Share2, Star, Target } from "lucide-react";
+import { ArtIcoon } from "../components/ArtIcoon";
 import { Logo } from "../components/Logo";
 import { Avatar, RANK_RING } from "../components/Avatar";
 import { Button } from "../components/Button";
@@ -273,7 +274,7 @@ function Ceremony({ summary }: { summary: MatchSummary }) {
         <div className="pop-in" style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center" }}>
           {summary.badges.map((b) => (
             <span key={b} style={{ ...chip, color: colors.gold, background: withAlpha(colors.gold, 0.12), border: `1px solid ${withAlpha(colors.gold, 0.45)}` }}>
-              <Award size={13} /> {t(`badge_${b}`)}
+              <ArtIcoon naam="krans" size={15} /> {t(`badge_${b}`)}
             </span>
           ))}
         </div>

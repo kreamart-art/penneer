@@ -13,11 +13,12 @@
 // Antwoorden worden getypt. De server laat een paar letters speling toe, want
 // eigennamen zijn lastig te spellen en dit is geen dictee.
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Check, Flame, Globe2, Trophy, X } from "lucide-react";
+import { ArrowLeft, Check, Globe2, X } from "lucide-react";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { Screen, Card } from "../components/Layout";
 import type { GameApi } from "../net/socket";
+import { ArtIcoon } from "../components/ArtIcoon";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { NeonText } from "../components/NeonText";
@@ -331,8 +332,8 @@ export function Topo({ game, onBack, onProfile, played }: { game: GameApi; onBac
           <NeonText accent={colors.gold} blur={18} glow={0.7} style={{ fontFamily: font.display, fontWeight: 700, fontSize: 54, lineHeight: 1 }}>{r.score}</NeonText>
           <span style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint }}>{t("dailyScoreOf", { score: r.score, max: r.max_score })}</span>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", marginTop: 4 }}>
-            {r.ranked && r.rank > 0 && chip(<Trophy size={13} color={colors.gold} />, t("dailyRankLine", { rank: r.rank, total: r.total }))}
-            {r.streak > 1 && chip(<Flame size={13} color={colors.orange} />, t("dailyStreakLine", { n: r.streak }))}
+            {r.ranked && r.rank > 0 && chip(<ArtIcoon naam="beker" size={15} />, t("dailyRankLine", { rank: r.rank, total: r.total }))}
+            {r.streak > 1 && chip(<ArtIcoon naam="vlam" size={15} />, t("dailyStreakLine", { n: r.streak }))}
           </div>
           {account && !r.ranked && (
             <p style={{ margin: "4px 0 0", fontFamily: font.ui, fontSize: 12.5, color: colors.orange, textAlign: "center" }}>{t("dailyUnranked")}</p>

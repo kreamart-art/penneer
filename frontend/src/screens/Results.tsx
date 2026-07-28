@@ -1,13 +1,14 @@
 // Results — running scoreboard, then a card per player with answers (check /
 // cross / strike, "dubbel" tags) and round points. Tap an answer to challenge.
 import { useEffect, useRef, useState } from "react";
-import { Check, Flame, HelpCircle, Search, Sparkles, Star, X } from "lucide-react";
+import { Check, HelpCircle, Search, X } from "lucide-react";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { Scoreboard } from "../components/Scoreboard";
 import { Screen, Card } from "../components/Layout";
 import { TopBar } from "../components/TopBar";
 import type { GameApi } from "../net/socket";
+import { ArtIcoon } from "../components/ArtIcoon";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { neonSkin } from "../theme/neon";
@@ -123,7 +124,7 @@ export function Results({ game }: { game: GameApi }) {
             </div>
             {wordOfRound && (
               <div className="reveal-rise" style={{ animationDelay: "0.15s", display: "flex", alignItems: "center", gap: 9, padding: "8px 10px", borderRadius: 10, background: withAlpha(colors.gold, 0.1), border: `1px solid ${withAlpha(colors.gold, 0.3)}` }}>
-                <Sparkles size={15} color={colors.gold} style={{ flexShrink: 0 }} />
+                <ArtIcoon naam="sterren" size={17} />
                 <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
                   <span style={{ fontFamily: font.ui, fontSize: 10.5, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase", color: colors.faint }}>{t("wordOfRound")}</span>
                   <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15, color: colors.gold, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -176,7 +177,7 @@ export function Results({ game }: { game: GameApi }) {
                       border: perfect ? "none" : `1px solid ${withAlpha(colors.orange, 0.5)}`,
                     }}
                   >
-                    {perfect ? <Star size={12} fill="currentColor" /> : <Flame size={12} />}
+                    {perfect ? <ArtIcoon naam="ster" size={14} /> : <ArtIcoon naam="vlam" size={14} />}
                     {perfect ? t("flairPerfect") : t("flairHot")}
                   </span>
                 )}

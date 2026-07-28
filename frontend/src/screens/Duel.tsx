@@ -10,7 +10,7 @@
 // pas begint zijn 15 seconden, dus de app herladen koopt geen denktijd.
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { CloseIcon } from "../components/CloseIcon";
-import { ArrowLeft, Check, Clock as ClockIcon, Hourglass, RotateCcw, Search, Swords, Trophy } from "lucide-react";
+import { ArrowLeft, Check, Clock as ClockIcon, Hourglass, RotateCcw, Search, Swords } from "lucide-react";
 import { Avatar } from "../components/Avatar";
 import { NeonText } from "../components/NeonText";
 import { Button } from "../components/Button";
@@ -18,6 +18,7 @@ import { GoldButton } from "../components/GoldButton";
 import { Arena, ArenaPlate, ARENA } from "../components/Arena";
 import { Screen, Card } from "../components/Layout";
 import type { GameApi } from "../net/socket";
+import { ArtIcoon } from "../components/ArtIcoon";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { rampFrom } from "../theme/neon";
@@ -390,7 +391,7 @@ export function Duel({ game, onBack, onProfile }: { game: GameApi; onBack: () =>
           <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13.5, color: colors.sub, lineHeight: 1.55 }}>{t("duelIntro")}</p>
           {!!rec && rec.played > 0 && (
             <div style={{ display: "flex", gap: 8 }}>
-              <Chip icon={<Trophy size={13} color={colors.gold} />} label={t("duelRecord", { w: rec.wins, d: rec.draws, l: rec.losses })} />
+              <Chip icon={<ArtIcoon naam="beker" size={15} />} label={t("duelRecord", { w: rec.wins, d: rec.draws, l: rec.losses })} />
             </div>
           )}
         </Card>

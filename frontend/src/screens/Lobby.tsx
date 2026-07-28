@@ -105,7 +105,7 @@ function InviteFriends({ game }: { game: GameApi }) {
         </span>
         {searchable && <ZoekKnop waarde={q} onWaarde={setQ} />}
       </div>
-      <Lijst n={shown.length} rij={38}>
+      <Lijst n={shown.length} rij={38} toon={3}>
         {shown.length === 0 && (
           <span style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint, padding: "4px 6px" }}>{t("searchNoMatch")}</span>
         )}
@@ -126,7 +126,7 @@ function InviteFriends({ game }: { game: GameApi }) {
             </span>
             <span style={{ flex: 1, height: 1, background: colors.hairline }} />
           </div>
-          <Lijst n={oud.length} rij={38}>
+          <Lijst n={oud.length} rij={38} toon={3}>
             {oud.map((c) => (
               <Rij
                 key={c.id}

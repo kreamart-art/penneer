@@ -3,8 +3,9 @@
 // also carries daily missions that complete mid-game, which have no summary
 // screen to land on.
 import { useEffect } from "react";
-import { Award, Target } from "lucide-react";
+import { Target } from "lucide-react";
 import type { GameApi } from "../net/socket";
+import { ArtIcoon } from "./ArtIcoon";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { colors, font, withAlpha } from "../theme/tokens";
@@ -44,7 +45,7 @@ export function BadgeToasts({ game }: { game: GameApi }) {
         color: colors.ink,
       }}
     >
-      {toast.mission ? <Target size={17} color={colors.gold} /> : <Award size={17} color={colors.gold} />}
+      {toast.mission ? <Target size={17} color={colors.gold} /> : <ArtIcoon naam="krans" size={19} />}
       <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
         {toast.mission ? (
           <>

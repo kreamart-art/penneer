@@ -1,12 +1,13 @@
 // Settings + About — reachable from the Landing gear. Language, sound, how-to,
 // install-as-app, and an About card with the version and studio credit.
 import { useEffect, useState } from "react";
-import { ArrowLeft, Download, HelpCircle, Music, Share, ShieldCheck, Trash2, Volume2 } from "lucide-react";
+import { ArrowLeft, Download, HelpCircle, Music, Share, Trash2, Volume2 } from "lucide-react";
 import { Logo } from "../components/Logo";
 import { Button } from "../components/Button";
 import { Toggle } from "../components/Toggle";
 import { Screen, Card } from "../components/Layout";
 import type { GameApi } from "../net/socket";
+import { ArtIcoon } from "../components/ArtIcoon";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { canInstall, isIos, isIosInAppBrowser, isStandalone, onInstallChange, promptInstall } from "../pwa/install";
@@ -327,7 +328,7 @@ export function Settings({ game, onBack, onShowRules }: { game: GameApi; onBack:
         {/* Admin (owner) */}
         <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <ShieldCheck size={18} color={colors.gold} />
+            <ArtIcoon naam="schild" size={20} />
             <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink }}>{t("adminTitle")}</span>
           </div>
           <p style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint, margin: 0 }}>{t("adminHint")}</p>

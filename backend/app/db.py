@@ -1291,6 +1291,18 @@ class Database:
             self._exec("UPDATE clubs SET emblem=? WHERE id=?", (emblem, rows[0]["id"]))
         return True
 
+    def rename_club(self, user_id: str, name: str) -> bool:
+        """Hernoem de club. Alleen de EIGENAAR mag dat, net als bij het embleem."""
+        naam = (name or "").strip()[:24]
+        if len(naam) < 2:
+            return False
+        with self._lock:
+            rows = self._q("SELECT id FROM clubs WHERE owner_id=?", (user_id,))
+            if not rows:
+                return False
+            self._exec("UPDATE clubs SET name=? WHERE id=?", (naam, rows[0]["id"]))
+        return True
+
     def _gen_club_code(self) -> str:
         alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # no ambiguous chars
         while True:

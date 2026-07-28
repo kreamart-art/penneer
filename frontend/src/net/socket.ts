@@ -816,6 +816,7 @@ export interface GameApi {
   joinClub: (code: string) => void;
   clubInvite: (userId: string) => void;
   setClubEmblem: (emblem: string | null) => void;
+  renameClub: (name: string) => void;
   leaveClub: () => void;
   loadClub: (period: "month" | "all") => void;
   setLenient: (on: boolean) => void;
@@ -1058,6 +1059,7 @@ export function useGame(): GameApi {
     clubInvite: (userId) => send({ type: "club_invite", user_id: userId }),
     leaveClub: () => send({ type: "club_leave" }),
     setClubEmblem: (emblem) => send({ type: "club_set_emblem", emblem }),
+    renameClub: (name) => send({ type: "club_rename", name }),
     loadClub: (period) => send({ type: "club_get", period }),
     setLenient: (on) => send({ type: "set_lenient", on }),
     setBuzzerSkin: (skin) => send({ type: "set_buzzer_skin", skin }),

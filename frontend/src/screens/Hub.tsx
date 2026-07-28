@@ -1,8 +1,10 @@
 // Hub — profile, friends, inbox and leaderboard in one tabbed screen.
 // Reached from the Landing. A profile is optional: guests see the create form.
 import { Fragment, useEffect, useRef, useState } from "react";
+import { ArtIcoon } from "../components/ArtIcoon";
 import { CloseIcon } from "../components/CloseIcon";
-import { ArrowLeft, Award, BookOpen, CalendarDays, Camera, Check, ChevronDown, CircleDot, Copy, Crown, Flame, Gem, Lock, LogOut, Medal, MessageCircle, MoreVertical, Pencil, Percent, Plus, Rocket, Search, Send, Settings as SettingsIcon, Share2, Shield, ShoppingCart, Smile, Sparkles, Star, Swords, Target, Trash2, Trophy, UserPlus, Users, X, Zap, ZoomIn, ZoomOut } from "lucide-react";
+import { ReferralAd } from "../components/ReferralAd";
+import { ArrowLeft, BookOpen, CalendarDays, Camera, Check, ChevronDown, Copy, Crown, Flame, Gem, Lock, LogOut, Medal, MessageCircle, MoreVertical, Pencil, Percent, Plus, Rocket, Search, Send, Settings as SettingsIcon, Share2, Shield, ShoppingCart, Smile, Sparkles, Star, Swords, Target, Trash2, Trophy, UserPlus, Users, X, Zap, ZoomIn, ZoomOut } from "lucide-react";
 import { Avatar, RANK_RING } from "../components/Avatar";
 import { Plek } from "../components/ProfileShowcase";
 import { HexArt } from "../components/HexArt";
@@ -197,6 +199,7 @@ export function Hub({ game, section, onBack, onShowShop, onOpenInbox, onChalleng
               ]}
             />
             {sociaal === "friends" ? <FriendsTab game={game} onChallenge={onChallenge} /> : <ClubTab game={game} />}
+            {sociaal === "friends" && account && <ReferralAd sectie />}
           </>
         )}
         {tab === "inbox" && <InboxTab game={game} />}
@@ -689,7 +692,7 @@ function HistoryCard({ game, meId, vitrine }: { game: GameApi; meId: string; vit
         const score = (n: number, won: boolean) => (
           <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontFamily: font.display, fontWeight: 800, fontSize: 15, lineHeight: 1.1, color: colors.ink }}>
             {n}
-            {won && <Crown size={12} color={colors.gold} fill={colors.gold} style={{ flexShrink: 0 }} />}
+            {won && <ArtIcoon naam="kroon" size={14} />}
           </span>
         );
         return (
@@ -1220,7 +1223,7 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
           emptyText={t("noBadges")}
           items={account.badges.map((b) => (
             <div key={b.badge} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 10, background: withAlpha(colors.gold, 0.08), border: `1px solid ${withAlpha(colors.gold, 0.25)}` }}>
-              <Award size={16} color={colors.gold} />
+              <ArtIcoon naam="krans" size={18} />
               <span style={{ fontFamily: font.ui, fontSize: 13.5, color: colors.ink }}>{t(`badge_${b.badge}`)}</span>
             </div>
           ))}
@@ -1564,7 +1567,7 @@ function BuzzerPicker({ game, onShowShop }: { game: GameApi; onShowShop: () => v
   return (
     <>
       {/* bought single skins */}
-      <PickerCard icon={<CircleDot size={15} color={colors.gold} />} title={t("buzzPickTitle")}>
+      <PickerCard icon={<KopArt src="/buzzer.webp" maat={22} gloed="226,64,52" />} title={t("buzzPickTitle")}>
         <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.sub, lineHeight: 1.5 }}>{anyOwned ? t("buzzPickHint") : t("buzzLockedHint")}</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
           <BuzzerTile id={null} active={active === null} locked={false} label={t("buzzDefault")} onClick={() => game.setBuzzerSkin(null)} />
@@ -1576,7 +1579,7 @@ function BuzzerPicker({ game, onShowShop }: { game: GameApi; onShowShop: () => v
       </PickerCard>
 
       {/* level rewards */}
-      <PickerCard icon={<Star size={15} color={colors.gold} />} title={t("buzzRewardsTitle")}>
+      <PickerCard icon={<KopArt src="/buzzers/bz06.webp" maat={22} />} title={t("buzzRewardsTitle")}>
         <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.sub, lineHeight: 1.5 }}>{t("buzzRewardsHint")}</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
           {rewards.map((r) => (
@@ -1602,6 +1605,50 @@ function BuzzerPicker({ game, onShowShop }: { game: GameApi; onShowShop: () => v
 // De voorbeelden hebben een VASTE maat, want de vorm van de rol is een `path()`
 // en die rekent in echte pixels. Zonder vaste maat zou het voorbeeld een andere
 // vorm tonen dan het spel.
+/** Een klein plaatje als kopje boven een keuzesectie. */
+function KopArt({ src, maat = 22, gloed = "232,168,23" }: { src: string; maat?: number; gloed?: string }) {
+  return (
+    <span aria-hidden style={{ position: "relative", width: maat, height: maat, flexShrink: 0, display: "inline-grid", placeItems: "center" }}>
+      <span
+        style={{
+          position: "absolute", inset: "6%", borderRadius: "50%",
+          background: `radial-gradient(closest-side, rgba(${gloed},.5) 0%, rgba(${gloed},.16) 58%, transparent 100%)`,
+          filter: `blur(${Math.max(2, Math.round(maat / 5))}px)`,
+        }}
+      />
+      <img src={src} alt="" style={{ position: "relative", width: maat, height: maat, objectFit: "contain", display: "block" }} />
+    </span>
+  );
+}
+
+/** Een rolletje van een letter als kopje: dezelfde opbouw als de echte rol,
+ *  alleen dan zo klein dat er net een letter in past. */
+function KopRol({ maat = 20 }: { maat?: number }) {
+  const th = reelTheme(null);
+  const knip = reelClip(maat, Math.round(maat * 1.16), 1.5);
+  return (
+    <span
+      aria-hidden
+      style={{
+        width: maat, height: Math.round(maat * 1.16), padding: 1.5, flexShrink: 0,
+        clipPath: knip.outer, background: reelEdge(th.ramp),
+        boxShadow: `0 0 8px ${withAlpha(th.glow, 0.45)}`, display: "block",
+      }}
+    >
+      <span style={{ display: "grid", placeItems: "center", width: "100%", height: "100%", clipPath: knip.inner, background: th.bg, boxShadow: "inset 0 2px 6px rgba(0,0,0,.6)" }}>
+        <span
+          style={{
+            fontFamily: font.display, fontWeight: 700, fontSize: Math.round(maat * 0.62), lineHeight: 1,
+            backgroundImage: reelFace(th.ramp), WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent",
+          }}
+        >
+          A
+        </span>
+      </span>
+    </span>
+  );
+}
+
 const TILE_REEL = { w: 62, h: 72, ...reelClip(62, 72) };
 
 function ReelTile({ id, active, locked, label, onClick }: {
@@ -1675,7 +1722,7 @@ function ReelPicker({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
   const active = account.reel_skin ?? null;
 
   return (
-    <PickerCard icon={<CircleDot size={15} color={colors.gold} />} title={t("reelPickTitle")}>
+    <PickerCard icon={<KopRol maat={19} />} title={t("reelPickTitle")}>
       <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.sub, lineHeight: 1.5 }}>{anyOwned ? t("reelPickHint") : t("reelLockedHint")}</p>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
         <ReelTile id={null} active={active === null} locked={false} label={t("reelDefault")} onClick={() => game.setReelSkin(null)} />
@@ -1733,7 +1780,7 @@ function FramePicker({ game }: { game: GameApi }) {
   const rewards = account.frame_rewards ?? [];
   const av = { name: account.name, color: account.color, userId: account.id, hasAvatar: account.has_avatar, avatarVer: account.avatar_ver };
   return (
-    <PickerCard icon={<Sparkles size={15} color={colors.gold} />} title={t("framePickTitle")}>
+    <PickerCard icon={<KopArt src="/frames/fr01.webp" maat={23} gloed="240,190,60" />} title={t("framePickTitle")}>
       <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.sub, lineHeight: 1.5 }}>{t("framePickHint")}</p>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
         <FrameTile active={active === null} locked={false} caption={t("frameNone")} label={t("frameNone")} onClick={() => game.setAvatarFrame(null)}>
@@ -1762,7 +1809,7 @@ function TitlePicker({ game }: { game: GameApi }) {
   const account = game.state.account;
   if (!account) return null;
   return (
-    <PickerCard icon={<Award size={15} color={colors.gold} />} title={t("titlesTitle")}>
+    <PickerCard icon={<ArtIcoon naam="krans" size={20} />} title={t("titlesTitle")}>
       <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.sub }}>{t("titlesHint")}</p>
       <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
         {account.titles.map((tt) => {
@@ -1822,6 +1869,12 @@ function ClubScreen({ game, onBack, embedded }: { game: GameApi; onBack?: () => 
   const [code, setCode] = useState("");
   const [copied, setCopied] = useState(false);
   const [confirmLeave, setConfirmLeave] = useState(false);
+  // Het embleem kiezen is een LOSSE handeling die je een keer doet, dus dat
+  // hoort niet als raster van zevenentwintig vakjes permanent op het scherm te
+  // staan. Het gaat achter het potlood bij het embleem.
+  const [emblemOpen, setEmblemOpen] = useState(false);
+  const [naamOpen, setNaamOpen] = useState(false);
+  const [nieuweNaam, setNieuweNaam] = useState("");
 
   useEffect(() => {
     game.loadClub(period);
@@ -1892,48 +1945,76 @@ function ClubScreen({ game, onBack, embedded }: { game: GameApi; onBack?: () => 
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <Paneel>
           <div style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", gap: 6, paddingInline: 4 }}>
-          <ClubEmblem id={club.emblem} size={58} />
-          <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 19, color: colors.ink, textAlign: "center", lineHeight: 1.15 }}>{club.name}</span>
-          <span style={{ fontFamily: font.ui, fontSize: 11.5, color: colors.sub }}>{t("clubMembersN", { n: club.member_count })}</span>
-          <button onClick={shareCode} style={{ display: "inline-flex", alignItems: "center", gap: 7, cursor: "pointer", background: withAlpha(colors.gold, 0.12), border: `1px solid ${withAlpha(colors.gold, 0.4)}`, borderRadius: 999, padding: "5px 12px" }}>
-            <span style={{ fontFamily: font.ui, fontSize: 10.5, color: colors.faint }}>{t("clubCodeLabel")}</span>
-            <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 14, letterSpacing: 3, color: colors.gold }}>{club.code}</span>
-            {copied ? <Check size={14} color={colors.green} /> : <Copy size={14} color={colors.sub} />}
-          </button>
+          <div style={{ position: "relative", display: "inline-flex" }}>
+            <ClubEmblem id={club.emblem} size={58} />
+            {club.is_owner && (
+              <PotloodKnop
+                aan={emblemOpen}
+                label={t("clubEmblemTitle")}
+                onClick={() => { sound.uiTap(); setEmblemOpen(true); }}
+                style={{ position: "absolute", right: -6, bottom: -2 }}
+              />
+            )}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, maxWidth: "100%" }}>
+            <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 19, color: colors.ink, textAlign: "center", lineHeight: 1.15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{club.name}</span>
+            {club.is_owner && (
+              <PotloodKnop
+                aan={naamOpen}
+                label={t("clubNamePlaceholder")}
+                onClick={() => { sound.uiTap(); setNieuweNaam(club.name); setNaamOpen((v) => !v); }}
+              />
+            )}
+          </div>
+          {naamOpen ? (
+            // Dezelfde balk als bij je eigen naam: een neonkader met een klein
+            // vinkje dat zichzelf sluit zodra je bewaart.
+            <NeonKader
+              radius={999}
+              dik={0.45}
+              vulling="geen"
+              animeer
+              binnen={{ display: "flex", alignItems: "center", gap: 6, padding: "3px 4px 3px 12px" }}
+            >
+              <input
+                autoFocus
+                value={nieuweNaam}
+                maxLength={24}
+                onChange={(e) => setNieuweNaam(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && nieuweNaam.trim().length >= 2) { game.renameClub(nieuweNaam.trim()); setNaamOpen(false); } }}
+                style={{ flex: 1, minWidth: 0, width: 150, background: "transparent", border: "none", outline: "none", color: colors.ink, fontFamily: font.ui, fontSize: 13.5 }}
+              />
+              <button
+                onClick={() => { sound.uiTap(); if (nieuweNaam.trim().length >= 2) game.renameClub(nieuweNaam.trim()); setNaamOpen(false); }}
+                aria-label={t("save")}
+                disabled={nieuweNaam.trim().length < 2}
+                style={{ width: 22, height: 22, flexShrink: 0, display: "grid", placeItems: "center", borderRadius: "50%", border: "none", background: withAlpha(GOUD[2], 0.9), color: colors.bg0, cursor: "pointer", padding: 0 }}
+              >
+                <Check size={13} strokeWidth={3} />
+              </button>
+            </NeonKader>
+          ) : (
+            <span style={{ fontFamily: font.ui, fontSize: 11.5, color: colors.sub }}>{t("clubMembersN", { n: club.member_count })}</span>
+          )}
+          {/* De deelcode in dezelfde pil als de prestatieteller op je profiel:
+              helemaal rond, geen glas, alleen de neonlijn. */}
+          <NeonKader
+            radius={999}
+            dik={0.4}
+            vulling="geen"
+            binnen={{ display: "inline-flex", alignItems: "center", padding: 0 }}
+          >
+            <button
+              onClick={shareCode}
+              style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "4px 13px", background: "transparent", border: "none", cursor: "pointer" }}
+            >
+              <span style={{ fontFamily: font.ui, fontSize: 10.5, color: colors.faint }}>{t("clubCodeLabel")}</span>
+              <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 14, letterSpacing: 3, color: colors.gold }}>{club.code}</span>
+              {copied ? <Check size={14} color={colors.green} /> : <Copy size={14} color={colors.sub} />}
+            </button>
+          </NeonKader>
           </div>
         </Paneel>
-
-        {club.is_owner && (
-          <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <Shield size={15} color={colors.gold} />
-              <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint, flex: 1 }}>{t("clubEmblemTitle")}</span>
-            </div>
-            <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.sub, lineHeight: 1.5 }}>{t("clubEmblemHint")}</p>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8 }}>
-              {[null, ...CLUB_EMBLEM_IDS].map((id) => {
-                const active = (club.emblem ?? null) === id;
-                return (
-                  <button
-                    key={id ?? "default"}
-                    onClick={() => { sound.uiTap(); game.setClubEmblem(id); }}
-                    aria-label={id ?? t("clubEmblemDefault")}
-                    className="pressable"
-                    style={{
-                      aspectRatio: "1 / 1", minWidth: 0, padding: 4, borderRadius: 12, cursor: "pointer",
-                      display: "grid", placeItems: "center", boxSizing: "border-box",
-                      border: `2px solid ${active ? colors.gold : colors.panelBorder}`,
-                      background: withAlpha("#000000", 0.22),
-                      boxShadow: active ? `0 0 12px ${withAlpha(colors.gold, 0.5)}` : "none",
-                    }}
-                  >
-                    <ClubEmblem id={id} size={40} />
-                  </button>
-                );
-              })}
-            </div>
-          </Card>
-        )}
 
         <PeriodeKnoppen
           actief={period}
@@ -1946,7 +2027,7 @@ function ClubScreen({ game, onBack, embedded }: { game: GameApi; onBack?: () => 
 
         <Card style={{ display: "flex", flexDirection: "column", gap: 3, padding: "13px 7px 14px" }}>
           {members.length === 0 && <p style={{ margin: 0, paddingInline: 6, fontFamily: font.ui, fontSize: 13, color: colors.faint }}>{t("clubEmptyBoard")}</p>}
-          <Lijst n={members.length}>
+          <Lijst n={members.length} toon={5}>
             {members.map((m, i) => {
               const mine = account && m.id === account.id;
               return (
@@ -1983,7 +2064,70 @@ function ClubScreen({ game, onBack, embedded }: { game: GameApi; onBack?: () => 
             <LogOut size={15} /> {t("clubLeaveBtn")}
           </button>
         )}
+
+        {emblemOpen && (
+          <div
+            onClick={() => setEmblemOpen(false)}
+            style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(6,3,18,.7)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)", display: "grid", placeItems: "center", padding: 18 }}
+          >
+            <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 360 }}>
+            <Card style={{ maxHeight: "78vh", overflowY: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ flex: 1, fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint }}>{t("clubEmblemTitle")}</span>
+                <button onClick={() => setEmblemOpen(false)} aria-label={t("close")} style={{ background: "transparent", border: "none", color: colors.faint, cursor: "pointer", display: "flex", padding: 2 }}>
+                  <X size={17} />
+                </button>
+              </div>
+              <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.sub, lineHeight: 1.5 }}>{t("clubEmblemHint")}</p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8 }}>
+                {CLUB_EMBLEM_IDS.map((id) => {
+                  const active = (club.emblem ?? CLUB_EMBLEM_IDS[0]) === id;
+                  return (
+                    <button
+                      key={id}
+                      onClick={() => { sound.uiTap(); game.setClubEmblem(id); setEmblemOpen(false); }}
+                      aria-label={id}
+                      className="pressable"
+                      style={{
+                        aspectRatio: "1 / 1", minWidth: 0, padding: 4, borderRadius: 12, cursor: "pointer",
+                        display: "grid", placeItems: "center", boxSizing: "border-box",
+                        border: `2px solid ${active ? colors.gold : colors.panelBorder}`,
+                        background: withAlpha("#000000", 0.22),
+                        boxShadow: active ? `0 0 12px ${withAlpha(colors.gold, 0.5)}` : "none",
+                      }}
+                    >
+                      <ClubEmblem id={id} size={40} />
+                    </button>
+                  );
+                })}
+              </div>
+            </Card>
+            </div>
+          </div>
+        )}
       </div>
+  );
+}
+
+/** Het potloodje dat naast iets staat wat je mag aanpassen. Klein: even hoog
+ *  als de regel ernaast, want een knop die boven en onder de tekst uitsteekt
+ *  maakt van die tekst een bijschrift bij de knop, en het is andersom. */
+function PotloodKnop({ aan, label, onClick, style }: { aan?: boolean; label: string; onClick: () => void; style?: React.CSSProperties }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-label={label}
+      aria-expanded={aan}
+      className="pressable"
+      style={{
+        width: 19, height: 19, flexShrink: 0, display: "grid", placeItems: "center",
+        borderRadius: 6, border: `1px solid ${withAlpha(GOUD[2], aan ? 0.9 : 0.45)}`,
+        background: aan ? withAlpha(GOUD[2], 0.22) : "rgba(0,0,0,.42)",
+        color: GOUD[2], cursor: "pointer", padding: 0, ...style,
+      }}
+    >
+      <Pencil size={11} />
+    </button>
   );
 }
 
@@ -2013,7 +2157,7 @@ function InviteToClub({ game, memberIds }: { game: GameApi; memberIds: Set<strin
         </span>
         {searchable && <ZoekKnop waarde={q} onWaarde={setQ} />}
       </div>
-      <Lijst n={shown.length} rij={38}>
+      <Lijst n={shown.length} rij={38} toon={3}>
         {shown.map((f) => (
           <GlasRij key={f.id} dun>
             <Avatar name={f.name} color={f.color} size={28} userId={f.id} hasAvatar={f.has_avatar} avatarVer={f.avatar_ver} />
@@ -2233,7 +2377,7 @@ function AvatarPickerScreen({
       {/* Premium pack: unlocked -> pickable; locked -> greyed with a shop nudge. */}
       <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Sparkles size={15} color={colors.violet} />
+          <ArtIcoon naam="sterren" size={19} />
           <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", color: colors.faint }}>{t("pickerPremiumLabel")}</span>
         </div>
         <AvatarGrid
@@ -2560,7 +2704,7 @@ function FriendsTab({ game, onChallenge }: { game: GameApi; onChallenge: (userId
     <>
       {pendingIn.length > 0 && (
         <Card style={{ display: "flex", flexDirection: "column", gap: 3, padding: "13px 7px 14px" }}>
-          <Lijst n={pendingIn.length}>
+          <Lijst n={pendingIn.length} toon={10}>
             {pendingIn.map((f) =>
               row(f, (
                 <div style={{ display: "flex", gap: 6 }}>
@@ -2580,7 +2724,7 @@ function FriendsTab({ game, onChallenge }: { game: GameApi; onChallenge: (userId
         {accepted.length === 0 && pendingOut.length === 0 ? (
           <p style={{ margin: 0, paddingInline: 6, fontFamily: font.ui, fontSize: 13, color: colors.faint, lineHeight: 1.5 }}>{zoek ? t("searchNoMatch") : t("noFriends")}</p>
         ) : (
-          <Lijst n={accepted.length + pendingOut.length}>
+          <Lijst n={accepted.length + pendingOut.length} toon={10}>
             {accepted.map((f) => (
               <div key={f.id} style={{ display: "flex", flexDirection: "column" }}>
                 {row(f, (
@@ -2606,22 +2750,26 @@ function FriendsTab({ game, onChallenge }: { game: GameApi; onChallenge: (userId
             {pendingOut.map((f) => row(f, <span style={{ fontFamily: font.ui, fontSize: 12, color: colors.faint }}>{t("pendingOut")}</span>))}
           </Lijst>
         )}
+        {results.length > 0 && (
+          <>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "11px 6px 6px" }}>
+              <span style={{ fontFamily: font.ui, fontSize: 11.5, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint, display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <UserPlus size={13} /> {t("addFriendBtn")}
+              </span>
+              <span style={{ flex: 1, height: 1, background: colors.hairline }} />
+            </div>
+            <Lijst n={results.length} toon={10}>
+              {results.map((u) =>
+                row(u, sent[u.id]
+                  ? <span style={{ fontFamily: font.ui, fontSize: 12, color: colors.green }}>{t("pendingOut")}</span>
+                  : smallBtn(<><UserPlus size={13} /> {t("addFriendBtn")}</>, () => { game.friendRequest(u.id); setSent((s) => ({ ...s, [u.id]: true })); }, "gold"))
+              )}
+            </Lijst>
+          </>
+        )}
       </Card>
 
-      {results.length > 0 && (
-        <Card style={{ display: "flex", flexDirection: "column", gap: 3, padding: "13px 7px 14px" }}>
-          <span style={{ paddingInline: 6, marginBottom: 3, display: "inline-flex", alignItems: "center", gap: 6, fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase", color: colors.faint }}>
-            <UserPlus size={14} /> {t("addFriendBtn")}
-          </span>
-          <Lijst n={results.length}>
-            {results.map((u) =>
-              row(u, sent[u.id]
-                ? <span style={{ fontFamily: font.ui, fontSize: 12, color: colors.green }}>{t("pendingOut")}</span>
-                : smallBtn(<><UserPlus size={13} /> {t("addFriendBtn")}</>, () => { game.friendRequest(u.id); setSent((s) => ({ ...s, [u.id]: true })); }, "gold"))
-            )}
-          </Lijst>
-        </Card>
-      )}
+
 
       {viewing && <ProfileViewModal game={game} userId={viewing} onClose={() => setViewing(null)} />}
     </>
@@ -2725,7 +2873,7 @@ export function ProfileViewModal({ game, userId, onClose }: { game: GameApi; use
               ) : (
                 p.badges.map((b) => (
                   <div key={b.badge} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 10, background: withAlpha(colors.gold, 0.08), border: `1px solid ${withAlpha(colors.gold, 0.25)}` }}>
-                    <Award size={16} color={colors.gold} />
+                    <ArtIcoon naam="krans" size={18} />
                     <span style={{ fontFamily: font.ui, fontSize: 13.5, color: colors.ink }}>{t(`badge_${b.badge}`)}</span>
                   </div>
                 ))
@@ -2858,8 +3006,8 @@ export function GlasRij({ wapen, dun, children, binnen }: { wapen?: React.ReactN
  *  Drie regels passen altijd; daarboven krijgt de lijst een vaste hoogte en
  *  scrollt hij binnen zijn eigen sectie. Zo blijft de PAGINA kort en hoef je niet
  *  langs een vriendenlijst van dertig te scrollen om te zien wat eronder staat. */
-export function Lijst({ n, gap = 3, rij = 44, children }: { n: number; gap?: number; rij?: number; children: React.ReactNode }) {
-  const schuift = n > 3;
+export function Lijst({ n, gap = 3, rij = 44, toon = 3.5, children }: { n: number; gap?: number; rij?: number; toon?: number; children: React.ReactNode }) {
+  const schuift = n > toon;
   return (
     <div
       className={schuift ? "zachtscroll" : undefined}
@@ -2867,7 +3015,7 @@ export function Lijst({ n, gap = 3, rij = 44, children }: { n: number; gap?: num
         display: "flex",
         flexDirection: "column",
         gap,
-        maxHeight: schuift ? Math.round(3.5 * (rij + gap) - gap) : undefined,
+        maxHeight: schuift ? Math.round(toon * (rij + gap) - gap) : undefined,
         overflowY: schuift ? "auto" : undefined,
         paddingRight: schuift ? 3 : 0,
       }}
@@ -3028,7 +3176,7 @@ function LeaderboardTab({ game }: { game: GameApi }) {
         {rows.length === 0 ? (
           <p style={{ margin: 0, paddingInline: 6, fontFamily: font.ui, fontSize: 13, color: colors.faint }}>{t("lbEmpty")}</p>
         ) : (
-          <Lijst n={rows.length} gap={5}>
+          <Lijst n={rows.length} gap={5} toon={5}>
             {rows.map((r, i) => <RangRij key={r.id} r={r} plek={i + 1} deel={r.points / top} />)}
           </Lijst>
         )}
