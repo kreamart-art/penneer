@@ -74,6 +74,15 @@ export function ReferralAd() {
   }, []);
   useEffect(laad, [laad]);
 
+  // Uitgeschoven en dan niets? Dan gaat hij vanzelf weer terug. Een randje dat
+  // open blijft staan is geen randje meer maar een balk die in de weg staat,
+  // en de volgende keer dat hij zijn kop opsteekt valt hij dan niet meer op.
+  useEffect(() => {
+    if (!uitgeklapt) return;
+    const id = window.setTimeout(() => setUitgeklapt(false), 4000);
+    return () => window.clearTimeout(id);
+  }, [uitgeklapt]);
+
   const sluit = () => {
     sound.uiTap();
     try {
@@ -451,17 +460,23 @@ function Pil({ uitgeklapt, teHalen, onTik }: { uitgeklapt: boolean; teHalen: num
           <span
             style={{
               position: "absolute",
-              left: "31%",
-              right: "4%",
+              left: "29%",
+              right: "3%",
               top: "50%",
               transform: "translateY(-50%)",
               fontFamily: font.wide,
-              fontSize: 11.5,
+              fontSize: 14.5,
               letterSpacing: 0.2,
-              lineHeight: 1.05,
+              lineHeight: 1,
+              whiteSpace: "nowrap",
               color: "#FFEBB8",
               textShadow: "0 2px 4px rgba(0,0,0,.6)",
               textAlign: "center",
+              // Pas te lezen als hij open staat. Ingeschoven zit de tekst
+              // buiten beeld, en een halve letter die langs de schermrand
+              // piept leest als een fout in plaats van als een aanbod.
+              opacity: uitgeklapt ? 1 : 0,
+              transition: uitgeklapt ? "opacity .2s .18s" : "opacity .12s",
             }}
           >
             {teHalen > 0 ? "BELONING KLAAR" : "NODIG UIT"}
