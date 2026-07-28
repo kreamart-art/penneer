@@ -17,6 +17,7 @@
 // vijf, zodat er iets is om naartoe te werken.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "./Button";
+import { NeonText } from "./NeonText";
 import { sound } from "../sound/sound";
 import { colors, font, withAlpha } from "../theme/tokens";
 
@@ -202,23 +203,26 @@ function Popup({
           style={{ position: "absolute", right: "3%", top: "6%", width: "37%", zIndex: 0, pointerEvents: "none" }}
         />
 
-        {/* Het bordje bovenaan. De letterafstand zet ook ACHTER de laatste
-            letter ruimte, dus zonder die halve stap terug staat het woord net
-            links van het midden van het bordje. */}
+        {/* Het bordje bovenaan, in dezelfde behandeling als het woordmerk op de
+            main page: een verloop over de letter, licht waar het licht vandaan
+            komt, en een schaduw eronder. De letterafstand zet ook ACHTER de
+            laatste letter ruimte, dus zonder die halve stap terug staat het
+            woord net links van het midden van het bordje. */}
         <span
           style={{
             position: "absolute",
             left: "50%",
-            top: "1.4%",
-            transform: "translateX(calc(-50% + 0.9px))",
+            top: "0.8%",
+            transform: "translateX(calc(-50% + 1.1px))",
             fontFamily: font.wide,
-            fontSize: "clamp(10px, 3vw, 13px)",
-            letterSpacing: 1.8,
-            color: colors.gold,
-            textShadow: "0 1px 2px rgba(0,0,0,.6)",
+            fontSize: "clamp(13px, 3.9vw, 17px)",
+            letterSpacing: 2.2,
+            lineHeight: 1.15,
           }}
         >
-          PREMIUM
+          <NeonText accent="#FFC23D" depth="light" flat drop={0.11}>
+            PREMIUM
+          </NeonText>
         </span>
 
         {magSluiten && (
@@ -253,9 +257,12 @@ function Popup({
               <h2
                 style={{
                   margin: 0,
-                  fontFamily: font.wide,
-                  fontSize: "clamp(30px, 10.5vw, 46px)",
-                  lineHeight: 0.94,
+                  // Karmatic Arcade: blokkerig en luid, precies wat een
+                  // advertentiekop moet zijn. Wel met een eigen regelafstand,
+                  // want dit font zet zijn hoofdletters hoog in de regel.
+                  fontFamily: '"KA1", "Bebas Neue", sans-serif',
+                  fontSize: "clamp(21px, 7.4vw, 32px)",
+                  lineHeight: 1.16,
                   letterSpacing: 0.5,
                   backgroundImage: "linear-gradient(168deg, #FFEBB8 0%, #FFC23D 46%, #E39A12 100%)",
                   WebkitBackgroundClip: "text",
@@ -270,10 +277,13 @@ function Popup({
               </h2>
               <p
                 style={{
-                  margin: "9px 0 0",
-                  fontFamily: font.ui,
-                  fontSize: "clamp(11px, 3.3vw, 13px)",
-                  lineHeight: 1.35,
+                  margin: "10px 0 0",
+                  // De smalle hoofdletterstijl die eerst de kop droeg. Naast
+                  // een blokkerige kop leest die rustiger dan een gewone zin.
+                  fontFamily: font.wide,
+                  fontSize: "clamp(13px, 3.9vw, 16px)",
+                  letterSpacing: 0.5,
+                  lineHeight: 1.18,
                   color: colors.ink,
                 }}
               >
@@ -306,14 +316,14 @@ function Popup({
             ))}
           </div>
 
-          <div style={{ marginTop: 10, width: "74%", alignSelf: "center" }}>
+          <div style={{ marginTop: 10, width: "62%", alignSelf: "center" }}>
             {klaar.length > 0 ? (
-              <Button variant="gold" full onClick={() => onHaalOp(klaar[0])} disabled={bezig} style={{ padding: "7px 10px", fontSize: 13 }}>
-                {klaar[0].kind === "ai" ? "AI-scheidsrechter ophalen" : `+${klaar[0].amount} munten ophalen`}
+              <Button variant="gold" full onClick={() => onHaalOp(klaar[0])} disabled={bezig} style={{ padding: "6px 9px", fontSize: 12.5 }}>
+                {klaar[0].kind === "ai" ? "AI erbij" : `+${klaar[0].amount} munten`}
               </Button>
             ) : (
-              <Button variant="gold" full onClick={onDeel} style={{ padding: "7px 10px", fontSize: 13 }}>
-                Stuur naar een vriend
+              <Button variant="gold" full onClick={onDeel} style={{ padding: "6px 9px", fontSize: 12.5 }}>
+                Nodig uit
               </Button>
             )}
           </div>

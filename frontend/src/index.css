@@ -18,6 +18,16 @@
   font-display: swap;
 }
 
+/* Karmatic Arcade: de blokkerige arcade-kop. Alleen voor de kop van de
+   werf-advertentie, want hij is te zwaar voor lopende tekst. */
+@font-face {
+  font-family: "KA1";
+  src: url("/fonts/ka1.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 @font-face {
   font-family: "Cybergame";
   src: url("/fonts/cybergame-italic.ttf") format("truetype");
