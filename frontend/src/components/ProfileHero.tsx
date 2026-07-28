@@ -252,6 +252,8 @@ export function NeonKader({
   style,
   binnen,
   radius = KADER_R,
+  vulling = "licht",
+  dik = 0.75,
 }: {
   children: ReactNode;
   style?: CSSProperties;
@@ -260,42 +262,52 @@ export function NeonKader({
   /** De hoekronding. Een lijst OM andere lijsten krijgt er een paar bij, zodat
    *  de binnenste er netjes in valt in plaats van ertegenaan te botsen. */
   radius?: number;
+  /** "geen" laat de achtergrond volledig door: dan is de lijst puur lijn en
+   *  licht. "licht" legt er een heel dun paars waas onder. */
+  vulling?: "geen" | "licht";
+  /** De dikte van de lijn. */
+  dik?: number;
 }) {
   const KADER_R = radius;
   return (
     <div style={{ position: "relative", ...style }}>
-      {/* 1. buitengloed */}
+      {/* 3. zachte buitengloed */}
       <span
         aria-hidden
         style={{
           position: "absolute",
           inset: 0,
           borderRadius: KADER_R,
-          boxShadow: "0 0 10px rgba(139,83,255,.30), 0 3px 12px rgba(0,0,0,.45)",
+          boxShadow: "0 0 10px rgba(139,83,255,.26), 0 3px 12px rgba(0,0,0,.38)",
           pointerEvents: "none",
         }}
       />
-      {/* 2. het paneel */}
+      {/* 1. het paneel. Bij "geen" is het echt leeg: geen vlak, geen waas. */}
       <div
         style={{
           position: "relative",
           borderRadius: KADER_R,
           overflow: "hidden",
-          backgroundImage: "linear-gradient(180deg, rgba(52,28,92,.60) 0%, rgba(30,14,58,.72) 45%, rgba(16,7,34,.80) 100%)",
+          backgroundImage:
+            vulling === "geen"
+              ? undefined
+              : "linear-gradient(180deg, rgba(66,36,116,.20) 0%, rgba(30,14,58,.26) 50%, rgba(16,7,34,.30) 100%)",
           ...binnen,
         }}
       >
-        {/* 3. hoeklicht linksboven */}
+        {/* 5. hoekverlichting: warm, linksboven, want daar komt het licht vandaan */}
         <span
           aria-hidden
           style={{
             position: "absolute",
             inset: 0,
-            backgroundImage: "radial-gradient(75% 155% at 5% 0%, rgba(255,190,90,.11) 0%, transparent 56%)",
+            backgroundImage: "radial-gradient(70% 150% at 5% 0%, rgba(255,190,90,.10) 0%, transparent 55%)",
             pointerEvents: "none",
           }}
         />
-        {/* 5. binnenglans: kort, alleen waar het oppervlak het licht vangt */}
+        {/* 4. binnenglans: kort en alleen langs de bovenrand, daar vangt het
+            oppervlak het licht. Over de halve rand licht leest niet als licht
+            maar als een gekleurd vlak. */}
         <span
           aria-hidden
           style={{
@@ -304,28 +316,28 @@ export function NeonKader({
             right: "8%",
             top: 0,
             height: 1,
-            background: "linear-gradient(90deg, transparent, rgba(255,255,255,.20), transparent)",
+            background: "linear-gradient(90deg, transparent, rgba(255,255,255,.18), transparent)",
             pointerEvents: "none",
           }}
         />
         {children}
       </div>
-      {/* 4. de lijn: DRIE ringen op elkaar, dezelfde stapeling als de banner
+      {/* 2. de lijn: DRIE ringen op elkaar, dezelfde stapeling als de banner
           "Jij draait deze ronde".
             a. een kleine bloom eronder. Klein, want een brede gloed maakt de
                lijn juist vaag in plaats van verlicht.
-            b. de lijn zelf, met het verloop.
+            b. de lijn zelf, met het verloop van goud naar violet.
             c. een bijna-witte glans BOVENOP, maar alleen in het midden. Op de
-               donkere flanken mengt bijna-wit tot grijs, en op een lijn van een
-               pixel is dat randje bijna de halve lijn; dan wordt de hele lijn
-               grijs. Glans hoort alleen te zitten waar de lijn oplicht.
+               donkere flanken mengt bijna-wit tot grijs, en op zo'n dunne lijn
+               is dat randje bijna de halve lijn; dan wordt de hele lijn grijs.
+               Glans hoort alleen te zitten waar de lijn oplicht.
           Alle drie als ring geknipt met hetzelfde masker: een verlooplaag
-          eronder schijnt door het doorschijnende paneel heen, en
+          eronder schijnt door een doorschijnend paneel heen, en
           `background-clip: border-box` betekent "over de hele doos" en niet
           "alleen de rand". */}
-      <span aria-hidden style={{ ...ringLaag(KADER_R, 2.5), backgroundImage: KADER_LIJN, filter: "blur(3px)", opacity: 0.45 }} />
-      <span aria-hidden style={{ ...ringLaag(KADER_R, 1), backgroundImage: KADER_LIJN }} />
-      <span aria-hidden style={{ ...ringLaag(KADER_R, 1), backgroundImage: KADER_GLANS }} />
+      <span aria-hidden style={{ ...ringLaag(KADER_R, dik + 1.5), backgroundImage: KADER_LIJN, filter: "blur(3px)", opacity: 0.4 }} />
+      <span aria-hidden style={{ ...ringLaag(KADER_R, dik), backgroundImage: KADER_LIJN }} />
+      <span aria-hidden style={{ ...ringLaag(KADER_R, dik), backgroundImage: KADER_GLANS }} />
     </div>
   );
 }

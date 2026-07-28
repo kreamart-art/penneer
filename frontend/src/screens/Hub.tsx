@@ -454,7 +454,7 @@ function CollapsibleCard({
     // De binnenste lijsten krijgen een kleinere ronding, anders botsen de twee
     // hoeken op elkaar in plaats van in elkaar te vallen.
     return (
-      <NeonKader radius={19} binnen={{ padding: "11px 11px 12px", display: "flex", flexDirection: "column", gap: 10 }}>
+      <NeonKader radius={18} vulling="geen" dik={0.75} binnen={{ padding: "9px 9px 10px", display: "flex", flexDirection: "column", gap: 9 }}>
         <SectieKop
           label={title}
           actie={hidden > 0 ? (open ? t("showLess") : t("showAll")) : undefined}
@@ -596,8 +596,9 @@ function HistoryCard({ game, meId, vitrine }: { game: GameApi; meId: string; vit
         return (
           <NeonKader
             key={`${g.finished_at}-${i}`}
-            radius={13}
-            binnen={{ display: "flex", alignItems: "center", gap: 9, padding: "7px 9px" }}
+            radius={12}
+            dik={0.6}
+            binnen={{ display: "flex", alignItems: "center", gap: 9, padding: "5px 8px" }}
           >
             <PlekWapen plek={g.place} />
             <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
