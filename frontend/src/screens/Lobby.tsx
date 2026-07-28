@@ -2,7 +2,7 @@
 // no-timer, rounds, categories + deelcode, hard letters, max players, spectators),
 // testbots, and per-device language + sound toggles.
 import { useEffect, useRef, useState } from "react";
-import { Check, Copy, History, Minus, Plus, Search, Send, Share2, UserPlus, X } from "lucide-react";
+import { Check, Copy, History, Minus, Plus, Send, Share2, UserPlus, X } from "lucide-react";
 import { Avatar } from "../components/Avatar";
 import { NeonText } from "../components/NeonText";
 import { Button } from "../components/Button";
@@ -12,7 +12,7 @@ import { MusicToggle } from "../components/MusicToggle";
 import { Toggle } from "../components/Toggle";
 import { Screen, Card } from "../components/Layout";
 import { TopBar } from "../components/TopBar";
-import { ProfileViewModal } from "./Hub";
+import { GlasRij, Lijst, ProfileViewModal, ZoekKnop } from "./Hub";
 import type { GameApi, PublicUser } from "../net/socket";
 import { ALL_CATEGORY_KEYS, subLabelKey, useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
@@ -49,14 +49,14 @@ function Rij({
 }) {
   const { t } = useT();
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-      <div style={{ position: "relative" }}>
-        <Avatar name={u.name} color={u.color} size={32} userId={u.id} hasAvatar={u.has_avatar} avatarVer={u.avatar_ver} />
+    <GlasRij dun>
+      <div style={{ position: "relative", flexShrink: 0 }}>
+        <Avatar name={u.name} color={u.color} size={28} userId={u.id} hasAvatar={u.has_avatar} avatarVer={u.avatar_ver} />
         <span style={{ position: "absolute", bottom: -2, right: -2, width: 9, height: 9, borderRadius: "50%", background: u.online ? colors.green : colors.faint, border: `2px solid ${colors.bg1}` }} />
       </div>
       <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 1 }}>
-        <span style={{ fontFamily: font.ui, fontWeight: 600, fontSize: 14, color: colors.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.name}</span>
-        {bij && <span style={{ fontFamily: font.ui, fontSize: 11, color: colors.faint }}>{bij}</span>}
+        <span style={{ fontFamily: font.ui, fontWeight: 600, fontSize: 13.5, color: colors.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.name}</span>
+        {bij && <span style={{ fontFamily: font.ui, fontSize: 10.5, color: colors.faint }}>{bij}</span>}
       </span>
       {sent ? (
         <span style={{ fontFamily: font.ui, fontSize: 12, color: colors.green }}>{t("inviteSentShort")}</span>
@@ -64,12 +64,12 @@ function Rij({
         <button
           onClick={onInvite}
           className="pressable"
-          style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "7px 11px", borderRadius: 9, border: "none", background: colors.gold, color: colors.bg0, fontFamily: font.ui, fontWeight: 700, fontSize: 12, cursor: "pointer" }}
+          style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 10px", borderRadius: 8, border: "none", background: colors.gold, color: colors.bg0, fontFamily: font.ui, fontWeight: 700, fontSize: 11.5, cursor: "pointer" }}
         >
-          <Send size={12} /> {t("inviteToRoom")}
+          <Send size={11} /> {t("inviteToRoom")}
         </button>
       )}
-    </div>
+    </GlasRij>
   );
 }
 
@@ -98,32 +98,21 @@ function InviteFriends({ game }: { game: GameApi }) {
   const shown = q.trim() ? candidates.filter((f) => f.name.toLowerCase().includes(q.trim().toLowerCase())) : candidates;
 
   return (
-    <Card>
-      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
+    <Card style={{ padding: "11px 7px 13px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, minHeight: 30, paddingInline: 6 }}>
         <span style={{ flex: 1, fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint, display: "flex", alignItems: "center", gap: 6 }}>
           <UserPlus size={13} /> {candidates.length ? t("inviteFriends") : t("invitePeople")}
         </span>
-        {searchable && (
-          <div style={{ display: "flex", alignItems: "center", gap: 6, flex: "0 1 160px", background: withAlpha("#000000", 0.25), border: `1px solid ${colors.panelBorder}`, borderRadius: 999, padding: "5px 10px" }}>
-            <Search size={13} color={colors.faint} style={{ flexShrink: 0 }} />
-            <input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder={t("searchName")}
-              style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", color: colors.ink, fontFamily: font.ui, fontSize: 12.5 }}
-            />
-          </div>
-        )}
+        {searchable && <ZoekKnop waarde={q} onWaarde={setQ} />}
       </div>
-      {/* Cap the height to about three rows so a long friend list scrolls. */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: searchable ? 150 : undefined, overflowY: searchable ? "auto" : undefined, paddingRight: searchable ? 4 : 0 }}>
+      <Lijst n={shown.length} rij={38}>
         {shown.length === 0 && (
-          <span style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint, padding: "4px 0" }}>{t("searchNoMatch")}</span>
+          <span style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint, padding: "4px 6px" }}>{t("searchNoMatch")}</span>
         )}
         {shown.map((f) => (
           <Rij key={f.id} u={f} sent={!!sent[f.id]} onInvite={() => { game.inviteSend(f.id, "invite"); setSent((s) => ({ ...s, [f.id]: true })); }} />
         ))}
-      </div>
+      </Lijst>
 
       {/* Oud-medespelers. Speel je een leuk potje met iemand die je niet als
           vriend hebt, dan is die daarna onvindbaar: je zou zijn naam moeten
@@ -131,13 +120,13 @@ function InviteFriends({ game }: { game: GameApi }) {
           accepteert. Hier staat hij gewoon. */}
       {oud.length > 0 && (
         <>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "14px 0 10px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "13px 6px 8px" }}>
             <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint, display: "flex", alignItems: "center", gap: 6 }}>
               <History size={13} /> {t("invitePlayedBefore")}
             </span>
             <span style={{ flex: 1, height: 1, background: colors.hairline }} />
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: oud.length > 3 ? 150 : undefined, overflowY: oud.length > 3 ? "auto" : undefined, paddingRight: oud.length > 3 ? 4 : 0 }}>
+          <Lijst n={oud.length} rij={38}>
             {oud.map((c) => (
               <Rij
                 key={c.id}
@@ -147,7 +136,7 @@ function InviteFriends({ game }: { game: GameApi }) {
                 onInvite={() => { game.inviteSend(c.id, "invite"); setSent((s) => ({ ...s, [c.id]: true })); }}
               />
             ))}
-          </div>
+          </Lijst>
         </>
       )}
     </Card>

@@ -765,3 +765,13 @@ a:active .hex-aan {
   .kader-loop, .kern-adem, .kern-veeg { animation: none; }
   .panel-neon::before { animation: none; }
 }
+
+/* Een lijst die verder loopt dan de sectie hoog is. De halve rij onderaan
+   vertelt al dat er meer staat, dus de balk van het systeem mag weg: op een
+   telefoon verdwijnt die vanzelf, op de desktop stond hij als grijze streep
+   dwars over de neonlijn van de laatste rij. */
+.zachtscroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.zachtscroll::-webkit-scrollbar { width: 0; height: 0; }
