@@ -162,10 +162,13 @@ export function StatKaart({ icoon, art, waarde, label }: { icoon: ReactNode; art
         filter: "drop-shadow(0 4px 9px rgba(0,0,0,.45))",
       }}
     >
+      {/* Het teken groeit OMHOOG: het schuift met een negatieve marge de
+          binnenrand in en wordt even veel groter. Zo blijven het cijfer en het
+          label precies waar ze stonden en heeft alleen het teken meer ruimte. */}
       {art ? (
-        <img src={art} alt="" aria-hidden style={{ width: 22, height: 22, objectFit: "contain", flexShrink: 0 }} />
+        <img src={art} alt="" aria-hidden style={{ width: 28, height: 28, marginTop: -6, objectFit: "contain", flexShrink: 0 }} />
       ) : (
-        <span style={{ color: GOUD[2], height: 22, display: "grid", placeItems: "center", flexShrink: 0 }}>{icoon}</span>
+        <span style={{ color: GOUD[2], height: 28, marginTop: -6, display: "grid", placeItems: "center", flexShrink: 0 }}>{icoon}</span>
       )}
       {/* Het cijfer is wit en niet goud: het goud zit al in de lijst en in het
           teken, dus een derde gouden ding maakt het kaartje één brij. Wit is
