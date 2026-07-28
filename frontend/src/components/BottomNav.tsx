@@ -24,9 +24,12 @@ export type NavKey = "shop" | "leaderboard" | "home" | "friends" | "profile";
 // De art heeft twee verzonken vakken en in het midden een gouden penning met
 // het huisje er al in getekend. Elk vak krijgt twee pictogrammen, het huisje
 // komt uit de art. Vandaar vijf posities waarvan er maar vier iets tekenen.
-const SLOTS = [11.8, 31.7, 50, 68.3, 88.2];
-const WELL_Y = 50.5; // verticale hartlijn van de vakken
-const PLATE_RATIO = "1200 / 174";
+// Opnieuw uitgemeten op de nieuwe art: het linkervak loopt van 1,9 tot 40,7
+// procent, het rechter van 59,4 tot 98,1, en beide hebben hun hartlijn op 50,3.
+// Twee pictogrammen per vak, dus op een kwart en driekwart van elk vak.
+const SLOTS = [11.6, 31.0, 50, 69.1, 88.4];
+const WELL_Y = 50.3; // verticale hartlijn van de vakken
+const PLATE_RATIO = "3955 / 578";
 const GAP = 8; // hoe hoog de plaat boven de onderrand zweeft
 
 export function BottomNav({
