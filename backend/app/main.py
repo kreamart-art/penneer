@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import os
+from datetime import datetime
 import time
 import uuid
 from pathlib import Path
@@ -840,6 +841,20 @@ async def duel_list(request: Request) -> JSONResponse:
     })
 
 
+# Hoe lang de werfactie loopt. Een actie zonder eind is geen actie maar een
+# knop, en dan haast niemand zich. Twee weken is de maat die werkt: lang genoeg
+# om echt vrienden te vragen, kort genoeg om een gebeurtenis te zijn. Zet
+# PENNEER_REFERRAL_END (ISO-tijd) om hem te verschuiven of te verlengen.
+REFERRAL_END = os.environ.get("PENNEER_REFERRAL_END", "2026-08-11T23:59:59+02:00")
+
+
+def _referral_ends_at() -> float:
+    try:
+        return datetime.fromisoformat(REFERRAL_END).timestamp()
+    except (TypeError, ValueError):
+        return 0.0
+
+
 @app.get("/api/referral/info")
 async def referral_info(request: Request) -> JSONResponse:
     """Alles wat de werf-advertentie nodig heeft: je code, hoeveel vrienden er
@@ -862,11 +877,16 @@ async def referral_info(request: Request) -> JSONResponse:
             "n": n, "kind": "coins", "amount": db.REFERRAL_DAARNA,
             "reached": aantal >= n, "claimed": n in opgehaald,
         })
+    einde = _referral_ends_at()
     return JSONResponse({
         "code": code,
         "count": aantal,
         "tiers": tiers,
         "repeat": db.REFERRAL_DAARNA,
+        "ends_at": einde,
+        # Voorbij de einddatum is de advertentie klaar; wat al verdiend is blijft
+        # gewoon op te halen, dus dit sluit alleen het WERVEN af.
+        "over": bool(einde and time.time() > einde),
     })
 
 

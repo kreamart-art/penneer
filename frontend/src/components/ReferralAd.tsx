@@ -22,7 +22,7 @@ import { sound } from "../sound/sound";
 import { colors, font, withAlpha } from "../theme/tokens";
 
 type Tier = { n: number; kind: "coins" | "ai"; amount: number; reached: boolean; claimed: boolean };
-type Info = { code: string; count: number; tiers: Tier[]; repeat: number };
+type Info = { code: string; count: number; tiers: Tier[]; repeat: number; ends_at: number; over: boolean };
 
 const KLEIN_SLEUTEL = "penneer.refAdKlein"; // popup al eens weggetikt in deze sessie
 
@@ -44,6 +44,19 @@ function teHalen(info: Info | null): Tier[] {
   return info.tiers.filter((t) => t.reached && !t.claimed);
 }
 
+/** Hoeveel er nog te gaan is, kort opgeschreven: dagen en uren, of uren en
+ *  minuten op de laatste dag. Seconden laten meelopen maakt van een aanbod een
+ *  kookwekker. */
+function resterend(tot: number): string {
+  const sec = Math.max(0, tot - Date.now() / 1000);
+  const d = Math.floor(sec / 86400);
+  const u = Math.floor((sec % 86400) / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  if (d > 0) return `NOG ${d}D ${u}U`;
+  if (u > 0) return `NOG ${u}U ${m}M`;
+  return `NOG ${m}M`;
+}
+
 export function ReferralAd() {
   const [info, setInfo] = useState<Info | null>(null);
   // "groot" is de popup, "pil" is het randje, "uit" is helemaal weg (alleen
@@ -51,13 +64,37 @@ export function ReferralAd() {
   const [vorm, setVorm] = useState<"uit" | "groot" | "pil">("uit");
   const [uitgeklapt, setUitgeklapt] = useState(false);
   const [bezig, setBezig] = useState(false);
+  // Waar de popup naartoe krimpt als je hem wegtikt: naar de plek van de pil.
+  // Zonder die reis lijkt het alsof de advertentie verdwijnt en er los daarvan
+  // een tabje verschijnt; met de reis is het duidelijk hetzelfde ding.
+  const [naar, setNaar] = useState<{ x: number; y: number } | null>(null);
   const gestart = useRef(false);
+  // Waar de pil hangt: onder het muntenvak, met lucht ertussen. Niet op een
+  // percentage van de schermhoogte, want dan schuift hij op elk toestel ergens
+  // anders heen; hij wordt afgelezen van het vak zelf, dus hij klopt overal en
+  // ook als dat vak ooit van maat verandert.
+  const [pilTop, setPilTop] = useState<number | null>(null);
+  useEffect(() => {
+    const meet = () => {
+      const munten = document.querySelector('[aria-label="Coins"]') as HTMLElement | null;
+      if (!munten) return;
+      const r = munten.getBoundingClientRect();
+      if (r.height) setPilTop(Math.round(r.bottom + 16));
+    };
+    meet();
+    const id = window.setTimeout(meet, 400); // na het laden van de art
+    window.addEventListener("resize", meet);
+    return () => {
+      window.clearTimeout(id);
+      window.removeEventListener("resize", meet);
+    };
+  }, []);
 
   const laad = useCallback(() => {
     fetch("/api/referral/info", { headers: authHeaders() })
       .then((r) => (r.ok ? r.json() : null))
       .then((d: Info | null) => {
-        if (!d) return;
+        if (!d || d.over) return; // actie afgelopen: geen advertentie meer
         setInfo(d);
         if (!gestart.current) {
           gestart.current = true;
@@ -83,12 +120,26 @@ export function ReferralAd() {
     return () => window.clearTimeout(id);
   }, [uitgeklapt]);
 
-  const sluit = () => {
+  const sluit = (vanaf?: DOMRect) => {
     sound.uiTap();
     try {
       sessionStorage.setItem(KLEIN_SLEUTEL, "1");
     } catch {
       /* geen opslag */
+    }
+    if (vanaf) {
+      const doelX = 60;
+      const doelY = (pilTop ?? 90) + 25;
+      setNaar({
+        x: Math.round(doelX - (vanaf.left + vanaf.width / 2)),
+        y: Math.round(doelY - (vanaf.top + vanaf.height / 2)),
+      });
+      window.setTimeout(() => {
+        setNaar(null);
+        setVorm("pil");
+        setUitgeklapt(false);
+      }, 360);
+      return;
     }
     setVorm("pil");
     setUitgeklapt(false);
@@ -127,7 +178,7 @@ export function ReferralAd() {
 
   if (vorm === "uit" || !info) return null;
   if (vorm === "pil") {
-    return <Pil uitgeklapt={uitgeklapt} teHalen={teHalen(info).length} onTik={() => {
+    return <Pil uitgeklapt={uitgeklapt} teHalen={teHalen(info).length} top={pilTop} eindigt={info.ends_at} onTik={() => {
       sound.uiTap();
       if (uitgeklapt) setVorm("groot");
       else setUitgeklapt(true);
@@ -137,6 +188,7 @@ export function ReferralAd() {
     <Popup
       info={info}
       bezig={bezig}
+      naar={naar}
       onSluit={sluit}
       onDeel={deel}
       onHaalOp={haalOp}
@@ -149,16 +201,23 @@ export function ReferralAd() {
 function Popup({
   info,
   bezig,
+  naar,
   onSluit,
   onDeel,
   onHaalOp,
 }: {
   info: Info;
   bezig: boolean;
-  onSluit: () => void;
+  naar: { x: number; y: number } | null;
+  onSluit: (vanaf?: DOMRect) => void;
   onDeel: () => void;
   onHaalOp: (t: Tier) => void;
 }) {
+  const doos = useRef<HTMLDivElement | null>(null);
+  const weg = () => {
+    if (!magSluitenRef.current) return;
+    onSluit(doos.current?.getBoundingClientRect());
+  };
   const klaar = teHalen(info);
   const komt = volgende(info);
   // Weggaan kan pas na drie tellen, en dat geldt voor ALLE uitgangen: het
@@ -167,17 +226,23 @@ function Popup({
   // wachttijd maar een omweg. Drie tellen is lang genoeg om te lezen en kort
   // genoeg om niet te ergeren.
   const [magSluiten, setMagSluiten] = useState(false);
+  const magSluitenRef = useRef(false);
   useEffect(() => {
-    const id = window.setTimeout(() => setMagSluiten(true), 3000);
+    const id = window.setTimeout(() => {
+      magSluitenRef.current = true;
+      setMagSluiten(true);
+    }, 3000);
     return () => window.clearTimeout(id);
   }, []);
   return (
     <div
-      onClick={() => magSluiten && onSluit()}
+      onClick={weg}
       style={{
         position: "fixed",
         inset: 0,
         zIndex: 130,
+        opacity: naar ? 0 : 1,
+        transition: "opacity .3s",
         background: "rgba(4,2,14,.82)",
         backdropFilter: "blur(5px)",
         WebkitBackdropFilter: "blur(5px)",
@@ -187,9 +252,20 @@ function Popup({
       }}
     >
       <div
+        ref={doos}
         onClick={(e) => e.stopPropagation()}
-        className="pop-in"
-        style={{ position: "relative", width: "100%", maxWidth: 380 }}
+        className={naar ? undefined : "pop-in"}
+        style={{
+          position: "relative",
+          width: "100%",
+          maxWidth: 380,
+          // De reis naar de pil. Bij het wegtikken wordt hier de afstand tot de
+          // plek van de pil ingevuld; hij krimpt er dan naartoe in plaats van
+          // ter plekke te verdwijnen.
+          transform: naar ? `translate(${naar.x}px, ${naar.y}px) scale(.13)` : undefined,
+          opacity: naar ? 0 : 1,
+          transition: naar ? "transform .36s cubic-bezier(.5,0,.75,0), opacity .36s ease-in" : undefined,
+        }}
       >
         {/* De lijst is EEN plaatje dat de doos vult. Hij rekt dus mee met de
             tekst; daarom staat er weinig tekst in. Uit elkaar knippen gaf een
@@ -256,7 +332,7 @@ function Popup({
 
         {magSluiten && (
           <button
-            onClick={onSluit}
+            onClick={weg}
             aria-label="Sluiten"
             className="pressable pop-in"
             style={{
@@ -367,7 +443,7 @@ function Popup({
             )}
           </div>
           <button
-            onClick={() => magSluiten && onSluit()}
+            onClick={weg}
             style={{
               margin: "7px auto 0",
               opacity: magSluiten ? 1 : 0.35,
@@ -421,7 +497,19 @@ function Trede({ t, volgend }: { t: Tier; volgend: boolean }) {
 
 // ---- de pil aan de zijkant -------------------------------------------------
 
-function Pil({ uitgeklapt, teHalen, onTik }: { uitgeklapt: boolean; teHalen: number; onTik: () => void }) {
+function Pil({
+  uitgeklapt,
+  teHalen,
+  top,
+  eindigt,
+  onTik,
+}: {
+  uitgeklapt: boolean;
+  teHalen: number;
+  top: number | null;
+  eindigt: number;
+  onTik: () => void;
+}) {
   // De pil is even HOOG als een zeshoekknopje. Dat knopje is 46 breed en met
   // zijn verhouding 513:460 dus 51 hoog; de pil-art is 1040:443, dus 51 hoog
   // betekent 120 breed. Zo staat hij naast de knoppen alsof hij erbij hoort in
@@ -434,7 +522,7 @@ function Pil({ uitgeklapt, teHalen, onTik }: { uitgeklapt: boolean; teHalen: num
     // hetzelfde element weg, dus die twee kunnen niet op een element staan.
     <div
       className={uitgeklapt ? undefined : "ad-peek"}
-      style={{ position: "fixed", left: 0, top: "11.5%", zIndex: 90, lineHeight: 0 }}
+      style={{ position: "fixed", left: 0, top: top ?? "12%", zIndex: 90, lineHeight: 0 }}
     >
       <button
         onClick={onTik}
@@ -505,6 +593,28 @@ function Pil({ uitgeklapt, teHalen, onTik }: { uitgeklapt: boolean; teHalen: num
           )}
         </span>
       </button>
+      {/* De teller staat ONDER de pil en alleen als hij open is. Een aanbod met
+          een eind erbij vraagt anders dan een aanbod zonder, en dat verschil is
+          precies waarom hij er staat. */}
+      {eindigt > 0 && (
+        <div
+          style={{
+            marginTop: 4,
+            width: 120, // even breed als de pil, anders valt hij er half naast
+            textAlign: "center",
+            fontFamily: font.wide,
+            fontSize: 13,
+            letterSpacing: 0.6,
+            lineHeight: 1,
+            color: colors.gold,
+            textShadow: "0 1px 3px rgba(0,0,0,.7)",
+            opacity: uitgeklapt ? 1 : 0,
+            transition: uitgeklapt ? "opacity .2s .18s" : "opacity .12s",
+          }}
+        >
+          {resterend(eindigt)}
+        </div>
+      )}
     </div>
   );
 }
