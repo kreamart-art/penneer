@@ -164,52 +164,57 @@ export function SectieKop({ label, actie, onActie }: { label: string; actie?: st
 
 /** Een statistiek als kaartje: teken boven, groot getal in goud, label eronder.
  *  Het getal is de held; in een spel wil je het CIJFER zien, want dat is wat je
- *  verzamelt. In een app zou het label leiden. */
-export function StatKaart({ icoon, waarde, label }: { icoon: ReactNode; waarde: ReactNode; label: string }) {
+ *  verzamelt. In een app zou het label leiden.
+ *
+ *  De lijst is echte art (`/ui/stat-frame.webp`) en geen getekende rand, en ze
+ *  ligt er als `border-image` op. Dat is de enige manier waarop de gesmede
+ *  hoeken hun maat houden terwijl de zijkanten meerekken: een gewone
+ *  achtergrond zou het hele plaatje uitrekken en dan worden de hoekstenen
+ *  ovaal. De snede is 70 van de 429 pixels, precies tot voorbij de hoeksteen. */
+export function StatKaart({ icoon, art, waarde, label }: { icoon: ReactNode; art?: string; waarde: ReactNode; label: string }) {
   return (
     <div
       style={{
+        // De lijst is vierkant getekend, dus het kaartje is vierkant. Zonder
+        // deze verhouding bepaalt de inhoud de hoogte en dan trekt de rand met
+        // de tekst mee scheef.
         position: "relative",
-        borderRadius: 14,
-        padding: 1,
-        background: `linear-gradient(170deg, ${withAlpha(GOUD[2], 0.65)} 0%, rgba(0,0,0,.45) 55%, ${withAlpha(GOUD[2], 0.3)} 100%)`,
-        boxShadow: "0 5px 12px rgba(0,0,0,.4)",
+        aspectRatio: "1 / 1",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 3,
+        boxSizing: "border-box",
+        textAlign: "center",
+        borderStyle: "solid",
+        borderWidth: 9,
+        borderImage: "url(/ui/stat-frame.webp) 70 fill stretch",
+        filter: "drop-shadow(0 4px 9px rgba(0,0,0,.45))",
       }}
     >
+      {art ? (
+        <img src={art} alt="" aria-hidden style={{ width: 19, height: 19, objectFit: "contain", flexShrink: 0 }} />
+      ) : (
+        <span style={{ color: GOUD[2], height: 19, display: "grid", placeItems: "center", flexShrink: 0 }}>{icoon}</span>
+      )}
+      {/* Het cijfer is wit en niet goud: het goud zit al in de lijst en in het
+          teken, dus een derde gouden ding maakt het kaartje één brij. Wit is
+          hier het felste wat er is en trekt het oog dus vanzelf naar het
+          getal, precies waar het hoort. */}
       <div
         style={{
-          position: "relative",
-          borderRadius: 13,
-          padding: "11px 4px 9px",
-          textAlign: "center",
-          overflow: "hidden",
-          backgroundImage: [
-            "radial-gradient(90% 70% at 78% 18%, rgba(198,76,168,.2), transparent 60%)",
-            "radial-gradient(110% 80% at 50% 0%, rgba(255,243,181,.1), transparent 64%)",
-            "linear-gradient(180deg, #33215C 0%, #1D1238 100%)",
-          ].join(", "),
-          boxShadow: "inset 0 -7px 12px rgba(5,2,14,.5)",
+          fontFamily: font.display,
+          fontWeight: 800,
+          fontSize: 22,
+          lineHeight: 1,
+          color: "#FFFFFF",
+          textShadow: "0 2px 4px rgba(0,0,0,.55)",
         }}
       >
-        <Hoeken maat={9} dik={2} />
-        <div style={{ display: "grid", placeItems: "center", height: 22, color: GOUD[2] }}>{icoon}</div>
-        <div
-          style={{
-            marginTop: 4,
-            fontFamily: font.display,
-            fontWeight: 800,
-            fontSize: 21,
-            lineHeight: 1,
-            backgroundImage: `linear-gradient(168deg, ${GOUD[3]} 0%, ${GOUD[2]} 52%, ${GOUD[1]} 100%)`,
-            WebkitBackgroundClip: "text",
-            backgroundClip: "text",
-            color: "transparent",
-          }}
-        >
-          {waarde}
-        </div>
-        <div style={{ marginTop: 4, fontFamily: font.ui, fontSize: 10.5, lineHeight: 1.2, color: colors.sub }}>{label}</div>
+        {waarde}
       </div>
+      <div style={{ fontFamily: font.ui, fontWeight: 500, fontSize: 9.5, lineHeight: 1.15, color: withAlpha("#FFFFFF", 0.92) }}>{label}</div>
     </div>
   );
 }

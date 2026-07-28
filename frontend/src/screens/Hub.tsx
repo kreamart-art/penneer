@@ -285,6 +285,20 @@ function statGrid(t: (k: string) => string, stats: AccountStats): [string, strin
 // los kunt herkennen, ook als je het label niet leest.
 const STAT_ICONEN = [Swords, Crown, Percent, Sparkles, Target, Gem, Users, Flame];
 
+// De echte art uit de UI-map, in dezelfde volgorde als `statGrid`. De getekende
+// tekens hierboven blijven als terugval staan voor het geval er een bestand
+// ontbreekt.
+const STAT_ART = [
+  "/ui/stat/games.webp",    // Games: de controller
+  "/ui/stat/winsten.webp",  // Winsten: de beker
+  "/ui/stat/kroon.webp",    // Win %: de kroon
+  "/ui/stat/punten.webp",   // Punten: de stapel munten
+  "/ui/stat/sterren.webp",  // Beste game: de sterren
+  "/ui/stat/woorden.webp",  // Unieke woorden: het boek
+  "/ui/stat/dubbel.webp",   // Dubbels: de twee pijlen
+  "/ui/stat/vlam.webp",     // Winstreeks: de vlam
+];
+
 function StatGrid({ stats }: { stats: AccountStats }) {
   const { t } = useT();
   const rijen = statGrid(t, stats);
@@ -292,7 +306,7 @@ function StatGrid({ stats }: { stats: AccountStats }) {
     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8 }}>
       {rijen.map(([label, value], i) => {
         const Icoon = STAT_ICONEN[i] ?? Sparkles;
-        return <StatKaart key={label} icoon={<Icoon size={15} />} waarde={value} label={label} />;
+        return <StatKaart key={label} icoon={<Icoon size={15} />} art={STAT_ART[i]} waarde={value} label={label} />;
       })}
     </div>
   );
