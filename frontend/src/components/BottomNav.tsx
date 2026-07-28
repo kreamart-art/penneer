@@ -58,17 +58,30 @@ export function BottomNav({
   // pagina weet hoeveel ruimte ze onderaan moet vrijhouden.
   const plate = useRef<HTMLDivElement | null>(null);
   const [plateH, setPlateH] = useState(0);
+  const [plateW, setPlateW] = useState(0);
   useEffect(() => {
     const el = plate.current;
     if (!skin || !el) return;
     const ro = new ResizeObserver(() => {
       const h = el.offsetHeight;
       setPlateH(h);
+      setPlateW(el.getBoundingClientRect().width);
       document.documentElement.style.setProperty("--nav-h", `${Math.round(h + GAP + 6)}px`);
     });
     ro.observe(el);
     return () => ro.disconnect();
   }, [skin]);
+
+  // Een haarlijn van twee pixels, waarvan de ene helft donker is en de andere
+  // licht, moet op het APPARAATRASTER beginnen. Landt hij er half overheen, dan
+  // middelt de browser die twee helften met elkaar en met de achtergrond, en dan
+  // blijft er een vage grijze veeg over in plaats van een groef. Op procenten
+  // valt elke groef op een andere subpixel, en precies daarom was de ene scherp
+  // en de andere niet.
+  const opRaster = (x: number) => {
+    const dpr = typeof window === "undefined" ? 1 : window.devicePixelRatio || 1;
+    return Math.round(x * dpr) / dpr;
+  };
 
   // `s` is de pictogrammaat, `av` die van de avatar. De kale balk heeft een
   // vaste hoogte en dus vaste maten; de plaat-skin schaalt mee met de breedte
@@ -138,16 +151,16 @@ export function BottomNav({
               linkerwand, lichte rechter, want het licht komt van linksboven en
               valt dus op de rechterkant van een gleuf. Boven en onder vervaagd,
               zodat hij vrij in het vak hangt in plaats van de randen te raken. */}
-          {plateH > 0 &&
+          {plateH > 0 && plateW > 0 &&
             GROEVEN.map((x) => (
               <span
                 key={x}
                 aria-hidden
                 style={{
                   position: "absolute",
-                  left: `${x}%`,
+                  left: opRaster((plateW * x) / 100 - 1),
                   top: `${WELL_Y}%`,
-                  transform: "translate(-50%, -50%)",
+                  transform: "translateY(-50%)",
                   width: 2,
                   height: plateH * 0.46,
                   backgroundImage: "linear-gradient(90deg, rgba(8,3,20,.75) 0, rgba(8,3,20,.75) 1px, rgba(255,255,255,.14) 1px, rgba(255,255,255,.14) 2px)",
