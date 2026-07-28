@@ -2,11 +2,10 @@
 // Reached from the Landing. A profile is optional: guests see the create form.
 import { Fragment, useEffect, useRef, useState } from "react";
 import { CloseIcon } from "../components/CloseIcon";
-import { HexPlate } from "../components/HexPlate";
 import { ArrowLeft, Award, BookOpen, Camera, Check, ChevronDown, CircleDot, Copy, Crown, Flame, Gem, Lock, LogOut, Medal, MessageCircle, MoreVertical, Pencil, Percent, Plus, Rocket, Search, Send, Settings as SettingsIcon, Share2, Shield, ShoppingCart, Smile, Sparkles, Star, Swords, Target, Trash2, Trophy, UserPlus, Users, X, Zap, ZoomIn, ZoomOut } from "lucide-react";
 import { Avatar, RANK_RING } from "../components/Avatar";
 import { Plek } from "../components/ProfileShowcase";
-import { GOUD, Paneel, PlekWapen, Prestatie, RingFoto, RingPortret, SCHILD_KLEUREN, SectieKop, SierKop, StatKaart, type SchildKleur } from "../components/ProfileHero";
+import { GOUD, HexArt, NeonKader, Paneel, PlekWapen, Prestatie, RingFoto, RingPortret, SCHILD_KLEUREN, SectieKop, SierKop, StatKaart, type SchildKleur } from "../components/ProfileHero";
 import { isTester } from "../util/testers";
 import { AvatarZoom } from "../components/AvatarZoom";
 import { Button } from "../components/Button";
@@ -350,11 +349,11 @@ function XpRij({ level }: { level: LevelInfo }) {
         {/* De zeshoek draagt een dikke gouden lijst, dus het VAK binnenin is
             een stuk kleiner dan de doos. Vandaar een grotere plaat dan de oude
             getekende zeshoek: anders is er geen plek voor de letters. */}
-        <HexPlate size={34} style={{ flexShrink: 0, marginLeft: -3 }}>
-          <span style={{ fontFamily: font.wide, fontSize: 12, letterSpacing: 0.2, color: GOUD[3], textShadow: "0 1px 2px rgba(8,3,20,.85)" }}>
+        <HexArt maat={30} style={{ flexShrink: 0, marginLeft: -2 }}>
+          <span style={{ fontFamily: font.wide, fontSize: 13, letterSpacing: 0, color: GOUD[3], textShadow: "0 1px 2px rgba(8,3,20,.85)" }}>
             XP
           </span>
-        </HexPlate>
+        </HexArt>
         {/* De balk is een GROEF: de staaf ligt erin, niet erop. De schaduw valt
             binnenin en van bovenaf, en de ring is omgedraaid, want de bovenrand
             van een gat ligt juist in de schaduw. */}
@@ -591,22 +590,9 @@ function HistoryCard({ game, meId, vitrine }: { game: GameApi; meId: string; vit
           </span>
         );
         return (
-          <div
+          <NeonKader
             key={`${g.finished_at}-${i}`}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 9,
-              padding: "9px 10px",
-              borderRadius: 14,
-              // Een gewonnen potje is een trofee en mag dat laten zien; een
-              // verloren potje is geschiedenis en blijft rustig.
-              backgroundImage: g.is_winner
-                ? "linear-gradient(180deg, rgba(255,194,61,.15) 0%, rgba(0,0,0,.26) 100%)"
-                : "linear-gradient(180deg, rgba(255,255,255,.045) 0%, rgba(0,0,0,.26) 100%)",
-              border: `1px solid ${g.is_winner ? withAlpha(colors.gold, 0.45) : colors.hairline}`,
-              boxShadow: g.is_winner ? `0 0 12px ${withAlpha(colors.gold, 0.14)}` : "none",
-            }}
+            binnen={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 10px" }}
           >
             <PlekWapen plek={g.place} />
             <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
@@ -636,7 +622,7 @@ function HistoryCard({ game, meId, vitrine }: { game: GameApi; meId: string; vit
                 {fmtDate(g.finished_at)} · {g.rounds === 1 ? t("historyRound1") : t("historyRounds", { n: g.rounds })}
               </div>
             </div>
-          </div>
+          </NeonKader>
         );
       })}
     />
@@ -1148,9 +1134,9 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
                 background: "linear-gradient(180deg, rgba(255,194,61,.13) 0%, rgba(0,0,0,.3) 100%)",
               }}
             >
-              <HexPlate size={20}>
-                <Crown size={10} color={GOUD[3]} />
-              </HexPlate>
+              <HexArt maat={20}>
+                <Crown size={9} color={GOUD[3]} />
+              </HexArt>
               <span style={{ fontFamily: font.ui, fontSize: 12, color: colors.ink }}>
                 {account.title
                   ? t(`title_${account.title}`)

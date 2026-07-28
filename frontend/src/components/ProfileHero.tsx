@@ -13,7 +13,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import { ChevronRight, Check, Lock } from "lucide-react";
 import { colors, font, withAlpha } from "../theme/tokens";
-import { HexPlate } from "./HexPlate";
+
 
 export const GOUD = ["#4A2E04", "#B07C17", "#FFC23D", "#FFEBB8"] as const;
 
@@ -198,6 +198,122 @@ export function RingFoto({ userId, versie, heeftFoto, naam, kleur }: { userId: s
     >
       {(naam.trim()[0] || "?").toUpperCase()}
     </span>
+  );
+}
+
+/** De zeshoek-art uit de UI-map, met een cijfer of teken erop.
+ *
+ *  Losse plaat naast `HexPlate`: die is van de main page en houdt zijn eigen,
+ *  oudere art. Deze wordt op het profiel gebruikt. */
+const HEX_RATIO = 912 / 787;
+
+export function HexArt({ maat, children, style }: { maat: number; children: ReactNode; style?: CSSProperties }) {
+  return (
+    <span
+      style={{ position: "relative", display: "grid", placeItems: "center", width: maat, height: Math.round(maat * HEX_RATIO), lineHeight: 0, ...style }}
+    >
+      <img src="/tiles/hex.webp" alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }} />
+      <span style={{ position: "absolute", left: "49.9%", top: "49%", transform: "translate(-50%, -50%)", display: "grid", placeItems: "center" }}>
+        {children}
+      </span>
+    </span>
+  );
+}
+
+/** De lijst om een rij: verlicht metaal, geen neonbuis.
+ *
+ *  Zes lagen, van achter naar voren, want de volgorde IS het effect:
+ *    1. een paarse omgevingsgloed, zo zwak dat je hem eerder voelt dan ziet;
+ *    2. de buitengloed, een vervaagde kopie van de lijn zelf, dus goud boven en
+ *       violet onder zonder dat daar een tweede verloop voor nodig is;
+ *    3. de lijn: een haarlijn van anderhalve pixel, als laag ERONDER, want een
+ *       `border` kan geen verloop dragen;
+ *    4. de vulling, bijna doorzichtig; de lijn moet het werk doen;
+ *    5. een binnenglans van een pixel, waardoor het glazig wordt;
+ *    6. de bovenrand, het felst van allemaal, want het licht komt van
+ *       linksboven.
+ *
+ *  Let op de blurwaarden: een ontwerpprogramma noemt een blur van 22, maar CSS
+ *  rekent met de standaardafwijking en dat is de HELFT. Neem je die getallen
+ *  een op een over, dan wordt alles twee keer zo wazig als bedoeld. */
+const KADER_LIJN = [
+  // De hoeken vangen het warme licht; links en rechts even sterk.
+  "radial-gradient(72% 130% at 0% 0%, #FFCF4A 0%, transparent 52%)",
+  "radial-gradient(72% 130% at 100% 0%, #FFCF4A 0%, transparent 52%)",
+  // En daaronder de wandeling van goud naar violet.
+  "linear-gradient(180deg, #FFD96A 0%, #FFC13A 14%, #C98C2A 30%, #9E63FF 66%, #6B2ECF 100%)",
+].join(", ");
+
+export function NeonKader({
+  children,
+  style,
+  binnen,
+}: {
+  children: ReactNode;
+  style?: CSSProperties;
+  /** Opvulling binnen de lijst. */
+  binnen?: CSSProperties;
+}) {
+  return (
+    <div style={{ position: "relative", ...style }}>
+      <div
+        style={{
+          position: "relative",
+          borderRadius: 20,
+          backgroundImage: "linear-gradient(180deg, rgba(84,41,140,.10) 0%, rgba(26,10,46,.12) 100%)",
+          boxShadow: [
+            // 5. de binnenglans, waardoor het glazig wordt
+            "inset 0 1px 2px rgba(255,255,255,.12)",
+            // 2. de buitengloed: goud van boven, violet iets lager, allebei zwak
+            "0 0 12px rgba(255,207,74,.17)",
+            // 1. en de paarse omgevingsgloed, eerder te voelen dan te zien
+            "0 5px 16px rgba(125,60,255,.13)",
+          ].join(", "),
+          ...binnen,
+        }}
+      >
+        {children}
+        {/* 3. De lijn: een RING, geknipt met een masker.
+            Twee bekende trucs werken hier niet, allebei geprobeerd:
+            een verlooplaag eronder die er net onderuit steekt schijnt door de
+            bijna doorzichtige vulling heen, en `background-clip: padding-box,
+            border-box` doet dat ook, want border-box betekent "over de hele
+            doos" en niet "alleen de rand". Een masker dat het midden eruit
+            haalt is het enige dat het vlak echt leeg laat. */}
+        <span
+          aria-hidden
+          style={{
+            position: "absolute",
+            inset: 0,
+            borderRadius: 20,
+            padding: 1.5,
+            backgroundImage: KADER_LIJN,
+            WebkitMask: "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
+            WebkitMaskComposite: "xor",
+            mask: "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
+            maskComposite: "exclude",
+            pointerEvents: "none",
+          }}
+        />
+      </div>
+      {/* De bovenrand krijgt er een derde bij, met een korte bloom eromheen.
+          Kort, want een verloop dat over de halve rand licht is leest niet als
+          licht maar als een gekleurd vlak. */}
+      <span
+        aria-hidden
+        style={{ position: "absolute", left: "14%", right: "14%", top: 0, height: 1.5, borderRadius: 1, background: "linear-gradient(90deg, transparent, #FFD55A, transparent)", pointerEvents: "none" }}
+      />
+      <span
+        aria-hidden
+        style={{ position: "absolute", left: "20%", right: "20%", top: -1, height: 3, background: "linear-gradient(90deg, transparent, #FFD55A, transparent)", filter: "blur(5px)", opacity: 0.5, pointerEvents: "none" }}
+      />
+      {/* En de onderrand een violette zoom, zwak, zodat het vlak naar beneden
+          wegzakt in plaats van overal even hard te stralen. */}
+      <span
+        aria-hidden
+        style={{ position: "absolute", left: "18%", right: "18%", bottom: -1, height: 3, background: "linear-gradient(90deg, transparent, #8B53FF, transparent)", filter: "blur(5px)", opacity: 0.2, pointerEvents: "none" }}
+      />
+    </div>
   );
 }
 
@@ -442,9 +558,9 @@ export function Prestatie({
           />
         ) : (
           <span style={{ filter: behaald ? "none" : "grayscale(1) brightness(1.4)", opacity: behaald ? 1 : 0.45 }}>
-            <HexPlate size={66}>
+            <HexArt maat={62}>
               <span style={{ display: "grid", placeItems: "center", color: GOUD[3] }}>{icoon}</span>
-            </HexPlate>
+            </HexArt>
           </span>
         )}
       </div>

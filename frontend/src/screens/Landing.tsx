@@ -37,6 +37,8 @@ const FRAMES = [
 // percentages van deze maat via --em, dus alles schaalt als één geheel.
 const EMBLEM_SIZE = "clamp(112px, calc(64vh - 315px), 215px)";
 
+// De zeshoek van de knopjes, met de punt naar boven, net als de knopplaten.
+const HEX = "polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)";
 // De goudreeks: donker, midden, licht, fel. Rand, cijfer en gloed komen hier
 // allemaal uit, en daarom horen ze bij elkaar.
 const GOUD = ["#4A2E04", "#B07C17", "#FFC23D", "#FFEBB8"];
@@ -752,27 +754,84 @@ function MissionsSheet({
 function CountBadge({ n, x, y, size = 23 }: { n: number; x: string; y: string; size?: number }) {
   // Een zeshoek, want die staat al op deze pagina: de knopjes voor instellingen,
   // muziek en uitleg zijn zeshoekig. Een rondje was een melding uit een website,
-  // dit is een plaatje uit hetzelfde spel. Sinds er echte zeshoek-art is, is dit
-  // dezelfde plaat als die knopjes: er wordt hier niets meer nagetekend.
+  // dit is een plaatje uit hetzelfde spel.
+  const h = Math.round(size * 1.115);
   return (
     <span
       aria-hidden
-      style={{ position: "absolute", left: x, top: y, transform: "translate(-50%, -50%)", pointerEvents: "none" }}
+      style={{
+        position: "absolute",
+        left: x,
+        top: y,
+        transform: "translate(-50%, -50%)",
+        width: size,
+        height: h,
+        display: "grid",
+        placeItems: "center",
+        pointerEvents: "none",
+      }}
     >
-      <HexPlate size={size}>
-        <span
-          style={{
-            fontFamily: font.display,
-            fontWeight: 800,
-            fontSize: Math.round(size * 0.5),
-            lineHeight: 1,
-            color: GOUD[3],
-            textShadow: "0 1px 2px rgba(8,3,20,.8)",
-          }}
-        >
-          {n}
-        </span>
-      </HexPlate>
+      {/* De gloed is een EIGEN laag. Een box-shadow kan hier niet: `clip-path`
+          knipt alles weg wat een element tekent, dus ook zijn schaduw. */}
+      <span
+        style={{
+          position: "absolute",
+          left: "50%",
+          top: "50%",
+          transform: "translate(-50%, -50%)",
+          width: size * 2.2,
+          height: h * 2.2,
+          borderRadius: "50%",
+          background: `radial-gradient(circle closest-side, ${withAlpha(colors.gold, 0.4)} 0%, ${withAlpha(colors.gold, 0.14)} 44%, transparent 74%)`,
+        }}
+      />
+      {/* Rand en vulling zijn twee geknipte lagen over elkaar: een `border` kan
+          geen verloop, en zou bovendien de rechthoek volgen en niet de zeshoek.
+          Wat er onderuit steekt IS de lijn. Licht boven, donker onder, want het
+          licht komt van boven. */}
+      <span style={{ position: "absolute", inset: 0, clipPath: HEX, background: `linear-gradient(168deg, ${GOUD[3]} 0%, ${GOUD[2]} 17%, ${GOUD[1]} 45%, ${GOUD[0]} 86%, #2A1A02 100%)` }} />
+      <span
+        style={{
+          position: "absolute",
+          inset: Math.max(1.2, size * 0.055),
+          clipPath: HEX,
+          // Donker van binnen. Op een gouden lijst zou een gouden muntje
+          // verdwijnen; zo staat het knopje ergens IN en niet erop geplakt.
+          // Drie lagen: randverdonkering zodat het verzonken leest, daarboven
+          // een KORTE oplichting waar het licht valt (een verloop dat over de
+          // halve vorm licht is leest als een vlak, niet als licht), en
+          // daaronder de bodem.
+          backgroundImage: [
+            "radial-gradient(118% 118% at 50% 38%, transparent 42%, rgba(5,2,14,.72) 100%)",
+            "radial-gradient(58% 34% at 50% 6%, rgba(255,235,184,.5), transparent 72%)",
+            "linear-gradient(180deg, #37245F 0%, #23153F 48%, #120922 100%)",
+          ].join(", "),
+        }}
+      />
+      {/* De glans op de bovenrand. Kort en alleen bovenaan: dat is waar het
+          metaal het licht vangt. Als eigen laag, want binnen dezelfde
+          `background-image` delen alle lagen dezelfde begrenzing. */}
+      <span
+        style={{
+          position: "absolute",
+          inset: 0,
+          clipPath: HEX,
+          background: "radial-gradient(46% 16% at 50% 3%, rgba(255,252,236,.85), rgba(255,240,190,.35) 52%, transparent 78%)",
+        }}
+      />
+      <span
+        style={{
+          position: "relative",
+          fontFamily: font.display,
+          fontWeight: 800,
+          fontSize: Math.round(size * 0.56),
+          lineHeight: 1,
+          color: GOUD[3],
+          textShadow: "0 1px 1px rgba(8,3,20,.75)",
+        }}
+      >
+        {n}
+      </span>
     </span>
   );
 }
