@@ -744,7 +744,11 @@ function HistoryCard({ game, meId, vitrine }: { game: GameApi; meId: string; vit
                 nullen te tonen. */}
             {(g.xp > 0 || g.coins > 0) && groef}
             {(g.xp > 0 || g.coins > 0) && (
-              <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 1 }}>
+              // De tekst mag verder naar rechts dan de rest van de rij: hij is
+              // laag en staat in het midden, dus hij raakt de schuine hoek niet.
+              // Zijn rechterrand komt zo op elf uit, precies de inzet waarmee
+              // het wapen aan de andere kant begint.
+              <div style={{ flexShrink: 0, marginRight: -6, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 1 }}>
                 <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 12, lineHeight: 1.15, color: colors.ink }}>
                   +{g.xp} <span style={{ color: GOUD[2] }}>XP</span>
                 </span>
