@@ -94,7 +94,10 @@ export function ReferralAd() {
     fetch("/api/referral/info", { headers: authHeaders() })
       .then((r) => (r.ok ? r.json() : null))
       .then((d: Info | null) => {
-        if (!d || d.over) return; // actie afgelopen: geen advertentie meer
+        // Actie afgelopen: geen advertentie meer. TENZIJ er nog iets klaarstaat
+        // dat je verdiend hebt; dat mag de einddatum niet opeten.
+        if (!d) return;
+        if (d.over && teHalen(d).length === 0) return;
         setInfo(d);
         if (!gestart.current) {
           gestart.current = true;
@@ -352,7 +355,7 @@ function Popup({
               lineHeight: 0,
             }}
           >
-            <img src="/ads/close.webp" alt="" style={{ width: "100%", display: "block" }} />
+            <img src="/ui/close.webp" alt="" style={{ width: "100%", display: "block" }} />
           </button>
         )}
 

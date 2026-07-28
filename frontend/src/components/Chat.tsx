@@ -2,7 +2,8 @@
 // panel. Lets players ask what a word means without leaving the app. Lives in
 // the TopBar, so it's reachable on every in-room screen.
 import { useEffect, useRef, useState } from "react";
-import { MessageCircle, Send, Smile, X } from "lucide-react";
+import { CloseIcon } from "./CloseIcon";
+import { MessageCircle, Send, Smile } from "lucide-react";
 import type { GameApi } from "../net/socket";
 import { MicButton } from "./MicButton";
 import { VoiceNote } from "./VoiceNote";
@@ -199,7 +200,7 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
             aria-label={t("back")}
             style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 2 }}
           >
-            <X size={20} />
+            <CloseIcon size={26} />
           </button>
         </div>
 

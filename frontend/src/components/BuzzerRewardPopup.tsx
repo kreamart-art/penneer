@@ -7,7 +7,8 @@
 // level 10 the spin button comes before the coins), then the other earned
 // rewards, then the coins.
 import { useEffect, useRef, useState } from "react";
-import { X } from "lucide-react";
+import { CloseIcon } from "./CloseIcon";
+import {  } from "lucide-react";
 import { Button } from "./Button";
 import { EMOTE_PACKS, EMOTE_SRC } from "./emotes";
 import type { GameApi, PendingReward } from "../net/socket";
@@ -86,7 +87,7 @@ function RewardCard({
             aria-label={closeLabel}
             style={{ position: "absolute", top: 12, right: 12, background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 4 }}
           >
-            <X size={19} />
+            <CloseIcon size={26} />
           </button>
         )}
         {children}

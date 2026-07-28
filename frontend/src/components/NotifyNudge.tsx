@@ -3,7 +3,8 @@
 // (no 15s auto-dismiss), because it is a one-time onboarding nudge, not a
 // transient event. Rendered on the main page, so it never covers gameplay.
 import { useEffect, useState } from "react";
-import { Bell, X } from "lucide-react";
+import { CloseIcon } from "./CloseIcon";
+import { Bell } from "lucide-react";
 import { useT } from "../i18n/i18n";
 import { ensurePushSubscription } from "../pwa/push";
 import { colors, font, withAlpha } from "../theme/tokens";
@@ -111,9 +112,9 @@ export function NotifyNudge() {
         <button
           onClick={dismiss}
           aria-label={t("notifLater")}
-          style={{ flexShrink: 0, width: 34, height: 34, display: "grid", placeItems: "center", borderRadius: 10, border: `1px solid ${colors.hairline}`, background: "transparent", color: colors.faint, cursor: "pointer" }}
+          style={{ flexShrink: 0, display: "grid", placeItems: "center", background: "transparent", border: "none", padding: 0, cursor: "pointer" }}
         >
-          <X size={16} />
+          <CloseIcon size={30} />
         </button>
       </div>
     </div>

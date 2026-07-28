@@ -1,7 +1,8 @@
 // Small circled "i" that opens a compact info window. Used for settings that
 // need explanation without cluttering the row with a hint paragraph.
 import { useState } from "react";
-import { X } from "lucide-react";
+import { CloseIcon } from "./CloseIcon";
+import {  } from "lucide-react";
 import { colors, font, withAlpha } from "../theme/tokens";
 
 export function InfoDot({ title, text }: { title: string; text: string }) {
@@ -65,7 +66,7 @@ export function InfoDot({ title, text }: { title: string; text: string }) {
                 aria-label="close"
                 style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 2 }}
               >
-                <X size={18} />
+                <CloseIcon size={24} />
               </button>
             </div>
             <p style={{ margin: 0, fontFamily: font.ui, fontSize: 14, color: colors.sub, lineHeight: 1.55 }}>{text}</p>

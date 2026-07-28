@@ -296,29 +296,37 @@ input:focus {
 }
 
 /* Two-layer background parallax: opposing, very slow drifts. */
-/* De zwevende letters op de main page. Ze lopen van de ene kant naar de andere
-   en worden onderweg groter en weer kleiner, alsof ze wegdrijven en terugkomen.
-   Alles staat in de keyframes, ook de draaiing: een animatie die `transform`
-   schrijft veegt een inline transform van hetzelfde element weg. De maten komen
-   per letter uit custom properties, zodat één regel CSS acht verschillende
-   reizen aanstuurt. `alternate` zou de terugweg de omgekeerde versnelling geven;
-   met een volle cyclus loopt hij heen en terug even soepel. */
+/* De zwevende letters op de main page: wolken, geen slinger.
+   Elke letter maakt EEN reis van buiten beeld naar buiten beeld en begint dan
+   opnieuw. Heen en weer binnen dezelfde cyclus leest niet als drijven maar als
+   wiebelen, want je ziet de omkeer. Onderweg schaalt hij, wat het naar je toe
+   of van je weg laat komen, en hij komt op en gaat weer weg met zijn dekking
+   zodat de sprong terug naar het begin nooit te zien is.
+   Lineair, want met een versnelling staat hij het grootste deel van de tijd
+   bijna stil bij zijn uiteinden en dat doet een wolk niet. De draaiing hoort
+   in de keyframes: een animatie die `transform` schrijft veegt een inline
+   transform van hetzelfde element weg. */
 @keyframes letter-drift {
   0% {
-    transform: translateX(calc(var(--reis) * -1)) rotate(var(--draai)) scale(var(--klein));
+    transform: translateX(var(--van)) rotate(var(--draai)) scale(var(--s0));
+    opacity: 0;
   }
-  50% {
-    transform: translateX(var(--reis)) rotate(var(--draai)) scale(var(--groot));
+  14% {
+    opacity: var(--op);
+  }
+  86% {
+    opacity: var(--op);
   }
   100% {
-    transform: translateX(calc(var(--reis) * -1)) rotate(var(--draai)) scale(var(--klein));
+    transform: translateX(var(--naar)) rotate(var(--draai)) scale(var(--s1));
+    opacity: 0;
   }
 }
 .letter-drift {
   animation-name: letter-drift;
-  animation-timing-function: ease-in-out;
+  animation-timing-function: linear;
   animation-iteration-count: infinite;
-  will-change: transform;
+  will-change: transform, opacity;
 }
 
 /* Het kijkgaatje van de werf-advertentie duwt om de zoveel tellen even naar

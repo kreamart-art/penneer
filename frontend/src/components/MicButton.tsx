@@ -2,7 +2,8 @@
 // a red pulsing dot, a live timer, and cancel/send. Uploads the blob via the
 // caller-provided uploader, then hands back {id, dur} to attach to a message.
 import { useEffect, useRef, useState } from "react";
-import { Check, Mic, X } from "lucide-react";
+import { CloseIcon } from "./CloseIcon";
+import { Check, Mic } from "lucide-react";
 import { recordingSupported, startRecording, type Recorder } from "../audio/recorder";
 import { colors, font, withAlpha } from "../theme/tokens";
 
@@ -90,7 +91,7 @@ export function MicButton({
           aria-label="Annuleer opname"
           style={{ width: 40, height: 40, borderRadius: "50%", border: "none", cursor: "pointer", background: withAlpha("#000000", 0.3), color: colors.faint, display: "grid", placeItems: "center" }}
         >
-          <X size={18} />
+          <CloseIcon size={24} />
         </button>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: colors.ink, fontVariantNumeric: "tabular-nums", minWidth: 42 }}>
           <span style={{ width: 9, height: 9, borderRadius: "50%", background: colors.red, animation: "fill-pulse 1s ease-in-out infinite" }} />

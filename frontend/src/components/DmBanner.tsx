@@ -2,7 +2,8 @@
 // message counterpart to InviteBanner. You see the text right away (or can play
 // a voice note), and a press-and-hold opens the thread to reply.
 import { useEffect, useRef, useState } from "react";
-import { MessageCircle, X } from "lucide-react";
+import { CloseIcon } from "./CloseIcon";
+import { MessageCircle } from "lucide-react";
 import { Avatar } from "./Avatar";
 import { VoiceNote } from "./VoiceNote";
 import { EMOTE_SRC } from "./emotes";
@@ -113,9 +114,9 @@ export function DmBanner({
           onPointerDown={(e) => e.stopPropagation()}
           onClick={onClose}
           aria-label={t("declineBtn")}
-          style={{ flexShrink: 0, width: 34, height: 34, display: "grid", placeItems: "center", borderRadius: 10, border: `1px solid ${colors.hairline}`, background: "transparent", color: colors.faint, cursor: "pointer" }}
+          style={{ flexShrink: 0, display: "grid", placeItems: "center", background: "transparent", border: "none", padding: 0, cursor: "pointer" }}
         >
-          <X size={16} />
+          <CloseIcon size={30} />
         </button>
       </div>
     </div>

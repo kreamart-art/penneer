@@ -2,7 +2,8 @@
 // arrives, over whatever screen you're on, so you can join right away. Not a
 // full-screen modal — a compact strip with Accept / Decline.
 import { useEffect, useState } from "react";
-import { Swords, UserPlus, X } from "lucide-react";
+import { CloseIcon } from "./CloseIcon";
+import { Swords, UserPlus } from "lucide-react";
 import { Avatar } from "./Avatar";
 import type { InboxItem } from "../net/socket";
 import { useT } from "../i18n/i18n";
@@ -85,9 +86,9 @@ export function InviteBanner({
         <button
           onClick={onDecline}
           aria-label={t("declineBtn")}
-          style={{ flexShrink: 0, width: 34, height: 34, display: "grid", placeItems: "center", borderRadius: 10, border: `1px solid ${colors.hairline}`, background: "transparent", color: colors.faint, cursor: "pointer" }}
+          style={{ flexShrink: 0, display: "grid", placeItems: "center", background: "transparent", border: "none", padding: 0, cursor: "pointer" }}
         >
-          <X size={16} />
+          <CloseIcon size={30} />
         </button>
       </div>
     </div>

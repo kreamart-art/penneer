@@ -1,6 +1,7 @@
 // Hub — profile, friends, inbox and leaderboard in one tabbed screen.
 // Reached from the Landing. A profile is optional: guests see the create form.
 import { Fragment, useEffect, useRef, useState } from "react";
+import { CloseIcon } from "../components/CloseIcon";
 import { ArrowLeft, Award, Camera, Check, ChevronDown, CircleDot, Copy, Lock, LogOut, MessageCircle, MoreVertical, Pencil, Plus, Search, Send, Settings as SettingsIcon, Share2, Shield, ShoppingCart, Smile, Sparkles, Star, Swords, Trash2, UserPlus, Users, X, ZoomIn, ZoomOut } from "lucide-react";
 import { Avatar, RANK_RING } from "../components/Avatar";
 import { AvatarZoom } from "../components/AvatarZoom";
@@ -464,7 +465,7 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
             {partner?.name ?? "..."}
           </span>
           <button onClick={game.dmClose} aria-label={t("back")} style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 4 }}>
-            <X size={20} />
+            <CloseIcon size={26} />
           </button>
         </div>
 
@@ -1944,7 +1945,7 @@ export function ProfileViewModal({ game, userId, onClose }: { game: GameApi; use
                 </button>
               )}
               <button onClick={onClose} aria-label={t("back")} style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 2 }}>
-                <X size={20} />
+                <CloseIcon size={26} />
               </button>
             </div>
             <LevelBar level={p.level} compact />

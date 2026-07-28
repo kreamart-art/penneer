@@ -1,7 +1,8 @@
 // The emote tray above the chat composer: one section per pack. Owned packs are
 // tappable (sends the emote straight away); locked packs are dimmed with a hint
 // that they live in the shop, so people see what they could have.
-import { Lock, X } from "lucide-react";
+import { Lock } from "lucide-react";
+import { CloseIcon } from "./CloseIcon";
 import { EMOTE_PACKS, EMOTE_SRC } from "./emotes";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
@@ -38,7 +39,7 @@ export function EmotePicker({
           aria-label={t("back")}
           style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 2 }}
         >
-          <X size={16} />
+          <CloseIcon size={24} />
         </button>
       </div>
 

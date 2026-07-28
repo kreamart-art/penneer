@@ -1,6 +1,7 @@
 // Landing — emblem, wordmark, tagline, name input, create / join, rules link.
 import { useEffect, useRef, useState } from "react";
-import { Bot, CalendarDays, Check, GraduationCap, Hash, HelpCircle, Play, Settings as SettingsIcon, Sparkles, Swords, Target, X } from "lucide-react";
+import { CloseIcon } from "../components/CloseIcon";
+import { Bot, CalendarDays, Check, GraduationCap, Hash, HelpCircle, Play, Settings as SettingsIcon, Sparkles, Swords, Target } from "lucide-react";
 import { Logo } from "../components/Logo";
 import { Button } from "../components/Button";
 import { NotifyNudge } from "../components/NotifyNudge";
@@ -630,7 +631,7 @@ function FriendsSheet({
           <img aria-hidden alt="" src="/tiles/frame-popup.webp" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", zIndex: -1, pointerEvents: "none", filter: "drop-shadow(0 18px 40px rgba(0,0,0,.55))" }} />
         )}
         <button onClick={onClose} aria-label={t("back")} style={{ position: "absolute", top: 12, right: 12, background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 4 }}>
-          <X size={19} />
+          <CloseIcon size={26} />
         </button>
         <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 19, color: colors.gold }}>{t("friendsSheetTitle")}</span>
         <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13.5, color: colors.sub, lineHeight: 1.5 }}>{t("friendsSheetBody")}</p>
@@ -683,7 +684,7 @@ function MissionsSheet({
           <Target size={17} color={colors.gold} />
           <span style={{ flex: 1, fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink }}>{t("missionsTitle")}</span>
           <button onClick={onClose} aria-label={t("back")} className="pressable" style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 4 }}>
-            <X size={19} />
+            <CloseIcon size={26} />
           </button>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 11 }} onClick={(e) => e.stopPropagation()}>
@@ -1074,41 +1075,60 @@ function Tile({
  *
  *  Stof en stralen zitten al in de art, dus die tekenen we er niet nog eens
  *  overheen. */
-// De zwevende letters. Twee dingen bepalen of het mooi wordt.
+// De zwevende letters. Ze horen zich te gedragen als wolken: langzaam van de
+// ene kant naar de andere, en onderweg groter of kleiner alsof ze naar je toe
+// komen of van je weg drijven.
 //
-// SPREIDING. Ze staan over het hele doek, links en rechts even zwaar en van
-// boven tot onder. Eerder hingen ze bijna allemaal links; dan leest het als een
-// fout in plaats van als decor.
+// Twee dingen maken dat het werkt, en allebei gingen ze eerst mis.
 //
-// TEGENWICHT. Het vignet maakt de randen en de onderkant donker, dus dezelfde
-// dekking leest daar veel zwakker. Een letter onderaan krijgt daarom meer mee
-// dan dezelfde letter bovenin, anders verdwijnt de helft van de compositie.
-// De zwevende letters. Elke letter loopt van de ene kant naar de andere en
-// wordt onderweg groter en kleiner, alsof hij wegloopt en weer terugkomt.
+// EEN REIS EN GEEN SLINGER. Heen en weer binnen dezelfde cyclus leest niet als
+// drijven maar als wiebelen: je ziet de omkeer, en dan weet je dat het een
+// animatie is. Nu gaat elke letter een KANT op, van buiten beeld naar buiten
+// beeld, en begint dan opnieuw aan de andere kant.
 //
-// `reis` is hoe ver hij naar weerszijden gaat (negatief = de andere kant op),
-// `klein`/`groot` is het bereik waarin hij ademt, `duur` en `fase` zetten ze uit
-// de pas zodat het nooit als één beweging leest. De draaiing hoort bij de
-// animatie en niet bij de stijl: een keyframe die `transform` schrijft veegt een
-// inline transform weg.
-const LETTERS: { c: string; size: number; op: number; pos: React.CSSProperties; rot: number; reis: string; klein: number; groot: number; duur: number; fase: number }[] = [
-  { c: "K", size: 300, op: 0.055, pos: { top: "1%", left: "-14%" }, rot: -11, reis: "9vw", klein: 0.72, groot: 1.14, duur: 74, fase: -6 },
-  { c: "R", size: 240, op: 0.045, pos: { bottom: "-2%", right: "-10%" }, rot: 8, reis: "-8vw", klein: 0.78, groot: 1.2, duur: 88, fase: -31 },
-  { c: "P", size: 150, op: 0.03, pos: { top: "24%", left: "6%" }, rot: -6, reis: "12vw", klein: 0.66, groot: 1.24, duur: 61, fase: -18 },
-  { c: "M", size: 120, op: 0.025, pos: { top: "8%", right: "12%" }, rot: 10, reis: "-11vw", klein: 0.7, groot: 1.3, duur: 55, fase: -44 },
-  { c: "N", size: 285, op: 0.05, pos: { top: "40%", right: "-13%" }, rot: 12, reis: "-7vw", klein: 0.8, groot: 1.12, duur: 96, fase: -12 },
-  { c: "E", size: 215, op: 0.04, pos: { bottom: "2%", left: "-9%" }, rot: -7, reis: "8vw", klein: 0.75, groot: 1.18, duur: 82, fase: -57 },
-  { c: "A", size: 132, op: 0.028, pos: { bottom: "24%", left: "34%" }, rot: 5, reis: "-13vw", klein: 0.62, groot: 1.28, duur: 67, fase: -25 },
-  { c: "S", size: 96, op: 0.022, pos: { top: "58%", left: "14%" }, rot: -9, reis: "14vw", klein: 0.6, groot: 1.34, duur: 49, fase: -38 },
+// GELIJKMATIG EN NIET VERSNELD. Met `ease-in-out` staat een letter het grootste
+// deel van de tijd bijna stil bij zijn uiteinden. Een wolk doet dat niet, dus
+// de tijdsfunctie is lineair.
+//
+// `van`/`naar` is de reis in schermbreedtes, `s0`/`s1` de maat aan begin en
+// eind (groter = dichterbij), `op` de dekking op zijn hoogtepunt, en `fase` zet
+// ze uit de pas zodat ze niet als een rij langskomen.
+const LETTERS: {
+  c: string;
+  size: number;
+  op: number;
+  pos: React.CSSProperties;
+  rot: number;
+  van: string;
+  naar: string;
+  s0: number;
+  s1: number;
+  duur: number;
+  fase: number;
+}[] = [
+  // naar rechts, en naar je toe
+  { c: "K", size: 250, op: 0.06, pos: { top: "2%", left: "-30%" }, rot: -11, van: "-30vw", naar: "95vw", s0: 0.55, s1: 1.35, duur: 150, fase: -18 },
+  { c: "P", size: 130, op: 0.045, pos: { top: "26%", left: "-25%" }, rot: -6, van: "-25vw", naar: "100vw", s0: 0.7, s1: 1.15, duur: 118, fase: -74 },
+  { c: "E", size: 190, op: 0.055, pos: { bottom: "6%", left: "-30%" }, rot: -7, van: "-28vw", naar: "98vw", s0: 0.6, s1: 1.4, duur: 176, fase: -40 },
+  { c: "S", size: 96, op: 0.04, pos: { top: "62%", left: "-20%" }, rot: -9, van: "-22vw", naar: "104vw", s0: 0.9, s1: 0.6, duur: 132, fase: -108 },
+  // naar links, en van je weg
+  { c: "N", size: 230, op: 0.055, pos: { top: "38%", right: "-30%" }, rot: 12, van: "30vw", naar: "-100vw", s0: 1.3, s1: 0.6, duur: 164, fase: -60 },
+  { c: "M", size: 120, op: 0.04, pos: { top: "9%", right: "-22%" }, rot: 10, van: "24vw", naar: "-102vw", s0: 1.15, s1: 0.7, duur: 126, fase: -12 },
+  { c: "R", size: 210, op: 0.06, pos: { bottom: "-2%", right: "-28%" }, rot: 8, van: "28vw", naar: "-98vw", s0: 0.65, s1: 1.3, duur: 190, fase: -132 },
+  { c: "A", size: 110, op: 0.038, pos: { bottom: "30%", right: "-20%" }, rot: 5, van: "22vw", naar: "-104vw", s0: 1.2, s1: 0.75, duur: 142, fase: -96 },
 ];
 
+
 function LandingFX() {
-  const letter = (op: number): React.CSSProperties => ({
+  const letter = (_op: number): React.CSSProperties => ({
     position: "absolute",
     fontFamily: font.display,
     fontWeight: 700,
     // Een paar procent: net genoeg om te vermoeden, te weinig om te lezen.
-    color: `rgba(206,192,240,${op})`,
+    // De dekking komt uit de animatie (hij komt op en gaat weer weg), dus de
+    // kleur zelf blijft vol; anders vermenigvuldig je twee keer.
+    color: "rgb(206,192,240)",
+    opacity: 0,
     userSelect: "none",
     lineHeight: 1,
   });
@@ -1148,9 +1168,11 @@ function LandingFX() {
               ...letter(l.op),
               ...l.pos,
               fontSize: l.size,
-              "--reis": l.reis,
-              "--klein": l.klein,
-              "--groot": l.groot,
+              "--van": l.van,
+              "--naar": l.naar,
+              "--s0": l.s0,
+              "--s1": l.s1,
+              "--op": l.op,
               "--draai": `${l.rot}deg`,
               animationDuration: `${l.duur}s`,
               animationDelay: `${l.fase}s`,

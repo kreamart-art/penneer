@@ -9,7 +9,8 @@
 // De server is de baas over de klok: elke ronde wordt apart OPGEHAALD en dan
 // pas begint zijn 15 seconden, dus de app herladen koopt geen denktijd.
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { ArrowLeft, Check, Clock as ClockIcon, Hourglass, RotateCcw, Search, Swords, Trophy, X } from "lucide-react";
+import { CloseIcon } from "../components/CloseIcon";
+import { ArrowLeft, Check, Clock as ClockIcon, Hourglass, RotateCcw, Search, Swords, Trophy } from "lucide-react";
 import { Avatar } from "../components/Avatar";
 import { NeonText } from "../components/NeonText";
 import { Button } from "../components/Button";
@@ -800,7 +801,7 @@ function FriendPicker({ friends, onPick, onClose, busy }: { friends: Person[]; o
         style={{ position: "relative", width: "100%", maxWidth: 340, maxHeight: "70vh", overflowY: "auto", display: "flex", flexDirection: "column", gap: 10, padding: "22px 18px 18px", borderRadius: 24, background: "linear-gradient(180deg, #2a1c48, #160D30)", border: `1px solid ${withAlpha(colors.gold, 0.45)}`, boxShadow: "0 24px 80px rgba(0,0,0,.6)" }}
       >
         <button onClick={onClose} aria-label={t("back")} style={{ position: "absolute", top: 12, right: 12, background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 4 }}>
-          <X size={19} />
+          <CloseIcon size={26} />
         </button>
         <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 18, color: colors.gold, textAlign: "center" }}>{t("duelPickFriend")}</span>
         {friends.length === 0 ? (

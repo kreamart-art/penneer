@@ -4,7 +4,8 @@
 // a Chrome-on-iOS variant (three dots > Delen) and an in-app-webview notice.
 // Dismiss once = never auto-shown again; installing stays available in
 // Settings. Preview any variant with ?installdemo=ios|chromeios|inapp|android.
-import { Download, MoreHorizontal, Share, SquarePlus, X, Link as LinkIcon } from "lucide-react";
+import { Download, MoreHorizontal, Share, SquarePlus, Link as LinkIcon } from "lucide-react";
+import { CloseIcon } from "./CloseIcon";
 import { Logo } from "./Logo";
 import { Button } from "./Button";
 import { promptInstall } from "../pwa/install";
@@ -191,7 +192,7 @@ export function InstallPrompt({ variant, onClose }: { variant: InstallVariant; o
           aria-label={t("installNotNow")}
           style={{ position: "absolute", top: 12, right: 12, background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 4 }}
         >
-          <X size={19} />
+          <CloseIcon size={26} />
         </button>
 
         <div style={{ position: "relative" }}>
