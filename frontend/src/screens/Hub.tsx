@@ -1092,7 +1092,7 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
             // hij gaat naar boven EN naar links tot tegen de sierlijst aan, net
             // als de kruisknop op de advertentie. Vandaar `flex-start` plus
             // negatieve marges in beide richtingen.
-            style={{ background: "transparent", border: "none", padding: 0, cursor: "pointer", flexShrink: 0, alignSelf: "flex-start", marginLeft: 3, marginTop: -8, marginRight: -2 }}
+            style={{ background: "transparent", border: "none", padding: 0, cursor: "pointer", flexShrink: 0, alignSelf: "flex-start", marginLeft: 3, marginTop: 8, marginRight: -2 }}
           >
             {/* De ring en het schild komen uit de UI-map; het portret zit in het
                 gat van de ring. Een eigen frame zou hier een tweede ring om

@@ -1,5 +1,5 @@
 // Landing — emblem, wordmark, tagline, name input, create / join, rules link.
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { CloseIcon } from "../components/CloseIcon";
 import { Bot, CalendarDays, Check, GraduationCap, Hash, HelpCircle, Play, Settings as SettingsIcon, Sparkles, Swords, Target } from "lucide-react";
 import { Logo } from "../components/Logo";
@@ -22,16 +22,18 @@ import { EmblemLight, EmblemLightFront } from "../components/EmblemLight";
 import { ReferralAd } from "../components/ReferralAd";
 import { colors, font, radius, withAlpha } from "../theme/tokens";
 
-// De lijst-art van de skin, in de drie maten uit `section main page.svg`:
-// dezelfde tekening, op drie hoogtes gezet. Er wordt niets geknipt, alleen
-// geschaald. We nemen de maat waarvan de verhouding het dichtst bij de kaart
-// ligt, zodat er hooguit een paar procent na te rekken valt. Komt er later meer
-// op de main page, dan schuift hij vanzelf naar de volgende maat op.
-const FRAMES = [
-  { src: "/tiles/frame-1.webp", ratio: 1192 / 1273 },
-  { src: "/tiles/frame-2.webp", ratio: 1205 / 1468 },
-  { src: "/tiles/frame-3.webp", ratio: 1205 / 1577 },
-];
+// De lijst-art van de skin, in drie stukken: een kop, een voet en een rechte
+// middenstrook. Alleen dat middenstuk rekt mee met de hoogte van de kaart, en
+// omdat daar alleen rechte zijrails in zitten is dat niet te zien. De hoeken en
+// de ruiten zitten in de kop en de voet en houden dus altijd hun vorm.
+//
+// Daarvoor stond hier het HELE plaatje, uitgerekt tot de kaart, in drie maten
+// zodat de verhouding er dicht bij lag. Dat werkte alleen zolang de kaart net zo
+// hoog uitviel als hier: op een toestel met een andere schermhoogte trok het de
+// hoekbeugels scheef.
+const FRAME_KOP = "/tiles/frame-cap-top.webp";
+const FRAME_VOET = "/tiles/frame-cap-bot.webp";
+const FRAME_MIDDEN = "/tiles/frame-mid.webp";
 
 // De maat van het embleem. Het licht erachter (EmblemLight) rekent in
 // percentages van deze maat via --em, dus alles schaalt als één geheel.
@@ -74,24 +76,6 @@ export function Landing({
 }) {
   const { t } = useT();
   const skin = useTileSkin();
-  // De lijst meet zichzelf, en omdat hij de kaart precies vult is dat meteen de
-  // maat van de kaart. Daar kiezen we de passende maat art bij.
-  const card = useRef<HTMLImageElement | null>(null);
-  const [frame, setFrame] = useState(FRAMES[0].src);
-  useEffect(() => {
-    const el = card.current;
-    if (!skin || !el) return;
-    const ro = new ResizeObserver(() => {
-      const r = el.getBoundingClientRect();
-      if (!r.height) return;
-      const want = r.width / r.height;
-      let best = FRAMES[0];
-      for (const f of FRAMES) if (Math.abs(f.ratio - want) < Math.abs(best.ratio - want)) best = f;
-      setFrame(best.src);
-    });
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [skin]);
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [mode, setMode] = useState<"none" | "join">("none");
@@ -458,16 +442,27 @@ export function Landing({
                 }),
           }}
         >
-          {/* De lijst, in zijn geheel. `zIndex: -1` houdt hem boven de
-              achtergrond van de kaart maar onder de inhoud. */}
+          {/* De lijst in drie stukken. `zIndex: -1` houdt ze boven de
+              achtergrond van de kaart maar onder de inhoud. De kop en de voet
+              krijgen `height: auto`, dus ze schalen alleen met de BREEDTE en
+              houden hun vorm; het middenstuk vult wat ertussen zit. */}
           {skin && (
-            <img
-              ref={card}
-              aria-hidden
-              alt=""
-              src={frame}
-              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", zIndex: -1, pointerEvents: "none" }}
-            />
+            <>
+              <span
+                aria-hidden
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  zIndex: -1,
+                  pointerEvents: "none",
+                  backgroundImage: `url(${FRAME_MIDDEN})`,
+                  backgroundSize: "100% 100%",
+                  backgroundRepeat: "no-repeat",
+                }}
+              />
+              <img aria-hidden alt="" src={FRAME_KOP} style={{ position: "absolute", left: 0, right: 0, top: 0, width: "100%", height: "auto", zIndex: -1, pointerEvents: "none" }} />
+              <img aria-hidden alt="" src={FRAME_VOET} style={{ position: "absolute", left: 0, right: 0, bottom: 0, width: "100%", height: "auto", zIndex: -1, pointerEvents: "none" }} />
+            </>
           )}
           {account ? (
             <p style={{ margin: 0, fontFamily: font.wide, fontSize: 16, letterSpacing: 0.8, color: colors.sub, textAlign: "center" }}>
