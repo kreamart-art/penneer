@@ -253,7 +253,7 @@ export function NeonKader({
   binnen,
   radius = KADER_R,
   vulling = "licht",
-  dik = 0.75,
+  dik = 0.5,
 }: {
   children: ReactNode;
   style?: CSSProperties;
@@ -265,7 +265,10 @@ export function NeonKader({
   /** "geen" laat de achtergrond volledig door: dan is de lijst puur lijn en
    *  licht. "licht" legt er een heel dun paars waas onder. */
   vulling?: "geen" | "licht";
-  /** De dikte van de lijn. */
+  /** De dikte van de lijn. Onder de pixel: dat mag, een scherm van drie keer
+   *  tekent er nog anderhalve echte pixel van en op een gewoon scherm wordt het
+   *  een vervaagd streepje. Precies wat je wilt bij een lijn die er eerder moet
+   *  zijn dan opvallen. */
   dik?: number;
 }) {
   const KADER_R = radius;
@@ -335,8 +338,8 @@ export function NeonKader({
           eronder schijnt door een doorschijnend paneel heen, en
           `background-clip: border-box` betekent "over de hele doos" en niet
           "alleen de rand". */}
-      <span aria-hidden style={{ ...ringLaag(KADER_R, dik + 1.5), backgroundImage: KADER_LIJN, filter: "blur(3px)", opacity: 0.4 }} />
-      <span aria-hidden style={{ ...ringLaag(KADER_R, dik), backgroundImage: KADER_LIJN }} />
+      <span aria-hidden style={{ ...ringLaag(KADER_R, dik + 1.4), backgroundImage: KADER_LIJN, filter: "blur(3px)", opacity: 0.32 }} />
+      <span aria-hidden style={{ ...ringLaag(KADER_R, dik), backgroundImage: KADER_LIJN, opacity: 0.8 }} />
       <span aria-hidden style={{ ...ringLaag(KADER_R, dik), backgroundImage: KADER_GLANS }} />
     </div>
   );
