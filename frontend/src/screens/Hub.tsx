@@ -1200,7 +1200,14 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
           de rest grijs met een teller. Ze staan naast elkaar en niet onder
           elkaar, want een verzameling toon je op een plank. Verdiend eerst,
           zodat je medailles leiden en het volgende doel er meteen achter staat. */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
+      <NeonKader
+        radius={18}
+        vulling="geen"
+        dik={0.35}
+        lijn={KADER_LIJN_KLEUR}
+        style={{ marginInline: 5 }}
+        binnen={{ padding: "10px 11px 11px", display: "flex", flexDirection: "column", gap: 9 }}
+      >
         <SectieKop
           label={t("badgesTitle").toUpperCase()}
           actie={prestatiesUit ? t("showLess") : t("showAll")}
@@ -1233,7 +1240,7 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
             </div>
           );
         })()}
-      </div>
+      </NeonKader>
 
     </Fragment>
   );
