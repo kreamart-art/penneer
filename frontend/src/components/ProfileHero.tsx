@@ -36,9 +36,7 @@ export function Paneel({ children, style }: { children: ReactNode; style?: CSSPr
     <div
       style={{
         position: "relative",
-        boxSizing: "border-box",
         aspectRatio: `${3835} / ${2289}`,
-        padding: "8.6% 5% 4.9%",
         backgroundImage: "url(/ui/profile-frame.webp)",
         backgroundSize: "100% 100%",
         backgroundRepeat: "no-repeat",
@@ -46,7 +44,17 @@ export function Paneel({ children, style }: { children: ReactNode; style?: CSSPr
         ...style,
       }}
     >
-      {children}
+      {/* De inhoud ligt er als LOSSE laag overheen en zit niet in de doos.
+          Twee redenen, allebei een keer misgegaan:
+          1. Met padding groeit het paneel mee zodra de inhoud een haar te hoog
+             is, en dan rekt de art alsnog uit. Zo werd de sectie op een echte
+             telefoon langer dan hier.
+          2. Procentuele PADDING rekent boven en onder met de BREEDTE, maar
+             `top` en `bottom` rekenen met de HOOGTE. De randen die ik aan de
+             art heb gemeten zijn hoogtes, dus alleen zo kloppen ze. */}
+      <div style={{ position: "absolute", top: "8.6%", left: "5%", right: "5%", bottom: "4.9%" }}>
+        {children}
+      </div>
     </div>
   );
 }

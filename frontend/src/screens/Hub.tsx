@@ -337,7 +337,7 @@ function XpRij({ level }: { level: LevelInfo }) {
   const nu = Math.max(0, level.xp - level.level_start);
   const deel = Math.min(1, nu / span);
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 1, marginLeft: 34, marginRight: 16 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 1, marginLeft: 34, marginRight: 16, marginBottom: 8 }}>
       {/* Het totaal staat BOVEN de balk en niet ernaast, anders eet het een hap
           uit de breedte en houdt de balk halverwege de sectie op. Regelhoogte 1
           zodat de tekst TEGEN de balk staat: de lucht die een gewone regel
@@ -1092,7 +1092,7 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
             // hij gaat naar boven EN naar links tot tegen de sierlijst aan, net
             // als de kruisknop op de advertentie. Vandaar `flex-start` plus
             // negatieve marges in beide richtingen.
-            style={{ background: "transparent", border: "none", padding: 0, cursor: "pointer", flexShrink: 0, alignSelf: "flex-start", marginLeft: -4, marginTop: -15, marginRight: -2 }}
+            style={{ background: "transparent", border: "none", padding: 0, cursor: "pointer", flexShrink: 0, alignSelf: "flex-start", marginLeft: 3, marginTop: -8, marginRight: -2 }}
           >
             {/* De ring en het schild komen uit de UI-map; het portret zit in het
                 gat van de ring. Een eigen frame zou hier een tweede ring om
