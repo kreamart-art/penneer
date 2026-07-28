@@ -2,6 +2,7 @@
 // Reached from the Landing. A profile is optional: guests see the create form.
 import { Fragment, useEffect, useRef, useState } from "react";
 import { CloseIcon } from "../components/CloseIcon";
+import { HexPlate } from "../components/HexPlate";
 import { ArrowLeft, Award, BookOpen, Camera, Check, ChevronDown, CircleDot, Copy, Crown, Flame, Gem, Lock, LogOut, Medal, MessageCircle, MoreVertical, Pencil, Percent, Plus, Rocket, Search, Send, Settings as SettingsIcon, Share2, Shield, ShoppingCart, Smile, Sparkles, Star, Swords, Target, Trash2, Trophy, UserPlus, Users, X, Zap, ZoomIn, ZoomOut } from "lucide-react";
 import { Avatar, RANK_RING } from "../components/Avatar";
 import { Plek } from "../components/ProfileShowcase";
@@ -346,35 +347,14 @@ function XpRij({ level }: { level: LevelInfo }) {
         {nu} <span style={{ color: GOUD[2] }}>/ {span} XP</span>
       </span>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <span
-          aria-hidden
-          style={{
-            width: 26,
-            height: 29,
-            flexShrink: 0,
-            display: "grid",
-            placeItems: "center",
-            clipPath: "polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)",
-            background: `linear-gradient(164deg, ${GOUD[3]} 0%, ${GOUD[2]} 44%, ${GOUD[0]} 100%)`,
-          }}
-        >
-          <span
-            style={{
-              width: "calc(100% - 3px)",
-              height: "calc(100% - 3px)",
-              display: "grid",
-              placeItems: "center",
-              clipPath: "polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)",
-              backgroundImage: "radial-gradient(80% 60% at 50% 12%, rgba(255,243,181,.2), transparent 66%), linear-gradient(180deg, #43265F 0%, #1E1136 100%)",
-              fontFamily: font.wide,
-              fontSize: 10.5,
-              letterSpacing: 0.4,
-              color: GOUD[3],
-            }}
-          >
+        {/* De zeshoek draagt een dikke gouden lijst, dus het VAK binnenin is
+            een stuk kleiner dan de doos. Vandaar een grotere plaat dan de oude
+            getekende zeshoek: anders is er geen plek voor de letters. */}
+        <HexPlate size={34} style={{ flexShrink: 0, marginLeft: -3 }}>
+          <span style={{ fontFamily: font.wide, fontSize: 12, letterSpacing: 0.2, color: GOUD[3], textShadow: "0 1px 2px rgba(8,3,20,.85)" }}>
             XP
           </span>
-        </span>
+        </HexPlate>
         {/* De balk is een GROEF: de staaf ligt erin, niet erop. De schaduw valt
             binnenin en van bovenaf, en de ring is omgedraaid, want de bovenrand
             van een gat ligt juist in de schaduw. */}
@@ -1168,20 +1148,9 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
                 background: "linear-gradient(180deg, rgba(255,194,61,.13) 0%, rgba(0,0,0,.3) 100%)",
               }}
             >
-              <span
-                aria-hidden
-                style={{
-                  width: 20,
-                  height: 22,
-                  display: "grid",
-                  placeItems: "center",
-                  clipPath: "polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)",
-                  background: `linear-gradient(164deg, ${GOUD[3]}, ${GOUD[1]})`,
-                  color: "#3A2500",
-                }}
-              >
-                <Crown size={11} />
-              </span>
+              <HexPlate size={20}>
+                <Crown size={10} color={GOUD[3]} />
+              </HexPlate>
               <span style={{ fontFamily: font.ui, fontSize: 12, color: colors.ink }}>
                 {account.title
                   ? t(`title_${account.title}`)

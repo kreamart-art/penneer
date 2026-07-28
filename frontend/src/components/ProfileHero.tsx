@@ -13,6 +13,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import { ChevronRight, Check, Lock } from "lucide-react";
 import { colors, font, withAlpha } from "../theme/tokens";
+import { HexPlate } from "./HexPlate";
 
 export const GOUD = ["#4A2E04", "#B07C17", "#FFC23D", "#FFEBB8"] as const;
 
@@ -415,7 +416,6 @@ export function Prestatie({
   nu?: number;
   doel?: number;
 }) {
-  const HEX = "polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)";
   const deel = doel && doel > 0 ? Math.min(1, (nu ?? 0) / doel) : 0;
   return (
     <div style={{ width: 84, flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
@@ -441,35 +441,11 @@ export function Prestatie({
             }}
           />
         ) : (
-          <>
-            <span
-              aria-hidden
-              style={{
-                position: "absolute",
-                inset: 0,
-                clipPath: HEX,
-                background: behaald ? goudVlak : "linear-gradient(160deg, #8E8AA0 0%, #5C5870 48%, #35324A 100%)",
-                filter: behaald ? `drop-shadow(0 0 8px ${withAlpha(GOUD[2], 0.35)})` : "none",
-              }}
-            />
-            <span
-              aria-hidden
-              style={{
-                position: "absolute",
-                inset: 4,
-                clipPath: HEX,
-                display: "grid",
-                placeItems: "center",
-                backgroundImage: behaald
-                  ? "radial-gradient(80% 60% at 50% 14%, rgba(255,243,181,.2), transparent 66%), linear-gradient(180deg, #4A2A78 0%, #24123F 100%)"
-                  : "linear-gradient(180deg, #2C2740 0%, #1A172A 100%)",
-                boxShadow: "inset 0 -8px 14px rgba(5,2,14,.5)",
-                color: behaald ? GOUD[3] : withAlpha(colors.faint, 0.9),
-              }}
-            >
-              {icoon}
-            </span>
-          </>
+          <span style={{ filter: behaald ? "none" : "grayscale(1) brightness(1.4)", opacity: behaald ? 1 : 0.45 }}>
+            <HexPlate size={66}>
+              <span style={{ display: "grid", placeItems: "center", color: GOUD[3] }}>{icoon}</span>
+            </HexPlate>
+          </span>
         )}
       </div>
       <span style={{ fontFamily: font.ui, fontSize: 10, lineHeight: 1.2, textAlign: "center", color: behaald ? colors.ink : colors.faint }}>

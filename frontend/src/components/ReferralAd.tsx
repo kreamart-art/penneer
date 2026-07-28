@@ -112,7 +112,29 @@ export function ReferralAd() {
       })
       .catch(() => {});
   }, []);
-  useEffect(laad, [laad]);
+  // De advertentie komt pas op als de main page ECHT staat: alle art geladen en
+  // een tel rust erna. Valt hij binnen terwijl de tegels nog inladen, dan
+  // schuift hij over een half opgebouwd scherm en dat leest als een storing in
+  // plaats van als iets dat je aangeboden krijgt.
+  useEffect(() => {
+    let weg = false;
+    const start = () => {
+      const id = window.setTimeout(() => { if (!weg) laad(); }, 900);
+      return () => window.clearTimeout(id);
+    };
+    if (document.readyState === "complete") {
+      const op = start();
+      return () => { weg = true; op(); };
+    }
+    let op: (() => void) | undefined;
+    const bij = () => { op = start(); };
+    window.addEventListener("load", bij, { once: true });
+    return () => {
+      weg = true;
+      window.removeEventListener("load", bij);
+      op?.();
+    };
+  }, [laad]);
 
   // Uitgeschoven en dan niets? Dan gaat hij vanzelf weer terug. Een randje dat
   // open blijft staan is geen randje meer maar een balk die in de weg staat,
