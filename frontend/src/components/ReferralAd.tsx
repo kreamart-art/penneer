@@ -190,6 +190,18 @@ function Popup({
           style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}
         />
 
+        {/* De kist ligt IN de sectie, als onderste laag van alles wat erop
+            staat: de kop, de beloningen en de knoppen gaan er allemaal
+            overheen. Daarom staat hij hier en niet in de rij met de tekst; in
+            de stroom zou hij ruimte opeisen en de tekst opzij duwen, en dat is
+            precies wat hij niet moet doen. */}
+        <img
+          src="/ads/chest.webp"
+          alt=""
+          aria-hidden
+          style={{ position: "absolute", right: "2%", top: "5%", width: "44%", zIndex: 0, pointerEvents: "none" }}
+        />
+
         {/* Het bordje bovenaan. De letterafstand zet ook ACHTER de laatste
             letter ruimte, dus zonder die halve stap terug staat het woord net
             links van het midden van het bordje. */}
@@ -231,9 +243,13 @@ function Popup({
           </button>
         )}
 
-        <div style={{ position: "relative", padding: "9% 7.5% 7%", display: "flex", flexDirection: "column" }}>
+        {/* `zIndex` moet hier staan en niet alleen `position`. Zonder eigen
+            nummer is dit geen eigen stapellaag, en dan schilderen de tegeltjes
+            en de lijn (gewone blokken) ONDER de kist, want een geplaatst
+            element gaat altijd voor een niet-geplaatst blok. */}
+        <div style={{ position: "relative", zIndex: 1, padding: "9% 7.5% 7%", display: "flex", flexDirection: "column" }}>
           <div style={{ display: "flex", alignItems: "flex-start" }}>
-            <div style={{ flex: "1 1 48%", minWidth: 0, paddingTop: "2%" }}>
+            <div style={{ flex: "1 1 100%", minWidth: 0, maxWidth: "58%", paddingTop: "2%" }}>
               <h2
                 style={{
                   margin: 0,
@@ -264,14 +280,6 @@ function Popup({
                 Elke vriend die meedoet levert je munten op.
               </p>
             </div>
-            {/* De kist hangt bewust boven de lijst uit: dat is wat hem uit de
-                doos laat komen in plaats van erin te zitten. */}
-            <img
-              src="/ads/chest.webp"
-              alt=""
-              aria-hidden
-              style={{ flex: "0 0 56%", width: "56%", marginTop: "-19%", marginRight: "-10%", alignSelf: "flex-start" }}
-            />
           </div>
 
           {/* De ladder als strookje in plaats van als kader. Een kader eromheen
