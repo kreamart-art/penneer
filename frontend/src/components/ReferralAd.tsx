@@ -304,7 +304,7 @@ function Popup({
             // op midden. (Die eerste meting was fout: het meetvenster liep zelf
             // op 32% af, dus ik mat mijn eigen venster in plaats van het bordje.)
             left: "49.9%",
-            top: "5.6%",
+            top: "4.4%",
             transform: "translate(-50%, -50%)",
             fontFamily: font.wide,
             fontSize: "clamp(13px, 3.9vw, 17px)",
@@ -321,9 +321,13 @@ function Popup({
             accent="#9B8CFF"
             depth="light"
             glowColor="#6C4BFF"
-            blur={7}
-            glow={0.9}
-            drop={0.1}
+            // Kleine letters verdragen geen grote gloed. Een vervaagde kopie op
+            // afstand leest op deze maat niet als licht maar als onscherpte,
+            // dus de lagen kruipen dicht op het vlak: een korte blur en een
+            // schaduw van een halve pixel.
+            blur={3}
+            glow={0.75}
+            drop={0.05}
             style={{ marginRight: -2.2 }}
           >
             PREMIUM
@@ -553,7 +557,7 @@ function Pil({
               top: "50%",
               transform: "translateY(-50%)",
               fontFamily: font.wide,
-              fontSize: 14.5,
+              fontSize: 17,
               letterSpacing: 0.2,
               lineHeight: 1,
               whiteSpace: "nowrap",
@@ -603,7 +607,7 @@ function Pil({
             width: 120, // even breed als de pil, anders valt hij er half naast
             textAlign: "center",
             fontFamily: font.wide,
-            fontSize: 13,
+            fontSize: 15,
             letterSpacing: 0.6,
             lineHeight: 1,
             color: colors.gold,
