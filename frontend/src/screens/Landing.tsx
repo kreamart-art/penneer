@@ -43,10 +43,6 @@ const HEX = "polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)";
 // allemaal uit, en daarom horen ze bij elkaar.
 const GOUD = ["#4A2E04", "#B07C17", "#FFC23D", "#FFEBB8"];
 
-// Wie de werf-advertentie te zien krijgt zolang hij nog getest wordt. Namen zijn
-// uniek in de database, dus dit is een lijst van accounts en niet van patronen.
-const TESTERS = new Set(["kream", "kreamtest"]);
-
 const inputStyle: React.CSSProperties = {
   width: "100%",
   boxSizing: "border-box",
@@ -569,7 +565,9 @@ export function Landing({
           wordt: hij is af, maar hij gaat pas voor iedereen aan als hij op een
           echt toestel goed staat. Een naam-vergelijking is genoeg, want er kan
           maar een account met die naam bestaan. */}
-      {account && TESTERS.has(account.name.trim().toLowerCase()) && <ReferralAd />}
+      {/* De werf-advertentie staat open voor iedereen met een profiel: gasten
+          hebben geen werfcode om te delen. */}
+      {account && <ReferralAd />}
 
       {game.state.error && (
           <p style={{ textAlign: "center", color: colors.red, fontFamily: font.ui, fontSize: 14, margin: 0 }}>{game.state.error}</p>

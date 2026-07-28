@@ -2,8 +2,11 @@
 // Reached from the Landing. A profile is optional: guests see the create form.
 import { Fragment, useEffect, useRef, useState } from "react";
 import { CloseIcon } from "../components/CloseIcon";
-import { ArrowLeft, Award, Camera, Check, ChevronDown, CircleDot, Copy, Lock, LogOut, MessageCircle, MoreVertical, Pencil, Plus, Search, Send, Settings as SettingsIcon, Share2, Shield, ShoppingCart, Smile, Sparkles, Star, Swords, Trash2, UserPlus, Users, X, ZoomIn, ZoomOut } from "lucide-react";
+import { ArrowLeft, Award, BookOpen, Camera, Check, ChevronDown, CircleDot, Copy, Crown, Flame, Gem, Lock, LogOut, Medal, MessageCircle, MoreVertical, Pencil, Percent, Plus, Rocket, Search, Send, Settings as SettingsIcon, Share2, Shield, ShoppingCart, Smile, Sparkles, Star, Swords, Target, Trash2, Trophy, UserPlus, Users, X, Zap, ZoomIn, ZoomOut } from "lucide-react";
 import { Avatar, RANK_RING } from "../components/Avatar";
+import { GoudLijn, Plek } from "../components/ProfileShowcase";
+import { GOUD, Paneel, PlekWapen, Prestatie, SectieKop, SierKop, StatKaart } from "../components/ProfileHero";
+import { isTester } from "../util/testers";
 import { AvatarZoom } from "../components/AvatarZoom";
 import { Button } from "../components/Button";
 import { MicButton } from "../components/MicButton";
@@ -277,7 +280,26 @@ function statGrid(t: (k: string) => string, stats: AccountStats): [string, strin
   ];
 }
 
+// Bij elke statistiek een teken. Een raster van acht getallen zonder iconen
+// leest als een tabel; met een teken erboven wordt elk vakje een kaartje dat je
+// los kunt herkennen, ook als je het label niet leest.
+const STAT_ICONEN = [Swords, Crown, Percent, Sparkles, Target, Gem, Users, Flame];
+
 function StatGrid({ stats }: { stats: AccountStats }) {
+  const { t } = useT();
+  const rijen = statGrid(t, stats);
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8 }}>
+      {rijen.map(([label, value], i) => {
+        const Icoon = STAT_ICONEN[i] ?? Sparkles;
+        return <StatKaart key={label} icoon={<Icoon size={15} />} waarde={value} label={label} />;
+      })}
+    </div>
+  );
+}
+
+/** Het raster zoals het live staat, voor iedereen die de vitrine nog niet ziet. */
+function StatGridKlassiek({ stats }: { stats: AccountStats }) {
   const { t } = useT();
   return (
     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8 }}>
@@ -291,6 +313,117 @@ function StatGrid({ stats }: { stats: AccountStats }) {
   );
 }
 
+// De voortgangsregel onderin de heldenkaart: een zeshoekige XP-penning, de
+// groef met de gouden staaf, en het getal ernaast. Eronder in het midden wat er
+// nog te gaan is, want dat is het enige getal dat je aanzet om nog een potje te
+// spelen.
+function XpRij({ level }: { level: LevelInfo }) {
+  const { t } = useT();
+  const span = Math.max(1, level.next_level - level.level_start);
+  const nu = Math.max(0, level.xp - level.level_start);
+  const deel = Math.min(1, nu / span);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span
+          aria-hidden
+          style={{
+            width: 30,
+            height: 33,
+            flexShrink: 0,
+            display: "grid",
+            placeItems: "center",
+            clipPath: "polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)",
+            background: `linear-gradient(164deg, ${GOUD[3]} 0%, ${GOUD[2]} 44%, ${GOUD[0]} 100%)`,
+          }}
+        >
+          <span
+            style={{
+              width: "calc(100% - 3px)",
+              height: "calc(100% - 3px)",
+              display: "grid",
+              placeItems: "center",
+              clipPath: "polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)",
+              backgroundImage: "radial-gradient(80% 60% at 50% 12%, rgba(255,243,181,.2), transparent 66%), linear-gradient(180deg, #43265F 0%, #1E1136 100%)",
+              fontFamily: font.wide,
+              fontSize: 10.5,
+              letterSpacing: 0.4,
+              color: GOUD[3],
+            }}
+          >
+            XP
+          </span>
+        </span>
+        {/* De balk is een GROEF: de staaf ligt erin, niet erop. De schaduw valt
+            binnenin en van bovenaf, en de ring is omgedraaid, want de bovenrand
+            van een gat ligt juist in de schaduw. */}
+        <div
+          style={{
+            flex: 1,
+            height: 13,
+            borderRadius: 999,
+            background: "linear-gradient(180deg, rgba(0,0,0,.55) 0%, rgba(0,0,0,.3) 100%)",
+            boxShadow: "inset 0 2px 5px rgba(0,0,0,.7), inset 0 -1px 0 rgba(255,255,255,.09)",
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              width: `${deel * 100}%`,
+              height: "100%",
+              borderRadius: 999,
+              background: `linear-gradient(180deg, ${GOUD[3]} 0%, ${GOUD[2]} 42%, ${GOUD[1]} 100%)`,
+              boxShadow: `0 0 10px ${withAlpha(GOUD[2], 0.5)}`,
+              transition: "width .4s ease",
+            }}
+          />
+        </div>
+        <span style={{ fontFamily: font.ui, fontSize: 11.5, color: colors.sub, flexShrink: 0 }}>
+          {nu} / {span} XP
+        </span>
+      </div>
+      <span style={{ textAlign: "center", fontFamily: font.ui, fontSize: 11, color: colors.faint }}>
+        {t("xpToNext", { n: Math.max(0, span - nu) })}
+      </span>
+    </div>
+  );
+}
+
+// ---- Prestaties ----------------------------------------------------------------
+// De volledige kast, niet alleen wat je al hebt. Een lege plek in een
+// verzameling is precies wat je wilt opvullen, dus de nog niet behaalde
+// penningen staan er grijs bij, met een teller als er iets te tellen valt.
+//
+// `nu` rekent hier in de frontend, uit dezelfde statistieken die de server ook
+// gebruikt om de badge toe te kennen. Prestaties die aan een gebeurtenis hangen
+// (een comeback, een perfecte ronde) hebben geen teller: die krijgen een slot.
+//
+// Elke penning heeft eigen art in `public/ui/badges/<sleutel>.webp`, uit het
+// vel dat in de UI-map staat. Staat er ooit een sleutel bij zonder art, dan
+// haal je hem hier weg en valt hij terug op het getekende teken.
+const BADGE_ART = new Set<string>([
+  "eerste_game", "eerste_winst", "tien_games", "vijf_winsten", "hattrick", "woordenaar",
+  "vijfentwintig_games", "tien_winsten", "perfecte_ronde", "comeback", "durfal",
+  "eerste_vriend", "eerste_bericht", "seizoenswinnaar",
+]);
+
+const PRESTATIES: { key: string; icoon: typeof Crown; nu?: (s: AccountStats) => number; doel?: number }[] = [
+  { key: "eerste_game", icoon: Swords },
+  { key: "eerste_winst", icoon: Crown },
+  { key: "tien_games", icoon: Swords, nu: (s) => s.games, doel: 10 },
+  { key: "vijf_winsten", icoon: Trophy, nu: (s) => s.wins, doel: 5 },
+  { key: "hattrick", icoon: Flame, nu: (s) => s.streak, doel: 3 },
+  { key: "woordenaar", icoon: BookOpen, nu: (s) => s.uniques, doel: 50 },
+  { key: "vijfentwintig_games", icoon: Shield, nu: (s) => s.games, doel: 25 },
+  { key: "tien_winsten", icoon: Medal, nu: (s) => s.wins, doel: 10 },
+  { key: "perfecte_ronde", icoon: Sparkles },
+  { key: "comeback", icoon: Rocket },
+  { key: "durfal", icoon: Zap },
+  { key: "eerste_vriend", icoon: UserPlus },
+  { key: "eerste_bericht", icoon: MessageCircle },
+  { key: "seizoenswinnaar", icoon: Star },
+];
+
 // ---- Inklapbare profielsectie ----------------------------------------------
 // Prestaties en Laatste potjes groeien mee met hoe lang je speelt en duwden het
 // profiel daardoor eindeloos lang. Ingeklapt blijft het eerste item staan als
@@ -300,15 +433,38 @@ function CollapsibleCard({
   title,
   items,
   emptyText,
+  vitrine,
 }: {
   title: string;
   items: React.ReactNode[];
   emptyText: string;
+  /** De vitrine-opmaak: sectiekop met "Alles bekijken" en drie items als
+   *  voorproefje. Zonder deze vlag blijft het de kaart die nu live staat. */
+  vitrine?: boolean;
 }) {
   const { t } = useT();
   const [open, setOpen] = useState(false);
-  const hidden = Math.max(0, items.length - 1);
-  const shown = open ? items : items.slice(0, 1);
+  const voorproef = vitrine ? 3 : 1;
+  const hidden = Math.max(0, items.length - voorproef);
+  const shown = open ? items : items.slice(0, voorproef);
+
+  if (vitrine) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
+        <SectieKop
+          label={title}
+          actie={hidden > 0 ? (open ? t("showLess") : t("showAll")) : undefined}
+          onActie={() => { sound.uiTap(); setOpen((v) => !v); }}
+        />
+        {items.length === 0 ? (
+          <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13, color: colors.faint }}>{emptyText}</p>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>{shown}</div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <Card style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       <button
@@ -348,7 +504,7 @@ function CollapsibleCard({
 
 // ---- Laatste potjes -------------------------------------------------------------
 
-function HistoryCard({ game, meId }: { game: GameApi; meId: string }) {
+function HistoryCard({ game, meId, vitrine }: { game: GameApi; meId: string; vitrine?: boolean }) {
   const { t } = useT();
   const games = game.state.history;
 
@@ -367,35 +523,121 @@ function HistoryCard({ game, meId }: { game: GameApi; meId: string }) {
     return `${d.getDate()}-${d.getMonth() + 1}`;
   };
 
+  // Een potje is een DUEL, ook als er zes mensen meededen: jij tegen degene die
+  // je het meest voor de voeten liep. Zes even grote avatars op een rij zeggen
+  // niets over hoe het ging; "jij 235 tegen Lisa 198" zegt het in één blik. De
+  // rest van de tafel staat als "+3" achter de tegenstander, zodat je niet
+  // vergeet dat het een groepspotje was.
+  if (!vitrine) {
+    return (
+      <CollapsibleCard
+        title={t("historyTitle")}
+        emptyText={t("noHistory")}
+        items={games.map((g, i) => (
+          <div
+            key={`${g.finished_at}-${i}`}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              padding: "8px 10px",
+              borderRadius: 12,
+              backgroundImage: g.is_winner
+                ? "linear-gradient(180deg, rgba(255,194,61,.14) 0%, rgba(0,0,0,.24) 100%)"
+                : "linear-gradient(180deg, rgba(255,255,255,.045) 0%, rgba(0,0,0,.24) 100%)",
+              border: `1px solid ${g.is_winner ? withAlpha(colors.gold, 0.45) : colors.hairline}`,
+              boxShadow: g.is_winner ? `0 0 12px ${withAlpha(colors.gold, 0.14)}` : "none",
+            }}
+          >
+            <Plek plek={g.place} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                {g.players.slice(0, 6).map((pl) => (
+                  <span key={pl.user_id} style={{ opacity: pl.user_id === meId ? 1 : 0.85 }}>
+                    <Avatar name={pl.name} color={pl.color} size={20} userId={pl.user_id} hasAvatar={pl.has_avatar} avatarVer={pl.avatar_ver} />
+                  </span>
+                ))}
+                {g.player_count > 6 && (
+                  <span style={{ fontFamily: font.ui, fontSize: 11, color: colors.faint }}>+{g.player_count - 6}</span>
+                )}
+              </div>
+              <div style={{ fontFamily: font.ui, fontSize: 11, color: colors.faint, marginTop: 3 }}>
+                {fmtDate(g.finished_at)} · {g.rounds === 1 ? t("historyRound1") : t("historyRounds", { n: g.rounds })}
+              </div>
+            </div>
+            <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, color: g.is_winner ? colors.gold : colors.ink, flexShrink: 0 }}>
+              {g.score}
+            </span>
+          </div>
+        ))}
+      />
+    );
+  }
+
   return (
     <CollapsibleCard
+      vitrine
       title={t("historyTitle")}
       emptyText={t("noHistory")}
-      items={games.map((g, i) => (
-        <div key={`${g.finished_at}-${i}`} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 10px", borderRadius: 10, background: withAlpha("#000000", 0.18), border: `1px solid ${g.is_winner ? withAlpha(colors.gold, 0.35) : colors.hairline}` }}>
-          <span style={{ width: 34, textAlign: "center", flexShrink: 0, fontFamily: font.display, fontWeight: 700, fontSize: 14, color: g.is_winner ? colors.gold : colors.sub }}>
-            {t("placeN", { p: g.place })}
-          </span>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              {g.players.slice(0, 6).map((pl) => (
-                <span key={pl.user_id} style={{ opacity: pl.user_id === meId ? 1 : 0.85 }}>
-                  <Avatar name={pl.name} color={pl.color} size={20} userId={pl.user_id} hasAvatar={pl.has_avatar} avatarVer={pl.avatar_ver} />
-                </span>
-              ))}
-              {g.player_count > 6 && (
-                <span style={{ fontFamily: font.ui, fontSize: 11, color: colors.faint }}>+{g.player_count - 6}</span>
-              )}
-            </div>
-            <div style={{ fontFamily: font.ui, fontSize: 11, color: colors.faint, marginTop: 3 }}>
-              {fmtDate(g.finished_at)} · {g.rounds === 1 ? t("historyRound1") : t("historyRounds", { n: g.rounds })}
-            </div>
-          </div>
-          <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, color: g.is_winner ? colors.gold : colors.ink, flexShrink: 0 }}>
+      items={games.map((g, i) => {
+        const ik = g.players.find((p) => p.user_id === meId);
+        const anderen = g.players.filter((p) => p.user_id !== meId).sort((a, b) => b.score - a.score);
+        const tegen = anderen[0];
+        const rest = Math.max(0, g.player_count - 2);
+        const zij = (
+          <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 15, color: colors.ink, flexShrink: 0 }}>
             {g.score}
           </span>
-        </div>
-      ))}
+        );
+        return (
+          <div
+            key={`${g.finished_at}-${i}`}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 9,
+              padding: "9px 10px",
+              borderRadius: 14,
+              // Een gewonnen potje is een trofee en mag dat laten zien; een
+              // verloren potje is geschiedenis en blijft rustig.
+              backgroundImage: g.is_winner
+                ? "linear-gradient(180deg, rgba(255,194,61,.15) 0%, rgba(0,0,0,.26) 100%)"
+                : "linear-gradient(180deg, rgba(255,255,255,.045) 0%, rgba(0,0,0,.26) 100%)",
+              border: `1px solid ${g.is_winner ? withAlpha(colors.gold, 0.45) : colors.hairline}`,
+              boxShadow: g.is_winner ? `0 0 12px ${withAlpha(colors.gold, 0.14)}` : "none",
+            }}
+          >
+            <PlekWapen plek={g.place} />
+            <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
+                {ik && (
+                  <Avatar name={ik.name} color={ik.color} size={22} userId={ik.user_id} hasAvatar={ik.has_avatar} avatarVer={ik.avatar_ver} />
+                )}
+                <span style={{ display: "flex", alignItems: "center", gap: 4, minWidth: 0, flex: 1 }}>
+                  {g.is_winner && <Crown size={12} color={colors.gold} style={{ flexShrink: 0 }} />}
+                  {zij}
+                </span>
+                {tegen ? (
+                  <>
+                    <span style={{ fontFamily: font.wide, fontSize: 10, letterSpacing: 0.8, color: colors.faint, flexShrink: 0 }}>VS</span>
+                    <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15, color: colors.sub, flexShrink: 0 }}>
+                      {tegen.score}
+                    </span>
+                    <Avatar name={tegen.name} color={tegen.color} size={22} userId={tegen.user_id} hasAvatar={tegen.has_avatar} avatarVer={tegen.avatar_ver} />
+                    {rest > 0 && (
+                      <span style={{ fontFamily: font.ui, fontSize: 11, color: colors.faint, flexShrink: 0 }}>+{rest}</span>
+                    )}
+                  </>
+                ) : null}
+              </div>
+              <div style={{ fontFamily: font.ui, fontSize: 10.5, color: colors.faint, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {tegen ? `${t("historyVs", { name: tegen.name })} · ` : ""}
+                {fmtDate(g.finished_at)} · {g.rounds === 1 ? t("historyRound1") : t("historyRounds", { n: g.rounds })}
+              </div>
+            </div>
+          </div>
+        );
+      })}
     />
   );
 }
@@ -543,11 +785,26 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
   const [editFile, setEditFile] = useState<File | null>(null);
   const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [prestatiesUit, setPrestatiesUit] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const colorInputRef = useRef<HTMLInputElement | null>(null);
   const colorDebounce = useRef<number | undefined>(undefined);
 
+  // De vitrine: het nieuwe profiel. Staat nog niet voor iedereen open, dus wie
+  // niet op de testerslijst staat krijgt het profiel dat live staat.
+  const vitrine = isTester(account?.name);
+
   useEffect(() => setName(account?.name ?? ""), [account?.name]);
+
+  // Het profiel heeft eigen art. De klasse gaat op de body en niet op een laag
+  // hierbinnen, want de achtergrond moet ook onder de bovenbalk en de tabbalk
+  // door lopen, en die staan buiten dit onderdeel.
+  useEffect(() => {
+    if (!vitrine) return;
+    document.body.classList.add("profiel");
+    return () => document.body.classList.remove("profiel");
+  }, [vitrine]);
 
   async function uploadBlob(blob: Blob) {
     setBusy(true);
@@ -641,92 +898,76 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
     );
   }
 
-  return (
-    <Fragment key="mine">
-
-      {/* identiteit + level: one section. The avatar itself is the edit entry:
-          tapping it opens the change/remove menu (pencil badge as affordance). */}
-      <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+  // Het formulier: naam en kleur. In de vitrine zit het achter het potloodje,
+  // in het huidige profiel staat het gewoon naast je portret. Eén keer
+  // opgeschreven, want de knoppen doen in beide gevallen hetzelfde.
+  const naamEnKleur = (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1 }}>
+      <div style={{ display: "flex", gap: 8 }}>
+        <input style={{ ...inputStyle, flex: 1, padding: "8px 11px" }} value={name} maxLength={20} onChange={(e) => setName(e.target.value)} />
+        {name.trim() !== account.name && (
+          <Button variant="primary" onClick={() => game.updateAccount({ name })}>{t("save")}</Button>
+        )}
+      </div>
+      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+        {playerColors.map((c) => (
           <button
-            onClick={() => { sound.uiTap(); setAvatarMenuOpen(true); }}
-            disabled={busy}
-            aria-label={t("avatarMenuTitle")}
-            className="pressable"
-            style={{ position: "relative", background: "transparent", border: "none", padding: 0, cursor: "pointer", flexShrink: 0 }}
-          >
-            <Avatar name={account.name} color={account.color} size={64} userId={account.id} hasAvatar={account.has_avatar} avatarVer={account.avatar_ver} frame={account.avatar_frame} glow />
-            <span style={{ position: "absolute", right: -3, bottom: -3, width: 22, height: 22, borderRadius: 8, display: "grid", placeItems: "center", background: colors.gold, color: colors.bg0, boxShadow: "0 2px 8px rgba(0,0,0,.4)" }}>
-              <Pencil size={12} />
-            </span>
-          </button>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1 }}>
-            <div style={{ display: "flex", gap: 8 }}>
-              <input style={{ ...inputStyle, flex: 1, padding: "8px 11px" }} value={name} maxLength={20} onChange={(e) => setName(e.target.value)} />
-              {name.trim() !== account.name && (
-                <Button variant="primary" onClick={() => game.updateAccount({ name })}>{t("save")}</Button>
-              )}
-            </div>
-            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-              {playerColors.map((c) => (
-                <button
-                  key={c}
-                  onClick={() => game.updateAccount({ color: c })}
-                  aria-label={c}
-                  style={{ width: 22, height: 22, borderRadius: 7, background: c, border: account.color === c ? `2px solid ${colors.ink}` : "2px solid transparent", cursor: "pointer" }}
-                />
-              ))}
-              {/* Free choice: the REAL color input sits invisibly on top of the
-                  rainbow wheel, so the tap lands on the picker itself. (A
-                  scripted .click() on a hidden input is ignored on iOS.) */}
-              <div
-                title={t("customColor")}
-                style={{
-                  position: "relative",
-                  width: 22,
-                  height: 22,
-                  flexShrink: 0,
-                  borderRadius: "50%",
-                  background: "conic-gradient(#ff3b30, #ff9500, #ffd60a, #34c759, #32ade6, #5856d6, #ff2d92, #ff3b30)",
-                  border: !playerColors.includes(account.color) ? `2px solid ${colors.ink}` : "2px solid transparent",
-                  boxShadow: !playerColors.includes(account.color) ? `0 0 8px ${withAlpha(account.color, 0.7)}` : "none",
-                }}
-              >
-                <input
-                  ref={colorInputRef}
-                  type="color"
-                  value={/^#[0-9A-Fa-f]{6}$/.test(account.color) ? account.color : "#FFC23D"}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    if (colorDebounce.current) window.clearTimeout(colorDebounce.current);
-                    colorDebounce.current = window.setTimeout(() => game.updateAccount({ color: v }), 350);
-                  }}
-                  aria-label={t("customColor")}
-                  style={{ position: "absolute", inset: -4, width: "calc(100% + 8px)", height: "calc(100% + 8px)", opacity: 0, cursor: "pointer", border: "none", padding: 0 }}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-        {/* photo picking still runs through this hidden input; the visible
-            entry point is the avatar-tap menu. */}
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/*"
-          style={{ display: "none" }}
-          onChange={(e) => {
-            if (e.target.files?.[0]) setEditFile(e.target.files[0]);
-            e.target.value = ""; // same file re-selectable
+            key={c}
+            onClick={() => game.updateAccount({ color: c })}
+            aria-label={c}
+            style={{ width: 22, height: 22, borderRadius: 7, background: c, border: account.color === c ? `2px solid ${colors.ink}` : "2px solid transparent", cursor: "pointer" }}
+          />
+        ))}
+        {/* Free choice: the REAL color input sits invisibly on top of the
+            rainbow wheel, so the tap lands on the picker itself. (A
+            scripted .click() on a hidden input is ignored on iOS.) */}
+        <div
+          title={t("customColor")}
+          style={{
+            position: "relative",
+            width: 22,
+            height: 22,
+            flexShrink: 0,
+            borderRadius: "50%",
+            background: "conic-gradient(#ff3b30, #ff9500, #ffd60a, #34c759, #32ade6, #5856d6, #ff2d92, #ff3b30)",
+            border: !playerColors.includes(account.color) ? `2px solid ${colors.ink}` : "2px solid transparent",
+            boxShadow: !playerColors.includes(account.color) ? `0 0 8px ${withAlpha(account.color, 0.7)}` : "none",
           }}
-        />
-
-        <div style={{ borderTop: `1px solid ${colors.hairline}`, paddingTop: 14, display: "flex", flexDirection: "column", gap: 14 }}>
-          <LevelBar level={account.level} />
-          <StatGrid stats={account.stats} />
+        >
+          <input
+            ref={colorInputRef}
+            type="color"
+            value={/^#[0-9A-Fa-f]{6}$/.test(account.color) ? account.color : "#FFC23D"}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (colorDebounce.current) window.clearTimeout(colorDebounce.current);
+              colorDebounce.current = window.setTimeout(() => game.updateAccount({ color: v }), 350);
+            }}
+            aria-label={t("customColor")}
+            style={{ position: "absolute", inset: -4, width: "calc(100% + 8px)", height: "calc(100% + 8px)", opacity: 0, cursor: "pointer", border: "none", padding: 0 }}
+          />
         </div>
-      </Card>
+      </div>
+    </div>
+  );
 
+  // Het verborgen bestandsveld waar het fotomenu op mikt. Staat buiten de
+  // opmaak-keuze, zodat de knop in beide gevallen dezelfde kiezer opent.
+  const fotoVeld = (
+    <input
+      ref={fileRef}
+      type="file"
+      accept="image/*"
+      style={{ display: "none" }}
+      onChange={(e) => {
+        if (e.target.files?.[0]) setEditFile(e.target.files[0]);
+        e.target.value = ""; // same file re-selectable
+      }}
+    />
+  );
+
+  const overlays = (
+    <>
       {editFile && (
         <AvatarEditor
           file={editFile}
@@ -736,7 +977,6 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
           }}
         />
       )}
-
       {avatarMenuOpen && (
         <AvatarMenu
           hasCustomPhoto={!!account.has_avatar && !account.avatar_preset}
@@ -746,23 +986,315 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
           onClose={() => setAvatarMenuOpen(false)}
         />
       )}
+    </>
+  );
+
+  if (!vitrine) {
+    return (
+      <Fragment key="mine">
+        {/* identiteit + level: one section. The avatar itself is the edit entry:
+            tapping it opens the change/remove menu (pencil badge as affordance). */}
+        <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <button
+              onClick={() => { sound.uiTap(); setAvatarMenuOpen(true); }}
+              disabled={busy}
+              aria-label={t("avatarMenuTitle")}
+              className="pressable"
+              style={{ position: "relative", background: "transparent", border: "none", padding: 0, cursor: "pointer", flexShrink: 0 }}
+            >
+              <Avatar name={account.name} color={account.color} size={64} userId={account.id} hasAvatar={account.has_avatar} avatarVer={account.avatar_ver} frame={account.avatar_frame} glow />
+              <span style={{ position: "absolute", right: -3, bottom: -3, width: 22, height: 22, borderRadius: 8, display: "grid", placeItems: "center", background: colors.gold, color: colors.bg0, boxShadow: "0 2px 8px rgba(0,0,0,.4)" }}>
+                <Pencil size={12} />
+              </span>
+            </button>
+            {naamEnKleur}
+          </div>
+          {fotoVeld}
+          <div style={{ borderTop: `1px solid ${colors.hairline}`, paddingTop: 14, display: "flex", flexDirection: "column", gap: 14 }}>
+            <LevelBar level={account.level} />
+            <StatGridKlassiek stats={account.stats} />
+          </div>
+        </Card>
+
+        {overlays}
+
+        {/* club en titel zijn nu eigen tabs; laatste potjes + prestaties blijven hier */}
+        <HistoryCard game={game} meId={account.id} />
+
+        <CollapsibleCard
+          title={t("badgesTitle")}
+          emptyText={t("noBadges")}
+          items={account.badges.map((b) => (
+            <div key={b.badge} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 10, background: withAlpha(colors.gold, 0.08), border: `1px solid ${withAlpha(colors.gold, 0.25)}` }}>
+              <Award size={16} color={colors.gold} />
+              <span style={{ fontFamily: font.ui, fontSize: 13.5, color: colors.ink }}>{t(`badge_${b.badge}`)}</span>
+            </div>
+          ))}
+        />
+      </Fragment>
+    );
+  }
+
+  return (
+    <Fragment key="mine">
+
+      {/* De heldenkaart. Eén paneel dat in één blik zegt wie je bent en hoe ver
+          je bent: kroon, portret, level, naam, rang, en de balk naar het
+          volgende level. Dat is de volgorde waarin je ernaar kijkt, dus ook de
+          volgorde waarin het staat.
+          Bewerken zit niet meer in de weg: de naam staat als naam en het
+          potloodje ernaast klapt het formulier pas open. De avatar zelf blijft
+          de ingang naar het foto-menu. */}
+      <div style={{ position: "relative", paddingTop: 20 }}>
+        <Paneel padding="46px 15px 15px">
+          {/* portret met level-schild */}
+          <div style={{ display: "flex", justifyContent: "center" }}>
+            <button
+              onClick={() => { sound.uiTap(); setAvatarMenuOpen(true); }}
+              disabled={busy}
+              aria-label={t("avatarMenuTitle")}
+              className="pressable"
+              style={{ position: "relative", background: "transparent", border: "none", padding: 0, cursor: "pointer" }}
+            >
+              {/* De lauwerkrans: twee gebogen takjes links en rechts van het
+                  portret. Een gesloten ring zou met de rangring om de avatar
+                  vechten (twee ringen om hetzelfde ding zijn niet te
+                  onderscheiden), dus het blijft bij de twee zijkanten. */}
+              <span aria-hidden style={{ position: "absolute", inset: -24, display: "grid", placeItems: "center", pointerEvents: "none" }}>
+                <svg width={132} height={104} viewBox="0 0 132 104" fill="none">
+                  <defs>
+                    <linearGradient id="lauwer" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={GOUD[3]} />
+                      <stop offset="55%" stopColor={GOUD[2]} />
+                      <stop offset="100%" stopColor={GOUD[0]} />
+                    </linearGradient>
+                  </defs>
+                  {/* De takken staan ver genoeg naar buiten om NIET onder het
+                      portret te verdwijnen: het portret is 84 breed en ligt in
+                      het midden, dus alles binnen x 24..108 wordt bedekt. */}
+                  {[0, 1].map((kant) => (
+                    <g key={kant} transform={kant ? "translate(132,0) scale(-1,1)" : undefined}>
+                      <path d="M17 20 C6 38 7 66 20 84" stroke="url(#lauwer)" strokeWidth={2.4} strokeLinecap="round" fill="none" />
+                      {[26, 40, 54, 68].map((y, i) => (
+                        <ellipse key={y} cx={9 - i * 0.4} cy={y} rx={5.4} ry={3} transform={`rotate(${-40 + i * 13} ${9 - i * 0.4} ${y})`} fill="url(#lauwer)" opacity={0.92} />
+                      ))}
+                    </g>
+                  ))}
+                </svg>
+              </span>
+              <Avatar name={account.name} color={account.color} size={84} userId={account.id} hasAvatar={account.has_avatar} avatarVer={account.avatar_ver} frame={account.avatar_frame} glow />
+              {/* Het level hangt ONDER het portret als schild. Daar valt het op
+                  zonder de foto te bedekken, en een schild leest als rang. */}
+              <span
+                style={{
+                  position: "absolute",
+                  left: "50%",
+                  bottom: -21,
+                  transform: "translateX(-50%)",
+                  width: 40,
+                  height: 42,
+                  display: "grid",
+                  placeItems: "center",
+                  clipPath: "polygon(0% 0%, 100% 0%, 100% 70%, 50% 100%, 0% 70%)",
+                  background: `linear-gradient(164deg, ${GOUD[3]} 0%, ${GOUD[2]} 42%, ${GOUD[1]} 74%, ${GOUD[0]} 100%)`,
+                  filter: `drop-shadow(0 3px 6px rgba(0,0,0,.5))`,
+                }}
+              >
+                <span
+                  style={{
+                    width: "calc(100% - 4px)",
+                    height: "calc(100% - 4px)",
+                    display: "grid",
+                    placeItems: "center",
+                    clipPath: "polygon(0% 0%, 100% 0%, 100% 70%, 50% 100%, 0% 70%)",
+                    backgroundImage: "radial-gradient(80% 60% at 50% 12%, rgba(255,243,181,.22), transparent 66%), linear-gradient(180deg, #4A2A78 0%, #22103C 100%)",
+                    fontFamily: font.display,
+                    fontWeight: 800,
+                    fontSize: 16,
+                    color: GOUD[3],
+                    paddingBottom: 5,
+                  }}
+                >
+                  {account.level.level}
+                </span>
+              </span>
+            </button>
+          </div>
+
+          {/* naam + potlood */}
+          <div style={{ marginTop: 22, display: "flex", alignItems: "center", justifyContent: "center", gap: 7 }}>
+            <span style={{ fontFamily: font.ui, fontWeight: 600, fontSize: 14, color: colors.sub }}>{account.name}</span>
+            <button
+              onClick={() => { sound.uiTap(); setEditOpen((v) => !v); }}
+              aria-label={t("save")}
+              aria-expanded={editOpen}
+              style={{
+                width: 24,
+                height: 24,
+                flexShrink: 0,
+                display: "grid",
+                placeItems: "center",
+                borderRadius: 8,
+                border: `1px solid ${withAlpha(GOUD[2], editOpen ? 0.9 : 0.4)}`,
+                background: editOpen ? withAlpha(GOUD[2], 0.22) : "rgba(0,0,0,.3)",
+                color: GOUD[2],
+                cursor: "pointer",
+                padding: 0,
+              }}
+            >
+              <Pencil size={12} />
+            </button>
+          </div>
+
+          {/* De rang, groot. Dit is de regel waar je profiel om draait, dus hij
+              krijgt de ruimte en het goud. */}
+          <div
+            style={{
+              marginTop: 6,
+              textAlign: "center",
+              fontFamily: font.display,
+              fontWeight: 800,
+              fontSize: "clamp(23px, 7.2vw, 30px)",
+              lineHeight: 1.05,
+              letterSpacing: 0.5,
+              textTransform: "uppercase",
+              backgroundImage: `linear-gradient(172deg, ${GOUD[3]} 0%, ${GOUD[2]} 46%, ${GOUD[1]} 78%, ${GOUD[2]} 100%)`,
+              WebkitBackgroundClip: "text",
+              backgroundClip: "text",
+              color: "transparent",
+            }}
+          >
+            {t(`rank_${account.level.rank}`)}
+          </div>
+
+          {/* De pil eronder: je gekozen titel als je er een hebt, anders hoe ver
+              je medaillekast is. Iets dat over JOU gaat en niet over het spel. */}
+          <div style={{ marginTop: 9, display: "flex", justifyContent: "center" }}>
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 7,
+                padding: "5px 12px 5px 6px",
+                borderRadius: 999,
+                border: `1px solid ${withAlpha(GOUD[2], 0.42)}`,
+                background: "linear-gradient(180deg, rgba(255,194,61,.13) 0%, rgba(0,0,0,.3) 100%)",
+              }}
+            >
+              <span
+                aria-hidden
+                style={{
+                  width: 20,
+                  height: 22,
+                  display: "grid",
+                  placeItems: "center",
+                  clipPath: "polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)",
+                  background: `linear-gradient(164deg, ${GOUD[3]}, ${GOUD[1]})`,
+                  color: "#3A2500",
+                }}
+              >
+                <Crown size={11} />
+              </span>
+              <span style={{ fontFamily: font.ui, fontSize: 12, color: colors.ink }}>
+                {account.title
+                  ? t(`title_${account.title}`)
+                  : t("badgesOf", { n: account.badges.length, m: PRESTATIES.length })}
+              </span>
+            </span>
+          </div>
+
+          {/* scheiding, dan de voortgang */}
+          <div style={{ margin: "14px 0 12px" }}>
+            <GoudLijn />
+          </div>
+          <XpRij level={account.level} />
+        </Paneel>
+
+        {/* De kroon steekt boven het paneel uit. Iets dat over de rand heen
+            komt maakt van een rechthoek een voorwerp; blijft hij binnen de
+            lijn, dan is het gewoon een plaatje op een kaart. */}
+        <span
+          aria-hidden
+          style={{ position: "absolute", left: "50%", top: -4, transform: "translateX(-50%)", filter: `drop-shadow(0 3px 7px rgba(0,0,0,.55))`, pointerEvents: "none" }}
+        >
+          <svg width={62} height={42} viewBox="0 0 62 42" fill="none">
+            <defs>
+              <linearGradient id="kroon" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={GOUD[3]} />
+                <stop offset="45%" stopColor={GOUD[2]} />
+                <stop offset="100%" stopColor={GOUD[0]} />
+              </linearGradient>
+            </defs>
+            <path d="M5 34 L2 9 L17 20 L31 3 L45 20 L60 9 L57 34 Z" fill="url(#kroon)" stroke={GOUD[0]} strokeWidth={1.2} strokeLinejoin="round" />
+            <rect x="5" y="33" width="52" height="6" rx="2" fill="url(#kroon)" stroke={GOUD[0]} strokeWidth={1} />
+            {[[2, 9], [31, 3], [60, 9]].map(([cx, cy]) => (
+              <circle key={cx} cx={cx} cy={cy} r={3} fill={GOUD[3]} stroke={GOUD[0]} strokeWidth={0.9} />
+            ))}
+          </svg>
+        </span>
+      </div>
+
+      {/* Het formulier is er alleen als je erom vraagt. Zo blijft de kaart een
+          vitrine en wordt hij geen instellingenscherm. */}
+      {editOpen && (
+        <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>{naamEnKleur}</Card>
+      )}
+
+      {fotoVeld}
+
+      {/* statistieken */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
+        <SierKop label={t("statsHeading").toUpperCase()} />
+        <StatGrid stats={account.stats} />
+      </div>
+
+      {overlays}
 
       {/* club en titel zijn nu eigen tabs; laatste potjes + prestaties blijven hier */}
 
       {/* laatste potjes */}
-      <HistoryCard game={game} meId={account.id} />
+      <HistoryCard game={game} meId={account.id} vitrine />
 
       {/* prestaties */}
-      <CollapsibleCard
-        title={t("badgesTitle")}
-        emptyText={t("noBadges")}
-        items={account.badges.map((b) => (
-          <div key={b.badge} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 10, background: withAlpha(colors.gold, 0.08), border: `1px solid ${withAlpha(colors.gold, 0.25)}` }}>
-            <Award size={16} color={colors.gold} />
-            <span style={{ fontFamily: font.ui, fontSize: 13.5, color: colors.ink }}>{t(`badge_${b.badge}`)}</span>
-          </div>
-        ))}
-      />
+      {/* De hele kast, niet alleen wat je al hebt: verdiend goud met een vinkje,
+          de rest grijs met een teller. Ze staan naast elkaar en niet onder
+          elkaar, want een verzameling toon je op een plank. Verdiend eerst,
+          zodat je medailles leiden en het volgende doel er meteen achter staat. */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
+        <SectieKop
+          label={t("badgesTitle").toUpperCase()}
+          actie={prestatiesUit ? t("showLess") : t("showAll")}
+          onActie={() => { sound.uiTap(); setPrestatiesUit((v) => !v); }}
+        />
+        {(() => {
+          const behaald = new Set(account.badges.map((b) => b.badge));
+          const lijst = [...PRESTATIES].sort((a, b) => Number(behaald.has(b.key)) - Number(behaald.has(a.key)));
+          const zicht = prestatiesUit ? lijst : lijst.slice(0, 5);
+          return (
+            <div
+              className="no-scrollbar"
+              style={
+                prestatiesUit
+                  ? { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "14px 4px" }
+                  : { display: "flex", gap: 4, overflowX: "auto", paddingBottom: 2 }
+              }
+            >
+              {zicht.map((p) => (
+                <Prestatie
+                  key={p.key}
+                  icoon={<p.icoon size={24} />}
+                  art={BADGE_ART.has(p.key) ? `/ui/badges/${p.key}.webp` : undefined}
+                  naam={t(`badgeshort_${p.key}`)}
+                  behaald={behaald.has(p.key)}
+                  nu={p.nu ? p.nu(account.stats) : undefined}
+                  doel={p.doel}
+                />
+              ))}
+            </div>
+          );
+        })()}
+      </div>
 
     </Fragment>
   );
