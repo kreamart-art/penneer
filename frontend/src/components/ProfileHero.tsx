@@ -760,7 +760,7 @@ export function StatKaart({ icoon, art, waarde, label }: { icoon: ReactNode; art
 const WAPEN_VERH = 3472 / 2862;
 // Bump zodra je de art op DEZELFDE naam vervangt: de service worker bewaart
 // plaatjes cache-first en ruimt pas op bij zijn volgende activatie.
-const WAPEN_ART = 1;
+const WAPEN_ART = 2;
 
 export function PlekWapen({ plek, maat = 38 }: { plek: number; maat?: number }) {
   const metaal = plek === 1 ? "goud" : plek === 2 ? "zilver" : plek === 3 ? "brons" : null;
