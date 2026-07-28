@@ -281,6 +281,10 @@ const KERN_STREEP = [
   "radial-gradient(4px 1.6px at 50% 50%, rgba(255,255,255,.95) 0%, rgba(255,246,223,.55) 45%, transparent 72%)",
   "linear-gradient(90deg, transparent 26%, rgba(138,80,240,.28) 38%, rgba(196,158,255,.5) 47%, rgba(255,250,238,.85) 50%, rgba(196,158,255,.5) 53%, rgba(138,80,240,.28) 62%, transparent 74%)",
 ].join(", ");
+// De onderrand krijgt de gloed WEL maar de punt NIET: het licht komt van boven,
+// dus het piekpunt hoort alleen daar. Onder blijft een zachte heuvel.
+const KERN_STREEP_ZACHT =
+  "linear-gradient(90deg, transparent 28%, rgba(138,80,240,.24) 40%, rgba(196,158,255,.42) 50%, rgba(138,80,240,.24) 60%, transparent 72%)";
 
 /** De schuine hoek van de rol-skin, maar dan in procenten EN pixels door
  *  elkaar, zodat hij meeschaalt met de doos. `polygon()` accepteert lengtes, dus
@@ -506,10 +510,10 @@ export function NeonKader({
           rand net anders af en dan gloeit de ene rand wel en de andere amper.
           Zo staan ze er allebei gegarandeerd, met dezelfde piek. */}
       {hoek &&
-        [{ top: 0 }, { bottom: 0 }].map((kant, i) => (
-          <span key={i} aria-hidden style={{ position: "absolute", left: hoek + 2, right: hoek + 2, height: 1.2, ...kant, backgroundImage: KERN_STREEP, pointerEvents: "none" }}>
+        ([[{ top: 0 }, KERN_STREEP], [{ bottom: 0 }, KERN_STREEP_ZACHT]] as const).map(([kant, streep], i) => (
+          <span key={i} aria-hidden style={{ position: "absolute", left: hoek + 2, right: hoek + 2, height: 1.2, ...kant, backgroundImage: streep, pointerEvents: "none" }}>
             {/* de gloed: dezelfde streep, iets hoger en vervaagd */}
-            <span aria-hidden style={{ position: "absolute", left: 0, right: 0, top: -1, height: 3, backgroundImage: KERN_STREEP, filter: "blur(1.6px)", opacity: 0.55 }} />
+            <span aria-hidden style={{ position: "absolute", left: 0, right: 0, top: -1, height: 3, backgroundImage: streep, filter: "blur(1.6px)", opacity: 0.55 }} />
           </span>
         ))}
       {/* De gouden eindkappen: de contour van het schuine uiteinde als los
