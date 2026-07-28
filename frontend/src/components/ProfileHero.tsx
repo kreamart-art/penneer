@@ -793,7 +793,7 @@ export function PlekWapen({ plek, maat = 38 }: { plek: number; maat?: number }) 
           paddingBottom: hoog * 0.18,
           fontFamily: font.display,
           fontWeight: 800,
-          fontSize: Math.round(maat * (14 / 38)),
+          fontSize: Math.round(maat * (19 / 38)),
           lineHeight: 1,
           color: plek === 1 ? "#4A2E00" : plek === 2 ? "#241640" : plek === 3 ? "#3A1C05" : colors.sub,
           textShadow: metaal ? "0 1px 0 rgba(255,255,255,.45)" : "none",
