@@ -568,7 +568,7 @@ export function Landing({
           wordt: hij is af, maar hij gaat pas voor iedereen aan als hij op een
           echt toestel goed staat. Een naam-vergelijking is genoeg, want er kan
           maar een account met die naam bestaan. */}
-      {account && TESTERS.has(account.name.trim().toLowerCase()) && <ReferralAd naam={account.name} />}
+      {account && TESTERS.has(account.name.trim().toLowerCase()) && <ReferralAd />}
 
       {game.state.error && (
           <p style={{ textAlign: "center", color: colors.red, fontFamily: font.ui, fontSize: 14, margin: 0 }}>{game.state.error}</p>

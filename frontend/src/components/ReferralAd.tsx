@@ -43,7 +43,7 @@ function teHalen(info: Info | null): Tier[] {
   return info.tiers.filter((t) => t.reached && !t.claimed);
 }
 
-export function ReferralAd({ naam }: { naam: string }) {
+export function ReferralAd() {
   const [info, setInfo] = useState<Info | null>(null);
   // "groot" is de popup, "pil" is het randje, "uit" is helemaal weg (alleen
   // tijdens het laden).
@@ -126,7 +126,6 @@ export function ReferralAd({ naam }: { naam: string }) {
   return (
     <Popup
       info={info}
-      naam={naam}
       bezig={bezig}
       onSluit={sluit}
       onDeel={deel}
@@ -139,14 +138,12 @@ export function ReferralAd({ naam }: { naam: string }) {
 
 function Popup({
   info,
-  naam,
   bezig,
   onSluit,
   onDeel,
   onHaalOp,
 }: {
   info: Info;
-  naam: string;
   bezig: boolean;
   onSluit: () => void;
   onDeel: () => void;
@@ -154,9 +151,17 @@ function Popup({
 }) {
   const klaar = teHalen(info);
   const komt = volgende(info);
+  // Het kruisje komt pas na vijf tellen. Dat is hoe elke beloningsadvertentie
+  // in een spel werkt: er moet even niets anders te doen zijn dan lezen. Te
+  // lang en het wordt ergernis, dus vijf en geen tien.
+  const [magSluiten, setMagSluiten] = useState(false);
+  useEffect(() => {
+    const id = window.setTimeout(() => setMagSluiten(true), 5000);
+    return () => window.clearTimeout(id);
+  }, []);
   return (
     <div
-      onClick={onSluit}
+      onClick={() => magSluiten && onSluit()}
       style={{
         position: "fixed",
         inset: 0,
@@ -174,28 +179,29 @@ function Popup({
         className="pop-in"
         style={{ position: "relative", width: "100%", maxWidth: 380 }}
       >
-        {/* De lijst is art, en die moet mee kunnen groeien met de tekst. Als
-            EEN plaatje kan dat niet: uitrekken tot de goede hoogte trekt de
-            hoekornamenten mee uit. Daarom in drieen. De kop en de voet houden
-            hun eigen verhouding, en alleen de band ertussen rekt uit. Dat is
-            een stuk van de art waar links en rechts niets anders staat dan de
-            rechte gouden lijn, dus daar valt niets aan te vervormen. */}
-        <div aria-hidden style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", pointerEvents: "none" }}>
-          <img src="/ads/frame-top.webp" alt="" style={{ width: "100%", display: "block" }} />
-          <div style={{ flex: 1, backgroundImage: "url(/ads/frame-mid.webp)", backgroundSize: "100% 100%" }} />
-          <img src="/ads/frame-bot.webp" alt="" style={{ width: "100%", display: "block" }} />
-        </div>
+        {/* De lijst is EEN plaatje dat de doos vult. Hij rekt dus mee met de
+            tekst; daarom staat er weinig tekst in. Uit elkaar knippen gaf een
+            zichtbare naad, en dat is erger dan een hoek die een paar procent
+            hoger staat dan in de art. */}
+        <img
+          src="/ads/frame.webp"
+          alt=""
+          aria-hidden
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}
+        />
 
-        {/* Het bordje bovenaan de lijst. */}
+        {/* Het bordje bovenaan. De letterafstand zet ook ACHTER de laatste
+            letter ruimte, dus zonder die halve stap terug staat het woord net
+            links van het midden van het bordje. */}
         <span
           style={{
             position: "absolute",
             left: "50%",
-            top: "2.1%",
-            transform: "translateX(-50%)",
+            top: "1.4%",
+            transform: "translateX(calc(-50% + 0.9px))",
             fontFamily: font.wide,
-            fontSize: "clamp(11px, 3.2vw, 14px)",
-            letterSpacing: 1.6,
+            fontSize: "clamp(10px, 3vw, 13px)",
+            letterSpacing: 1.8,
             color: colors.gold,
             textShadow: "0 1px 2px rgba(0,0,0,.6)",
           }}
@@ -203,37 +209,37 @@ function Popup({
           PREMIUM
         </span>
 
-        <button
-          onClick={onSluit}
-          aria-label="Sluiten"
-          className="pressable"
-          style={{
-            position: "absolute",
-            right: "-4%",
-            top: "-3.5%",
-            width: "15%",
-            zIndex: 2,
-            background: "transparent",
-            border: "none",
-            padding: 0,
-            cursor: "pointer",
-            lineHeight: 0,
-          }}
-        >
-          <img src="/ads/close.webp" alt="" style={{ width: "100%", display: "block" }} />
-        </button>
+        {magSluiten && (
+          <button
+            onClick={onSluit}
+            aria-label="Sluiten"
+            className="pressable pop-in"
+            style={{
+              position: "absolute",
+              right: "-3%",
+              top: "-3%",
+              width: "11%",
+              zIndex: 2,
+              background: "transparent",
+              border: "none",
+              padding: 0,
+              cursor: "pointer",
+              lineHeight: 0,
+            }}
+          >
+            <img src="/ads/close.webp" alt="" style={{ width: "100%", display: "block" }} />
+          </button>
+        )}
 
-        {/* De inhoud staat in de normale stroom en bepaalt dus de hoogte; de
-            lijst eromheen groeit mee. */}
-        <div style={{ position: "relative", padding: "11% 8% 8%", display: "flex", flexDirection: "column" }}>
-          <div style={{ display: "flex", alignItems: "flex-start", gap: 4 }}>
-            <div style={{ flex: "1 1 54%", minWidth: 0 }}>
+        <div style={{ position: "relative", padding: "9% 7.5% 7%", display: "flex", flexDirection: "column" }}>
+          <div style={{ display: "flex", alignItems: "flex-start" }}>
+            <div style={{ flex: "1 1 48%", minWidth: 0, paddingTop: "2%" }}>
               <h2
                 style={{
                   margin: 0,
                   fontFamily: font.wide,
-                  fontSize: "clamp(20px, 6.8vw, 30px)",
-                  lineHeight: 1.02,
+                  fontSize: "clamp(26px, 9vw, 40px)",
+                  lineHeight: 0.94,
                   letterSpacing: 0.5,
                   backgroundImage: "linear-gradient(168deg, #FFEBB8 0%, #FFC23D 46%, #E39A12 100%)",
                   WebkitBackgroundClip: "text",
@@ -251,13 +257,11 @@ function Popup({
                   margin: "9px 0 0",
                   fontFamily: font.ui,
                   fontSize: "clamp(11px, 3.3vw, 13px)",
-                  lineHeight: 1.42,
+                  lineHeight: 1.35,
                   color: colors.ink,
                 }}
               >
-                Stuur Pen Neer naar je vrienden. Elke vriend die een profiel
-                maakt levert munten op, en bij vijf krijg je de
-                AI-scheidsrechter voor altijd.
+                Elke vriend die meedoet levert je munten op.
               </p>
             </div>
             {/* De kist hangt bewust boven de lijst uit: dat is wat hem uit de
@@ -266,47 +270,41 @@ function Popup({
               src="/ads/chest.webp"
               alt=""
               aria-hidden
-              style={{ flex: "0 0 46%", width: "46%", marginTop: "-16%", marginRight: "-7%", alignSelf: "flex-start" }}
+              style={{ flex: "0 0 56%", width: "56%", marginTop: "-19%", marginRight: "-10%", alignSelf: "flex-start" }}
             />
           </div>
 
-          {/* De ladder. Wat binnen is staat aan, wat nog moet komen staat uit,
-              en de eerstvolgende licht op: dat is de trede waar het om gaat. */}
-          <div
-            style={{
-              marginTop: 14,
-              borderRadius: 12,
-              border: `1px solid ${withAlpha(colors.violet, 0.5)}`,
-              background: "linear-gradient(180deg, rgba(88,44,168,.34), rgba(30,14,68,.34))",
-              padding: "9px 9px 10px",
-            }}
-          >
-            <div
+          {/* De ladder als strookje in plaats van als kader. Een kader eromheen
+              maakt er een tweede paneel van binnen een paneel, en dat vrat de
+              hoogte die de kop nodig heeft. Het opschrift ligt nu OP de lijn. */}
+          <div style={{ marginTop: -2, position: "relative", display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ flex: 1, height: 1, background: `linear-gradient(90deg, transparent, ${withAlpha(colors.gold, 0.45)})` }} />
+            <span
               style={{
-                textAlign: "center",
                 fontFamily: font.wide,
-                fontSize: "clamp(10px, 3vw, 12px)",
-                letterSpacing: 1.4,
+                fontSize: "clamp(9px, 2.7vw, 11px)",
+                letterSpacing: 1.3,
                 color: colors.sub,
-                marginBottom: 8,
+                whiteSpace: "nowrap",
               }}
             >
               JOUW BELONINGEN
-            </div>
-            <div style={{ display: "flex", gap: 6 }}>
-              {info.tiers.slice(0, 5).map((t) => (
-                <Trede key={t.n} t={t} volgend={komt?.n === t.n} />
-              ))}
-            </div>
+            </span>
+            <span style={{ flex: 1, height: 1, background: `linear-gradient(90deg, ${withAlpha(colors.gold, 0.45)}, transparent)` }} />
+          </div>
+          <div style={{ display: "flex", gap: 5, marginTop: 7 }}>
+            {info.tiers.slice(0, 5).map((t) => (
+              <Trede key={t.n} t={t} volgend={komt?.n === t.n} />
+            ))}
           </div>
 
-          <div style={{ marginTop: 12 }}>
+          <div style={{ marginTop: 11 }}>
             {klaar.length > 0 ? (
-              <Button variant="gold" full onClick={() => onHaalOp(klaar[0])} disabled={bezig}>
+              <Button variant="gold" full onClick={() => onHaalOp(klaar[0])} disabled={bezig} style={{ padding: "11px 14px", fontSize: 15 }}>
                 {klaar[0].kind === "ai" ? "AI-scheidsrechter ophalen" : `+${klaar[0].amount} munten ophalen`}
               </Button>
             ) : (
-              <Button variant="gold" full onClick={onDeel}>
+              <Button variant="gold" full onClick={onDeel} style={{ padding: "11px 14px", fontSize: 15 }}>
                 Stuur naar een vriend
               </Button>
             )}
@@ -314,39 +312,18 @@ function Popup({
           <button
             onClick={onSluit}
             style={{
-              margin: "9px auto 0",
+              margin: "7px auto 0",
               background: "transparent",
               border: "none",
               cursor: "pointer",
               fontFamily: font.wide,
-              fontSize: "clamp(10px, 3vw, 12.5px)",
+              fontSize: "clamp(10px, 2.9vw, 12px)",
               letterSpacing: 1.2,
               color: withAlpha(colors.violet, 0.95),
             }}
           >
             MISSCHIEN LATER
           </button>
-        </div>
-
-        {/* Onderaan buiten de lijst: wie er al binnen zijn. Klein gehouden, want
-            het is een stand en geen aanbod. */}
-        <div
-          style={{
-            position: "absolute",
-            left: 0,
-            right: 0,
-            bottom: "-7%",
-            textAlign: "center",
-            fontFamily: font.ui,
-            fontSize: 11.5,
-            color: colors.faint,
-          }}
-        >
-          {info.count === 0
-            ? `${naam}, je bent de eerste. Nog niemand binnengehaald.`
-            : info.count === 1
-              ? "1 vriend binnengehaald"
-              : `${info.count} vrienden binnengehaald`}
         </div>
       </div>
     </div>
