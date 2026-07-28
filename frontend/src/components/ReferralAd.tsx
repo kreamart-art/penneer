@@ -285,36 +285,19 @@ function Popup({
                   fontSize: "clamp(29px, 10.2vw, 44px)",
                   lineHeight: 1.16,
                   letterSpacing: 0.5,
-                  backgroundImage: "linear-gradient(168deg, #FFEBB8 0%, #FFC23D 46%, #E39A12 100%)",
+                  // Van goud naar rood, van links naar rechts. De laatste letters
+                  // liggen over de kist, en goud op goud verdwijnt; rood is de
+                  // enige kant op die daar wel loskomt. Klein gehouden: pas in
+                  // het laatste kwart slaat hij om, dus het blijft een gouden
+                  // kop met een hete staart.
+                  backgroundImage:
+                    "linear-gradient(96deg, #FFEBB8 0%, #FFC23D 38%, #FFAA1C 62%, #F2601B 84%, #C9200F 100%)",
                   WebkitBackgroundClip: "text",
                   backgroundClip: "text",
                   color: "transparent",
                   textShadow: "0 2px 0 rgba(74,46,4,.35)",
                 }}
               >
-                {/* Dezelfde woorden nog een keer, eronder, in de kleur van het
-                    paneel en met een dikke lijn eromheen. De kist ligt onder de
-                    kop, en tussen de poten van de N zag je hem er dwars
-                    doorheen. Deze laag volgt de BUITENLIJN van de letters en
-                    vult naar binnen, dus het blijft de vorm van het woord en
-                    wordt geen blok. Een schaduw kan dit niet: die volgt de vorm
-                    wel, maar op tekst met `background-clip` wordt hij over het
-                    verloop heen getekend in plaats van eronder. */}
-                <span
-                  aria-hidden
-                  style={{
-                    position: "absolute",
-                    left: 0,
-                    top: 0,
-                    zIndex: -1,
-                    color: "#2A1358",
-                    WebkitTextStroke: "10px #2A1358",
-                  }}
-                >
-                  SAMEN
-                  <br />
-                  SPELEN
-                </span>
                 SAMEN
                 <br />
                 SPELEN
