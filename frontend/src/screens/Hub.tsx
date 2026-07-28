@@ -1071,10 +1071,11 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
             disabled={busy}
             aria-label={t("avatarMenuTitle")}
             className="pressable"
-            // Negatieve marge: de ring mag de sierlijst van de sectie raken en
-            // valt zo in de hoek in plaats van er netjes binnen te blijven
-            // zweven. Hetzelfde gebaar als de kruisknop op de advertentie.
-            style={{ background: "transparent", border: "none", padding: 0, cursor: "pointer", flexShrink: 0, marginLeft: -13, marginRight: -2 }}
+            // De ring hoort IN de hoek en niet ergens in het midden te zweven:
+            // hij gaat naar boven EN naar links tot tegen de sierlijst aan, net
+            // als de kruisknop op de advertentie. Vandaar `flex-start` plus
+            // negatieve marges in beide richtingen.
+            style={{ background: "transparent", border: "none", padding: 0, cursor: "pointer", flexShrink: 0, alignSelf: "flex-start", marginLeft: -15, marginTop: -15, marginRight: -2 }}
           >
             {/* De ring en het schild komen uit de UI-map; het portret zit in het
                 gat van de ring. Een eigen frame zou hier een tweede ring om
