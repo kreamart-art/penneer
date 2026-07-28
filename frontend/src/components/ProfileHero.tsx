@@ -338,6 +338,7 @@ export function NeonKader({
   sterkte = 1,
   eindkap = false,
   adem,
+  ademDuur,
   veeg = false,
 }: {
   children: ReactNode;
@@ -372,6 +373,10 @@ export function NeonKader({
    *  seconden: geef elke rij een andere, anders pompen ze synchroon en leest
    *  het als een machine in plaats van als licht. */
   adem?: number;
+  /** Hoe lang een ademhaling duurt. Laat een raster ze net iets uit elkaar
+   *  lopen, anders zwelt alles in dezelfde maat en leest het als een
+   *  knipperlicht in plaats van als glas dat leeft. */
+  ademDuur?: number;
   /** De lichtveeg: het piekpunt glijdt af en toe langs de bovenrand. Voor EEN
    *  rij tegelijk, meer wordt onrustig. */
   veeg?: boolean;
@@ -559,7 +564,9 @@ export function NeonKader({
                 pointerEvents: "none",
                 // Negatief, zodat elke rij meteen midden in zijn eigen fase
                 // begint in plaats van allemaal tegelijk bij nul.
-                ...(boven && adem !== undefined ? { animationDelay: `${-adem}s` } : null),
+                ...(boven && adem !== undefined
+                  ? { animationDelay: `${-adem}s`, ...(ademDuur ? { animationDuration: `${ademDuur}s` } : null) }
+                  : null),
               }}
             >
               {/* de gloed: dezelfde streep, iets hoger en vervaagd */}

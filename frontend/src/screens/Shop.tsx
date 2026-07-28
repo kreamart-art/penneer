@@ -125,9 +125,14 @@ function GlasVak({ groen, index = 0, veeg, children }: { groen?: boolean; index?
       sterkte={groen ? 0.6 : 0.3}
       vulling="geen"
       eindkap="kort"
-      // Ademen doet elk vakje, met een eigen fase: in de maat pulseren leest
-      // als een knipperlicht in plaats van als glas dat leeft.
-      adem={(index % 7) * 0.6}
+      // Ademen doet elk vakje, maar elk met een EIGEN fase en een eigen tempo.
+      // Een fase van `index % n` valt in een raster van drie kolommen precies
+      // samen met de kolom eronder, en dan pulseert de hele kolom in de maat.
+      // De gulden snede (0,618) verdeelt elk aantal zo gelijkmatig mogelijk
+      // zonder ooit te herhalen, dus daarmee ligt geen enkel vakje op hetzelfde
+      // punt als zijn buurman.
+      adem={((index * 0.618034) % 1) * 4.2}
+      ademDuur={3.3 + ((index * 0.381966) % 1) * 2.2}
       veeg={veeg}
       lijn={groen ? KADER_LIJN_GROEN : undefined}
       gloed={groen ? `0 0 10px ${withAlpha(colors.green, 0.25)}` : undefined}
@@ -320,7 +325,7 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
             winkel te blijven staan. */}
         {toonAi && (
           <Paneel>
-            <div style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", gap: 5, paddingInline: 4 }}>
+            <div style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", gap: 7, padding: "6px 10px 2px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <span style={{ width: 36, height: 36, borderRadius: 12, display: "grid", placeItems: "center", background: withAlpha(colors.gold, 0.14), border: `1px solid ${withAlpha(colors.gold, 0.45)}`, color: colors.gold, flexShrink: 0 }}>
                   <Bot size={19} />
@@ -332,12 +337,12 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
               </div>
               {/* De opsomming van drie punten is weg: die zegt hetzelfde als de
                   regel eronder, en het paneel heeft een vaste hoogte. */}
-              <p style={{ margin: 0, fontFamily: font.ui, fontSize: 11.5, color: colors.sub, lineHeight: 1.35 }}>{t("shopAiBody")}</p>
+              <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12, color: colors.sub, lineHeight: 1.4 }}>{t("shopAiBody")}</p>
               {aiActive ? (
                 <div style={{ textAlign: "center", fontFamily: font.ui, fontSize: 12.5, color: colors.green }}>{t("shopAiActive")}</div>
               ) : !account ? null : (
                 <div style={{ display: "flex", justifyContent: "center" }}>
-                  <Button variant="gold" full compact style={{ padding: "5px 10px", fontSize: 12.5 }} disabled={buying !== null || !status?.enabled} onClick={() => startPaypal("ai")}>
+                  <Button variant="gold" full compact style={{ padding: "4px 10px", fontSize: 12, width: "min(100%, 150px)" }} disabled={buying !== null || !status?.enabled} onClick={() => startPaypal("ai")}>
                     {buying === "ai" ? t("shopOpeningPaypal") : money(status?.ai_price ?? status?.price, status?.currency ?? "EUR")}
                   </Button>
                 </div>
