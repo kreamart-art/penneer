@@ -3,6 +3,7 @@
 // signals (spin animation, round-ended flush) off the typed event stream.
 
 import { useEffect, useReducer, useRef } from "react";
+import { geworvenDoor } from "./referral";
 
 // ---- types mirroring the server's public() shapes --------------------------
 
@@ -992,7 +993,10 @@ export function useGame(): GameApi {
       dispatch({ type: "reset" });
     },
     // accounts + social
-    createAccount: (name) => send({ type: "account_create", name }),
+    // De werfcode gaat mee als die er is: iemand die via een gedeelde link
+    // binnenkwam telt mee voor degene die hem stuurde. Alleen bij het AANMAKEN,
+    // want daarna valt er niets meer te werven.
+    createAccount: (name) => send({ type: "account_create", name, ref: geworvenDoor() }),
     updateAccount: (patch) => send({ type: "account_update", ...patch }),
     deleteAccount: () => send({ type: "account_delete" }),
     logoutAccount: () => {

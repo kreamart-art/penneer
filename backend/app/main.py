@@ -840,6 +840,54 @@ async def duel_list(request: Request) -> JSONResponse:
     })
 
 
+@app.get("/api/referral/info")
+async def referral_info(request: Request) -> JSONResponse:
+    """Alles wat de werf-advertentie nodig heeft: je code, hoeveel vrienden er
+    al binnen zijn, en wat er per mijlpaal klaarstaat."""
+    db = get_db()
+    uid = db.auth(_bearer(request))
+    if not uid:
+        return JSONResponse({"error": "auth"}, status_code=401)
+    code = db.referral_code_of(uid)
+    aantal = db.referral_count(uid)
+    opgehaald = set(db.referral_claimed(uid))
+    tiers = []
+    for t in db.REFERRAL_TIERS:
+        tiers.append({**t, "reached": aantal >= t["n"], "claimed": t["n"] in opgehaald})
+    # De herhaalregel erbij, maar alleen zolang hij speelt: pas tonen als de
+    # ladder op is, en dan alleen de eerstvolgende.
+    laatste = db.REFERRAL_TIERS[-1]["n"]
+    for n in range(laatste + 1, aantal + 2):
+        tiers.append({
+            "n": n, "kind": "coins", "amount": db.REFERRAL_DAARNA,
+            "reached": aantal >= n, "claimed": n in opgehaald,
+        })
+    return JSONResponse({
+        "code": code,
+        "count": aantal,
+        "tiers": tiers,
+        "repeat": db.REFERRAL_DAARNA,
+    })
+
+
+@app.post("/api/referral/claim")
+async def referral_claim(request: Request) -> JSONResponse:
+    db = get_db()
+    uid = db.auth(_bearer(request))
+    if not uid:
+        return JSONResponse({"error": "auth"}, status_code=401)
+    body = await request.json()
+    try:
+        milestone = int((body or {}).get("milestone") or 0)
+    except (TypeError, ValueError):
+        milestone = 0
+    uitkomst = db.referral_claim(uid, milestone)
+    if uitkomst != "ok":
+        return JSONResponse({"error": uitkomst}, status_code=400)
+    u = db.get_user(uid) or {}
+    return JSONResponse({"ok": True, "coins": u.get("coins", 0), "ai_unlocked": bool(u.get("ai_unlocked"))})
+
+
 @app.get("/api/duel/info")
 async def duel_info(request: Request) -> JSONResponse:
     """Tiny poll for the landing tile: how many duels wait for you."""

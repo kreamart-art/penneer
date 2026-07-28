@@ -18,6 +18,7 @@ import { TILE_ART, plateShadow, shadowSrc, useTileSkin } from "../theme/tileSkin
 import { CoinPlate } from "../components/CoinPlate";
 import { HexPlate } from "../components/HexPlate";
 import { EmblemLight, EmblemLightFront } from "../components/EmblemLight";
+import { ReferralAd } from "../components/ReferralAd";
 import { colors, font, radius, withAlpha } from "../theme/tokens";
 
 // De lijst-art van de skin, in de drie maten uit `section main page.svg`:
@@ -40,6 +41,10 @@ const HEX = "polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)";
 // De goudreeks: donker, midden, licht, fel. Rand, cijfer en gloed komen hier
 // allemaal uit, en daarom horen ze bij elkaar.
 const GOUD = ["#4A2E04", "#B07C17", "#FFC23D", "#FFEBB8"];
+
+// Wie de werf-advertentie te zien krijgt zolang hij nog getest wordt. Namen zijn
+// uniek in de database, dus dit is een lijst van accounts en niet van patronen.
+const TESTERS = new Set(["kream", "kreamtest"]);
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
@@ -559,7 +564,13 @@ export function Landing({
           )}
         </Card>
 
-        {game.state.error && (
+        {/* De werf-advertentie. Voorlopig ALLEEN op het account waarmee getest
+          wordt: hij is af, maar hij gaat pas voor iedereen aan als hij op een
+          echt toestel goed staat. Een naam-vergelijking is genoeg, want er kan
+          maar een account met die naam bestaan. */}
+      {account && TESTERS.has(account.name.trim().toLowerCase()) && <ReferralAd naam={account.name} />}
+
+      {game.state.error && (
           <p style={{ textAlign: "center", color: colors.red, fontFamily: font.ui, fontSize: 14, margin: 0 }}>{game.state.error}</p>
         )}
 

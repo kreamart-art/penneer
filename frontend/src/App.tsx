@@ -2,6 +2,7 @@
 // In a room: render the screen for the authoritative phase.
 import { useEffect, useRef, useState } from "react";
 import { useGame } from "./net/socket";
+import { vangWerfcode } from "./net/referral";
 import { useT } from "./i18n/i18n";
 import { sound } from "./sound/sound";
 import { colors } from "./theme/tokens";
@@ -30,6 +31,10 @@ import { Reveal } from "./screens/Reveal";
 import { Fill } from "./screens/Fill";
 import { Results } from "./screens/Results";
 import { Final } from "./screens/Final";
+
+// Meteen bij het laden, nog voor de eerste render: `?ref=` uit de adresbalk
+// halen en vasthouden tot er echt een account gemaakt wordt.
+vangWerfcode();
 
 const INTRO_KEY = "penneer.introSeen";
 

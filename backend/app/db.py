@@ -279,6 +279,24 @@ CREATE TABLE IF NOT EXISTS daily_retries (
     used_at REAL NOT NULL,
     PRIMARY KEY (day, user_id)
 );
+-- Vrienden werven. Een account krijgt een korte code; wie met die code een
+-- account maakt, komt hier als een regel te staan. Een nieuw account kan maar
+-- EEN keer geworven zijn, vandaar de primaire sleutel op de nieuwkomer.
+CREATE TABLE IF NOT EXISTS referrals (
+    new_user TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    inviter TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    at REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS referrals_inviter ON referrals(inviter);
+-- Welke mijlpaal al is opgehaald. Het nummer is het AANTAL vrienden waar de
+-- beloning bij hoort, dus een mijlpaal kan maar een keer betaald worden ook al
+-- wordt de teller later hoger.
+CREATE TABLE IF NOT EXISTS referral_claims (
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    milestone INTEGER NOT NULL,
+    at REAL NOT NULL,
+    PRIMARY KEY (user_id, milestone)
+);
 -- Duel: 1v1 om beurten. `rounds` is de vaste vragenlijst (JSON
 -- [{letter, category}]), identiek voor beide spelers. a is de uitdager.
 CREATE TABLE IF NOT EXISTS duels (
@@ -513,6 +531,13 @@ class Database:
             self._conn.commit()
         if "avatar_preset" not in cols:
             self._conn.execute("ALTER TABLE users ADD COLUMN avatar_preset TEXT")
+            self._conn.commit()
+        # De werfcode van dit account. Leeg tot iemand hem voor het eerst
+        # opvraagt; hij wordt dan gemaakt en blijft daarna staan, want hij staat
+        # in links die mensen al gedeeld hebben.
+        if "referral_code" not in cols:
+            self._conn.execute("ALTER TABLE users ADD COLUMN referral_code TEXT")
+            self._conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS users_referral_code ON users(referral_code)")
             self._conn.commit()
         # Mission rewards: bonus XP on top of the stats-derived XP (missions
         # auto-claim into this; _xp_of adds it to the level computation).
@@ -2270,6 +2295,109 @@ class Database:
                 bal += self.coins_owed(level) - self.coins_owed(credited)
                 self._exec("UPDATE users SET coins=?, coins_level=? WHERE id=?", (bal, level, user_id))
         return bal
+
+    # ---- vrienden werven -------------------------------------------------
+    #
+    # De ladder loopt OP en niet af. Dat is geen smaak maar hoe werving werkt:
+    # de tweede vriend kost meer moeite dan de eerste (de makkelijkste vraag je
+    # het eerst), dus een aflopende beloning voelt als straf en dooft de actie.
+    # Een oplopende ladder houdt "nog eentje" de moeite waard, en de grote prijs
+    # staat op vijf zodat er iets is om naartoe te werken.
+    REFERRAL_TIERS = [
+        {"n": 1, "kind": "coins", "amount": 100},
+        {"n": 2, "kind": "coins", "amount": 150},
+        {"n": 3, "kind": "coins", "amount": 250},
+        {"n": 4, "kind": "coins", "amount": 100},
+        {"n": 5, "kind": "ai", "amount": 0},
+    ]
+    #: Vanaf de zesde vriend blijft er iets tegenover staan, anders stopt het
+    #: werven zodra de ladder op is.
+    REFERRAL_DAARNA = 50
+
+    @staticmethod
+    def referral_tier(n: int) -> Optional[dict]:
+        """Wat hoort er bij de n-de vriend? None als er niets bij hoort."""
+        for t in Database.REFERRAL_TIERS:
+            if t["n"] == n:
+                return t
+        if n > Database.REFERRAL_TIERS[-1]["n"]:
+            return {"n": n, "kind": "coins", "amount": Database.REFERRAL_DAARNA}
+        return None
+
+    def referral_code_of(self, user_id: str) -> Optional[str]:
+        """De code van dit account, en hij wordt gemaakt zodra hij nodig is.
+        Eenmaal uitgedeeld verandert hij nooit meer, want hij staat in links die
+        mensen al rondgestuurd hebben."""
+        with self._lock:
+            rows = self._q("SELECT referral_code FROM users WHERE id=?", (user_id,))
+            if not rows:
+                return None
+            code = rows[0]["referral_code"]
+            if code:
+                return code
+            # Zonder 0/O/1/I/L, want die code wordt overgetypt.
+            alfabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
+            for _ in range(20):
+                kandidaat = "".join(secrets.choice(alfabet) for _ in range(6))
+                try:
+                    self._exec("UPDATE users SET referral_code=? WHERE id=?", (kandidaat, user_id))
+                    return kandidaat
+                except sqlite3.IntegrityError:
+                    continue
+        return None
+
+    def user_by_referral_code(self, code: str) -> Optional[str]:
+        code = (code or "").strip().upper()
+        if not code:
+            return None
+        rows = self._q("SELECT id FROM users WHERE referral_code=?", (code,))
+        return rows[0]["id"] if rows else None
+
+    def referral_record(self, inviter: str, new_user: str) -> bool:
+        """Leg vast dat `new_user` door `inviter` is binnengehaald. Een nieuw
+        account telt maar een keer mee, en niemand werft zichzelf."""
+        if not inviter or not new_user or inviter == new_user:
+            return False
+        with self._lock:
+            try:
+                self._exec(
+                    "INSERT INTO referrals (new_user, inviter, at) VALUES (?,?,?)",
+                    (new_user, inviter, time.time()),
+                )
+            except sqlite3.IntegrityError:
+                return False
+        return True
+
+    def referral_count(self, user_id: str) -> int:
+        rows = self._q("SELECT COUNT(*) AS n FROM referrals WHERE inviter=?", (user_id,))
+        return int(rows[0]["n"]) if rows else 0
+
+    def referral_claimed(self, user_id: str) -> list:
+        rows = self._q("SELECT milestone FROM referral_claims WHERE user_id=? ORDER BY milestone", (user_id,))
+        return [int(r["milestone"]) for r in rows]
+
+    def referral_claim(self, user_id: str, milestone: int) -> str:
+        """Haal de beloning van een mijlpaal op. Het uitbetalen en het afvinken
+        gebeuren onder hetzelfde slot, zodat twee tikken achter elkaar niet twee
+        keer uitbetalen."""
+        tier = self.referral_tier(milestone)
+        if tier is None:
+            return "unknown"
+        if self.referral_count(user_id) < milestone:
+            return "not_yet"
+        with self._lock:
+            try:
+                self._exec(
+                    "INSERT INTO referral_claims (user_id, milestone, at) VALUES (?,?,?)",
+                    (user_id, milestone, time.time()),
+                )
+            except sqlite3.IntegrityError:
+                return "already"
+            if tier["kind"] == "coins":
+                self._exec("UPDATE users SET coins=coins+? WHERE id=?", (int(tier["amount"]), user_id))
+            elif tier["kind"] == "ai":
+                self._exec("UPDATE users SET ai_unlocked=1 WHERE id=?", (user_id,))
+        return "ok"
 
     def add_coins(self, user_id: str, n: int) -> int:
         with self._lock:

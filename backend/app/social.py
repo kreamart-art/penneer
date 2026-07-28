@@ -281,6 +281,15 @@ class AccountManager:
             reason = "Naam is bezet of ongeldig." if self.db.valid_name(name) else "Kies een naam van 2 tot 20 letters."
             await self._send(ws, {"type": "error", "message": reason})
             return
+        # Kwam deze speler via de werflink van iemand anders binnen? Dan telt hij
+        # daar mee. Alleen HIER, bij het aanmaken: wie al een account heeft is
+        # niet meer te werven, anders kun je jezelf met een tweede account of een
+        # nieuwe telefoon eindeloos belonen.
+        code = (data.get("ref") or "").strip()
+        if code:
+            inviter = self.db.user_by_referral_code(code)
+            if inviter:
+                self.db.referral_record(inviter, res["user_id"])
         self.bind(ws, res["user_id"])
         payload = await self._account_payload(ws, res["user_id"])
         payload["token"] = res["token"]
