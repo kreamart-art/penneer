@@ -449,11 +449,14 @@ export function NeonKader({
           //   een blur alleen wast die juist uit;
           //   een schuine glans van linksboven, want dat is de weerspiegeling;
           //   en een binnenschaduw onderaan, waardoor het dikte krijgt.
-          backdropFilter: hoek ? "blur(7px) saturate(170%)" : undefined,
-          WebkitBackdropFilter: hoek ? "blur(7px) saturate(170%)" : undefined,
-          boxShadow: hoek ? "inset 0 -6px 10px rgba(8,3,22,.22), inset 0 1px 0 rgba(255,255,255,.08)" : undefined,
+          // Met een afsnijding EN "geen" is het puur lijn: dan hoort er ook geen
+          // glas te zitten, want een vervaging zonder vulling is nog steeds een
+          // vlek over de achtergrond.
+          backdropFilter: hoek && vulling !== "geen" ? "blur(7px) saturate(170%)" : undefined,
+          WebkitBackdropFilter: hoek && vulling !== "geen" ? "blur(7px) saturate(170%)" : undefined,
+          boxShadow: hoek && vulling !== "geen" ? "inset 0 -6px 10px rgba(8,3,22,.22), inset 0 1px 0 rgba(255,255,255,.08)" : undefined,
           backgroundImage:
-            vulling === "geen" && !hoek
+            vulling === "geen"
               ? undefined
               : hoek
                 ? [

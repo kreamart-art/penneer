@@ -628,6 +628,9 @@ function HistoryCard({ game, meId, vitrine }: { game: GameApi; meId: string; vit
             key={`${g.finished_at}-${i}`}
             hoek={11}
             dik={0.3}
+            // Puur lijn. De afsnijding en de kern doen het werk; een glasplaat
+            // eronder maakt er weer een kaart van.
+            vulling="geen"
             // De lijn zelf staat bijna uit; wat je ziet is de kern in het midden
             // met zijn hoogsel, zoals de lijn boven "jij draait deze ronde".
             sterkte={0.3}
