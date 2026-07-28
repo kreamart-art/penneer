@@ -199,7 +199,7 @@ function Popup({
           src="/ads/chest.webp"
           alt=""
           aria-hidden
-          style={{ position: "absolute", right: "2%", top: "5%", width: "44%", zIndex: 0, pointerEvents: "none" }}
+          style={{ position: "absolute", right: "3%", top: "6%", width: "37%", zIndex: 0, pointerEvents: "none" }}
         />
 
         {/* Het bordje bovenaan. De letterafstand zet ook ACHTER de laatste
@@ -306,13 +306,13 @@ function Popup({
             ))}
           </div>
 
-          <div style={{ marginTop: 11 }}>
+          <div style={{ marginTop: 10, width: "74%", alignSelf: "center" }}>
             {klaar.length > 0 ? (
-              <Button variant="gold" full onClick={() => onHaalOp(klaar[0])} disabled={bezig} style={{ padding: "11px 14px", fontSize: 15 }}>
+              <Button variant="gold" full onClick={() => onHaalOp(klaar[0])} disabled={bezig} style={{ padding: "7px 10px", fontSize: 13 }}>
                 {klaar[0].kind === "ai" ? "AI-scheidsrechter ophalen" : `+${klaar[0].amount} munten ophalen`}
               </Button>
             ) : (
-              <Button variant="gold" full onClick={onDeel} style={{ padding: "11px 14px", fontSize: 15 }}>
+              <Button variant="gold" full onClick={onDeel} style={{ padding: "7px 10px", fontSize: 13 }}>
                 Stuur naar een vriend
               </Button>
             )}
