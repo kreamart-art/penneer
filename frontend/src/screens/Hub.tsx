@@ -6,7 +6,7 @@ import { ArrowLeft, Award, BookOpen, Camera, Check, ChevronDown, CircleDot, Copy
 import { Avatar, RANK_RING } from "../components/Avatar";
 import { Plek } from "../components/ProfileShowcase";
 import { HexArt } from "../components/HexArt";
-import { GOUD, KADER_LIJN_KLEUR, NeonKader, Paneel, PlekWapen, Prestatie, RingFoto, RingPortret, SCHILD_KLEUREN, SectieKop, SierKop, StatKaart, type SchildKleur } from "../components/ProfileHero";
+import { GOUD, KADER_LIJN_KLEUR, KADER_LIJN_XP, NeonKader, Paneel, PlekWapen, Prestatie, RingFoto, RingPortret, SCHILD_KLEUREN, SectieKop, SierKop, StatKaart, type SchildKleur } from "../components/ProfileHero";
 import { isTester } from "../util/testers";
 import { AvatarZoom } from "../components/AvatarZoom";
 import { Button } from "../components/Button";
@@ -358,17 +358,26 @@ function XpRij({ level }: { level: LevelInfo }) {
         {/* De balk is een GROEF: de staaf ligt erin, niet erop. De schaduw valt
             binnenin en van bovenaf, en de ring is omgedraaid, want de bovenrand
             van een gat ligt juist in de schaduw. */}
-        <div
-          style={{
-            flex: 1,
-            // De balk vult de rij zo goed als helemaal: is hij veel dunner dan
-            // de penning ernaast, dan valt er lucht boven en onder die je als
-            // een gat tussen de balk en de tekst ziet.
+        {/* De balk is een GROEF met een neon-lijst eromheen: de staaf ligt erin,
+            niet erop. De lijst loopt van rood via roze en violet naar goud, en
+            dat is horizontaal, want op een lange smalle vorm zie je van een
+            verticaal verloop niets. De balk vult de rij bovendien zo goed als
+            helemaal: is hij veel dunner dan de penning ernaast, dan valt er
+            lucht boven en onder die je als een gat naar de tekst ziet. */}
+        <NeonKader
+          radius={999}
+          dik={0.5}
+          lijn={KADER_LIJN_XP}
+          // De gloed draagt de kleuren van de balk zelf, want hij IS de balk:
+          // een vervaagde kopie, met rook eroverheen zodat hij ongelijkmatig
+          // walmt in plaats van overal even hard te schijnen.
+          gloed="verloop"
+          vulling="geen"
+          style={{ flex: 1 }}
+          binnen={{
             height: 17,
-            borderRadius: 999,
             background: "linear-gradient(180deg, rgba(0,0,0,.55) 0%, rgba(0,0,0,.3) 100%)",
             boxShadow: "inset 0 2px 5px rgba(0,0,0,.7), inset 0 -1px 0 rgba(255,255,255,.09)",
-            overflow: "hidden",
           }}
         >
           <div
@@ -381,9 +390,12 @@ function XpRij({ level }: { level: LevelInfo }) {
               transition: "width .4s ease",
             }}
           />
-        </div>
+        </NeonKader>
       </div>
-      <span style={{ textAlign: "center", lineHeight: 1, fontFamily: font.ui, fontSize: 11, color: colors.faint }}>
+      {/* Alleen de tekst omhoog: een negatieve marge op de tekst zelf laat de
+          balk staan waar hij staat. Zou de rij omhoog gaan, dan schuift alles
+          mee en raakt de balk de lijst van de sectie. */}
+      <span style={{ textAlign: "center", lineHeight: 1, marginTop: -4, fontFamily: font.ui, fontSize: 11, color: colors.faint }}>
         {t("xpToNext", { n: Math.max(0, span - nu) })}
       </span>
     </div>
@@ -473,7 +485,7 @@ function CollapsibleCard({
         {items.length === 0 ? (
           <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13, color: colors.faint }}>{emptyText}</p>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>{shown}</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>{shown}</div>
         )}
       </NeonKader>
     );
@@ -606,9 +618,8 @@ function HistoryCard({ game, meId, vitrine }: { game: GameApi; meId: string; vit
         return (
           <NeonKader
             key={`${g.finished_at}-${i}`}
-            radius={12}
+            hoek={11}
             dik={0.3}
-            vulling="geen"
             binnen={{ display: "flex", alignItems: "center", gap: 8, padding: "3px 7px" }}
           >
             <PlekWapen plek={g.place} />
@@ -1140,26 +1151,23 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
           {/* De pil eronder: je gekozen titel als je er een hebt, anders hoe ver
               je medaillekast is. Iets dat over JOU gaat en niet over het spel. */}
           <div style={{ display: "flex" }}>
-            <span
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 7,
-                padding: "5px 12px 5px 6px",
-                borderRadius: 999,
-                border: `1px solid ${withAlpha(GOUD[2], 0.42)}`,
-                background: "linear-gradient(180deg, rgba(255,194,61,.13) 0%, rgba(0,0,0,.3) 100%)",
-              }}
+            {/* De pil houdt zijn eigen vorm: helemaal rond, geen afsnijding en
+                geen glas. Alleen de opbouw van de lijst komt uit de skill. */}
+            <NeonKader
+              radius={999}
+              dik={0.4}
+              vulling="geen"
+              binnen={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "3px 12px 3px 4px" }}
             >
-              <HexArt maat={20}>
+              <HexArt maat={19}>
                 <Crown size={9} color={GOUD[3]} />
               </HexArt>
-              <span style={{ fontFamily: font.ui, fontSize: 12, color: colors.ink }}>
+              <span style={{ fontFamily: font.ui, fontSize: 12, color: colors.ink, whiteSpace: "nowrap" }}>
                 {account.title
                   ? t(`title_${account.title}`)
                   : t("badgesOf", { n: account.badges.length, m: PRESTATIES.length })}
               </span>
-            </span>
+            </NeonKader>
           </div>
 
           </div>

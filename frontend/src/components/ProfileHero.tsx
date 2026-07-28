@@ -251,10 +251,34 @@ const KADER_TEXTUUR = [
   "#000 90%, #000 100%)",
 ].join(" ");
 
+// De XP-balk: rood, via roze en violet naar goud. Vier kleuren over een lange
+// smalle vorm, dus horizontaal; verticaal zou je er niets van zien.
+export const KADER_LIJN_XP =
+  "linear-gradient(90deg, #FF3B5C 0%, #FF5FA8 22%, #C86BFF 46%, #8A3DE8 66%, #FFC13A 88%, #FFE08A 100%)";
+
+// Rook: vier radialen die elkaar deels overlappen, met verschillende maten en
+// op ongelijke afstanden. Waar ze over elkaar heen vallen wordt de gloed dichter
+// en ertussen dunner, en dat is wat rook doet. Een gelijkmatige gloed leest als
+// een lamp; deze leest als iets dat wálmt.
+const KADER_ROOK = [
+  "radial-gradient(62% 150% at 10% 50%, #000 0%, transparent 72%)",
+  "radial-gradient(48% 170% at 38% 50%, #000 0%, transparent 74%)",
+  "radial-gradient(56% 140% at 66% 50%, #000 0%, transparent 70%)",
+  "radial-gradient(44% 175% at 92% 50%, #000 0%, transparent 72%)",
+].join(", ");
+
 // De glans: bijna wit, en ALLEEN in het midden van de boven- en onderrand. Daar
 // vangt de lijn het licht; naar de uiteinden toe hoort er niets te zitten.
 const KADER_GLANS =
   "linear-gradient(90deg, transparent 26%, rgba(255,250,235,.55) 50%, transparent 74%)";
+
+/** De schuine hoek van de rol-skin, maar dan in procenten EN pixels door
+ *  elkaar, zodat hij meeschaalt met de doos. `polygon()` accepteert lengtes, dus
+ *  de afsnijding blijft even groot terwijl het vlak breder of smaller wordt.
+ *  De rol gebruikt `path()` met een kwartbocht per hoek, maar die rekent in echte
+ *  pixels en kan dus niet meeschalen. */
+export const schuin = (cut: number) =>
+  `polygon(${cut}px 0, calc(100% - ${cut}px) 0, 100% ${cut}px, 100% calc(100% - ${cut}px), calc(100% - ${cut}px) 100%, ${cut}px 100%, 0 calc(100% - ${cut}px), 0 ${cut}px)`;
 
 /** De gemeenschappelijke opmaak van een ring-laag: een doos met opvulling,
  *  waarvan het midden met een masker wordt weggehaald. Wat overblijft is de
@@ -279,6 +303,8 @@ export function NeonKader({
   vulling = "licht",
   dik = 0.5,
   lijn = KADER_LIJN,
+  hoek,
+  gloed = "0 0 10px rgba(139,83,255,.26), 0 3px 12px rgba(0,0,0,.38)",
 }: {
   children: ReactNode;
   style?: CSSProperties;
@@ -289,6 +315,16 @@ export function NeonKader({
   radius?: number;
   /** Het verloop van de lijn. */
   lijn?: string;
+  /** De buitengloed. Een box-shadow, of het woord "verloop": dan wordt het een
+   *  vervaagde kopie van de lijn zelf, met een rookmasker eroverheen. Gebruik
+   *  dat zodra de lijn meer dan twee kleuren heeft, anders gloeit er iets anders
+   *  dan er staat. */
+  gloed?: string;
+  /** De afsnijding van de hoeken, in pixels, zoals de rol-skin. Zonder deze
+   *  blijft het een gewone ronding. Met een afsnijding wordt de lijst glazig:
+   *  een dun waas met een vervaging erachter, want glas hoort iets te doen met
+   *  wat erachter ligt. */
+  hoek?: number;
   /** "geen" laat de achtergrond volledig door: dan is de lijst puur lijn en
    *  licht. "licht" legt er een heel dun paars waas onder. */
   vulling?: "geen" | "licht";
@@ -299,88 +335,86 @@ export function NeonKader({
   dik?: number;
 }) {
   const KADER_R = radius;
+  const vorm = hoek ? { clipPath: schuin(hoek) } : { borderRadius: KADER_R };
+  const ring = (d: number): CSSProperties =>
+    hoek
+      ? { ...ringLaag(0, d), borderRadius: 0, clipPath: schuin(hoek) }
+      : ringLaag(KADER_R, d);
   return (
     <div style={{ position: "relative", ...style }}>
-      {/* 3. zachte buitengloed */}
-      <span
-        aria-hidden
-        style={{
-          position: "absolute",
-          inset: 0,
-          borderRadius: KADER_R,
-          boxShadow: "0 0 10px rgba(139,83,255,.26), 0 3px 12px rgba(0,0,0,.38)",
-          pointerEvents: "none",
-        }}
-      />
-      {/* 1. het paneel. Bij "geen" is het echt leeg: geen vlak, geen waas. */}
+      {/* 1. zachte buitengloed. Met een afsnijding kan dit geen box-shadow zijn,
+          want die volgt de rechthoek en niet de vorm; dan is het een vervaagde
+          kopie van de vorm zelf. */}
+      {gloed === "verloop" ? (
+        // Een box-shadow kan geen verloop dragen, dus dit is een vervaagde kopie
+        // van de LIJN zelf: dan gloeit er precies wat er staat, op de plek waar
+        // het staat. Met het rookmasker eroverheen walmt hij ongelijkmatig.
+        <span
+          aria-hidden
+          style={{
+            position: "absolute",
+            inset: -3,
+            ...(hoek ? { clipPath: schuin(hoek) } : { borderRadius: KADER_R + 3 }),
+            backgroundImage: lijn,
+            filter: "blur(7px)",
+            opacity: 0.55,
+            WebkitMaskImage: KADER_ROOK,
+            maskImage: KADER_ROOK,
+            pointerEvents: "none",
+          }}
+        />
+      ) : hoek ? (
+        <span
+          aria-hidden
+          style={{ position: "absolute", inset: -1, ...vorm, backgroundImage: lijn, filter: "blur(6px)", opacity: 0.22, pointerEvents: "none" }}
+        />
+      ) : (
+        <span
+          aria-hidden
+          style={{ position: "absolute", inset: 0, borderRadius: KADER_R, boxShadow: gloed, pointerEvents: "none" }}
+        />
+      )}
+      {/* 2. het paneel. Bij "geen" is het echt leeg; met een afsnijding is het
+          glas: een dun waas MET een vervaging erachter, want glas hoort iets te
+          doen met wat erachter ligt. */}
       <div
         style={{
           position: "relative",
-          borderRadius: KADER_R,
+          ...vorm,
           overflow: "hidden",
+          backdropFilter: hoek ? "blur(5px)" : undefined,
+          WebkitBackdropFilter: hoek ? "blur(5px)" : undefined,
           backgroundImage:
-            vulling === "geen"
+            vulling === "geen" && !hoek
               ? undefined
-              : "linear-gradient(180deg, rgba(66,36,116,.20) 0%, rgba(30,14,58,.26) 50%, rgba(16,7,34,.30) 100%)",
+              : hoek
+                ? "linear-gradient(180deg, rgba(186,156,255,.10) 0%, rgba(62,32,112,.14) 46%, rgba(18,8,38,.20) 100%)"
+                : "linear-gradient(180deg, rgba(66,36,116,.20) 0%, rgba(30,14,58,.26) 50%, rgba(16,7,34,.30) 100%)",
           ...binnen,
         }}
       >
-        {/* 5. hoekverlichting: warm, linksboven, want daar komt het licht vandaan */}
+        {/* 3. hoekverlichting: warm, linksboven, want daar komt het licht vandaan */}
         <span
           aria-hidden
-          style={{
-            position: "absolute",
-            inset: 0,
-            backgroundImage: "radial-gradient(70% 150% at 5% 0%, rgba(255,190,90,.10) 0%, transparent 55%)",
-            pointerEvents: "none",
-          }}
+          style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(70% 150% at 5% 0%, rgba(255,190,90,.10) 0%, transparent 55%)", pointerEvents: "none" }}
         />
-        {/* 4. binnenglans: kort en alleen langs de bovenrand, daar vangt het
-            oppervlak het licht. Over de halve rand licht leest niet als licht
-            maar als een gekleurd vlak. */}
+        {/* 4. binnenglans: kort en alleen langs de bovenrand. Over de halve rand
+            licht leest niet als licht maar als een gekleurd vlak. */}
         <span
           aria-hidden
-          style={{
-            position: "absolute",
-            left: "8%",
-            right: "8%",
-            top: 0,
-            height: 1,
-            background: "linear-gradient(90deg, transparent, rgba(255,255,255,.18), transparent)",
-            pointerEvents: "none",
-          }}
+          style={{ position: "absolute", left: "8%", right: "8%", top: 0, height: 1, background: "linear-gradient(90deg, transparent, rgba(255,255,255,.18), transparent)", pointerEvents: "none" }}
         />
         {children}
       </div>
-      {/* 2. de lijn: DRIE ringen op elkaar, dezelfde stapeling als de banner
-          "Jij draait deze ronde".
-            a. een kleine bloom eronder. Klein, want een brede gloed maakt de
-               lijn juist vaag in plaats van verlicht.
-            b. de lijn zelf, met het verloop van goud naar violet.
-            c. een bijna-witte glans BOVENOP, maar alleen in het midden. Op de
-               donkere flanken mengt bijna-wit tot grijs, en op zo'n dunne lijn
-               is dat randje bijna de halve lijn; dan wordt de hele lijn grijs.
-               Glans hoort alleen te zitten waar de lijn oplicht.
-          Alle drie als ring geknipt met hetzelfde masker: een verlooplaag
-          eronder schijnt door een doorschijnend paneel heen, en
-          `background-clip: border-box` betekent "over de hele doos" en niet
-          "alleen de rand". */}
-      {/* De textuur ligt over de HELE stapel, als masker op een omhullend
-          element. Zou elke laag zijn eigen masker krijgen, dan doven ze niet
-          gelijk uit en zie je de laagjes los van elkaar eindigen. */}
+      {/* 5 en 6. De lijn als drie ringen, met de textuur als masker over de hele
+          stapel. Zie references/lagen.md in de skill neon-kader. */}
       <span
         aria-hidden
-        style={{
-          position: "absolute",
-          inset: 0,
-          WebkitMaskImage: KADER_TEXTUUR,
-          maskImage: KADER_TEXTUUR,
-          pointerEvents: "none",
-        }}
+        style={{ position: "absolute", inset: 0, WebkitMaskImage: KADER_TEXTUUR, maskImage: KADER_TEXTUUR, pointerEvents: "none" }}
       >
-        <span aria-hidden style={{ ...ringLaag(KADER_R, dik + 1.4), backgroundImage: lijn, filter: "blur(3px)", opacity: 0.26 }} />
-        <span aria-hidden style={{ ...ringLaag(KADER_R, dik), backgroundImage: lijn, opacity: 0.68 }} />
-        <span aria-hidden style={{ ...ringLaag(KADER_R, dik), backgroundImage: KADER_GLANS }} />
+        <span aria-hidden style={{ ...ring(dik + 1.4), backgroundImage: lijn, filter: "blur(3px)", opacity: 0.26 }} />
+        <span aria-hidden style={{ ...ring(dik), backgroundImage: lijn, opacity: 0.68 }} />
+        <span aria-hidden style={{ ...ring(dik), backgroundImage: KADER_GLANS }} />
       </span>
     </div>
   );
@@ -603,8 +637,8 @@ export function Prestatie({
 }) {
   const deel = doel && doel > 0 ? Math.min(1, (nu ?? 0) / doel) : 0;
   return (
-    <div style={{ width: 84, flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
-      <div style={{ position: "relative", width: 66, height: 72 }}>
+    <div style={{ width: 61, flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 5 }}>
+      <div style={{ position: "relative", width: 54, height: 59 }}>
         {art ? (
           // Eigen art brengt zijn eigen lijst mee, dus de getekende zeshoek gaat
           // eruit: twee randen om hetzelfde vlak leest als een fout. Nog niet
@@ -633,7 +667,7 @@ export function Prestatie({
           </span>
         )}
       </div>
-      <span style={{ fontFamily: font.ui, fontSize: 10, lineHeight: 1.2, textAlign: "center", color: behaald ? colors.ink : colors.faint }}>
+      <span style={{ fontFamily: font.ui, fontSize: 8.5, lineHeight: 1.15, textAlign: "center", color: behaald ? colors.ink : colors.faint }}>
         {naam}
       </span>
       {behaald ? (
