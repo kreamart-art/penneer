@@ -256,7 +256,9 @@ function NavArt({ src, on, size }: { src: string; on: boolean; size: number }) {
         width: size,
         height: size,
         display: "block",
-        filter: on ? "brightness(1.06)" : "brightness(.55) saturate(.68)",
+        // Niet te ver terug: deze art heeft zelf al een warme gloed en diepe
+        // kleur, en die knijp je er zo uit. Op 55 procent werd het goud vaal.
+        filter: on ? "brightness(1.1) saturate(1.08)" : "brightness(.84) saturate(.92)",
       }}
     />
   );
