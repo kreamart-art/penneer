@@ -276,6 +276,7 @@ function Popup({
             <div style={{ flex: "1 1 100%", minWidth: 0, maxWidth: "76%", paddingTop: "2%" }}>
               <h2
                 style={{
+                  position: "relative",
                   margin: 0,
                   // Karmatic Arcade: blokkerig en luid, precies wat een
                   // advertentiekop moet zijn. Wel met een eigen regelafstand,
@@ -291,6 +292,29 @@ function Popup({
                   textShadow: "0 2px 0 rgba(74,46,4,.35)",
                 }}
               >
+                {/* Dezelfde woorden nog een keer, eronder, in de kleur van het
+                    paneel en met een dikke lijn eromheen. De kist ligt onder de
+                    kop, en tussen de poten van de N zag je hem er dwars
+                    doorheen. Deze laag volgt de BUITENLIJN van de letters en
+                    vult naar binnen, dus het blijft de vorm van het woord en
+                    wordt geen blok. Een schaduw kan dit niet: die volgt de vorm
+                    wel, maar op tekst met `background-clip` wordt hij over het
+                    verloop heen getekend in plaats van eronder. */}
+                <span
+                  aria-hidden
+                  style={{
+                    position: "absolute",
+                    left: 0,
+                    top: 0,
+                    zIndex: -1,
+                    color: "#2A1358",
+                    WebkitTextStroke: "10px #2A1358",
+                  }}
+                >
+                  SAMEN
+                  <br />
+                  SPELEN
+                </span>
                 SAMEN
                 <br />
                 SPELEN
@@ -420,11 +444,10 @@ function Pil({ uitgeklapt, teHalen, onTik }: { uitgeklapt: boolean; teHalen: num
         left: 0,
         top: "11.5%",
         zIndex: 90,
-        // Ingeklapt is dit een kijkgaatje van tachtig pixels. De pil zelf blijft
-        // even breed, alleen het venster erover is smal, dus je ziet precies het
-        // stuk met de kist en de munten. Uitschuiven is dan het venster
-        // openzetten en niet de pil verplaatsen: geen halve tekst die uit het
-        // niets tevoorschijn schuift.
+        // Ingeklapt is dit een kijkgaatje van 72 pixels waarin de ACHTERKANT
+        // van de pil staat: het lege paarse vlak met de tekst. De kist zit aan
+        // de andere kant en komt pas in beeld als je hem opent, en dat is het
+        // punt: eerst een randje dat nieuwsgierig maakt, dan pas de buit.
         width: uitgeklapt ? vol : 72,
         overflow: "hidden",
         transition: "width .34s cubic-bezier(.22,1,.36,1)",
@@ -435,7 +458,18 @@ function Pil({ uitgeklapt, teHalen, onTik }: { uitgeklapt: boolean; teHalen: num
         lineHeight: 0,
       }}
     >
-      <span style={{ position: "relative", display: "block", width: vol }}>
+      {/* De pil schuift BINNEN het venster: ingeklapt staat hij zo ver naar
+          links dat alleen zijn rechterkant te zien is. Zo hoeft het venster
+          alleen breder te worden en glijdt de kist er vanzelf in. */}
+      <span
+        style={{
+          position: "relative",
+          display: "block",
+          width: vol,
+          transform: uitgeklapt ? "translateX(0)" : `translateX(calc(72px - ${vol}))`,
+          transition: "transform .34s cubic-bezier(.22,1,.36,1)",
+        }}
+      >
         <img src="/ads/pill.webp" alt="" style={{ width: "100%", display: "block" }} />
         <span
           style={{

@@ -321,15 +321,16 @@ input:focus {
   will-change: transform;
 }
 
-/* Het kijkgaatje van de werf-advertentie steekt om de zoveel tellen even zijn
-   kop op. Kort en met een kleine terugslag, zoals iets dat opveert; een lange
-   deining zou meebewegen met de rest van het scherm en dan zie je hem niet. */
+/* Het kijkgaatje van de werf-advertentie duwt om de zoveel tellen even naar
+   RECHTS, de kant waar hij open zou gaan: dat is meteen een aanwijzing hoe hij
+   werkt. Kort en met een kleine terugslag; een lange deining zou meebewegen met
+   de rest van het scherm en dan zie je hem juist niet. */
 @keyframes ad-peek {
-  0%, 82%, 100% { transform: translateY(0); }
-  86% { transform: translateY(-9px); }
-  90% { transform: translateY(3px); }
-  94% { transform: translateY(-4px); }
-  97% { transform: translateY(0); }
+  0%, 82%, 100% { transform: translateX(0); }
+  86% { transform: translateX(11px); }
+  90% { transform: translateX(-3px); }
+  94% { transform: translateX(5px); }
+  97% { transform: translateX(0); }
 }
 .ad-peek {
   animation: ad-peek 7s ease-in-out infinite;
