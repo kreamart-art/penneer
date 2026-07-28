@@ -236,19 +236,19 @@ export const KADER_LIJN_KLEUR = [
   "linear-gradient(115deg, #FFCF4A 0%, #FFB347 13%, #C88BFF 42%, #9A4BF0 60%, #FF6FBC 85%, #E0409A 100%)",
 ].join(", ");
 
-// Textuur over de lijn: hij dooft op onregelmatige plekken weg en komt daarna
-// weer op. Dat is wat een gesmede lijn doet, want die vangt het licht niet
-// overal even goed. De stops staan met opzet ONregelmatig; op gelijke afstanden
-// leest het als een streepjeslijn en niet als materiaal.
+// Textuur over de lijn: fel bij de UITEINDEN, gedoofd in het MIDDEN van de
+// lange randen. Zo houdt licht zich op een gesmede lijst: het blijft hangen in
+// de hoeken, waar het metaal een knik maakt, en op de lange rechte stukken is er
+// niets om het te vangen.
+//
+// Vandaar horizontaal en niet diagonaal. Een diagonaal verloop zet de dofste
+// plek in een hoek, en dat is precies waar hij het felst hoort te zijn.
+// De korte zijkanten pakken de waarde op 0 en 100 procent, dus die blijven vol.
 const KADER_TEXTUUR = [
-  "linear-gradient(100deg,",
-  // Lange overgangen en gedoofde stukken die even AANHOUDEN. Twee stops vlak na
-  // elkaar geeft een strakke knip; hier ligt er tussen elke top en elk dal
-  // twaalf tot achttien procent, en de dalen zijn zelf ook breed.
-  "rgba(0,0,0,.10) 0%, rgba(0,0,0,.10) 5%, #000 19%, #000 25%,",
-  "rgba(0,0,0,.08) 38%, rgba(0,0,0,.08) 46%, #000 60%,",
-  "rgba(0,0,0,.18) 73%, rgba(0,0,0,.18) 80%, #000 93%,",
-  "rgba(0,0,0,.30) 100%)",
+  "linear-gradient(90deg,",
+  "#000 0%, #000 10%,",
+  "rgba(0,0,0,.30) 26%, rgba(0,0,0,.16) 40%, rgba(0,0,0,.16) 60%, rgba(0,0,0,.30) 74%,",
+  "#000 90%, #000 100%)",
 ].join(" ");
 
 // De glans: bijna wit, en ALLEEN in het midden van de boven- en onderrand. Daar
