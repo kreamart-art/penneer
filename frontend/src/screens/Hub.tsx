@@ -665,13 +665,13 @@ function HistoryCard({ game, meId, vitrine }: { game: GameApi; meId: string; vit
             // met zijn hoogsel, zoals de lijn boven "jij draait deze ronde".
             sterkte={0.3}
             eindkap
-            binnen={{ display: "flex", alignItems: "center", gap: 5, minHeight: 46, padding: "5px 8px 5px 44px" }}
+            binnen={{ display: "flex", alignItems: "center", gap: 5, minHeight: 46, padding: "5px 8px 5px 45px" }}
           >
             {/* Het wapen hangt AAN de bovenlijn en begint op het knikpunt van de
                 schuine hoek: los in de rij zwevend leek hij nergens bij te
                 horen. Vandaar absoluut, op de hoekmaat van de lijst. */}
             <span style={{ position: "absolute", left: 11, top: 0, display: "flex" }}>
-              <PlekWapen plek={g.place} maat={31} />
+              <PlekWapen plek={g.place} maat={28} />
             </span>
             {groef}
             {/* Mijn hoek: portret, met naam boven en score onder. De twee

@@ -528,8 +528,11 @@ export function NeonKader({
         const c = hoek;
         const { w, h } = maat;
         const arm = 5; // hoe ver de kap over de lange rand doorloopt
-        const links = `M ${c + arm} 0 L ${c} 0 L 0 ${c} L 0 ${h - c} L ${c} ${h} L ${c + arm} ${h}`;
-        const rechts = `M ${w - c - arm} 0 L ${w - c} 0 L ${w} ${c} L ${w} ${h - c} L ${w - c} ${h} L ${w - c - arm} ${h}`;
+        // Een halve lijndikte naar binnen: een pad OP de rand steekt met zijn
+        // halve dikte buiten de doos, en dat randje kwam boven het wapen uit.
+        const i = 0.5;
+        const links = `M ${c + arm} ${i} L ${c} ${i} L ${i} ${c} L ${i} ${h - c} L ${c} ${h - i} L ${c + arm} ${h - i}`;
+        const rechts = `M ${w - c - arm} ${i} L ${w - c} ${i} L ${w - i} ${c} L ${w - i} ${h - c} L ${w - c} ${h - i} L ${w - c - arm} ${h - i}`;
         const kap = (extra?: CSSProperties) => (
           <svg aria-hidden width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ position: "absolute", inset: 0, overflow: "visible", pointerEvents: "none", ...extra }}>
             <defs>
@@ -540,11 +543,11 @@ export function NeonKader({
                 <stop offset="100%" stopColor="#9C6B1F" />
               </linearGradient>
             </defs>
-            <path d={links} fill="none" stroke={`url(#${kapId})`} strokeWidth={1.2} strokeLinecap="round" strokeLinejoin="round" />
-            <path d={rechts} fill="none" stroke={`url(#${kapId})`} strokeWidth={1.2} strokeLinecap="round" strokeLinejoin="round" />
+            <path d={links} fill="none" stroke={`url(#${kapId})`} strokeWidth={0.9} strokeLinecap="round" strokeLinejoin="round" />
+            <path d={rechts} fill="none" stroke={`url(#${kapId})`} strokeWidth={0.9} strokeLinecap="round" strokeLinejoin="round" />
             {/* de kern: alleen de staander vangt het licht, niet de armen */}
-            <path d={`M 0 ${c + 3} L 0 ${h - c - 3}`} fill="none" stroke="#FFF6DF" strokeWidth={0.7} opacity={0.8} strokeLinecap="round" />
-            <path d={`M ${w} ${c + 3} L ${w} ${h - c - 3}`} fill="none" stroke="#FFF6DF" strokeWidth={0.7} opacity={0.8} strokeLinecap="round" />
+            <path d={`M ${i} ${c + 3} L ${i} ${h - c - 3}`} fill="none" stroke="#FFF6DF" strokeWidth={0.5} opacity={0.8} strokeLinecap="round" />
+            <path d={`M ${w - i} ${c + 3} L ${w - i} ${h - c - 3}`} fill="none" stroke="#FFF6DF" strokeWidth={0.5} opacity={0.8} strokeLinecap="round" />
           </svg>
         );
         return (
