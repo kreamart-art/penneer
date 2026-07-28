@@ -13,6 +13,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import { ChevronRight, Check, Lock } from "lucide-react";
 import { colors, font, withAlpha } from "../theme/tokens";
+import { HexArt } from "./HexArt";
 
 
 export const GOUD = ["#4A2E04", "#B07C17", "#FFC23D", "#FFEBB8"] as const;
@@ -197,25 +198,6 @@ export function RingFoto({ userId, versie, heeftFoto, naam, kleur }: { userId: s
       }}
     >
       {(naam.trim()[0] || "?").toUpperCase()}
-    </span>
-  );
-}
-
-/** De zeshoek-art uit de UI-map, met een cijfer of teken erop.
- *
- *  Losse plaat naast `HexPlate`: die is van de main page en houdt zijn eigen,
- *  oudere art. Deze wordt op het profiel gebruikt. */
-const HEX_RATIO = 912 / 787;
-
-export function HexArt({ maat, children, style }: { maat: number; children: ReactNode; style?: CSSProperties }) {
-  return (
-    <span
-      style={{ position: "relative", display: "grid", placeItems: "center", width: maat, height: Math.round(maat * HEX_RATIO), lineHeight: 0, ...style }}
-    >
-      <img src="/tiles/hex.webp" alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }} />
-      <span style={{ position: "absolute", left: "49.9%", top: "49%", transform: "translate(-50%, -50%)", display: "grid", placeItems: "center" }}>
-        {children}
-      </span>
     </span>
   );
 }
