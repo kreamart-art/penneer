@@ -281,6 +281,9 @@ const KERN_STREEP = [
   "radial-gradient(4px 1.6px at 50% 50%, rgba(255,255,255,.95) 0%, rgba(255,246,223,.55) 45%, transparent 72%)",
   "linear-gradient(90deg, transparent 26%, rgba(138,80,240,.28) 38%, rgba(196,158,255,.5) 47%, rgba(255,250,238,.85) 50%, rgba(196,158,255,.5) 53%, rgba(138,80,240,.28) 62%, transparent 74%)",
 ].join(", ");
+// De losse punt die bij de veeg langs de rand glijdt.
+const KERN_VEEG =
+  "radial-gradient(closest-side, rgba(255,255,255,.9) 0%, rgba(255,246,223,.45) 55%, transparent 100%)";
 // De onderrand krijgt de gloed WEL maar de punt NIET: het licht komt van boven,
 // dus het piekpunt hoort alleen daar. Onder blijft een zachte heuvel.
 const KERN_STREEP_ZACHT =
@@ -322,6 +325,8 @@ export function NeonKader({
   animeer = false,
   sterkte = 1,
   eindkap = false,
+  adem,
+  veeg = false,
 }: {
   children: ReactNode;
   style?: CSSProperties;
@@ -348,6 +353,13 @@ export function NeonKader({
    *  draait deze ronde": geen kader maar hetzelfde principe. Alleen met een
    *  afsnijding, want de kap volgt precies die contour. */
   eindkap?: boolean;
+  /** Laat de piek op de bovenrand ademen. Het getal is de fasevertraging in
+   *  seconden: geef elke rij een andere, anders pompen ze synchroon en leest
+   *  het als een machine in plaats van als licht. */
+  adem?: number;
+  /** De lichtveeg: het piekpunt glijdt af en toe langs de bovenrand. Voor EEN
+   *  rij tegelijk, meer wordt onrustig. */
+  veeg?: boolean;
   /** De afsnijding van de hoeken, in pixels, zoals de rol-skin. Zonder deze
    *  blijft het een gewone ronding. Met een afsnijding wordt de lijst glazig:
    *  een dun waas met een vervaging erachter, want glas hoort iets te doen met
@@ -510,12 +522,34 @@ export function NeonKader({
           rand net anders af en dan gloeit de ene rand wel en de andere amper.
           Zo staan ze er allebei gegarandeerd, met dezelfde piek. */}
       {hoek &&
-        ([[{ top: 0 }, KERN_STREEP], [{ bottom: 0 }, KERN_STREEP_ZACHT]] as const).map(([kant, streep], i) => (
-          <span key={i} aria-hidden style={{ position: "absolute", left: hoek + 2, right: hoek + 2, height: 1.2, ...kant, backgroundImage: streep, pointerEvents: "none" }}>
-            {/* de gloed: dezelfde streep, iets hoger en vervaagd */}
-            <span aria-hidden style={{ position: "absolute", left: 0, right: 0, top: -1, height: 3, backgroundImage: streep, filter: "blur(1.6px)", opacity: 0.55 }} />
-          </span>
-        ))}
+        ([[{ top: 0 }, KERN_STREEP], [{ bottom: 0 }, KERN_STREEP_ZACHT]] as const).map(([kant, streep], i) => {
+          const boven = i === 0;
+          return (
+            <span
+              key={i}
+              aria-hidden
+              className={boven && adem !== undefined ? "kern-adem" : undefined}
+              style={{
+                position: "absolute",
+                left: hoek + 2,
+                right: hoek + 2,
+                height: 1.2,
+                ...kant,
+                backgroundImage: streep,
+                pointerEvents: "none",
+                // Negatief, zodat elke rij meteen midden in zijn eigen fase
+                // begint in plaats van allemaal tegelijk bij nul.
+                ...(boven && adem !== undefined ? { animationDelay: `${-adem}s` } : null),
+              }}
+            >
+              {/* de gloed: dezelfde streep, iets hoger en vervaagd */}
+              <span aria-hidden style={{ position: "absolute", left: 0, right: 0, top: -1, height: 3, backgroundImage: streep, filter: "blur(1.6px)", opacity: 0.55 }} />
+              {boven && veeg && (
+                <span aria-hidden className="kern-veeg" style={{ position: "absolute", top: -0.6, height: 2.2, width: 46, marginLeft: -23, backgroundImage: KERN_VEEG, pointerEvents: "none" }} />
+              )}
+            </span>
+          );
+        })}
       {/* De gouden eindkappen: de contour van het schuine uiteinde als los
           sieraad, zoals de pijlen naast "jij draait deze ronde". Zelfde
           principe als daar en als de lijn zelf: een vervaagde kopie eronder als

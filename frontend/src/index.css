@@ -615,6 +615,34 @@ input:focus {
   background-size: 200% 100%;
   animation: kader-loop 11s linear infinite;
 }
+/* De piek op de bovenrand van een neon-kader ademt: alleen de dekking zwelt en
+   zakt, er beweegt niets. De fase verschilt per rij via een negatieve
+   animation-delay, anders pompen alle rijen synchroon en leest het als een
+   machine in plaats van als licht. */
+@keyframes kern-adem {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+.kern-adem {
+  animation: kern-adem 4.2s ease-in-out infinite;
+}
+
+/* De lichtveeg: het piekpunt glijdt af en toe langs de bovenrand en rust dan
+   het grootste deel van de ronde. Met `left` en niet met een transform:
+   procenten van een transform rekenen met het element ZELF, niet met de rij,
+   en de rijbreedte is in CSS niet bekend. Het is een piepklein element, dus de
+   layout-kost stelt niets voor. */
+@keyframes kern-veeg {
+  0% { left: 6%; opacity: 0; }
+  2% { opacity: 0.9; }
+  10% { opacity: 0.9; }
+  12% { left: 94%; opacity: 0; }
+  100% { left: 94%; opacity: 0; }
+}
+.kern-veeg {
+  animation: kern-veeg 7.5s linear infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .kader-loop { animation: none; }
+  .kader-loop, .kern-adem, .kern-veeg { animation: none; }
 }

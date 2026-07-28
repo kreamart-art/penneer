@@ -665,6 +665,8 @@ function HistoryCard({ game, meId, vitrine }: { game: GameApi; meId: string; vit
             // met zijn hoogsel, zoals de lijn boven "jij draait deze ronde".
             sterkte={0.3}
             eindkap
+            adem={i * 1.3}
+            veeg={i === 0}
             binnen={{ display: "flex", alignItems: "center", gap: 5, minHeight: 46, padding: "5px 8px 5px 45px" }}
           >
             {/* Het wapen hangt AAN de bovenlijn en begint op het knikpunt van de
