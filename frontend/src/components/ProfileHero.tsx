@@ -51,6 +51,95 @@ export function Paneel({ children, style }: { children: ReactNode; style?: CSSPr
   );
 }
 
+/** Het portret in de gouden ring, met het level op een schild eronder.
+ *
+ *  Alle maten komen uit de art zelf, gemeten aan de bestanden, en staan in
+ *  verhoudingen in plaats van vaste pixels. Zo klopt het op elk formaat en hoeft
+ *  er niets bijgesteld te worden als de ring straks groter of kleiner moet:
+ *
+ *    ring     720 op 708, het gat is 68,8% van de breedte en het midden van dat
+ *             gat ligt op 49,9% / 44,1% (dus iets boven het midden, want de
+ *             lauwertak onderaan hoort bij de ring en niet bij het gat).
+ *    schild   821 op 972.
+ *
+ *  De percentages staan met opzet niet in CSS maar worden hier uitgerekend: in
+ *  CSS rekent `top` in procenten met de HOOGTE en `left` met de BREEDTE, en dan
+ *  klopt één paar getallen nooit voor allebei de assen. */
+const RING_VERH = 708 / 720;
+const RING_GAT = 0.688;
+const RING_GAT_X = 0.499;
+const RING_GAT_Y = 0.441;
+const SCHILD_VERH = 972 / 821;
+
+export const SCHILD_KLEUREN = ["paars", "blauw", "lichtblauw", "groen", "rood", "zwart", "zilver"] as const;
+export type SchildKleur = (typeof SCHILD_KLEUREN)[number];
+
+export function RingPortret({
+  maat,
+  level,
+  kleur = "paars",
+  children,
+}: {
+  /** De breedte van de ring. De rest volgt daaruit. */
+  maat: number;
+  level: number;
+  kleur?: SchildKleur;
+  children: ReactNode;
+}) {
+  const ringH = maat * RING_VERH;
+  const gat = maat * RING_GAT;
+  const schildB = maat * 0.33;
+  const schildH = schildB * SCHILD_VERH;
+  // Het schild hangt aan de onderkant van de ring: ruim een derde ervan zit nog
+  // over de ring heen, de rest steekt eronderuit.
+  const schildTop = ringH - schildH * 0.6;
+  return (
+    <div style={{ position: "relative", width: maat, height: schildTop + schildH, flexShrink: 0 }}>
+      {/* Het portret eerst, de ring erbovenop. Zo dekt de ring een randje van
+          het portret af en zie je geen naad tussen de twee. */}
+      <span
+        style={{
+          position: "absolute",
+          left: maat * RING_GAT_X - gat / 2,
+          top: ringH * RING_GAT_Y - gat / 2,
+          width: gat,
+          height: gat,
+          borderRadius: "50%",
+          overflow: "hidden",
+          display: "grid",
+          placeItems: "center",
+          background: "#140B26",
+        }}
+      >
+        {children}
+      </span>
+      <img src="/ui/ring.webp" alt="" aria-hidden style={{ position: "absolute", left: 0, top: 0, width: maat, height: ringH, pointerEvents: "none" }} />
+      <span style={{ position: "absolute", left: maat / 2 - schildB / 2, top: schildTop, width: schildB, height: schildH }}>
+        <img src={`/ui/shield/${kleur}.webp`} alt="" aria-hidden style={{ width: "100%", height: "100%", display: "block" }} />
+        {/* Het schild loopt onderin in een punt, dus het cijfer staat hoger dan
+            het midden van de doos; anders lijkt het te laag te hangen. */}
+        <span
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "grid",
+            placeItems: "center",
+            paddingBottom: schildH * 0.16,
+            fontFamily: font.display,
+            fontWeight: 800,
+            fontSize: schildB * 0.5,
+            lineHeight: 1,
+            color: "#FFFFFF",
+            textShadow: "0 1px 3px rgba(20,4,40,.8)",
+          }}
+        >
+          {level}
+        </span>
+      </span>
+    </div>
+  );
+}
+
 /** Sierlijn met een ruitje aan weerszijden van het opschrift. */
 export function SierKop({ label }: { label: string }) {
   const lijn = (naar: string): CSSProperties => ({

@@ -5,7 +5,7 @@ import { CloseIcon } from "../components/CloseIcon";
 import { ArrowLeft, Award, BookOpen, Camera, Check, ChevronDown, CircleDot, Copy, Crown, Flame, Gem, Lock, LogOut, Medal, MessageCircle, MoreVertical, Pencil, Percent, Plus, Rocket, Search, Send, Settings as SettingsIcon, Share2, Shield, ShoppingCart, Smile, Sparkles, Star, Swords, Target, Trash2, Trophy, UserPlus, Users, X, Zap, ZoomIn, ZoomOut } from "lucide-react";
 import { Avatar, RANK_RING } from "../components/Avatar";
 import { Plek } from "../components/ProfileShowcase";
-import { GOUD, Paneel, PlekWapen, Prestatie, SectieKop, SierKop, StatKaart } from "../components/ProfileHero";
+import { GOUD, Paneel, PlekWapen, Prestatie, RingPortret, SectieKop, SierKop, StatKaart } from "../components/ProfileHero";
 import { isTester } from "../util/testers";
 import { AvatarZoom } from "../components/AvatarZoom";
 import { Button } from "../components/Button";
@@ -1065,57 +1065,25 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
           {/* Een breed vlak vraagt om een brede indeling: het portret links, en
               rechts alles wat je over jezelf leest. Onder elkaar zou het niet
               passen zonder de art uit te rekken. */}
-          <div style={{ display: "flex", alignItems: "center", gap: 14, height: "100%" }}>
-          <div style={{ display: "flex", justifyContent: "center", flexShrink: 0, paddingLeft: 8, paddingBottom: 12 }}>
-            <button
-              onClick={() => { sound.uiTap(); setAvatarMenuOpen(true); }}
-              disabled={busy}
-              aria-label={t("avatarMenuTitle")}
-              className="pressable"
-              style={{ position: "relative", background: "transparent", border: "none", padding: 0, cursor: "pointer" }}
-            >
-              {/* Geen lauwerkrans meer. Het portret draagt al een rangring en er
-                  hangt al een schild onder; met de sierlijst van de sectie
-                  eromheen worden dat vier ringen om hetzelfde ding, en dan
-                  onderscheid je er geen enkele meer. */}
-              <Avatar name={account.name} color={account.color} size={72} userId={account.id} hasAvatar={account.has_avatar} avatarVer={account.avatar_ver} frame={account.avatar_frame} glow />
-              {/* Het level hangt ONDER het portret als schild. Daar valt het op
-                  zonder de foto te bedekken, en een schild leest als rang. */}
-              <span
-                style={{
-                  position: "absolute",
-                  left: "50%",
-                  bottom: -17,
-                  transform: "translateX(-50%)",
-                  width: 34,
-                  height: 36,
-                  display: "grid",
-                  placeItems: "center",
-                  clipPath: "polygon(0% 0%, 100% 0%, 100% 70%, 50% 100%, 0% 70%)",
-                  background: `linear-gradient(164deg, ${GOUD[3]} 0%, ${GOUD[2]} 42%, ${GOUD[1]} 74%, ${GOUD[0]} 100%)`,
-                  filter: `drop-shadow(0 3px 6px rgba(0,0,0,.5))`,
-                }}
-              >
-                <span
-                  style={{
-                    width: "calc(100% - 4px)",
-                    height: "calc(100% - 4px)",
-                    display: "grid",
-                    placeItems: "center",
-                    clipPath: "polygon(0% 0%, 100% 0%, 100% 70%, 50% 100%, 0% 70%)",
-                    backgroundImage: "radial-gradient(80% 60% at 50% 12%, rgba(255,243,181,.22), transparent 66%), linear-gradient(180deg, #4A2A78 0%, #22103C 100%)",
-                    fontFamily: font.display,
-                    fontWeight: 800,
-                    fontSize: 14,
-                    color: GOUD[3],
-                    paddingBottom: 4,
-                  }}
-                >
-                  {account.level.level}
-                </span>
-              </span>
-            </button>
-          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, height: "100%" }}>
+          <button
+            onClick={() => { sound.uiTap(); setAvatarMenuOpen(true); }}
+            disabled={busy}
+            aria-label={t("avatarMenuTitle")}
+            className="pressable"
+            // Negatieve marge: de ring mag de sierlijst van de sectie raken en
+            // valt zo in de hoek in plaats van er netjes binnen te blijven
+            // zweven. Hetzelfde gebaar als de kruisknop op de advertentie.
+            style={{ background: "transparent", border: "none", padding: 0, cursor: "pointer", flexShrink: 0, marginLeft: -13, marginRight: -2 }}
+          >
+            {/* De ring en het schild komen uit de UI-map; het portret zit in het
+                gat van de ring. Een eigen frame zou hier een tweede ring om
+                hetzelfde portret zijn, dus dat blijft voor de lobby en de
+                lijsten. */}
+            <RingPortret maat={134} level={account.level.level}>
+              <Avatar name={account.name} color={account.color} size={92} userId={account.id} hasAvatar={account.has_avatar} avatarVer={account.avatar_ver} />
+            </RingPortret>
+          </button>
 
           <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 5 }}>
 
@@ -1150,8 +1118,8 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
             style={{
               fontFamily: font.display,
               fontWeight: 800,
-              fontSize: "clamp(18px, 5.6vw, 24px)",
-              lineHeight: 1.05,
+              fontSize: "clamp(16px, 5.2vw, 22px)",
+              lineHeight: 1.02,
               letterSpacing: 0.5,
               textTransform: "uppercase",
               backgroundImage: `linear-gradient(172deg, ${GOUD[3]} 0%, ${GOUD[2]} 46%, ${GOUD[1]} 78%, ${GOUD[2]} 100%)`,
