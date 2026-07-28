@@ -760,7 +760,7 @@ export function StatKaart({ icoon, art, waarde, label }: { icoon: ReactNode; art
 const WAPEN_VERH = 3472 / 2862;
 // Bump zodra je de art op DEZELFDE naam vervangt: de service worker bewaart
 // plaatjes cache-first en ruimt pas op bij zijn volgende activatie.
-const WAPEN_ART = 2;
+const WAPEN_ART = 3;
 
 export function PlekWapen({ plek, maat = 38 }: { plek: number; maat?: number }) {
   const metaal = plek === 1 ? "goud" : plek === 2 ? "zilver" : plek === 3 ? "brons" : null;
@@ -795,7 +795,10 @@ export function PlekWapen({ plek, maat = 38 }: { plek: number; maat?: number }) 
           fontWeight: 800,
           fontSize: Math.round(maat * (19 / 38)),
           lineHeight: 1,
-          color: plek === 1 ? "#4A2E00" : plek === 2 ? "#241640" : plek === 3 ? "#3A1C05" : colors.sub,
+          // Per metaal de donkerste tint van dat metaal zelf, niet zomaar een
+          // donkere kleur: op het neutrale grijs van de zilveren wimpel zou het
+          // oude paars als een vlek leggen.
+          color: plek === 1 ? "#4A2E00" : plek === 2 ? "#2A2A33" : plek === 3 ? "#3A1C05" : colors.sub,
           textShadow: metaal ? "0 1px 0 rgba(255,255,255,.45)" : "none",
         }}
       >
