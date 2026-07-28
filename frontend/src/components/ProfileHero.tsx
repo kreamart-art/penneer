@@ -88,11 +88,12 @@ export function RingPortret({
 }) {
   const ringH = maat * RING_VERH;
   const gat = maat * RING_GAT;
-  const schildB = maat * 0.33;
+  const schildB = maat * 0.24;
   const schildH = schildB * SCHILD_VERH;
-  // Het schild hangt aan de onderkant van de ring: ruim een derde ervan zit nog
-  // over de ring heen, de rest steekt eronderuit.
-  const schildTop = ringH - schildH * 0.6;
+  // Het schild HANGT aan de ring: een kleine hap zit nog over de lauwertak
+  // heen, de rest steekt eronderuit. Schuift het te ver omhoog, dan lijkt het
+  // op de tak te liggen in plaats van eraan te hangen.
+  const schildTop = ringH - schildH * 0.42;
   return (
     <div style={{ position: "relative", width: maat, height: schildTop + schildH, flexShrink: 0 }}>
       {/* Het portret eerst, de ring erbovenop. Zo dekt de ring een randje van
