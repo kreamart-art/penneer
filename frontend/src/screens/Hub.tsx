@@ -484,14 +484,19 @@ function CollapsibleCard({
         // steekt hij precies die vijf pixels uit ten opzichte van wat je erboven
         // ziet staan.
         style={{ marginInline: 5 }}
-        binnen={{ padding: "10px 11px 11px", display: "flex", flexDirection: "column", gap: 7 }}>
-        <SectieKop
-          label={title}
-          actie={hidden > 0 ? (open ? t("showLess") : t("showAll")) : undefined}
-          onActie={() => { sound.uiTap(); setOpen((v) => !v); }}
-        />
+        // De zijranden zijn hier smaller dan bij de andere secties: de rijen
+        // hebben elke pixel breedte nodig. De kop compenseert dat zelf, zodat
+        // het opschrift op dezelfde lijn blijft staan als bij de buren.
+        binnen={{ padding: "10px 7px 11px", display: "flex", flexDirection: "column", gap: 7 }}>
+        <div style={{ paddingInline: 4 }}>
+          <SectieKop
+            label={title}
+            actie={hidden > 0 ? (open ? t("showLess") : t("showAll")) : undefined}
+            onActie={() => { sound.uiTap(); setOpen((v) => !v); }}
+          />
+        </div>
         {items.length === 0 ? (
-          <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13, color: colors.faint }}>{emptyText}</p>
+          <p style={{ margin: 0, paddingInline: 4, fontFamily: font.ui, fontSize: 13, color: colors.faint }}>{emptyText}</p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>{shown}</div>
         )}
@@ -625,10 +630,27 @@ function HistoryCard({ game, meId, vitrine }: { game: GameApi; meId: string; vit
             {p.name}
           </span>
         );
+        // De groef die de vakken scheidt: donkere linkerwand, lichte rechter,
+        // boven en onder vervaagd zodat hij vrij in het vlak hangt. Staat
+        // tussen wapen en portret EN voor de opbrengst-kolom.
+        const groef = (
+          <span
+            aria-hidden
+            style={{
+              alignSelf: "stretch",
+              flexShrink: 0,
+              width: 2,
+              marginBlock: 3,
+              backgroundImage: "linear-gradient(90deg, rgba(8,3,20,.7) 0, rgba(8,3,20,.7) 1px, rgba(255,255,255,.13) 1px, rgba(255,255,255,.13) 2px)",
+              WebkitMaskImage: "linear-gradient(180deg, transparent 0%, #000 26%, #000 74%, transparent 100%)",
+              maskImage: "linear-gradient(180deg, transparent 0%, #000 26%, #000 74%, transparent 100%)",
+            }}
+          />
+        );
         const score = (n: number, won: boolean) => (
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontFamily: font.display, fontWeight: 800, fontSize: 14, lineHeight: 1.1, color: colors.ink }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontFamily: font.display, fontWeight: 800, fontSize: 15, lineHeight: 1.1, color: colors.ink }}>
             {n}
-            {won && <Crown size={11} color={colors.gold} fill={colors.gold} style={{ flexShrink: 0 }} />}
+            {won && <Crown size={12} color={colors.gold} fill={colors.gold} style={{ flexShrink: 0 }} />}
           </span>
         );
         return (
@@ -643,7 +665,7 @@ function HistoryCard({ game, meId, vitrine }: { game: GameApi; meId: string; vit
             // met zijn hoogsel, zoals de lijn boven "jij draait deze ronde".
             sterkte={0.3}
             eindkap
-            binnen={{ display: "flex", alignItems: "center", gap: 5, minHeight: 46, padding: "5px 8px 5px 46px" }}
+            binnen={{ display: "flex", alignItems: "center", gap: 5, minHeight: 46, padding: "5px 8px 5px 44px" }}
           >
             {/* Het wapen hangt AAN de bovenlijn en begint op het knikpunt van de
                 schuine hoek: los in de rij zwevend leek hij nergens bij te
@@ -651,6 +673,7 @@ function HistoryCard({ game, meId, vitrine }: { game: GameApi; meId: string; vit
             <span style={{ position: "absolute", left: 11, top: 0, display: "flex" }}>
               <PlekWapen plek={g.place} maat={31} />
             </span>
+            {groef}
             {/* Mijn hoek: portret, met naam boven en score onder. De twee
                 spelersblokken zijn elkaars spiegelbeeld en allebei even breed,
                 zodat de VS vanzelf in het MIDDEN van de lijst hangt. */}
@@ -700,33 +723,15 @@ function HistoryCard({ game, meId, vitrine }: { game: GameApi; meId: string; vit
             {/* Wat het potje opleverde. Voor oude potjes is dat niet meer te
                 achterhalen (allebei nul): dan valt de kolom weg in plaats van
                 nullen te tonen. */}
-            {(g.xp > 0 || g.coins > 0) && (
-              // De streep ervoor is een GROEF, geen lijn: de linkerwand donker
-              // en de rechter licht, want het licht komt van linksboven en valt
-              // dus op de rechterkant van een gleuf. Boven en onder vervaagd,
-              // zodat hij vrij in het vlak hangt in plaats van de randen te
-              // raken.
-              <span
-                aria-hidden
-                style={{
-                  alignSelf: "stretch",
-                  flexShrink: 0,
-                  width: 2,
-                  marginBlock: 3,
-                  backgroundImage: "linear-gradient(90deg, rgba(8,3,20,.7) 0, rgba(8,3,20,.7) 1px, rgba(255,255,255,.13) 1px, rgba(255,255,255,.13) 2px)",
-                  WebkitMaskImage: "linear-gradient(180deg, transparent 0%, #000 26%, #000 74%, transparent 100%)",
-                  maskImage: "linear-gradient(180deg, transparent 0%, #000 26%, #000 74%, transparent 100%)",
-                }}
-              />
-            )}
+            {(g.xp > 0 || g.coins > 0) && groef}
             {(g.xp > 0 || g.coins > 0) && (
               <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 1 }}>
-                <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 11.5, lineHeight: 1.15, color: colors.ink }}>
+                <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 12, lineHeight: 1.15, color: colors.ink }}>
                   +{g.xp} <span style={{ color: GOUD[2] }}>XP</span>
                 </span>
                 {g.coins > 0 && (
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontFamily: font.display, fontWeight: 800, fontSize: 11.5, lineHeight: 1.15, color: GOUD[3] }}>
-                    <img src="/coin.webp" alt="" width={12} height={12} style={{ display: "block" }} />
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontFamily: font.display, fontWeight: 800, fontSize: 12, lineHeight: 1.15, color: GOUD[3] }}>
+                    <img src="/coin.webp" alt="" width={13} height={13} style={{ display: "block" }} />
                     +{g.coins}
                   </span>
                 )}

@@ -540,11 +540,11 @@ export function NeonKader({
                 <stop offset="100%" stopColor="#9C6B1F" />
               </linearGradient>
             </defs>
-            <path d={links} fill="none" stroke={`url(#${kapId})`} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" />
-            <path d={rechts} fill="none" stroke={`url(#${kapId})`} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" />
+            <path d={links} fill="none" stroke={`url(#${kapId})`} strokeWidth={1.2} strokeLinecap="round" strokeLinejoin="round" />
+            <path d={rechts} fill="none" stroke={`url(#${kapId})`} strokeWidth={1.2} strokeLinecap="round" strokeLinejoin="round" />
             {/* de kern: alleen de staander vangt het licht, niet de armen */}
-            <path d={`M 0 ${c + 3} L 0 ${h - c - 3}`} fill="none" stroke="#FFF6DF" strokeWidth={0.9} opacity={0.8} strokeLinecap="round" />
-            <path d={`M ${w} ${c + 3} L ${w} ${h - c - 3}`} fill="none" stroke="#FFF6DF" strokeWidth={0.9} opacity={0.8} strokeLinecap="round" />
+            <path d={`M 0 ${c + 3} L 0 ${h - c - 3}`} fill="none" stroke="#FFF6DF" strokeWidth={0.7} opacity={0.8} strokeLinecap="round" />
+            <path d={`M ${w} ${c + 3} L ${w} ${h - c - 3}`} fill="none" stroke="#FFF6DF" strokeWidth={0.7} opacity={0.8} strokeLinecap="round" />
           </svg>
         );
         return (
