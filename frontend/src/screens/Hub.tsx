@@ -6,7 +6,7 @@ import { ArrowLeft, Award, BookOpen, Camera, Check, ChevronDown, CircleDot, Copy
 import { Avatar, RANK_RING } from "../components/Avatar";
 import { Plek } from "../components/ProfileShowcase";
 import { HexArt } from "../components/HexArt";
-import { GOUD, NeonKader, Paneel, PlekWapen, Prestatie, RingFoto, RingPortret, SCHILD_KLEUREN, SectieKop, SierKop, StatKaart, type SchildKleur } from "../components/ProfileHero";
+import { GOUD, KADER_LIJN_KLEUR, NeonKader, Paneel, PlekWapen, Prestatie, RingFoto, RingPortret, SCHILD_KLEUREN, SectieKop, SierKop, StatKaart, type SchildKleur } from "../components/ProfileHero";
 import { isTester } from "../util/testers";
 import { AvatarZoom } from "../components/AvatarZoom";
 import { Button } from "../components/Button";
@@ -458,6 +458,7 @@ function CollapsibleCard({
         radius={18}
         vulling="geen"
         dik={0.35}
+        lijn={KADER_LIJN_KLEUR}
         // De statistiekkaartjes zijn 74 breed in kolommen van 84, dus ze staan
         // vijf pixels van de kolomrand af. Zet je deze lijst tegen die rand, dan
         // steekt hij precies die vijf pixels uit ten opzichte van wat je erboven
@@ -607,6 +608,7 @@ function HistoryCard({ game, meId, vitrine }: { game: GameApi; meId: string; vit
             key={`${g.finished_at}-${i}`}
             radius={12}
             dik={0.3}
+            vulling="geen"
             binnen={{ display: "flex", alignItems: "center", gap: 8, padding: "3px 7px" }}
           >
             <PlekWapen plek={g.place} />

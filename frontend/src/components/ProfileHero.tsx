@@ -227,6 +227,15 @@ const KADER_LIJN = [
   "linear-gradient(180deg, #C09AFF 0%, #9159E8 30%, #6A38BE 66%, #3E1E78 100%)",
 ].join(", ");
 
+// Een tweede lijn voor de buitenste lijst: een diagonale wandeling van goud
+// linksboven, via violet in het midden, naar roze rechtsonder. Diagonaal en niet
+// van boven naar beneden, want op een breed en laag vlak zie je een verticaal
+// verloop nauwelijks: de zijkanten zijn te kort om er iets van te tonen.
+export const KADER_LIJN_KLEUR = [
+  "radial-gradient(52% 150% at 2% 4%, rgba(255,214,110,.9) 0%, rgba(255,196,90,.3) 30%, transparent 58%)",
+  "linear-gradient(115deg, #FFCF4A 0%, #FFB347 13%, #C88BFF 42%, #9A4BF0 60%, #FF6FBC 85%, #E0409A 100%)",
+].join(", ");
+
 // De glans: bijna wit, en ALLEEN in het midden van de boven- en onderrand. Daar
 // vangt de lijn het licht; naar de uiteinden toe hoort er niets te zitten.
 const KADER_GLANS =
@@ -254,6 +263,7 @@ export function NeonKader({
   radius = KADER_R,
   vulling = "licht",
   dik = 0.5,
+  lijn = KADER_LIJN,
 }: {
   children: ReactNode;
   style?: CSSProperties;
@@ -262,6 +272,8 @@ export function NeonKader({
   /** De hoekronding. Een lijst OM andere lijsten krijgt er een paar bij, zodat
    *  de binnenste er netjes in valt in plaats van ertegenaan te botsen. */
   radius?: number;
+  /** Het verloop van de lijn. */
+  lijn?: string;
   /** "geen" laat de achtergrond volledig door: dan is de lijst puur lijn en
    *  licht. "licht" legt er een heel dun paars waas onder. */
   vulling?: "geen" | "licht";
@@ -338,8 +350,8 @@ export function NeonKader({
           eronder schijnt door een doorschijnend paneel heen, en
           `background-clip: border-box` betekent "over de hele doos" en niet
           "alleen de rand". */}
-      <span aria-hidden style={{ ...ringLaag(KADER_R, dik + 1.4), backgroundImage: KADER_LIJN, filter: "blur(3px)", opacity: 0.26 }} />
-      <span aria-hidden style={{ ...ringLaag(KADER_R, dik), backgroundImage: KADER_LIJN, opacity: 0.68 }} />
+      <span aria-hidden style={{ ...ringLaag(KADER_R, dik + 1.4), backgroundImage: lijn, filter: "blur(3px)", opacity: 0.26 }} />
+      <span aria-hidden style={{ ...ringLaag(KADER_R, dik), backgroundImage: lijn, opacity: 0.68 }} />
       <span aria-hidden style={{ ...ringLaag(KADER_R, dik), backgroundImage: KADER_GLANS }} />
     </div>
   );
