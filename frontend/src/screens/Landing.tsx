@@ -1,5 +1,5 @@
 // Landing — emblem, wordmark, tagline, name input, create / join, rules link.
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Bot, CalendarDays, Check, GraduationCap, Hash, HelpCircle, Play, Settings as SettingsIcon, Sparkles, Swords, Target, X } from "lucide-react";
 import { Logo } from "../components/Logo";
 import { Button } from "../components/Button";
@@ -33,12 +33,7 @@ const FRAMES = [
 
 // De maat van het embleem. Het licht erachter (EmblemLight) rekent in
 // percentages van deze maat via --em, dus alles schaalt als één geheel.
-// De maat van het embleem. Steiler dan een gewone clamp: op een hoog scherm
-// blijft hij op zijn volle 215, en zodra het scherm korter wordt krimpt hij snel
-// mee. Dat is precies waar de ruimte vandaan moet komen, want de kaart eronder
-// heeft een vaste verhouding en kan niet lager zonder ook smaller te worden.
-const EMBLEM_SIZE = "clamp(100px, calc(80vh - 452px), 215px)";
-
+const EMBLEM_SIZE = "clamp(112px, calc(64vh - 315px), 215px)";
 
 // De zeshoek van de knopjes, met de punt naar boven, net als de knopplaten.
 const HEX = "polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)";
@@ -95,126 +90,6 @@ export function Landing({
     ro.observe(el);
     return () => ro.disconnect();
   }, [skin]);
-  // De kaart mag nooit lager staan dan wat er in beeld past: de main page hoort
-  // op een scherm te passen zonder te scrollen.
-  //
-  // Dat is GEMETEN en niet uitgerekend. Een formule zou moeten weten hoe hoog
-  // het embleem is, hoe groot het woordmerk uitvalt, of "Speel met vrienden" op
-  // een of twee regels komt, welke van de drie maten lijst-art gekozen wordt en
-  // hoe hoog de balk onderaan is. Dat zijn vijf dingen die elk hun eigen kant op
-  // schalen, en elke constante die je daarvoor kiest klopt op precies een
-  // toestel. De ruimte onder de kaart aflezen en de kaart daarnaar breed maken
-  // klopt op alle.
-  //
-  // De bovenkant van de kaart hangt niet af van de kaart zelf (die staat onder
-  // het logo in een kolom), dus dit draait niet in zichzelf rond. Wat wel kan
-  // veranderen is de VERHOUDING zodra een label anders afbreekt; daarom kijkt
-  // een ResizeObserver mee en corrigeert hij na. De drempel van drie pixels
-  // voorkomt dat hij tussen twee bijna gelijke maten blijft heen en weer gaan.
-  const kaartVak = useRef<HTMLDivElement | null>(null);
-  const vorige = useRef<{ w: number; h: number } | null>(null);
-  const straf = useRef(0);
-  const scherm = useRef("");
-  const [kaartMax, setKaartMax] = useState<number | undefined>(undefined);
-  useLayoutEffect(() => {
-    const meet = () => {
-      const vak = kaartVak.current;
-      if (!vak) return;
-      const kolom = vak.closest("[data-schermkolom]") as HTMLElement | null;
-      if (!kolom) return;
-      // De ONDERKANT VAN HET SCHERM min de strook die de balk al opeist, niet
-      // de onderkant van de kolom: die is precies zo hoog als de inhoud, dus
-      // als het niet past staat hij al buiten beeld en meet je je eigen fout.
-      //
-      // En het KLEINSTE venster van de drie die de browser aanbiedt. Op iOS
-      // geeft `innerHeight` de hoogte ZONDER de adresbalk, ook terwijl die er
-      // gewoon staat: reken je daarmee, dan maak je de kaart net zo veel te
-      // groot als die balk hoog is en moet je alsnog scrollen. `clientHeight`
-      // is het venster met de balk erbij, en dat is de maat waarop het moet
-      // passen.
-      const zicht = Math.min(
-        document.documentElement.clientHeight || Infinity,
-        window.innerHeight || Infinity,
-        window.visualViewport?.height ?? Infinity,
-      );
-      const onder = zicht - parseFloat(getComputedStyle(kolom).paddingBottom || "0");
-      const r = vak.getBoundingClientRect();
-      if (!r.width || !r.height) return;
-      // Wat de pagina ECHT te veel is. Alle rekenwerk hierboven gaat uit van
-      // wat de browser zegt dat er in beeld past, en op een telefoon klopt dat
-      // niet altijd: een zwevende balk, een veiligheidsstrook, een adresbalk
-      // die er half is. Dit is het enige getal dat niet liegt, want het is het
-      // verschijnsel zelf. Het telt op en gaat er nooit meer af binnen hetzelfde
-      // scherm, anders krijg je een slinger: krimpen tot het past, dan weer
-      // groeien omdat het past, en weer krimpen.
-      const teveel = Math.max(0, document.documentElement.scrollHeight - document.documentElement.clientHeight);
-      // Pas meetellen als de pagina KLAAR is. Tijdens het laden schuift er van
-      // alles: een plaatje dat binnenkomt duwt de boel even te ver door, en die
-      // ene tel zou dan voorgoed van de breedte af gaan. En met een dak erop,
-      // want een correctie van meer dan zestig pixels betekent dat er iets
-      // anders aan de hand is dan een balkje dat niet meegeteld werd.
-      if (teveel > 0 && document.readyState === "complete") {
-        straf.current = Math.min(60, straf.current + teveel);
-      }
-      // Zes pixels lucht, zodat de sectie tegen de balk aan komt en er niet op.
-      const ruimte = onder - r.top - straf.current - 6;
-      if (ruimte <= 0) return;
-      // Hoe breed mag de kaart zijn om precies in `ruimte` te passen?
-      //
-      // Niet "ruimte gedeeld door de huidige verhouding". De hoogte van de kaart
-      // is namelijk niet EVENREDIG met de breedte: de tegels schalen mee, maar
-      // de regel "je speelt als", de tussenruimtes en de padding niet. In een
-      // formule: hoogte = helling x breedte + een vaste voet. Reken je met de
-      // verhouding, dan tel je die voet als het ware nog een keer mee en kom je
-      // stelselmatig tientallen pixels te smal uit. Dat is precies wat de kaart
-      // te klein maakte.
-      //
-      // Dus: uit twee metingen de HELLING afleiden en daarmee een stap zetten.
-      // Na de eerste correctie klopt hij, en verder blijft hij staan. De eerste
-      // keer is er nog niets om mee te vergelijken; dan de oude schatting als
-      // vertrekpunt.
-      const w = r.width;
-      const h = r.height;
-      const v = vorige.current;
-      let wil: number;
-      if (v && Math.abs(v.w - w) > 4 && Math.abs(v.h - h) > 1) {
-        // Begrensd, want een bijna vlakke helling zou een sprong van duizenden
-        // pixels opleveren op een meetfoutje van een halve pixel.
-        const helling = Math.min(1.5, Math.max(0.3, (h - v.h) / (w - v.w)));
-        wil = w + (ruimte - h) / helling;
-      } else {
-        wil = (ruimte * w) / h;
-      }
-      vorige.current = { w, h };
-      // GEEN percentage op de uitkomst. Dat lijkt een onschuldige marge, maar
-      // het is er een die zichzelf opeet: zodra de kaart precies past is de
-      // correctie hierboven nul, en dan houd je elke meting `breedte x 0,98`
-      // over. Twee procent, nog eens twee procent, en zo krimpt hij door tot de
-      // ondergrens. De lucht die we willen zit al in `ruimte`, en die wordt er
-      // maar EEN keer af gehaald.
-      wil = Math.min(460, Math.max(220, Math.floor(wil)));
-      setKaartMax((oud) => (oud !== undefined && Math.abs(oud - wil) <= 3 ? oud : wil));
-    };
-    // Een nieuw scherm is een nieuwe rekensom: de opgebouwde correctie hoort
-    // bij de maat waarop hij gemeten is.
-    const opnieuw = () => {
-      const maat = `${window.innerWidth}x${window.innerHeight}`;
-      if (maat !== scherm.current) {
-        scherm.current = maat;
-        straf.current = 0;
-        vorige.current = null;
-      }
-      meet();
-    };
-    opnieuw();
-    const ro = new ResizeObserver(meet);
-    if (kaartVak.current) ro.observe(kaartVak.current);
-    window.addEventListener("resize", opnieuw);
-    return () => {
-      ro.disconnect();
-      window.removeEventListener("resize", opnieuw);
-    };
-  }, []);
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [mode, setMode] = useState<"none" | "join">("none");
@@ -455,7 +330,7 @@ export function Landing({
               />
             ))}
           </div>
-          <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, ["--em" as string]: EMBLEM_SIZE }}>
+          <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
             {/* The logo IS the light source: breathing glow + slowly rotating
                 rays centered on the coin, logo floating on top of them. */}
             {/* Het licht zit BINNEN de zwevende laag, niet ernaast: het gat in de
@@ -492,10 +367,7 @@ export function Landing({
               style={{
                 // Negatief, zodat het woordmerk tegen het embleem aan kruipt en
                 // de twee als één merk lezen in plaats van als twee dingen.
-                // In verhouding tot het embleem en niet in vaste pixels: krimpt
-                // de munt op een laag scherm, dan schuift het woordmerk anders
-                // even ver door en staat de pen erachter.
-                margin: "calc(var(--em) * -0.3) 0 0",
+                margin: "-64px 0 0",
                 // Cybergame (the studio face, already italic-shaped) is only
                 // this wordmark; vw-clamped so it never clips small phones.
                 // Cybergame is a very condensed face: it needs a much larger
@@ -536,7 +408,7 @@ export function Landing({
                 // grotere maat, anders leest het als een blokje.
                 fontFamily: font.wide,
                 fontWeight: 400,
-                fontSize: 15.5,
+                fontSize: 16.5,
                 lineHeight: 1.2,
                 letterSpacing: 0.9,
                 color: "#CFC6E8",
@@ -548,7 +420,6 @@ export function Landing({
           </div>
         </div>
 
-        <div ref={kaartVak} style={{ width: "100%", maxWidth: kaartMax, marginInline: "auto" }}>
         <Card
           className="reveal-rise"
           style={{
@@ -597,7 +468,7 @@ export function Landing({
             />
           )}
           {account ? (
-            <p style={{ margin: 0, fontFamily: font.wide, fontSize: 14.5, letterSpacing: 0.8, color: colors.sub, textAlign: "center" }}>
+            <p style={{ margin: 0, fontFamily: font.wide, fontSize: 16, letterSpacing: 0.8, color: colors.sub, textAlign: "center" }}>
               {t("playingAs")} <span style={{ color: colors.gold, fontWeight: 700 }}>{account.name}</span>
             </p>
           ) : (
@@ -687,7 +558,6 @@ export function Landing({
             </>
           )}
         </Card>
-        </div>
 
         {game.state.error && (
           <p style={{ textAlign: "center", color: colors.red, fontFamily: font.ui, fontSize: 14, margin: 0 }}>{game.state.error}</p>
@@ -1066,7 +936,7 @@ function Tile({
               transform: "translateY(-50%)",
               fontFamily: font.display,
               fontWeight: 700,
-              fontSize: "clamp(12px, 3.6vw, 15.5px)",
+              fontSize: "clamp(13px, 4vw, 17px)",
               lineHeight: 1.15,
               letterSpacing: 0.2,
               textAlign: "center",
