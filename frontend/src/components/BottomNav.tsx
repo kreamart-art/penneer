@@ -8,7 +8,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Home, ShoppingCart, Trophy, UserRound, Users } from "lucide-react";
 import { Avatar } from "./Avatar";
-import { FriendsIcon, ShopIcon, TrophyIcon } from "./NavIcons";
 import type { GameApi } from "../net/socket";
 import { NeonLine } from "./NeonLine";
 import { useT } from "../i18n/i18n";
@@ -88,12 +87,14 @@ export function BottomNav({
     // vak goed zonder de rand te raken; op 0,4 stond het er verloren in. Tot de
     // plaat is gemeten tekenen we nog niets, anders springen ze een frame later.
     const s = Math.round(plateH * 0.5);
-    // De skin krijgt getekende, gevulde pictogrammen in plaats van lijntjes.
-    // Zie NavIcons: naast art van goud leest een lijnpictogram als een tekening.
+    // De skin krijgt de art uit de UI-map. Het zijn parelwitte pictogrammen met
+    // gouden accenten; de actieve krijgt een gouden gloed en de rest staat
+    // gedempt. Kleur kan niet, want het is art en geen lijntekening, dus het
+    // verschil zit in helderheid en gloed.
     const art: Partial<Record<NavKey, (on: boolean) => React.ReactNode>> = {
-      shop: (on) => <ShopIcon on={on} size={Math.round(s * 1.18)} />,
-      leaderboard: (on) => <TrophyIcon on={on} size={Math.round(s * 1.18)} />,
-      friends: (on) => <FriendsIcon on={on} size={Math.round(s * 1.18)} />,
+      shop: (on) => <NavArt src="/ui/nav/shop.webp" on={on} size={Math.round(s * 1.24)} />,
+      leaderboard: (on) => <NavArt src="/ui/nav/trophy.webp" on={on} size={Math.round(s * 1.24)} />,
+      friends: (on) => <NavArt src="/ui/nav/friends.webp" on={on} size={Math.round(s * 1.24)} />,
     };
     return (
       <nav
@@ -229,6 +230,39 @@ export function BottomNav({
         );
       })}
     </nav>
+  );
+}
+
+/** Een pictogram uit de UI-map in de onderbalk.
+ *
+ *  De art is parelwit met gouden accenten en die kleur staat vast, dus de
+ *  actieve staat is geen kleurwissel maar LICHT: iets voller, iets warmer, met
+ *  een gouden gloed eronder. De gloed is een tweede kopie erachter en geen
+ *  drop-shadow, want die laat iOS de laag apart rasteren en dan zie je zijn
+ *  rechthoek over het pictogram heen. */
+function NavArt({ src, on, size }: { src: string; on: boolean; size: number }) {
+  return (
+    <span style={{ position: "relative", width: size, height: size, display: "block" }}>
+      {on && (
+        <img
+          src={src}
+          alt=""
+          aria-hidden
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", filter: "blur(5px) brightness(1.5) sepia(1) saturate(4) hue-rotate(-14deg)", opacity: 0.75 }}
+        />
+      )}
+      <img
+        src={src}
+        alt=""
+        style={{
+          position: "relative",
+          width: "100%",
+          height: "100%",
+          display: "block",
+          filter: on ? "brightness(1.12) saturate(1.15)" : "brightness(.68) saturate(.7)",
+        }}
+      />
+    </span>
   );
 }
 

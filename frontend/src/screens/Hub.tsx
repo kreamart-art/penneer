@@ -667,7 +667,11 @@ function HistoryCard({ game, meId, vitrine }: { game: GameApi; meId: string; vit
             eindkap
             adem={i * 1.3}
             veeg={i === 0}
-            binnen={{ display: "flex", alignItems: "center", gap: 5, minHeight: 46, padding: "5px 8px 5px 45px" }}
+            // Rechts staat MEER lucht dan links: daar snijdt de hoek van de lijst
+            // een driehoek uit het vlak, en op acht pixels viel het portret van
+            // de tegenstander daar precies overheen. Dan zie je het uiteinde van
+            // de balk niet meer. Links zit het wapen al buiten die driehoek.
+            binnen={{ display: "flex", alignItems: "center", gap: 5, minHeight: 46, padding: "5px 17px 5px 45px" }}
           >
             {/* Het wapen hangt AAN de bovenlijn en begint op het knikpunt van de
                 schuine hoek: los in de rij zwevend leek hij nergens bij te
@@ -713,7 +717,7 @@ function HistoryCard({ game, meId, vitrine }: { game: GameApi; meId: string; vit
                   {rest > 0 && (
                     // Meer tegenstanders dan er passen: de beste staat er, de
                     // teller hangt als een muntje aan diens portret.
-                    <span style={{ position: "absolute", right: -4, bottom: -3, minWidth: 13, height: 13, padding: "0 2px", borderRadius: 7, background: "rgba(10,4,26,.92)", border: `1px solid ${withAlpha(GOUD[2], 0.5)}`, display: "grid", placeItems: "center", fontFamily: font.ui, fontWeight: 700, fontSize: 8, color: GOUD[3] }}>
+                    <span style={{ position: "absolute", right: -3, bottom: -1, minWidth: 13, height: 13, padding: "0 2px", borderRadius: 7, background: "rgba(10,4,26,.92)", border: `1px solid ${withAlpha(GOUD[2], 0.5)}`, display: "grid", placeItems: "center", fontFamily: font.ui, fontWeight: 700, fontSize: 8, color: GOUD[3] }}>
                       +{rest}
                     </span>
                   )}
