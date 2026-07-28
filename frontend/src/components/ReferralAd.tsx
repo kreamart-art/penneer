@@ -414,87 +414,80 @@ function Trede({ t, volgend }: { t: Tier; volgend: boolean }) {
 
 function Pil({ uitgeklapt, teHalen, onTik }: { uitgeklapt: boolean; teHalen: number; onTik: () => void }) {
   const vol = "min(300px, 76vw)";
+  // Even breed als de zeshoekige knopjes rechtsboven, zodat het randje aan de
+  // zijkant net zo groot is als de knoppen waar het naast staat.
+  const kier = 46;
   return (
-    <button
-      onClick={onTik}
-      aria-label="Vrienden uitnodigen"
+    // Twee lagen: deze doet het duwtje, de knop erin doet het schuiven. Een
+    // animatie die `transform` schrijft veegt namelijk de transform van
+    // hetzelfde element weg, dus die twee kunnen niet op een element staan.
+    <div
       className={uitgeklapt ? undefined : "ad-peek"}
-      style={{
-        position: "fixed",
-        // Links en HOOG: ter hoogte van het embleem. Daar staat niets, dus hij
-        // ligt nergens overheen; onderaan zou hij op de sectie of de balk
-        // vallen.
-        left: 0,
-        top: "11.5%",
-        zIndex: 90,
-        // Ingeklapt is dit een kijkgaatje van 72 pixels waarin de ACHTERKANT
-        // van de pil staat: het lege paarse vlak met de tekst. De kist zit aan
-        // de andere kant en komt pas in beeld als je hem opent, en dat is het
-        // punt: eerst een randje dat nieuwsgierig maakt, dan pas de buit.
-        width: uitgeklapt ? vol : 72,
-        overflow: "hidden",
-        transition: "width .34s cubic-bezier(.22,1,.36,1)",
-        background: "transparent",
-        border: "none",
-        padding: 0,
-        cursor: "pointer",
-        lineHeight: 0,
-      }}
+      style={{ position: "fixed", left: 0, top: "11.5%", zIndex: 90, lineHeight: 0 }}
     >
-      {/* De pil schuift BINNEN het venster: ingeklapt staat hij zo ver naar
-          links dat alleen zijn rechterkant te zien is. Zo hoeft het venster
-          alleen breder te worden en glijdt de kist er vanzelf in. */}
-      <span
+      <button
+        onClick={onTik}
+        aria-label="Vrienden uitnodigen"
         style={{
-          position: "relative",
           display: "block",
           width: vol,
-          transform: uitgeklapt ? "translateX(0)" : `translateX(calc(72px - ${vol}))`,
+          // Ingeklapt staat de pil grotendeels BUITEN het scherm en niet in een
+          // venster met `overflow: hidden`. Dat scheelt de harde knip die je
+          // zag zodra hij naar buiten kwam: nu doet de schermrand het werk, en
+          // een schermrand ziet er nooit uit als een snee.
+          transform: uitgeklapt ? "translateX(0)" : `translateX(calc(${kier}px - ${vol}))`,
           transition: "transform .34s cubic-bezier(.22,1,.36,1)",
+          background: "transparent",
+          border: "none",
+          padding: 0,
+          cursor: "pointer",
+          lineHeight: 0,
         }}
       >
-        <img src="/ads/pill.webp" alt="" style={{ width: "100%", display: "block" }} />
-        <span
-          style={{
-            position: "absolute",
-            left: "34%",
-            right: "6%",
-            top: "50%",
-            transform: "translateY(-50%)",
-            fontFamily: font.wide,
-            fontSize: "clamp(11px, 3.2vw, 14px)",
-            letterSpacing: 1,
-            lineHeight: 1.15,
-            color: "#FFEBB8",
-            textShadow: "0 2px 4px rgba(0,0,0,.6)",
-            textAlign: "center",
-          }}
-        >
-          {teHalen > 0 ? "BELONING KLAAR" : "NODIG UIT"}
-        </span>
-        {teHalen > 0 && (
+        <span style={{ position: "relative", display: "block", width: "100%" }}>
+          <img src="/ads/pill.webp" alt="" style={{ width: "100%", display: "block" }} />
           <span
             style={{
               position: "absolute",
-              left: "17%",
-              top: "4%",
-              minWidth: 18,
-              height: 18,
-              padding: "0 5px",
-              borderRadius: 999,
-              background: "linear-gradient(158deg, #FFEBB8, #FFC23D 46%, #B07C17)",
-              boxShadow: "0 0 0 1.4px #4A2E04, 0 2px 5px rgba(0,0,0,.5)",
-              fontFamily: font.display,
-              fontWeight: 800,
-              fontSize: 11,
-              lineHeight: "18px",
-              color: "#2A1802",
+              left: "34%",
+              right: "6%",
+              top: "50%",
+              transform: "translateY(-50%)",
+              fontFamily: font.wide,
+              fontSize: "clamp(11px, 3.2vw, 14px)",
+              letterSpacing: 1,
+              lineHeight: 1.15,
+              color: "#FFEBB8",
+              textShadow: "0 2px 4px rgba(0,0,0,.6)",
+              textAlign: "center",
             }}
           >
-            {teHalen}
+            {teHalen > 0 ? "BELONING KLAAR" : "NODIG UIT"}
           </span>
-        )}
-      </span>
-    </button>
+          {teHalen > 0 && (
+            <span
+              style={{
+                position: "absolute",
+                right: "4%",
+                top: "6%",
+                minWidth: 18,
+                height: 18,
+                padding: "0 5px",
+                borderRadius: 999,
+                background: "linear-gradient(158deg, #FFEBB8, #FFC23D 46%, #B07C17)",
+                boxShadow: "0 0 0 1.4px #4A2E04, 0 2px 5px rgba(0,0,0,.5)",
+                fontFamily: font.display,
+                fontWeight: 800,
+                fontSize: 11,
+                lineHeight: "18px",
+                color: "#2A1802",
+              }}
+            >
+              {teHalen}
+            </span>
+          )}
+        </span>
+      </button>
+    </div>
   );
 }
