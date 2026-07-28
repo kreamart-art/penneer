@@ -364,7 +364,10 @@ export function NeonKader({
   /** Gouden kappen op de twee schuine uiteindes, zoals de pijlen naast "jij
    *  draait deze ronde": geen kader maar hetzelfde principe. Alleen met een
    *  afsnijding, want de kap volgt precies die contour. */
-  eindkap?: boolean;
+  /** Gouden kappen. `true` loopt langs de hele flank, "kort" blijft in de
+   *  hoeken zelf: op een hoog vlak worden die flanken anders twee gouden
+   *  staven, en dan is het geen kap meer maar een rand. */
+  eindkap?: boolean | "kort";
   /** Laat de piek op de bovenrand ademen. Het getal is de fasevertraging in
    *  seconden: geef elke rij een andere, anders pompen ze synchroon en leest
    *  het als een machine in plaats van als licht. */
@@ -579,8 +582,15 @@ export function NeonKader({
         // Een halve lijndikte naar binnen: een pad OP de rand steekt met zijn
         // halve dikte buiten de doos, en dat randje kwam boven het wapen uit.
         const i = 0.5;
-        const links = `M ${c + arm} ${i} L ${c} ${i} L ${i} ${c} L ${i} ${h - c} L ${c} ${h - i} L ${c + arm} ${h - i}`;
-        const rechts = `M ${w - c - arm} ${i} L ${w - c} ${i} L ${w - i} ${c} L ${w - i} ${h - c} L ${w - c} ${h - i} L ${w - c - arm} ${h - i}`;
+        const kort = eindkap === "kort";
+        // Kort: elke hoek is zijn eigen streepje. Doorlopend: een staander van
+        // hoek tot hoek met een armpje aan weerskanten.
+        const links = kort
+          ? `M ${c + arm} ${i} L ${c} ${i} L ${i} ${c} L ${i} ${c + arm} M ${i} ${h - c - arm} L ${i} ${h - c} L ${c} ${h - i} L ${c + arm} ${h - i}`
+          : `M ${c + arm} ${i} L ${c} ${i} L ${i} ${c} L ${i} ${h - c} L ${c} ${h - i} L ${c + arm} ${h - i}`;
+        const rechts = kort
+          ? `M ${w - c - arm} ${i} L ${w - c} ${i} L ${w - i} ${c} L ${w - i} ${c + arm} M ${w - i} ${h - c - arm} L ${w - i} ${h - c} L ${w - c} ${h - i} L ${w - c - arm} ${h - i}`
+          : `M ${w - c - arm} ${i} L ${w - c} ${i} L ${w - i} ${c} L ${w - i} ${h - c} L ${w - c} ${h - i} L ${w - c - arm} ${h - i}`;
         const kap = (extra?: CSSProperties) => (
           <svg aria-hidden width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ position: "absolute", inset: 0, overflow: "visible", pointerEvents: "none", ...extra }}>
             <defs>
@@ -593,9 +603,10 @@ export function NeonKader({
             </defs>
             <path d={links} fill="none" stroke={`url(#${kapId})`} strokeWidth={0.9} strokeLinecap="round" strokeLinejoin="round" />
             <path d={rechts} fill="none" stroke={`url(#${kapId})`} strokeWidth={0.9} strokeLinecap="round" strokeLinejoin="round" />
-            {/* de kern: alleen de staander vangt het licht, niet de armen */}
-            <path d={`M ${i} ${c + 3} L ${i} ${h - c - 3}`} fill="none" stroke="#FFF6DF" strokeWidth={0.5} opacity={0.8} strokeLinecap="round" />
-            <path d={`M ${w - i} ${c + 3} L ${w - i} ${h - c - 3}`} fill="none" stroke="#FFF6DF" strokeWidth={0.5} opacity={0.8} strokeLinecap="round" />
+            {/* de kern: alleen de staander vangt het licht, niet de armen. Bij
+                de korte kap is er geen staander, dus daar valt hij weg. */}
+            {!kort && <path d={`M ${i} ${c + 3} L ${i} ${h - c - 3}`} fill="none" stroke="#FFF6DF" strokeWidth={0.5} opacity={0.8} strokeLinecap="round" />}
+            {!kort && <path d={`M ${w - i} ${c + 3} L ${w - i} ${h - c - 3}`} fill="none" stroke="#FFF6DF" strokeWidth={0.5} opacity={0.8} strokeLinecap="round" />}
           </svg>
         );
         return (

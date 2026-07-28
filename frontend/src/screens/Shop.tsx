@@ -124,7 +124,7 @@ function GlasVak({ groen, children }: { groen?: boolean; children: React.ReactNo
       dik={0.3}
       sterkte={groen ? 0.6 : 0.3}
       vulling="geen"
-      eindkap
+      eindkap="kort"
       lijn={groen ? KADER_LIJN_GROEN : undefined}
       gloed={groen ? `0 0 10px ${withAlpha(colors.green, 0.25)}` : undefined}
       binnen={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5, padding: "8px 7px 9px", height: "100%", boxSizing: "border-box" }}
