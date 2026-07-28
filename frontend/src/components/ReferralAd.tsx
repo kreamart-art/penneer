@@ -228,9 +228,9 @@ function Popup({
             className="pressable pop-in"
             style={{
               position: "absolute",
-              right: "-3%",
-              top: "-3%",
-              width: "11%",
+              right: "7.5%",
+              top: "5.5%",
+              width: "8%",
               zIndex: 2,
               background: "transparent",
               border: "none",
@@ -254,7 +254,7 @@ function Popup({
                 style={{
                   margin: 0,
                   fontFamily: font.wide,
-                  fontSize: "clamp(26px, 9vw, 40px)",
+                  fontSize: "clamp(30px, 10.5vw, 46px)",
                   lineHeight: 0.94,
                   letterSpacing: 0.5,
                   backgroundImage: "linear-gradient(168deg, #FFEBB8 0%, #FFC23D 46%, #E39A12 100%)",
