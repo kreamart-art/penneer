@@ -270,30 +270,17 @@ const KADER_GLANS =
 
 // De lichte KERN in het midden van de lijn, zoals de energielijn boven "jij
 // draait deze ronde" op het draaischerm. Daar is de lijn overal donker en licht
-// alleen het midden op, met een smal bijna-wit streepje bovenop precies die
-// kern. Dat leest als een gloeiende draad in plaats van als een getekend randje.
+// alleen het midden op. Dat leest als een gloeiende draad in plaats van als een
+// getekend randje.
 //
-// Twee lagen, en dat is geen omslachtigheid: de kern is gekleurd en breed, het
-// streepje is bijna wit en smal. In een verloop kan dat niet, want lagen delen
-// daar hun begrenzing.
-const kern = (half: number, sterk: number) =>
-  [
-    `linear-gradient(90deg, transparent ${50 - half}%,`,
-    `rgba(138,80,240,${sterk * 0.5}) ${50 - half * 0.45}%,`,
-    `rgba(196,158,255,${sterk}) 50%,`,
-    `rgba(138,80,240,${sterk * 0.5}) ${50 + half * 0.45}%,`,
-    `transparent ${50 + half}%)`,
-  ].join(" ");
-// Het streepje bovenop is KORTER dan de kern eronder: alleen de top van de
-// welving vangt het licht. Even lang zou het een vlak worden in plaats van een
-// hoogsel.
-const glansKern = (half: number, sterk: number) =>
-  `linear-gradient(90deg, transparent ${50 - half}%, rgba(231,216,255,${sterk}) 50%, transparent ${50 + half}%)`;
-// De kern staat HOGER dan de lijn eronder, en dat is de hele opzet: de lijn is
-// er bijna niet en het glinsterpunt in het midden is wat je ziet. Andersom, een
-// egale lijn met een vleugje midden erop, is precies wat het niet moet zijn.
-const KADER_KERN = kern(26, 0.62);
-const KADER_KERN_GLANS = glansKern(13, 0.55);
+// Het profiel is een PIEK en geen heuvel: de stops staan steil op elkaar naar
+// het midden toe en op het hoogste punt zit een speldenknop bijna-wit (de
+// radiaal). Een gelijkmatig verloop leest als een vage lichte zone; dit leest
+// als een punt waar het licht ZIT.
+const KERN_STREEP = [
+  "radial-gradient(4px 1.6px at 50% 50%, rgba(255,255,255,.95) 0%, rgba(255,246,223,.55) 45%, transparent 72%)",
+  "linear-gradient(90deg, transparent 26%, rgba(138,80,240,.28) 38%, rgba(196,158,255,.5) 47%, rgba(255,250,238,.85) 50%, rgba(196,158,255,.5) 53%, rgba(138,80,240,.28) 62%, transparent 74%)",
+].join(", ");
 
 /** De schuine hoek van de rol-skin, maar dan in procenten EN pixels door
  *  elkaar, zodat hij meeschaalt met de doos. `polygon()` accepteert lengtes, dus
@@ -512,13 +499,19 @@ export function NeonKader({
       </span>
       {/* De KERN, buiten het textuurmasker. Dat masker dooft juist het midden van
           de lange randen, en dat is precies waar deze hoort te zitten: eronder
-          zou hij weggepoetst worden door de laag die hem moet dragen. */}
-      {hoek && (
-        <>
-          <span aria-hidden style={{ position: "absolute", inset: 0, clipPath: ringPad(Math.max(0.8, dik)), backgroundImage: KADER_KERN, pointerEvents: "none" }} />
-          <span aria-hidden style={{ position: "absolute", inset: 0, clipPath: ringPad(Math.max(0.8, dik)), backgroundImage: KADER_KERN_GLANS, pointerEvents: "none" }} />
-        </>
-      )}
+          zou hij weggepoetst worden door de laag die hem moet dragen.
+
+          Twee LOSSE strepen, boven en onder, in plaats van een gradient door het
+          ringmasker: op een wand van 0,8 pixel rondt de browser zo'n masker per
+          rand net anders af en dan gloeit de ene rand wel en de andere amper.
+          Zo staan ze er allebei gegarandeerd, met dezelfde piek. */}
+      {hoek &&
+        [{ top: 0 }, { bottom: 0 }].map((kant, i) => (
+          <span key={i} aria-hidden style={{ position: "absolute", left: hoek + 2, right: hoek + 2, height: 1.2, ...kant, backgroundImage: KERN_STREEP, pointerEvents: "none" }}>
+            {/* de gloed: dezelfde streep, iets hoger en vervaagd */}
+            <span aria-hidden style={{ position: "absolute", left: 0, right: 0, top: -1, height: 3, backgroundImage: KERN_STREEP, filter: "blur(1.6px)", opacity: 0.55 }} />
+          </span>
+        ))}
       {/* De gouden eindkappen: de contour van het schuine uiteinde als los
           sieraad, zoals de pijlen naast "jij draait deze ronde". Zelfde
           principe als daar en als de lijn zelf: een vervaagde kopie eronder als
