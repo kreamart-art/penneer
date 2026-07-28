@@ -450,8 +450,11 @@ function CollapsibleCard({
   const shown = open ? items : items.slice(0, voorproef);
 
   if (vitrine) {
+    // Een lijst OM de rijen heen: de kop hoort erbij, dus die staat er ook in.
+    // De binnenste lijsten krijgen een kleinere ronding, anders botsen de twee
+    // hoeken op elkaar in plaats van in elkaar te vallen.
     return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
+      <NeonKader radius={19} binnen={{ padding: "11px 11px 12px", display: "flex", flexDirection: "column", gap: 10 }}>
         <SectieKop
           label={title}
           actie={hidden > 0 ? (open ? t("showLess") : t("showAll")) : undefined}
@@ -460,9 +463,9 @@ function CollapsibleCard({
         {items.length === 0 ? (
           <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13, color: colors.faint }}>{emptyText}</p>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>{shown}</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>{shown}</div>
         )}
-      </div>
+      </NeonKader>
     );
   }
 
@@ -593,7 +596,8 @@ function HistoryCard({ game, meId, vitrine }: { game: GameApi; meId: string; vit
         return (
           <NeonKader
             key={`${g.finished_at}-${i}`}
-            binnen={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 10px" }}
+            radius={13}
+            binnen={{ display: "flex", alignItems: "center", gap: 9, padding: "7px 9px" }}
           >
             <PlekWapen plek={g.place} />
             <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>

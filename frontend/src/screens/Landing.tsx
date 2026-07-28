@@ -627,7 +627,10 @@ function FriendsSheet({
         {skin && (
           <img aria-hidden alt="" src="/tiles/frame-popup.webp" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", zIndex: -1, pointerEvents: "none", filter: "drop-shadow(0 18px 40px rgba(0,0,0,.55))" }} />
         )}
-        <button onClick={onClose} aria-label={t("back")} style={{ position: "absolute", top: 12, right: 12, background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 4 }}>
+        {/* De lijst-art heeft zijn eigen hoekbeslag, dus het kruis moet net wat
+            verder naar binnen dan de doosrand om in de hoek te vallen in plaats
+            van erop. */}
+        <button onClick={onClose} aria-label={t("back")} style={{ position: "absolute", top: 12, right: 19, background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 4 }}>
           <CloseIcon size={26} />
         </button>
         <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 19, color: colors.gold }}>{t("friendsSheetTitle")}</span>

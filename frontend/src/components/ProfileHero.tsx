@@ -227,16 +227,41 @@ const KADER_LIJN = [
   "linear-gradient(180deg, #C09AFF 0%, #9159E8 30%, #6A38BE 66%, #3E1E78 100%)",
 ].join(", ");
 
+// De glans: bijna wit, en ALLEEN in het midden van de boven- en onderrand. Daar
+// vangt de lijn het licht; naar de uiteinden toe hoort er niets te zitten.
+const KADER_GLANS =
+  "linear-gradient(90deg, transparent 26%, rgba(255,250,235,.55) 50%, transparent 74%)";
+
+/** De gemeenschappelijke opmaak van een ring-laag: een doos met opvulling,
+ *  waarvan het midden met een masker wordt weggehaald. Wat overblijft is de
+ *  rand. */
+const ringLaag = (r: number, dik: number): CSSProperties => ({
+  position: "absolute",
+  inset: 0,
+  borderRadius: r,
+  padding: dik,
+  WebkitMask: "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
+  WebkitMaskComposite: "xor",
+  mask: "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
+  maskComposite: "exclude",
+  pointerEvents: "none",
+});
+
 export function NeonKader({
   children,
   style,
   binnen,
+  radius = KADER_R,
 }: {
   children: ReactNode;
   style?: CSSProperties;
   /** Opvulling binnen de lijst. */
   binnen?: CSSProperties;
+  /** De hoekronding. Een lijst OM andere lijsten krijgt er een paar bij, zodat
+   *  de binnenste er netjes in valt in plaats van ertegenaan te botsen. */
+  radius?: number;
 }) {
+  const KADER_R = radius;
   return (
     <div style={{ position: "relative", ...style }}>
       {/* 1. buitengloed */}
@@ -285,27 +310,22 @@ export function NeonKader({
         />
         {children}
       </div>
-      {/* 4. de lijn, als ring.
-          Twee bekende manieren werken hier NIET, allebei geprobeerd: een
-          verlooplaag eronder die er net onderuit steekt schijnt door het
-          doorschijnende paneel heen, en `background-clip: border-box` betekent
-          "over de hele doos" en niet "alleen de rand". Alleen een masker dat
-          het midden eruit haalt laat het vlak echt vrij. */}
-      <span
-        aria-hidden
-        style={{
-          position: "absolute",
-          inset: 0,
-          borderRadius: KADER_R,
-          padding: 1,
-          backgroundImage: KADER_LIJN,
-          WebkitMask: "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
-          WebkitMaskComposite: "xor",
-          mask: "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
-          maskComposite: "exclude",
-          pointerEvents: "none",
-        }}
-      />
+      {/* 4. de lijn: DRIE ringen op elkaar, dezelfde stapeling als de banner
+          "Jij draait deze ronde".
+            a. een kleine bloom eronder. Klein, want een brede gloed maakt de
+               lijn juist vaag in plaats van verlicht.
+            b. de lijn zelf, met het verloop.
+            c. een bijna-witte glans BOVENOP, maar alleen in het midden. Op de
+               donkere flanken mengt bijna-wit tot grijs, en op een lijn van een
+               pixel is dat randje bijna de halve lijn; dan wordt de hele lijn
+               grijs. Glans hoort alleen te zitten waar de lijn oplicht.
+          Alle drie als ring geknipt met hetzelfde masker: een verlooplaag
+          eronder schijnt door het doorschijnende paneel heen, en
+          `background-clip: border-box` betekent "over de hele doos" en niet
+          "alleen de rand". */}
+      <span aria-hidden style={{ ...ringLaag(KADER_R, 2.5), backgroundImage: KADER_LIJN, filter: "blur(3px)", opacity: 0.45 }} />
+      <span aria-hidden style={{ ...ringLaag(KADER_R, 1), backgroundImage: KADER_LIJN }} />
+      <span aria-hidden style={{ ...ringLaag(KADER_R, 1), backgroundImage: KADER_GLANS }} />
     </div>
   );
 }
