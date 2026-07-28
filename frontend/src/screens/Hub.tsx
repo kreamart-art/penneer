@@ -2487,20 +2487,22 @@ function FriendsTab({ game, onChallenge }: { game: GameApi; onChallenge: (userId
     setViewing(id);
   };
 
+  // Alle vriendenlijsten lopen hier langs: verzoeken, vrienden en zoekresultaten.
+  // Dus de glazen lijst hoeft maar op EEN plek te staan.
   const row = (u: Friend | (typeof results)[number], right: React.ReactNode, clickable = false) => (
-    <div key={u.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0" }}>
+    <GlasRij key={u.id}>
       <button
         onClick={clickable ? () => openProfile(u.id) : undefined}
         style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0, background: "transparent", border: "none", padding: 0, cursor: clickable ? "pointer" : "default", textAlign: "left" }}
       >
         <div style={{ position: "relative", flexShrink: 0 }}>
-          <Avatar name={u.name} color={u.color} size={36} userId={u.id} hasAvatar={u.has_avatar} avatarVer={u.avatar_ver} />
+          <Avatar name={u.name} color={u.color} size={32} userId={u.id} hasAvatar={u.has_avatar} avatarVer={u.avatar_ver} />
           <span style={{ position: "absolute", bottom: -2, right: -2, width: 10, height: 10, borderRadius: "50%", background: u.online ? colors.green : colors.faint, border: `2px solid ${colors.bg1}` }} />
         </div>
         <span style={{ flex: 1, fontFamily: font.ui, fontWeight: 600, fontSize: 14.5, color: colors.ink, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.name}</span>
       </button>
       {right}
-    </div>
+    </GlasRij>
   );
 
   const smallBtn = (label: React.ReactNode, onClick: () => void, tone: "gold" | "ghost" | "red" = "ghost") => (
@@ -2530,7 +2532,7 @@ function FriendsTab({ game, onChallenge }: { game: GameApi; onChallenge: (userId
       </Card>
 
       {pendingIn.length > 0 && (
-        <Card style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        <Card style={{ display: "flex", flexDirection: "column", gap: 3, padding: "13px 7px 14px" }}>
           {pendingIn.map((f) =>
             row(f, (
               <div style={{ display: "flex", gap: 6 }}>
@@ -2542,7 +2544,7 @@ function FriendsTab({ game, onChallenge }: { game: GameApi; onChallenge: (userId
         </Card>
       )}
 
-      <Card style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      <Card style={{ display: "flex", flexDirection: "column", gap: 3, padding: "13px 7px 14px" }}>
         {accepted.length === 0 && pendingOut.length === 0 ? (
           <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13, color: colors.faint, lineHeight: 1.5 }}>{t("noFriends")}</p>
         ) : (
@@ -2709,7 +2711,7 @@ function InboxTab({ game }: { game: GameApi }) {
   return (
     <>
     {threads.length > 0 && (
-      <Card style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      <Card style={{ display: "flex", flexDirection: "column", gap: 3, padding: "13px 7px 14px" }}>
         <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint, marginBottom: 4 }}>
           {t("dmTitle")}
         </span>
@@ -2769,6 +2771,37 @@ function InboxTab({ game }: { game: GameApi }) {
 
 // ---- Ranglijst ------------------------------------------------------------------
 
+/** De glazen rij: dezelfde lijst als bij de laatste potjes. Eén plek, zodat de
+ *  historie, de ranglijst en de vriendenlijst er gegarandeerd hetzelfde uitzien
+ *  in plaats van "ongeveer". */
+export function GlasRij({ wapen, children, binnen }: { wapen?: React.ReactNode; children: React.ReactNode; binnen?: React.CSSProperties }) {
+  return (
+    <NeonKader
+      hoek={11}
+      dik={0.3}
+      vulling="geen"
+      sterkte={0.3}
+      eindkap
+      binnen={{
+        display: "flex",
+        alignItems: "center",
+        gap: 9,
+        minHeight: 44,
+        // Rechts meer lucht dan links: daar snijdt de hoek van de lijst een
+        // driehoek uit het vlak, en een portret valt daar zo overheen.
+        padding: wapen ? "5px 17px 5px 45px" : "5px 17px 5px 13px",
+        ...binnen,
+      }}
+    >
+      {/* Het wapen hangt AAN de bovenlijn en begint op het knikpunt van de
+          schuine hoek, net als bij de laatste potjes. Zet je hem gewoon in de
+          rij, dan zweeft hij in het midden en hoort hij nergens bij. */}
+      {wapen && <span style={{ position: "absolute", left: 11, top: 0, display: "flex" }}>{wapen}</span>}
+      {children}
+    </NeonKader>
+  );
+}
+
 function LeaderboardTab({ game }: { game: GameApi }) {
   const { t } = useT();
   const lb = game.state.leaderboard;
@@ -2791,18 +2824,28 @@ function LeaderboardTab({ game }: { game: GameApi }) {
           </button>
         ))}
       </div>
-      <Card style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      <Card style={{ display: "flex", flexDirection: "column", gap: 3, padding: "13px 7px 14px" }}>
         {!lb || lb.rows.length === 0 ? (
-          <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13, color: colors.faint }}>{t("lbEmpty")}</p>
+          <p style={{ margin: 0, paddingInline: 6, fontFamily: font.ui, fontSize: 13, color: colors.faint }}>{t("lbEmpty")}</p>
         ) : (
           lb.rows.map((r, i) => (
-            <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 0" }}>
-              <span style={{ width: 24, textAlign: "center", fontFamily: font.display, fontWeight: 700, fontSize: 15, color: i === 0 ? colors.gold : colors.faint }}>{i + 1}</span>
-              <Avatar name={r.name} color={r.color} size={32} userId={r.id} hasAvatar={r.has_avatar} avatarVer={r.avatar_ver} />
+            /* De eerste drie krijgen hun wimpel; daaronder is het een gewoon
+               nummer, want een podium van twintig is geen podium. */
+            <GlasRij
+              key={r.id}
+              wapen={
+                i < 3 ? (
+                  <PlekWapen plek={i + 1} maat={26} />
+                ) : (
+                  <span style={{ width: 26, height: 34, display: "grid", placeItems: "center", paddingBottom: 6, fontFamily: font.display, fontWeight: 700, fontSize: 15, color: colors.faint }}>{i + 1}</span>
+                )
+              }
+            >
+              <Avatar name={r.name} color={r.color} size={30} userId={r.id} hasAvatar={r.has_avatar} avatarVer={r.avatar_ver} />
               <span style={{ flex: 1, fontFamily: font.ui, fontWeight: 600, fontSize: 14, color: colors.ink, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</span>
               <span style={{ fontFamily: font.ui, fontSize: 11.5, color: colors.faint }}>{r.wins}W</span>
-              <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16, color: i === 0 ? colors.gold : colors.ink, width: 48, textAlign: "right" }}>{r.points}</span>
-            </div>
+              <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 16, color: i === 0 ? colors.gold : colors.ink, minWidth: 44, textAlign: "right" }}>{r.points}</span>
+            </GlasRij>
           ))
         )}
       </Card>

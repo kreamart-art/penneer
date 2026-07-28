@@ -14,6 +14,7 @@ import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { makeDailyCard, shareOrDownload } from "../util/shareCard";
 import { colors, font, radius, withAlpha } from "../theme/tokens";
+import { neonSkin } from "../theme/neon";
 
 const MAX_SCORE = 50;
 const LOCAL_KEY = "penneer.dailyResult"; // {day, payload} so a reload can re-open
@@ -551,14 +552,17 @@ function PartTile({
   return (
     <button
       onClick={onClick}
-      className="pressable"
       style={{
         display: "flex", alignItems: "center", gap: 13, width: "100%", textAlign: "left",
         padding: "15px 14px", borderRadius: radius.card, cursor: "pointer",
         background: "linear-gradient(180deg, rgba(42,28,72,.85), rgba(22,13,48,.85))",
-        border: `1px solid ${done ? withAlpha(colors.green, 0.45) : withAlpha(colors.violet, 0.4)}`,
-        boxShadow: `0 0 14px ${withAlpha(colors.violet, 0.18)}`,
+        border: "none",
+        // Dezelfde lijst als overal, maar in het GROEN zodra je dit deel gedaan
+        // hebt: het is dan geen uitnodiging meer maar een afvinkje, en dat mag je
+        // aan de rand zien zonder de tekst te lezen.
+        ...(done ? neonSkin(colors.green) : null),
       }}
+      className="pressable panel-neon"
     >
       <span style={{ display: "grid", placeItems: "center", width: 44, height: 44, flexShrink: 0, borderRadius: 14, color: colors.gold, background: withAlpha(colors.gold, 0.12), border: `1px solid ${withAlpha(colors.gold, 0.35)}` }}>
         {icon}

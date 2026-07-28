@@ -572,32 +572,97 @@ a:active .hex-aan {
    Safari niets en zie je een gevuld blok in plaats van een rand. */
 .panel-neon { position: relative; }
 
+/* De lijn met de FADE er al in gebakken.
+   Licht blijft hangen in de hoeken: op een gesmede lijst vangt het metaal het
+   licht waar het een knik maakt, en op de lange rechte stukken is er niets om
+   het te vangen. Dus vol bij de uiteinden en gedoofd in het midden.
+   Dat gebeurt hier in de DEKKING van het verloop zelf en niet met een masker.
+   Een masker zou een derde laag over de ringtruc heen vragen, en die ringtruc
+   gebruikt `mask-composite` al; stapelen daarop gedraagt zich per browser net
+   anders en dan verdwijnt de lijst of vult hij juist het vlak.
+   Horizontaal en niet diagonaal: op een breed en laag vlak zet een diagonaal
+   verloop de dofste plek in een HOEK, en dat is precies waar hij het felst hoort
+   te zijn. De korte zijkanten pakken de waarde op 0 en 100 procent en blijven
+   dus vol. */
+:root {
+  /* De reeks EINDIGT op de kleur waarmee hij begint, anders zie je bij elke
+     ronde van de animatie hieronder een sprong. Twee felle zones (goud en roze)
+     met gedoofde stukken ertussen: die zones lopen straks rond het kader. */
+  --ng-fade: linear-gradient(
+    90deg,
+    rgba(255, 207, 74, 0.8) 0%,
+    rgba(255, 179, 71, 0.52) 8%,
+    rgba(200, 139, 255, 0.18) 22%,
+    rgba(154, 75, 240, 0.12) 34%,
+    rgba(255, 111, 188, 0.2) 46%,
+    rgba(224, 64, 154, 0.62) 56%,
+    rgba(224, 64, 154, 0.8) 62%,
+    rgba(255, 111, 188, 0.2) 76%,
+    rgba(200, 139, 255, 0.14) 88%,
+    rgba(255, 207, 74, 0.8) 100%
+  );
+}
+
+/* De kleuren laten RONDLOPEN. De verlooplaag is twee keer zo breed als de doos
+   en schuift een hele doos op; alleen `background-position` beweegt, dus de
+   browser hoeft niets opnieuw te tekenen.
+   Alleen de LIJN schuift mee. De warme hoek blijft staan waar hij staat, want
+   het licht komt van linksboven en dat verandert niet omdat een kleur verschuift;
+   vandaar een eigen maat en positie per laag. */
+@keyframes panel-loop {
+  from {
+    background-position: 0% 0%, 0% 50%;
+  }
+  to {
+    background-position: 0% 0%, 200% 50%;
+  }
+}
+
+/* De LIJN. Opgebouwd volgens de skill neon-kader: een haarlijn met een verloop
+   dat van goud via violet naar roze wandelt, plus een warme gloed in de
+   linkerbovenhoek waar het licht vandaan komt.
+
+   Diagonaal en niet van boven naar beneden: op een breed en laag vlak zie je van
+   een verticaal verloop nauwelijks iets, want de zijkanten zijn te kort om er wat
+   van te tonen.
+
+   Dunner dan je denkt: 0,6 pixel is geen fout. Een scherm van drie keer tekent er
+   nog bijna twee echte pixels van, en op een gewoon scherm wordt het een vervaagd
+   streepje. Precies wat je wilt bij een lijst die er eerder moet ZIJN dan
+   opvallen. De kleur komt van buiten via een variabele, zodat dezelfde ring ook
+   in goud, groen of rood werkt zonder een klasse per kleur. */
 .panel-neon::before {
   content: "";
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  padding: 1.5px;
-  /* De kleur komt van buiten via een variabele, met violet als terugval. Zo
-     werkt dezelfde ring in goud, groen, rood of grijs, zonder een klasse per
-     kleur. Zie theme/neon.ts voor het afleiden van de reeks. */
-  background: var(--ng-ring, linear-gradient(170deg, #c46bff 0%, #8a45f0 20%, #5a2abf 52%, #2e1263 100%));
+  padding: var(--ng-w, 0.6px);
+  background:
+    var(--ng-hoek, radial-gradient(46% 130% at 2% 3%, rgba(255, 214, 110, 0.34) 0%, transparent 50%)),
+    var(--ng-ring, var(--ng-fade));
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
-  opacity: 0.6;
+  opacity: var(--ng-op, 0.42);
+  background-size: auto, 200% 100%;
+  animation: panel-loop var(--ng-loop, 15s) linear infinite;
   pointer-events: none;
 }
 
-/* De belichting van bovenaf. Heel laag van dekking: hij mag de inhoud tinten,
-   niet bedekken. */
+/* Twee dingen in één laag, want er zijn maar twee pseudo-elementen: de
+   belichting van bovenaf over het hele vlak, en de BINNENGLANS als kort wit
+   streepje net binnen de bovenrand. Dat streepje is kort met opzet; loopt hij
+   over de halve rand, dan leest het niet als licht maar als een gekleurd vlak.
+   Beide heel laag van dekking: ze mogen de inhoud tinten, niet bedekken. */
 .panel-neon::after {
   content: "";
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: var(--ng-lit, radial-gradient(115% 65% at 50% -12%, rgba(169, 107, 255, 0.13), transparent 62%));
+  background:
+    linear-gradient(90deg, transparent 8%, rgba(255, 255, 255, 0.16) 50%, transparent 92%) no-repeat top / 100% 1px,
+    var(--ng-lit, radial-gradient(115% 65% at 50% -12%, rgba(169, 107, 255, 0.13), transparent 62%));
   pointer-events: none;
 }
 
@@ -669,4 +734,5 @@ a:active .hex-aan {
 
 @media (prefers-reduced-motion: reduce) {
   .kader-loop, .kern-adem, .kern-veeg { animation: none; }
+  .panel-neon::before { animation: none; }
 }

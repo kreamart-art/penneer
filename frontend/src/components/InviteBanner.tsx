@@ -8,6 +8,7 @@ import { Avatar } from "./Avatar";
 import type { InboxItem } from "../net/socket";
 import { useT } from "../i18n/i18n";
 import { colors, font, withAlpha } from "../theme/tokens";
+import { neonSkin } from "../theme/neon";
 
 export function InviteBanner({
   invite,
@@ -53,6 +54,7 @@ export function InviteBanner({
       }}
     >
       <div
+        className="panel-neon"
         style={{
           pointerEvents: "auto",
           width: "100%",
@@ -63,7 +65,8 @@ export function InviteBanner({
           padding: "9px 10px 9px 12px",
           borderRadius: 16,
           background: "linear-gradient(180deg, #241738, #180F30)",
-          border: `1px solid ${withAlpha(colors.gold, 0.5)}`,
+          border: "none",
+          ...neonSkin(colors.gold),
           boxShadow: `0 14px 40px rgba(0,0,0,.55), 0 0 22px ${withAlpha(colors.gold, 0.18)}`,
         }}
       >

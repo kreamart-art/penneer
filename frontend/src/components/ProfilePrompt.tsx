@@ -7,6 +7,7 @@ import { Button } from "./Button";
 import type { GameApi } from "../net/socket";
 import { useT } from "../i18n/i18n";
 import { colors, font, radius, withAlpha } from "../theme/tokens";
+import { neonSkin } from "../theme/neon";
 
 const SEEN_KEY = "penneer.profilePromptSeen";
 
@@ -70,6 +71,7 @@ export function ProfilePrompt({ game, onClose }: { game: GameApi; onClose: () =>
       }}
     >
       <div
+        className="panel-neon"
         style={{
           width: "100%",
           maxWidth: 380,
@@ -80,7 +82,8 @@ export function ProfilePrompt({ game, onClose }: { game: GameApi; onClose: () =>
           padding: "26px 22px 22px",
           borderRadius: 22,
           background: "linear-gradient(180deg, #241738, #160D30)",
-          border: `1px solid ${withAlpha(colors.gold, 0.4)}`,
+          border: "none",
+          ...neonSkin(colors.gold),
           boxShadow: "0 24px 70px rgba(0,0,0,.6)",
           textAlign: "center",
         }}

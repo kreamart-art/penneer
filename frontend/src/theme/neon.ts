@@ -95,8 +95,14 @@ export function lineGradient(accent: string): string {
  *  aansturen. Via een variabele wel. */
 export function neonSkin(accent: string, inset = false): React.CSSProperties {
   const r = rampFrom(accent);
+  const c = hexToHsl(accent);
   return {
     ["--ng-ring" as string]: ringGradient(r, inset),
     ["--ng-lit" as string]: litGradient(accent),
+    // Een paneel met een EIGEN kleur zet ook de warme hoek en de gloed om, want
+    // anders gloeit er iets anders dan er staat: een rode winnaarskaart met een
+    // violette gloed eromheen leest als twee dingen over elkaar.
+    ["--ng-hoek" as string]: `radial-gradient(52% 150% at 2% 4%, ${css({ ...c, l: clamp(c.l * 1.25, 0.45, 0.8) })} 0%, transparent 56%)`,
+    ["--ng-gloed" as string]: `0 0 10px hsl(${c.h.toFixed(1)} ${(c.s * 100).toFixed(1)}% ${(clamp(c.l, 0.4, 0.65) * 100).toFixed(1)}% / .22)`,
   } as React.CSSProperties;
 }

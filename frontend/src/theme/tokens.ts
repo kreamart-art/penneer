@@ -45,12 +45,21 @@ export const font = {
 
 // Reusable surface for translucent panels / cards.
 export const panelStyle: React.CSSProperties = {
-  background: colors.panel,
+  // DOORZICHTIG: de achtergrond loopt er helemaal doorheen en de lijst doet het
+  // werk. Boven de veertig procent dekking is het geen lijst meer maar een
+  // kaart, en dan verdwijnt het decor waar het spel op staat.
+  //
+  // Geen `backdrop-filter` meer: vervagen zonder vulling geeft geen glas maar
+  // MIST, een vlek zonder vorm. Wat een paneel zijn plek geeft is de lijn plus
+  // de gloed eromheen, niet een waas erachter.
+  background: "transparent",
   // Geen `border`: de rand van een paneel is de verloopring uit `.panel-neon`.
   borderRadius: 18,
-  backdropFilter: "blur(8px)",
-  WebkitBackdropFilter: "blur(8px)",
-  boxShadow: "0 18px 50px rgba(0,0,0,.35)",
+  // De buitengloed hoort bij de lijst en volgt dus dezelfde variabele: strak om
+  // de vorm, met daaronder een gewone donkere schaduw zodat het paneel ergens op
+  // ligt. Groter maken is de meest gemaakte fout: een brede gloed maakt de lijn
+  // niet verlicht maar wazig.
+  boxShadow: "var(--ng-gloed, 0 0 10px rgba(139,83,255,.20)), 0 18px 50px rgba(0,0,0,.35)",
 };
 
 export const radius = {
