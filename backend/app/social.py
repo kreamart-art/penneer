@@ -200,6 +200,7 @@ class AccountManager:
                 ],
                 "avatar_frame": user.get("avatar_frame"),
                 "reel_skin": user.get("reel_skin"),
+                "shield": user.get("shield"),
                 "emote_packs": sorted(self.db.emote_packs_of(user_id)),
                 "frame_rewards": [
                     {"frame": fid, "level": lvl, "name": key,
@@ -262,6 +263,7 @@ class AccountManager:
             "set_lenient": self.set_lenient,
             "set_buzzer_skin": self.set_buzzer_skin,
             "set_reel_skin": self.set_reel_skin,
+            "set_shield": self.set_shield,
             "set_avatar_frame": self.set_avatar_frame,
             "claim_buzzer_reward": self.claim_buzzer_reward,
             "claim_reward": self.claim_reward,
@@ -818,6 +820,14 @@ class AccountManager:
         skin = skin if isinstance(skin, str) and skin else None
         user = self.db.get_user(uid)
         self.db.set_reel_skin(uid, skin, self._allowed_reels(user))
+        await self._send(ws, await self._account_payload(ws, uid))
+
+    async def set_shield(self, ws: Any, data: dict) -> None:
+        uid = self.user_of(ws)
+        if not uid:
+            return
+        kleur = data.get("shield")
+        self.db.set_shield(uid, kleur if isinstance(kleur, str) and kleur else None)
         await self._send(ws, await self._account_payload(ws, uid))
 
     async def set_avatar_frame(self, ws: Any, data: dict) -> None:

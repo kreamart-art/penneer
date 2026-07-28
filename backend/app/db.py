@@ -600,6 +600,10 @@ class Database:
         if "reel_skin" not in cols:
             self._conn.execute("ALTER TABLE users ADD COLUMN reel_skin TEXT")
             self._conn.commit()
+        # Het schild onder je portret op het profiel (NULL = het paarse).
+        if "shield" not in cols:
+            self._conn.execute("ALTER TABLE users ADD COLUMN shield TEXT")
+            self._conn.commit()
         # Emotes in DMs (room chat keeps its message dicts in memory).
         dcols2 = {r["name"] for r in self._conn.execute("PRAGMA table_info(dms)").fetchall()}
         if dcols2 and "emote" not in dcols2:
@@ -708,7 +712,7 @@ class Database:
         with self._lock:
             rows = self._q(
                 "SELECT id, name, email, color, avatar_ver, avatar IS NOT NULL AS has_avatar, "
-                "avatar_preset, ai_unlocked, premium_avatars, buzzer_skins, buzzer_skin, avatar_frame, reel_skin, title, lenient_spelling, coins, coins_level, coins_seen_level, rewards_seeded, created_at "
+                "avatar_preset, ai_unlocked, premium_avatars, buzzer_skins, buzzer_skin, avatar_frame, reel_skin, shield, title, lenient_spelling, coins, coins_level, coins_seen_level, rewards_seeded, created_at "
                 "FROM users WHERE id=?",
                 (user_id,),
             )
@@ -2133,6 +2137,21 @@ class Database:
         )
 
     # ---- reel skins (bought with coins) ------------------------------------
+
+    # ---- level-schild op het profiel --------------------------------------
+    # Alle kleuren zijn vrij te kiezen: het schild zegt niets over wat je hebt
+    # verdiend, het is smaak. Vandaar geen ontgrendel-lijst zoals bij de rollen
+    # en de knoppen, alleen een controle of de kleur bestaat.
+    SHIELDS = ("paars", "blauw", "lichtblauw", "groen", "rood", "zwart", "zilver")
+
+    def set_shield(self, user_id: str, kleur: Optional[str]) -> bool:
+        if not kleur or kleur == self.SHIELDS[0]:
+            self._exec("UPDATE users SET shield=NULL WHERE id=?", (user_id,))
+            return True
+        if kleur not in self.SHIELDS:
+            return False
+        self._exec("UPDATE users SET shield=? WHERE id=?", (kleur, user_id))
+        return True
 
     def get_reel_skin(self, user_id: str) -> Optional[str]:
         if not user_id:

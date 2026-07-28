@@ -113,6 +113,7 @@ export interface Account {
   frame_rewards: FrameReward[]; // level-milestone avatar frames + unlock state
   pending_rewards: PendingReward[]; // earned but not yet celebrated (victory popup)
   reel_skin: string | null; // chosen reel theme id, null = default gold reel
+  shield: string | null; // gekozen kleur van het level-schild, null = paars
   emote_packs: string[]; // emote packs unlocked (free + earned + bought)
   coins: number; // currency balance
   coins_pending: number; // new coins since the last coin popup was seen
@@ -801,6 +802,7 @@ export interface GameApi {
   setLenient: (on: boolean) => void;
   setBuzzerSkin: (skin: string | null) => void;
   setReelSkin: (skin: string | null) => void;
+  setShield: (kleur: string | null) => void;
   setAvatarFrame: (frame: string | null) => void;
   claimBuzzerReward: (skin: string, equip: boolean) => void;
   claimReward: (id: string, equip?: boolean) => void;
@@ -1040,6 +1042,7 @@ export function useGame(): GameApi {
     setLenient: (on) => send({ type: "set_lenient", on }),
     setBuzzerSkin: (skin) => send({ type: "set_buzzer_skin", skin }),
     setReelSkin: (skin) => send({ type: "set_reel_skin", skin }),
+    setShield: (shield) => send({ type: "set_shield", shield }),
     setAvatarFrame: (frame) => send({ type: "set_avatar_frame", frame }),
     claimBuzzerReward: (skin, equip) => send({ type: "claim_buzzer_reward", skin, equip }),
     claimReward: (id, equip) => send({ type: "claim_reward", id, equip: !!equip }),

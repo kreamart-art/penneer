@@ -5,7 +5,7 @@ import { CloseIcon } from "../components/CloseIcon";
 import { ArrowLeft, Award, BookOpen, Camera, Check, ChevronDown, CircleDot, Copy, Crown, Flame, Gem, Lock, LogOut, Medal, MessageCircle, MoreVertical, Pencil, Percent, Plus, Rocket, Search, Send, Settings as SettingsIcon, Share2, Shield, ShoppingCart, Smile, Sparkles, Star, Swords, Target, Trash2, Trophy, UserPlus, Users, X, Zap, ZoomIn, ZoomOut } from "lucide-react";
 import { Avatar, RANK_RING } from "../components/Avatar";
 import { Plek } from "../components/ProfileShowcase";
-import { GOUD, Paneel, PlekWapen, Prestatie, RingPortret, SectieKop, SierKop, StatKaart } from "../components/ProfileHero";
+import { GOUD, Paneel, PlekWapen, Prestatie, RingFoto, RingPortret, SCHILD_KLEUREN, SectieKop, SierKop, StatKaart, type SchildKleur } from "../components/ProfileHero";
 import { isTester } from "../util/testers";
 import { AvatarZoom } from "../components/AvatarZoom";
 import { Button } from "../components/Button";
@@ -337,13 +337,20 @@ function XpRij({ level }: { level: LevelInfo }) {
   const nu = Math.max(0, level.xp - level.level_start);
   const deel = Math.min(1, nu / span);
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 1, marginLeft: 34, marginRight: 16 }}>
+      {/* Het totaal staat BOVEN de balk en niet ernaast, anders eet het een hap
+          uit de breedte en houdt de balk halverwege de sectie op. Regelhoogte 1
+          zodat de tekst TEGEN de balk staat: de lucht die een gewone regel
+          eromheen zet, telt hier als losse ruimte. */}
+      <span style={{ textAlign: "right", lineHeight: 1, marginBottom: -5, fontFamily: font.display, fontWeight: 700, fontSize: 13, color: "#FFFFFF" }}>
+        {nu} <span style={{ color: GOUD[2] }}>/ {span} XP</span>
+      </span>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <span
           aria-hidden
           style={{
-            width: 30,
-            height: 33,
+            width: 26,
+            height: 29,
             flexShrink: 0,
             display: "grid",
             placeItems: "center",
@@ -374,7 +381,10 @@ function XpRij({ level }: { level: LevelInfo }) {
         <div
           style={{
             flex: 1,
-            height: 13,
+            // De balk vult de rij zo goed als helemaal: is hij veel dunner dan
+            // de penning ernaast, dan valt er lucht boven en onder die je als
+            // een gat tussen de balk en de tekst ziet.
+            height: 17,
             borderRadius: 999,
             background: "linear-gradient(180deg, rgba(0,0,0,.55) 0%, rgba(0,0,0,.3) 100%)",
             boxShadow: "inset 0 2px 5px rgba(0,0,0,.7), inset 0 -1px 0 rgba(255,255,255,.09)",
@@ -392,11 +402,8 @@ function XpRij({ level }: { level: LevelInfo }) {
             }}
           />
         </div>
-        <span style={{ fontFamily: font.ui, fontSize: 11.5, color: colors.sub, flexShrink: 0 }}>
-          {nu} / {span} XP
-        </span>
       </div>
-      <span style={{ textAlign: "center", fontFamily: font.ui, fontSize: 11, color: colors.faint }}>
+      <span style={{ textAlign: "center", lineHeight: 1, fontFamily: font.ui, fontSize: 11, color: colors.faint }}>
         {t("xpToNext", { n: Math.max(0, span - nu) })}
       </span>
     </div>
@@ -801,6 +808,7 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [prestatiesUit, setPrestatiesUit] = useState(false);
+  const [schildOpen, setSchildOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const colorInputRef = useRef<HTMLInputElement | null>(null);
   const colorDebounce = useRef<number | undefined>(undefined);
@@ -991,6 +999,13 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
           }}
         />
       )}
+      {schildOpen && (
+        <SchildKiezer
+          huidig={(account.shield as SchildKleur) || "paars"}
+          onKies={(k) => { game.setShield(k === "paars" ? null : k); setSchildOpen(false); }}
+          onClose={() => setSchildOpen(false)}
+        />
+      )}
       {avatarMenuOpen && (
         <AvatarMenu
           hasCustomPhoto={!!account.has_avatar && !account.avatar_preset}
@@ -1062,10 +1077,12 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
           de ingang naar het foto-menu. */}
       <div style={{ position: "relative", paddingTop: 14 }}>
         <Paneel>
-          {/* Een breed vlak vraagt om een brede indeling: het portret links, en
-              rechts alles wat je over jezelf leest. Onder elkaar zou het niet
+          {/* Een breed vlak vraagt om een brede indeling: bovenin het portret
+              links met rechts alles wat je over jezelf leest, en onderin de
+              voortgangsbalk over de VOLLE breedte. Onder elkaar zou het niet
               passen zonder de art uit te rekken. */}
-          <div style={{ display: "flex", alignItems: "center", gap: 10, height: "100%" }}>
+          <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 10, flex: 1, minHeight: 0 }}>
           <button
             onClick={() => { sound.uiTap(); setAvatarMenuOpen(true); }}
             disabled={busy}
@@ -1081,12 +1098,17 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
                 gat van de ring. Een eigen frame zou hier een tweede ring om
                 hetzelfde portret zijn, dus dat blijft voor de lobby en de
                 lijsten. */}
-            <RingPortret maat={134} level={account.level.level}>
-              <Avatar name={account.name} color={account.color} size={92} userId={account.id} hasAvatar={account.has_avatar} avatarVer={account.avatar_ver} />
+            <RingPortret
+              maat={134}
+              level={account.level.level}
+              kleur={(account.shield as SchildKleur) || "paars"}
+              onSchild={() => { sound.uiTap(); setSchildOpen(true); }}
+            >
+              <RingFoto userId={account.id} versie={account.avatar_ver} heeftFoto={account.has_avatar} naam={account.name} kleur={account.color} />
             </RingPortret>
           </button>
 
-          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 5 }}>
+          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "flex-start", gap: 5, paddingTop: 2 }}>
 
           {/* naam + potlood */}
           <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
@@ -1168,9 +1190,13 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
             </span>
           </div>
 
-          {/* de voortgang sluit de kolom af */}
-          <XpRij level={account.level} />
           </div>
+          </div>
+
+          {/* De balk loopt van onder de ring tot de andere kant van de sectie:
+              hij hangt aan de sectie en niet aan de tekstkolom, dus hij staat
+              buiten de rij hierboven. */}
+          <XpRij level={account.level} />
           </div>
         </Paneel>
 
@@ -1929,6 +1955,54 @@ function AvatarMenu({
           </button>
         )}
         <button onClick={onClose} style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, fontFamily: font.ui, fontSize: 13.5, padding: "6px 4px 2px" }}>
+          {t("avatarMenuCancel")}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** Kies de kleur van het schild onder je portret. Alle kleuren zijn vrij: het
+ *  schild zegt niets over wat je verdiend hebt, het is smaak. */
+function SchildKiezer({ huidig, onKies, onClose }: { huidig: SchildKleur; onKies: (k: SchildKleur) => void; onClose: () => void }) {
+  const { t } = useT();
+  return (
+    <div
+      onClick={onClose}
+      style={{ position: "fixed", inset: 0, zIndex: 85, background: "rgba(6,3,18,.72)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)", display: "grid", placeItems: "center", padding: 22 }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="pop-in"
+        style={{ width: "100%", maxWidth: 340, display: "flex", flexDirection: "column", gap: 14, padding: "22px 18px 16px", borderRadius: 22, background: "linear-gradient(180deg, #241738, #160D30)", border: `1px solid ${withAlpha(colors.gold, 0.4)}`, boxShadow: "0 24px 70px rgba(0,0,0,.6)", textAlign: "center" }}
+      >
+        <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 18, color: colors.ink }}>{t("shieldTitle")}</span>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
+          {SCHILD_KLEUREN.map((k) => (
+            <button
+              key={k}
+              onClick={() => { sound.uiTap(); onKies(k); }}
+              aria-label={k}
+              className="pressable"
+              style={{
+                position: "relative",
+                padding: "8px 4px",
+                borderRadius: 12,
+                cursor: "pointer",
+                background: k === huidig ? withAlpha(colors.gold, 0.14) : "rgba(0,0,0,.24)",
+                border: `1.5px solid ${k === huidig ? withAlpha(colors.gold, 0.85) : colors.hairline}`,
+              }}
+            >
+              <img src={`/ui/shield/${k}.webp`} alt="" style={{ width: "100%", display: "block" }} />
+              {k === huidig && (
+                <span style={{ position: "absolute", right: 3, top: 3, width: 15, height: 15, borderRadius: "50%", display: "grid", placeItems: "center", background: colors.gold, color: colors.bg0 }}>
+                  <Check size={10} strokeWidth={3.2} />
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+        <button onClick={onClose} style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, fontFamily: font.ui, fontSize: 13.5, padding: "2px 4px" }}>
           {t("avatarMenuCancel")}
         </button>
       </div>

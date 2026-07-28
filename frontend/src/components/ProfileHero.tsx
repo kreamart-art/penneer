@@ -38,7 +38,7 @@ export function Paneel({ children, style }: { children: ReactNode; style?: CSSPr
         position: "relative",
         boxSizing: "border-box",
         aspectRatio: `${3835} / ${2289}`,
-        padding: "8.6% 5% 6.6%",
+        padding: "8.6% 5% 4.9%",
         backgroundImage: "url(/ui/profile-frame.webp)",
         backgroundSize: "100% 100%",
         backgroundRepeat: "no-repeat",
@@ -78,24 +78,29 @@ export function RingPortret({
   maat,
   level,
   kleur = "paars",
+  onSchild,
   children,
 }: {
   /** De breedte van de ring. De rest volgt daaruit. */
   maat: number;
   level: number;
   kleur?: SchildKleur;
+  /** Tikken op het schild: opent de kleurkiezer. Zonder deze is het geen knop. */
+  onSchild?: () => void;
   children: ReactNode;
 }) {
   const ringH = maat * RING_VERH;
   const gat = maat * RING_GAT;
   const schildB = maat * 0.24;
   const schildH = schildB * SCHILD_VERH;
-  // Het schild HANGT aan de ring: een kleine hap zit nog over de lauwertak
-  // heen, de rest steekt eronderuit. Schuift het te ver omhoog, dan lijkt het
-  // op de tak te liggen in plaats van eraan te hangen.
-  const schildTop = ringH - schildH * 0.42;
+  // Het schild zit op de ONDERRAND VAN HET PORTRET, niet onder de hele ring:
+  // zijn hart ligt precies waar het gat ophoudt, zodat hij half over de foto en
+  // half over de gouden band valt. Hing hij onder de lauwertak, dan bungelde
+  // hij los van het geheel.
+  const gatOnder = ringH * RING_GAT_Y + gat / 2;
+  const schildTop = gatOnder - schildH * 0.22;
   return (
-    <div style={{ position: "relative", width: maat, height: schildTop + schildH, flexShrink: 0 }}>
+    <div style={{ position: "relative", width: maat, height: Math.max(ringH, schildTop + schildH), flexShrink: 0 }}>
       {/* Het portret eerst, de ring erbovenop. Zo dekt de ring een randje van
           het portret af en zie je geen naad tussen de twee. */}
       <span
@@ -115,7 +120,18 @@ export function RingPortret({
         {children}
       </span>
       <img src="/ui/ring.webp" alt="" aria-hidden style={{ position: "absolute", left: 0, top: 0, width: maat, height: ringH, pointerEvents: "none" }} />
-      <span style={{ position: "absolute", left: maat / 2 - schildB / 2, top: schildTop, width: schildB, height: schildH }}>
+      <span
+        onClick={onSchild ? (e) => { e.stopPropagation(); onSchild(); } : undefined}
+        role={onSchild ? "button" : undefined}
+        style={{
+          position: "absolute",
+          left: maat / 2 - schildB / 2,
+          top: schildTop,
+          width: schildB,
+          height: schildH,
+          cursor: onSchild ? "pointer" : undefined,
+        }}
+      >
         <img src={`/ui/shield/${kleur}.webp`} alt="" aria-hidden style={{ width: "100%", height: "100%", display: "block" }} />
         {/* Het schild loopt onderin in een punt, dus het cijfer staat hoger dan
             het midden van de doos; anders lijkt het te laag te hangen. */}
@@ -138,6 +154,41 @@ export function RingPortret({
         </span>
       </span>
     </div>
+  );
+}
+
+/** Het portret zelf, passend in de ring: rond en tot de rand gevuld.
+ *
+ *  Niet de gewone `Avatar`, want die is een afgeronde VIERKANT met een eigen
+ *  rand en een gekleurde vulling eromheen. In een rond gat zie je die vulling
+ *  als een ring om de foto, en dat is precies de "badge" die er hier niet hoort:
+ *  de gouden ring IS al de omlijsting. */
+export function RingFoto({ userId, versie, heeftFoto, naam, kleur }: { userId: string; versie: number; heeftFoto: boolean; naam: string; kleur: string }) {
+  if (heeftFoto) {
+    return (
+      <img
+        src={`/api/avatar/${userId}?v=${versie}`}
+        alt=""
+        style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+      />
+    );
+  }
+  return (
+    <span
+      style={{
+        width: "100%",
+        height: "100%",
+        display: "grid",
+        placeItems: "center",
+        background: `radial-gradient(120% 100% at 50% 0%, ${withAlpha(kleur, 0.55)}, ${withAlpha(kleur, 0.16)} 70%, rgba(0,0,0,.35) 100%)`,
+        fontFamily: font.display,
+        fontWeight: 800,
+        fontSize: "42%",
+        color: "#FFFFFF",
+      }}
+    >
+      {(naam.trim()[0] || "?").toUpperCase()}
+    </span>
   );
 }
 
