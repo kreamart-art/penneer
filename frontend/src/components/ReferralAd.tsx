@@ -211,11 +211,12 @@ function Popup({
         <span
           style={{
             position: "absolute",
-            // Op het BORDJE en niet op de sectie. Het bordje in de art zit niet
-            // precies in het midden en niet precies bovenaan: gemeten loopt het
-            // van 32,4% tot 64,5% breed en van 0,2% tot 8,8% hoog, dus zijn hart
-            // ligt op 48,4% en 4,5%. Daar gaat het woord staan, midden op midden.
-            left: "48.4%",
+            // Op het BORDJE en niet op de sectie. Gemeten in de art loopt het
+            // bordje van 35,3% tot 64,5% breed en van 0,2% tot 8,8% hoog, dus
+            // zijn hart ligt op 49,9% en 4,5%. Daar gaat het woord staan, midden
+            // op midden. (Die eerste meting was fout: het meetvenster liep zelf
+            // op 32% af, dus ik mat mijn eigen venster in plaats van het bordje.)
+            left: "49.9%",
             top: "4.5%",
             transform: "translate(-50%, -50%)",
             fontFamily: font.wide,
