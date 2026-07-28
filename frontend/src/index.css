@@ -321,6 +321,20 @@ input:focus {
   will-change: transform;
 }
 
+/* Het kijkgaatje van de werf-advertentie steekt om de zoveel tellen even zijn
+   kop op. Kort en met een kleine terugslag, zoals iets dat opveert; een lange
+   deining zou meebewegen met de rest van het scherm en dan zie je hem niet. */
+@keyframes ad-peek {
+  0%, 82%, 100% { transform: translateY(0); }
+  86% { transform: translateY(-9px); }
+  90% { transform: translateY(3px); }
+  94% { transform: translateY(-4px); }
+  97% { transform: translateY(0); }
+}
+.ad-peek {
+  animation: ad-peek 7s ease-in-out infinite;
+}
+
 /* Tiny glowing dust rising near the hero. */
 @keyframes rise-fade {
   0% { opacity: 0; transform: translateY(10px); }

@@ -152,12 +152,14 @@ function Popup({
 }) {
   const klaar = teHalen(info);
   const komt = volgende(info);
-  // Het kruisje komt pas na vijf tellen. Dat is hoe elke beloningsadvertentie
-  // in een spel werkt: er moet even niets anders te doen zijn dan lezen. Te
-  // lang en het wordt ergernis, dus vijf en geen tien.
+  // Weggaan kan pas na drie tellen, en dat geldt voor ALLE uitgangen: het
+  // kruisje, "misschien later" en het tikken naast de advertentie. Een kruisje
+  // dat wacht terwijl er een tekstlink naast staat die het niet doet, is geen
+  // wachttijd maar een omweg. Drie tellen is lang genoeg om te lezen en kort
+  // genoeg om niet te ergeren.
   const [magSluiten, setMagSluiten] = useState(false);
   useEffect(() => {
-    const id = window.setTimeout(() => setMagSluiten(true), 5000);
+    const id = window.setTimeout(() => setMagSluiten(true), 3000);
     return () => window.clearTimeout(id);
   }, []);
   return (
@@ -293,19 +295,22 @@ function Popup({
                 <br />
                 SPELEN
               </h2>
+              {/* Kort genoeg voor een regel, en met ruimte erboven: dat is wat
+                  de kop de lucht geeft om groot te mogen zijn. */}
               <p
                 style={{
-                  margin: "20px 0 0",
+                  margin: "30px 0 0",
                   // De smalle hoofdletterstijl die eerst de kop droeg. Naast
                   // een blokkerige kop leest die rustiger dan een gewone zin.
                   fontFamily: font.wide,
-                  fontSize: "clamp(13px, 3.9vw, 16px)",
-                  letterSpacing: 0.5,
-                  lineHeight: 1.18,
+                  fontSize: "clamp(12px, 3.6vw, 15px)",
+                  letterSpacing: 0.8,
+                  lineHeight: 1.1,
+                  whiteSpace: "nowrap",
                   color: colors.ink,
                 }}
               >
-                Elke vriend die meedoet levert je munten op.
+                ELKE VRIEND LEVERT MUNTEN OP
               </p>
             </div>
           </div>
@@ -313,7 +318,7 @@ function Popup({
           {/* De ladder als strookje in plaats van als kader. Een kader eromheen
               maakt er een tweede paneel van binnen een paneel, en dat vrat de
               hoogte die de kop nodig heeft. Het opschrift ligt nu OP de lijn. */}
-          <div style={{ marginTop: 12, position: "relative", display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ marginTop: 18, position: "relative", display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ flex: 1, height: 1, background: `linear-gradient(90deg, transparent, ${withAlpha(colors.gold, 0.45)})` }} />
             <span
               style={{
@@ -346,9 +351,11 @@ function Popup({
             )}
           </div>
           <button
-            onClick={onSluit}
+            onClick={() => magSluiten && onSluit()}
             style={{
               margin: "7px auto 0",
+              opacity: magSluiten ? 1 : 0.35,
+              transition: "opacity .3s",
               background: "transparent",
               border: "none",
               cursor: "pointer",
@@ -399,21 +406,28 @@ function Trede({ t, volgend }: { t: Tier; volgend: boolean }) {
 // ---- de pil aan de zijkant -------------------------------------------------
 
 function Pil({ uitgeklapt, teHalen, onTik }: { uitgeklapt: boolean; teHalen: number; onTik: () => void }) {
+  const vol = "min(300px, 76vw)";
   return (
     <button
       onClick={onTik}
       aria-label="Vrienden uitnodigen"
+      className={uitgeklapt ? undefined : "ad-peek"}
       style={{
         position: "fixed",
-        // Boven de balk, onder de popup. Rechts vastgezet en dan naar buiten
-        // geschoven: ingeklapt staat zestig procent van de pil buiten beeld,
-        // dus je ziet de kist en verder niets.
-        right: 0,
-        bottom: "calc(var(--nav-h, 0px) + env(safe-area-inset-bottom) + 74px)",
+        // Links en HOOG: ter hoogte van het embleem. Daar staat niets, dus hij
+        // ligt nergens overheen; onderaan zou hij op de sectie of de balk
+        // vallen.
+        left: 0,
+        top: "11.5%",
         zIndex: 90,
-        width: "min(300px, 76vw)",
-        transform: uitgeklapt ? "translateX(0)" : "translateX(60%)",
-        transition: "transform .34s cubic-bezier(.22,1,.36,1)",
+        // Ingeklapt is dit een kijkgaatje van tachtig pixels. De pil zelf blijft
+        // even breed, alleen het venster erover is smal, dus je ziet precies het
+        // stuk met de kist en de munten. Uitschuiven is dan het venster
+        // openzetten en niet de pil verplaatsen: geen halve tekst die uit het
+        // niets tevoorschijn schuift.
+        width: uitgeklapt ? vol : 72,
+        overflow: "hidden",
+        transition: "width .34s cubic-bezier(.22,1,.36,1)",
         background: "transparent",
         border: "none",
         padding: 0,
@@ -421,9 +435,8 @@ function Pil({ uitgeklapt, teHalen, onTik }: { uitgeklapt: boolean; teHalen: num
         lineHeight: 0,
       }}
     >
-      <span style={{ position: "relative", display: "block" }}>
+      <span style={{ position: "relative", display: "block", width: vol }}>
         <img src="/ads/pill.webp" alt="" style={{ width: "100%", display: "block" }} />
-        {/* De tekst staat rechts van de kist, in het paarse vlak van de art. */}
         <span
           style={{
             position: "absolute",
@@ -446,8 +459,8 @@ function Pil({ uitgeklapt, teHalen, onTik }: { uitgeklapt: boolean; teHalen: num
           <span
             style={{
               position: "absolute",
-              right: "4%",
-              top: "6%",
+              left: "17%",
+              top: "4%",
               minWidth: 18,
               height: 18,
               padding: "0 5px",
