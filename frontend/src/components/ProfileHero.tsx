@@ -757,10 +757,10 @@ export function StatKaart({ icoon, art, waarde, label }: { icoon: ReactNode; art
 // bronzen versie zijn dezelfde tekening in een ander metaal, zodat alle drie
 // hetzelfde licht en dezelfde vorm hebben. Dat is precies wat een set
 // podiumplaatsen moet doen.
-const WAPEN_VERH = 3472 / 2862;
+const WAPEN_VERH = 1875 / 1201;
 // Bump zodra je de art op DEZELFDE naam vervangt: de service worker bewaart
 // plaatjes cache-first en ruimt pas op bij zijn volgende activatie.
-const WAPEN_ART = 3;
+const WAPEN_ART = 4;
 
 export function PlekWapen({ plek, maat = 38 }: { plek: number; maat?: number }) {
   const metaal = plek === 1 ? "goud" : plek === 2 ? "zilver" : plek === 3 ? "brons" : null;
@@ -790,10 +790,10 @@ export function PlekWapen({ plek, maat = 38 }: { plek: number; maat?: number }) 
       <span
         style={{
           position: "relative",
-          paddingBottom: hoog * 0.18,
+          paddingBottom: hoog * 0.24,
           fontFamily: font.display,
           fontWeight: 800,
-          fontSize: Math.round(maat * (19 / 38)),
+          fontSize: Math.round(maat * (17 / 38)),
           lineHeight: 1,
           // Per metaal de donkerste tint van dat metaal zelf, niet zomaar een
           // donkere kleur: op het neutrale grijs van de zilveren wimpel zou het
