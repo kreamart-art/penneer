@@ -753,36 +753,54 @@ export function StatKaart({ icoon, art, waarde, label }: { icoon: ReactNode; art
 
 /** De plaatsingspenning links in een potje-rij. Goud voor de eerste plek, zilver
  *  en brons daarna, en daarna paars: alleen het podium verdient metaal. */
+// De wimpel uit de UI-map. De verhouding komt van de art zelf; de zilveren en
+// bronzen versie zijn dezelfde tekening in een ander metaal, zodat alle drie
+// hetzelfde licht en dezelfde vorm hebben. Dat is precies wat een set
+// podiumplaatsen moet doen.
+const WAPEN_VERH = 3472 / 2862;
+// Bump zodra je de art op DEZELFDE naam vervangt: de service worker bewaart
+// plaatjes cache-first en ruimt pas op bij zijn volgende activatie.
+const WAPEN_ART = 1;
+
 export function PlekWapen({ plek, maat = 38 }: { plek: number; maat?: number }) {
-  const metaal =
-    plek === 1
-      ? [GOUD[3], GOUD[2], GOUD[1]]
-      : plek === 2
-        ? ["#EDE6FF", "#B9A6E8", "#6E5AA8"]
-        : plek === 3
-          ? ["#F3C69A", "#CE8B4E", "#8A5325"]
-          : null;
+  const metaal = plek === 1 ? "goud" : plek === 2 ? "zilver" : plek === 3 ? "brons" : null;
+  const hoog = Math.round(maat * WAPEN_VERH);
   return (
-    <span
-      style={{
-        width: maat,
-        height: Math.round(maat * (40 / 38)),
-        flexShrink: 0,
-        display: "grid",
-        placeItems: "center",
-        // Een wapenschild: recht van boven, punt naar beneden.
-        clipPath: "polygon(0% 0%, 100% 0%, 100% 72%, 50% 100%, 0% 72%)",
-        background: metaal
-          ? `linear-gradient(162deg, ${metaal[0]} 0%, ${metaal[1]} 45%, ${metaal[2]} 100%)`
-          : "linear-gradient(162deg, rgba(255,255,255,.2), rgba(0,0,0,.4))",
-        fontFamily: font.display,
-        fontWeight: 800,
-        fontSize: Math.round(maat * (13 / 38)),
-        color: plek === 1 ? "#3A2500" : plek === 2 ? "#241640" : plek === 3 ? "#3A1C05" : colors.sub,
-        textShadow: metaal ? "0 1px 0 rgba(255,255,255,.4)" : "none",
-      }}
-    >
-      {plek}e
+    <span style={{ position: "relative", width: maat, height: hoog, flexShrink: 0, display: "grid", placeItems: "center" }}>
+      {metaal ? (
+        <img
+          src={`/ui/wapen/${metaal}.webp?v=${WAPEN_ART}`}
+          alt=""
+          aria-hidden
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
+        />
+      ) : (
+        <span
+          aria-hidden
+          style={{
+            position: "absolute",
+            inset: 0,
+            clipPath: "polygon(0% 0%, 100% 0%, 100% 72%, 50% 100%, 0% 72%)",
+            background: "linear-gradient(162deg, rgba(255,255,255,.2), rgba(0,0,0,.4))",
+          }}
+        />
+      )}
+      {/* De wimpel loopt onderin in een punt, dus het cijfer staat HOGER dan het
+          midden van de doos; in het midden zou het half op die punt vallen. */}
+      <span
+        style={{
+          position: "relative",
+          paddingBottom: hoog * 0.18,
+          fontFamily: font.display,
+          fontWeight: 800,
+          fontSize: Math.round(maat * (14 / 38)),
+          lineHeight: 1,
+          color: plek === 1 ? "#4A2E00" : plek === 2 ? "#241640" : plek === 3 ? "#3A1C05" : colors.sub,
+          textShadow: metaal ? "0 1px 0 rgba(255,255,255,.45)" : "none",
+        }}
+      >
+        {plek}e
+      </span>
     </span>
   );
 }
