@@ -5,7 +5,7 @@
 // Coins are also earned by levelling (1/level + 5 per 10 levels). A code the
 // owner handed out still unlocks the AI. A profile is required to own anything.
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { ArrowLeft, Bot, Check, ChevronLeft, ChevronRight, ListChecks, ShoppingCart, Ticket } from "lucide-react";
+import { ArrowLeft, Check, ChevronLeft, ChevronRight, ListChecks, ShoppingCart, Ticket } from "lucide-react";
 import { Screen, Card } from "../components/Layout";
 import { Button } from "../components/Button";
 import { MusicToggle } from "../components/MusicToggle";
@@ -85,7 +85,24 @@ function CoinItem({ title, owned, price, coins, index, veeg, onBuy, children }: 
   const affordable = coins >= price;
   return (
     <GlasVak groen={owned} index={index} veeg={veeg}>
-      <div style={{ width: "100%", aspectRatio: "1 / 1", display: "grid", placeItems: "center", overflow: "hidden" }}>{children}</div>
+      <div style={{ position: "relative", width: "100%", aspectRatio: "1 / 1", display: "grid", placeItems: "center", overflow: "hidden" }}>
+        {/* Een glasplaatje ACHTER het product. Het ligt eronder, dus het
+            product blijft scherp; wat je krijgt is een vitrine in plaats van
+            een waas. Bezit je het al, dan is de plaat groen. */}
+        <span
+          aria-hidden
+          style={{
+            position: "absolute", inset: 2, borderRadius: 10, pointerEvents: "none",
+            background: owned
+              ? "linear-gradient(150deg, rgba(120,235,150,.14) 0%, rgba(40,150,80,.08) 45%, rgba(10,40,22,.12) 100%)"
+              : "linear-gradient(150deg, rgba(210,190,255,.13) 0%, rgba(140,110,220,.07) 45%, rgba(30,16,62,.12) 100%)",
+            boxShadow: owned
+              ? "inset 0 1px 0 rgba(220,255,230,.16), inset 0 -8px 16px rgba(6,26,14,.24)"
+              : "inset 0 1px 0 rgba(255,255,255,.14), inset 0 -8px 16px rgba(10,4,26,.24)",
+          }}
+        />
+        <span style={{ position: "relative", display: "grid", placeItems: "center", width: "100%", height: "100%" }}>{children}</span>
+      </div>
       <span style={{ fontFamily: font.ui, fontSize: 11.5, fontWeight: 600, color: colors.ink, textAlign: "center", lineHeight: 1.15 }}>{title}</span>
       {owned ? (
         <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontFamily: font.ui, fontSize: 11.5, fontWeight: 700, color: colors.green }}>
@@ -124,19 +141,24 @@ function GlasVak({ groen, index = 0, veeg, children }: { groen?: boolean; index?
       sterkte={groen ? 0.6 : 0.3}
       vulling="geen"
       eindkap="kort"
-      // Ademen doet elk vakje, maar elk met een EIGEN fase en een eigen tempo.
-      // Een fase van `index % n` valt in een raster van drie kolommen precies
-      // samen met de kolom eronder, en dan pulseert de hele kolom in de maat.
-      // De gulden snede (0,618) verdeelt elk aantal zo gelijkmatig mogelijk
-      // zonder ooit te herhalen, dus daarmee ligt geen enkel vakje op hetzelfde
-      // punt als zijn buurman.
+      // Ademen doet elk vakje, maar elk met een EIGEN fase, een eigen tempo en
+      // een eigen plek voor het lichtpunt. Een fase van `index % n` valt in een
+      // raster van drie kolommen precies samen met de kolom eronder, en dan
+      // pulseert de hele kolom in de maat; een piek die overal op vijftig staat
+      // maakt er bovendien een patroon van. De gulden snede (0,618) verdeelt
+      // elk aantal zo gelijkmatig mogelijk zonder ooit te herhalen, dus daarmee
+      // ligt geen enkel vakje op hetzelfde punt als zijn buurman.
       adem={((index * 0.618034) % 1) * 4.2}
       ademDuur={3.3 + ((index * 0.381966) % 1) * 2.2}
+      kernPlek={30 + ((index * 0.7548777) % 1) * 40}
       veeg={veeg}
       lijn={groen ? KADER_LIJN_GROEN : undefined}
       gloed={groen ? `0 0 10px ${withAlpha(colors.green, 0.25)}` : undefined}
+      // Lucht tot de wand van de sectie: een vakje dat tegen de rand aan zit
+      // leest als een vlak dat tegen een lijn botst in plaats van als iets dat
+      // erin ligt.
       binnen={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "7px 6px 8px", height: "100%", boxSizing: "border-box" }}
-      style={{ height: "100%" }}
+      style={{ height: "100%", marginInline: 2 }}
     >
       {children}
     </NeonKader>
@@ -351,6 +373,12 @@ function Raster({ kolommen, aantal, children }: { kolommen: number; aantal: numb
 
 export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
   const { t } = useT();
+  // De winkel hoort bij de main page: dezelfde achtergrond, zodat het voelt als
+  // een lade die daar opengaat en niet als een andere app.
+  useEffect(() => {
+    document.body.classList.add("winkel");
+    return () => document.body.classList.remove("winkel");
+  }, []);
   const account = game.state.account;
   const aiActive = !!account?.ai_unlocked || !!game.state.room?.ai_referee || !!game.state.adminAi?.enabled;
   const owned = new Set(account?.owned_items ?? []);
@@ -478,9 +506,7 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
           <Paneel>
             <div style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", gap: 7, padding: "6px 10px 2px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ width: 36, height: 36, borderRadius: 12, display: "grid", placeItems: "center", background: withAlpha(colors.gold, 0.14), border: `1px solid ${withAlpha(colors.gold, 0.45)}`, color: colors.gold, flexShrink: 0 }}>
-                  <Bot size={19} />
-                </span>
+                <img src="/ui/ai-scheids.webp" alt="" aria-hidden style={{ width: 46, height: 46, objectFit: "contain", display: "block", flexShrink: 0 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15.5, lineHeight: 1.15, color: colors.ink }}>{t("shopAiTitle")}</div>
                   <div style={{ fontFamily: font.ui, fontSize: 11.5, lineHeight: 1.25, color: colors.faint }}>{t("shopAiTag")}</div>
@@ -517,12 +543,6 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
               <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15, lineHeight: 1.15, color: colors.ink }}>{t("shopCoinsHeader")}</div>
               <div style={{ fontFamily: font.ui, fontSize: 12, lineHeight: 1.3, color: colors.faint }}>{t("shopCoinsLead")}</div>
             </div>
-            {/* De vakjes staan er ALTIJD, ook zolang betalen nog niet aanstaat.
-                Je moet kunnen zien wat er te koop komt; de melding erboven zegt
-                dat het nog niet kan en de knoppen staan dan uit. */}
-            {status && !status.enabled && (
-              <p style={{ margin: 0, textAlign: "center", fontFamily: font.ui, fontSize: 11.5, color: colors.faint, lineHeight: 1.35 }}>{t("shopPaypalSoon")}</p>
-            )}
             <Card style={{ padding: "9px 8px 10px" }}>
               <Raster kolommen={2} aantal={(status?.bundles ?? []).length}>
                 {(status?.bundles ?? []).map((b, i) => (
@@ -537,6 +557,14 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
                 ))}
               </Raster>
             </Card>
+            {/* De vakjes staan er ALTIJD, ook zolang betalen nog niet aanstaat.
+                Je moet kunnen zien wat er te koop komt. De melding staat er
+                ONDER: eerst zie je wat het is, dan lees je dat het nog even
+                duurt. Andersom lees je een excuus voor iets wat je nog niet
+                gezien hebt. */}
+            {status && !status.enabled && (
+              <p style={{ margin: 0, textAlign: "center", fontFamily: font.ui, fontSize: 11.5, color: colors.faint, lineHeight: 1.35 }}>{t("shopPaypalSoon")}</p>
+            )}
           </div>
         </Vak>
 

@@ -168,6 +168,33 @@ body.profiel::after {
   background-size: 160px 160px, 100% 100%, cover, 100% 100%;
 }
 
+/* De winkel draagt de achtergrond van de main page: hij hoort daarbij, dus hij
+   hoort er ook zo uit te zien. Zelfde truc als hierboven met ::after, plus een
+   extra donkere laag zodat de gouden productvakjes niet concurreren met de art
+   eronder. De ovale lichtplek van de main page zit al in bg-main.webp verwerkt
+   via het verloop hier; een tweede kopie van die ovaal zou hem verdubbelen. */
+body.winkel::after {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: calc(100vh + 200px);
+  height: calc(100lvh + 200px);
+  z-index: -1;
+  pointer-events: none;
+  background-color: #06040e;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
+    linear-gradient(180deg, rgba(6, 4, 14, 0.52) 0%, rgba(6, 4, 14, 0.46) 45%, rgba(6, 4, 14, 0.7) 100%),
+    radial-gradient(128% 31% at 50% 21%, rgba(3, 1, 10, 0) 0%, rgba(3, 1, 10, 0) 30%, rgba(3, 1, 10, 0.3) 46%, rgba(3, 1, 10, 0.68) 65%, rgba(3, 1, 10, 0.82) 100%),
+    url("/bg-main.webp"),
+    linear-gradient(180deg, #150e2e 0%, #100a24 50%, #06040e 100%);
+  background-repeat: repeat, no-repeat, no-repeat, no-repeat, no-repeat;
+  background-position: top left, top, top, center top, top;
+  background-size: 160px 160px, 100% 100%, 100% 100%, cover, 100% 100%;
+}
+
 /* De ranglijst en de vrienden delen hun eigen decor. Zelfde opbouw als het
    profiel hierboven, en om dezelfde reden een tweede pseudo-element in plaats
    van een omgezette `background-image`: ::after wordt NA ::before getekend en

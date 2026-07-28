@@ -289,17 +289,30 @@ const KADER_GLANS =
 // het midden toe en op het hoogste punt zit een speldenknop bijna-wit (de
 // radiaal). Een gelijkmatig verloop leest als een vage lichte zone; dit leest
 // als een punt waar het licht ZIT.
-const KERN_STREEP = [
-  "radial-gradient(4px 1.6px at 50% 50%, rgba(255,255,255,.95) 0%, rgba(255,246,223,.55) 45%, transparent 72%)",
-  "linear-gradient(90deg, transparent 26%, rgba(138,80,240,.28) 38%, rgba(196,158,255,.5) 47%, rgba(255,250,238,.85) 50%, rgba(196,158,255,.5) 53%, rgba(138,80,240,.28) 62%, transparent 74%)",
-].join(", ");
+/** De lichtstreep met de piek op `plek` procent van de breedte.
+ *
+ *  De piek stond altijd op vijftig. In een raster van gelijke vakjes zit het
+ *  lichtpunt dan overal op precies dezelfde plek, en dat leest als een patroon
+ *  in plaats van als licht: het is de SYMMETRIE die het statisch maakt, niet de
+ *  timing. Vandaar dat de plek een parameter is. */
+export const kernStreep = (plek = 50) => {
+  const k = (v: number) => Math.max(0, Math.min(100, plek + v));
+  return [
+    `radial-gradient(4px 1.6px at ${plek}% 50%, rgba(255,255,255,.95) 0%, rgba(255,246,223,.55) 45%, transparent 72%)`,
+    `linear-gradient(90deg, transparent ${k(-24)}%, rgba(138,80,240,.28) ${k(-12)}%, rgba(196,158,255,.5) ${k(-3)}%, rgba(255,250,238,.85) ${plek}%, rgba(196,158,255,.5) ${k(3)}%, rgba(138,80,240,.28) ${k(12)}%, transparent ${k(24)}%)`,
+  ].join(", ");
+};
+const KERN_STREEP = kernStreep();
 // De losse punt die bij de veeg langs de rand glijdt.
 const KERN_VEEG =
   "radial-gradient(closest-side, rgba(255,255,255,.9) 0%, rgba(255,246,223,.45) 55%, transparent 100%)";
 // De onderrand krijgt de gloed WEL maar de punt NIET: het licht komt van boven,
 // dus het piekpunt hoort alleen daar. Onder blijft een zachte heuvel.
-const KERN_STREEP_ZACHT =
-  "linear-gradient(90deg, transparent 28%, rgba(138,80,240,.24) 40%, rgba(196,158,255,.42) 50%, rgba(138,80,240,.24) 60%, transparent 72%)";
+export const kernStreepZacht = (plek = 50) => {
+  const k = (v: number) => Math.max(0, Math.min(100, plek + v));
+  return `linear-gradient(90deg, transparent ${k(-22)}%, rgba(138,80,240,.24) ${k(-10)}%, rgba(196,158,255,.42) ${plek}%, rgba(138,80,240,.24) ${k(10)}%, transparent ${k(22)}%)`;
+};
+const KERN_STREEP_ZACHT = kernStreepZacht();
 
 /** De schuine hoek van de rol-skin, maar dan in procenten EN pixels door
  *  elkaar, zodat hij meeschaalt met de doos. `polygon()` accepteert lengtes, dus
@@ -339,6 +352,7 @@ export function NeonKader({
   eindkap = false,
   adem,
   ademDuur,
+  kernPlek,
   veeg = false,
 }: {
   children: ReactNode;
@@ -377,6 +391,9 @@ export function NeonKader({
    *  lopen, anders zwelt alles in dezelfde maat en leest het als een
    *  knipperlicht in plaats van als glas dat leeft. */
   ademDuur?: number;
+  /** Waar het lichtpunt op de rand zit, in procenten van de breedte. Laat een
+   *  raster ze uit elkaar lopen; op vijftig staat overal hetzelfde puntje. */
+  kernPlek?: number;
   /** De lichtveeg: het piekpunt glijdt af en toe langs de bovenrand. Voor EEN
    *  rij tegelijk, meer wordt onrustig. */
   veeg?: boolean;
@@ -547,7 +564,10 @@ export function NeonKader({
           rand net anders af en dan gloeit de ene rand wel en de andere amper.
           Zo staan ze er allebei gegarandeerd, met dezelfde piek. */}
       {hoek &&
-        ([[{ top: 0 }, KERN_STREEP], [{ bottom: 0 }, KERN_STREEP_ZACHT]] as const).map(([kant, streep], i) => {
+        ([
+          [{ top: 0 }, kernPlek === undefined ? KERN_STREEP : kernStreep(kernPlek)],
+          [{ bottom: 0 }, kernPlek === undefined ? KERN_STREEP_ZACHT : kernStreepZacht(100 - kernPlek)],
+        ] as const).map(([kant, streep], i) => {
           const boven = i === 0;
           return (
             <span

@@ -11,8 +11,13 @@ import type { CSSProperties, ReactNode } from "react";
 const RATIO = 912 / 787;
 // Het hart van de zeshoek in de doos: vrijwel het midden, maar niet precies,
 // want de art draagt zijn eigen gloed mee en die zit niet even ver rondom.
-const HART_X = "49.9%";
-const HART_Y = "49%";
+// Gemeten aan het BINNENVLAK van de art (het donkere veld binnen de gouden
+// rand), niet aan de plaat inclusief gloed: die gloed loopt onderaan verder
+// door, dus wie de plaat meet zet zijn cijfer te laag. Het binnenvlak loopt van
+// 29..331 breed en 36..341 hoog van de 360x417, dus het hart ligt op 50,1% en
+// 45,3%. Het stond op 49%, en dat is waarom het cijfer scheef leek te zitten.
+const HART_X = "50.1%";
+const HART_Y = "45.3%";
 
 export function HexArt({ maat, children, style }: { maat: number; children: ReactNode; style?: CSSProperties }) {
   return (
