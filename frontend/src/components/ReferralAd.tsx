@@ -413,10 +413,12 @@ function Trede({ t, volgend }: { t: Tier; volgend: boolean }) {
 // ---- de pil aan de zijkant -------------------------------------------------
 
 function Pil({ uitgeklapt, teHalen, onTik }: { uitgeklapt: boolean; teHalen: number; onTik: () => void }) {
-  const vol = "min(300px, 76vw)";
-  // Even breed als de zeshoekige knopjes rechtsboven, zodat het randje aan de
-  // zijkant net zo groot is als de knoppen waar het naast staat.
-  const kier = 46;
+  // De pil is even HOOG als een zeshoekknopje. Dat knopje is 46 breed en met
+  // zijn verhouding 513:460 dus 51 hoog; de pil-art is 1040:443, dus 51 hoog
+  // betekent 120 breed. Zo staat hij naast de knoppen alsof hij erbij hoort in
+  // plaats van als een banner die toevallig langskwam.
+  const vol = 120;
+  const kier = 40;
   return (
     // Twee lagen: deze doet het duwtje, de knop erin doet het schuiven. Een
     // animatie die `transform` schrijft veegt namelijk de transform van
@@ -435,7 +437,7 @@ function Pil({ uitgeklapt, teHalen, onTik }: { uitgeklapt: boolean; teHalen: num
           // venster met `overflow: hidden`. Dat scheelt de harde knip die je
           // zag zodra hij naar buiten kwam: nu doet de schermrand het werk, en
           // een schermrand ziet er nooit uit als een snee.
-          transform: uitgeklapt ? "translateX(0)" : `translateX(calc(${kier}px - ${vol}))`,
+          transform: uitgeklapt ? "translateX(0)" : `translateX(${kier - vol}px)`,
           transition: "transform .34s cubic-bezier(.22,1,.36,1)",
           background: "transparent",
           border: "none",
@@ -449,14 +451,14 @@ function Pil({ uitgeklapt, teHalen, onTik }: { uitgeklapt: boolean; teHalen: num
           <span
             style={{
               position: "absolute",
-              left: "34%",
-              right: "6%",
+              left: "31%",
+              right: "4%",
               top: "50%",
               transform: "translateY(-50%)",
               fontFamily: font.wide,
-              fontSize: "clamp(11px, 3.2vw, 14px)",
-              letterSpacing: 1,
-              lineHeight: 1.15,
+              fontSize: 11.5,
+              letterSpacing: 0.2,
+              lineHeight: 1.05,
               color: "#FFEBB8",
               textShadow: "0 2px 4px rgba(0,0,0,.6)",
               textAlign: "center",
@@ -470,16 +472,16 @@ function Pil({ uitgeklapt, teHalen, onTik }: { uitgeklapt: boolean; teHalen: num
                 position: "absolute",
                 right: "4%",
                 top: "6%",
-                minWidth: 18,
-                height: 18,
-                padding: "0 5px",
+                minWidth: 14,
+                height: 14,
+                padding: "0 4px",
                 borderRadius: 999,
                 background: "linear-gradient(158deg, #FFEBB8, #FFC23D 46%, #B07C17)",
                 boxShadow: "0 0 0 1.4px #4A2E04, 0 2px 5px rgba(0,0,0,.5)",
                 fontFamily: font.display,
                 fontWeight: 800,
-                fontSize: 11,
-                lineHeight: "18px",
+                fontSize: 9,
+                lineHeight: "14px",
                 color: "#2A1802",
               }}
             >
