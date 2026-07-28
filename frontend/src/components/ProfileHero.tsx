@@ -240,8 +240,12 @@ export const KADER_LIJN_KLEUR = [
 // weer op. Dat is wat een gesmede lijn doet, want die vangt het licht niet
 // overal even goed. De stops staan met opzet ONregelmatig; op gelijke afstanden
 // leest het als een streepjeslijn en niet als materiaal.
-const KADER_TEXTUUR =
-  "linear-gradient(100deg, rgba(0,0,0,.5) 0%, #000 6%, rgba(0,0,0,.38) 17%, #000 29%, #000 41%, rgba(0,0,0,.46) 51%, #000 63%, rgba(0,0,0,.32) 74%, #000 86%, rgba(0,0,0,.55) 100%)";
+const KADER_TEXTUUR = [
+  "linear-gradient(100deg,",
+  "rgba(0,0,0,.18) 0%, #000 5%, rgba(0,0,0,.10) 15%, #000 25%,",
+  "rgba(0,0,0,.62) 34%, #000 43%, rgba(0,0,0,.08) 53%, #000 62%,",
+  "rgba(0,0,0,.48) 70%, #000 80%, rgba(0,0,0,.12) 90%, rgba(0,0,0,.55) 100%)",
+].join(" ");
 
 // De glans: bijna wit, en ALLEEN in het midden van de boven- en onderrand. Daar
 // vangt de lijn het licht; naar de uiteinden toe hoort er niets te zitten.
