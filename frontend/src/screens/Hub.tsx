@@ -2844,17 +2844,9 @@ function LeaderboardTab({ game }: { game: GameApi }) {
           <p style={{ margin: 0, paddingInline: 6, fontFamily: font.ui, fontSize: 13, color: colors.faint }}>{t("lbEmpty")}</p>
         ) : (
           lb.rows.map((r, i) => (
-            /* De eerste drie krijgen hun wimpel; daaronder is het een gewoon
-               nummer, want een podium van twintig is geen podium. */
             <GlasRij
               key={r.id}
-              wapen={
-                i < 3 ? (
-                  <PlekWapen plek={i + 1} maat={26} />
-                ) : (
-                  <span style={{ width: 26, height: 34, display: "grid", placeItems: "center", paddingBottom: 6, fontFamily: font.display, fontWeight: 700, fontSize: 15, color: colors.faint }}>{i + 1}</span>
-                )
-              }
+              wapen={<PlekWapen plek={i + 1} maat={26} />}
             >
               <Avatar name={r.name} color={r.color} size={30} userId={r.id} hasAvatar={r.has_avatar} avatarVer={r.avatar_ver} />
               <span style={{ flex: 1, fontFamily: font.ui, fontWeight: 600, fontSize: 14, color: colors.ink, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</span>

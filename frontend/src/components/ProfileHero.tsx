@@ -763,7 +763,12 @@ const WAPEN_VERH = 1875 / 1201;
 const WAPEN_ART = 4;
 
 export function PlekWapen({ plek, maat = 38 }: { plek: number; maat?: number }) {
-  const metaal = plek === 1 ? "goud" : plek === 2 ? "zilver" : plek === 3 ? "brons" : null;
+  // Het podium is DRIE. Zodra een vierde ook iets glimmends draagt betekent
+  // glimmen niets meer. Daaronder dus dezelfde wimpel in dof steen: de rij houdt
+  // zijn ritme (een los zwevend cijfer naast drie wimpels leest als een
+  // ontbrekend plaatje) en de drie metalen springen er juist harder uit, want
+  // zij zijn de enige die licht vangen.
+  const metaal = plek === 1 ? "goud" : plek === 2 ? "zilver" : plek === 3 ? "brons" : plek > 0 ? "steen" : null;
   const hoog = Math.round(maat * WAPEN_VERH);
   return (
     <span style={{ position: "relative", width: maat, height: hoog, flexShrink: 0, display: "grid", placeItems: "center" }}>
@@ -798,8 +803,10 @@ export function PlekWapen({ plek, maat = 38 }: { plek: number; maat?: number }) 
           // Per metaal de donkerste tint van dat metaal zelf, niet zomaar een
           // donkere kleur: op het neutrale grijs van de zilveren wimpel zou het
           // oude paars als een vlek leggen.
-          color: plek === 1 ? "#4A2E00" : plek === 2 ? "#2A2A33" : plek === 3 ? "#3A1C05" : colors.sub,
-          textShadow: metaal ? "0 1px 0 rgba(255,255,255,.45)" : "none",
+          // Per metaal de donkerste tint van dat metaal zelf. Steen is juist
+          // donker, dus daar draait het om: een licht cijfer op een dof vlak.
+          color: plek === 1 ? "#4A2E00" : plek === 2 ? "#2A2A33" : plek === 3 ? "#3A1C05" : plek > 0 ? "#D8D2EA" : colors.sub,
+          textShadow: plek > 3 ? "0 1px 2px rgba(8,3,20,.6)" : metaal ? "0 1px 0 rgba(255,255,255,.45)" : "none",
         }}
       >
         {plek}e
