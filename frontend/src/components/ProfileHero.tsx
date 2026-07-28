@@ -18,17 +18,13 @@ export const GOUD = ["#4A2E04", "#B07C17", "#FFC23D", "#FFEBB8"] as const;
 
 const goudVlak = `linear-gradient(160deg, ${GOUD[3]} 0%, ${GOUD[2]} 38%, ${GOUD[1]} 72%, ${GOUD[0]} 100%)`;
 
-/** Het paneel van de heldenkaart: de echte lijst uit de UI-map.
+/** Het paneel van de heldenkaart: de art uit de UI-map, ongeknipt.
  *
- *  Net als bij de statistiekkaartjes ligt de art er als `border-image` op, met
- *  een snede van 52 van de 767 pixels. Uitrekken als achtergrond zou niet
- *  kunnen: de art is breed getekend (1,7 op 1) en de kaart is bijna vierkant,
- *  dus dan worden de hoekstenen plat.
- *
- *  De ruit boven in het midden is UIT de lijst gehaald en ligt er als eigen
- *  laagje op. In een `border-image` zit hij namelijk in het middenstuk van de
- *  bovenrand, en dat middenstuk wordt over de hele breedte uitgerekt: dan smeer
- *  je één ruit uit tot een gouden streep. */
+ *  Het hele plaatje is de achtergrond en wordt op de doos gespannen. Dat houdt
+ *  de art zoals ze getekend is, ruit en al. Een `border-image` zou de hoeken op
+ *  maat houden, maar dan komt de ruit in het uitrekbare middenstuk van de
+ *  bovenrand terecht en smeert hij uit tot een gouden streep; die kant is
+ *  geprobeerd en zag er slechter uit dan een beetje meerekken. */
 export function Paneel({ children, style, padding = 14 }: { children: ReactNode; style?: CSSProperties; padding?: number | string }) {
   return (
     <div
@@ -36,19 +32,13 @@ export function Paneel({ children, style, padding = 14 }: { children: ReactNode;
         position: "relative",
         boxSizing: "border-box",
         padding,
-        borderStyle: "solid",
-        borderWidth: 15,
-        borderImage: "url(/ui/profile-frame.webp) 52 fill stretch",
+        backgroundImage: "url(/ui/profile-frame.webp)",
+        backgroundSize: "100% 100%",
+        backgroundRepeat: "no-repeat",
         filter: "drop-shadow(0 12px 26px rgba(0,0,0,.5))",
         ...style,
       }}
     >
-      <img
-        src="/ui/profile-gem.webp"
-        alt=""
-        aria-hidden
-        style={{ position: "absolute", left: "50%", top: -7, transform: "translateX(-50%)", width: 76, pointerEvents: "none" }}
-      />
       {children}
     </div>
   );
@@ -125,6 +115,10 @@ export function SectieKop({ label, actie, onActie }: { label: string; actie?: st
  *  hoeken hun maat houden terwijl de zijkanten meerekken: een gewone
  *  achtergrond zou het hele plaatje uitrekken en dan worden de hoekstenen
  *  ovaal. De snede is 70 van de 429 pixels, precies tot voorbij de hoeksteen. */
+/** De zijde van een kaartje. Even hoog als het kaartje vóór het vierkant werd,
+ *  zodat het raster op één scherm blijft passen. */
+const MAAT = 74;
+
 export function StatKaart({ icoon, art, waarde, label }: { icoon: ReactNode; art?: string; waarde: ReactNode; label: string }) {
   return (
     <div
@@ -134,6 +128,13 @@ export function StatKaart({ icoon, art, waarde, label }: { icoon: ReactNode; art
         // de tekst mee scheef.
         position: "relative",
         aspectRatio: "1 / 1",
+        // Vierkant EN klein: op vier kolommen zou een kaartje 86 breed worden en
+        // dan is het blok twee rijen van 86 hoog, waardoor het scherm overloopt.
+        // Deze bovengrens houdt het kaartje even hoog als voordat het vierkant
+        // werd; wat overblijft is lucht tussen de kolommen.
+        maxWidth: MAAT,
+        margin: "0 auto",
+        width: "100%",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
@@ -141,19 +142,23 @@ export function StatKaart({ icoon, art, waarde, label }: { icoon: ReactNode; art
         // teken hoort vlak onder de lijst te zitten, met de lucht onderaan.
         // Zwevend in het midden lijkt het kaartje half leeg.
         justifyContent: "flex-start",
-        gap: 2,
+        gap: 1,
         boxSizing: "border-box",
         textAlign: "center",
         borderStyle: "solid",
-        borderWidth: 9,
+        // De randbreedte MOET meeschalen met het kaartje: de snede is 70 van de
+        // 429 pixels, dus de lijst beslaat 16% van de zijde. Houd je de rand op
+        // een vaste 9 terwijl het kaartje krimpt, dan wordt de lijst te dun ten
+        // opzichte van de rest en leest de art als uitgerekt.
+        borderWidth: Math.round(MAAT * (70 / 429)),
         borderImage: "url(/ui/stat-frame.webp) 70 fill stretch",
         filter: "drop-shadow(0 4px 9px rgba(0,0,0,.45))",
       }}
     >
       {art ? (
-        <img src={art} alt="" aria-hidden style={{ width: 29, height: 29, objectFit: "contain", flexShrink: 0 }} />
+        <img src={art} alt="" aria-hidden style={{ width: 22, height: 22, objectFit: "contain", flexShrink: 0 }} />
       ) : (
-        <span style={{ color: GOUD[2], height: 29, display: "grid", placeItems: "center", flexShrink: 0 }}>{icoon}</span>
+        <span style={{ color: GOUD[2], height: 22, display: "grid", placeItems: "center", flexShrink: 0 }}>{icoon}</span>
       )}
       {/* Het cijfer is wit en niet goud: het goud zit al in de lijst en in het
           teken, dus een derde gouden ding maakt het kaartje één brij. Wit is
@@ -161,10 +166,9 @@ export function StatKaart({ icoon, art, waarde, label }: { icoon: ReactNode; art
           getal, precies waar het hoort. */}
       <div
         style={{
-          marginTop: 1,
           fontFamily: font.display,
           fontWeight: 800,
-          fontSize: 21,
+          fontSize: 16,
           lineHeight: 1,
           color: "#FFFFFF",
           textShadow: "0 2px 4px rgba(0,0,0,.55)",
@@ -180,7 +184,7 @@ export function StatKaart({ icoon, art, waarde, label }: { icoon: ReactNode; art
           maxWidth: "100%",
           fontFamily: font.ui,
           fontWeight: 500,
-          fontSize: 9,
+          fontSize: 8,
           lineHeight: 1.15,
           color: withAlpha("#FFFFFF", 0.92),
           whiteSpace: "nowrap",
