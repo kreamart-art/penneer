@@ -601,3 +601,20 @@ input:focus {
   mask-composite: exclude;
   pointer-events: none;
 }
+
+/* De kleuren van een neon-kader laten rondlopen.
+   De verlooplaag is twee keer zo breed als de doos en schuift een hele doos op;
+   omdat de reeks eindigt op de kleur waarmee hij begint, is de sprong terug niet
+   te zien. Alleen `background-position` beweegt, dus de browser hoeft niets
+   opnieuw te tekenen. */
+@keyframes kader-loop {
+  from { background-position: 0% 50%; }
+  to { background-position: 200% 50%; }
+}
+.kader-loop {
+  background-size: 200% 100%;
+  animation: kader-loop 11s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .kader-loop { animation: none; }
+}

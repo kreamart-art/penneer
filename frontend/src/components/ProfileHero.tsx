@@ -11,6 +11,8 @@
 // De gouden hoekjes zijn geen plaatjes maar vier kleine haakjes; zo schalen ze
 // mee en kosten ze niets.
 import type { CSSProperties, ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
+import { chamferPath } from "../theme/reelSkins";
 import { ChevronRight, Check, Lock } from "lucide-react";
 import { colors, font, withAlpha } from "../theme/tokens";
 import { HexArt } from "./HexArt";
@@ -256,16 +258,10 @@ const KADER_TEXTUUR = [
 export const KADER_LIJN_XP =
   "linear-gradient(90deg, #FF3B5C 0%, #FF5FA8 22%, #C86BFF 46%, #8A3DE8 66%, #FFC13A 88%, #FFE08A 100%)";
 
-// Rook: vier radialen die elkaar deels overlappen, met verschillende maten en
-// op ongelijke afstanden. Waar ze over elkaar heen vallen wordt de gloed dichter
-// en ertussen dunner, en dat is wat rook doet. Een gelijkmatige gloed leest als
-// een lamp; deze leest als iets dat wálmt.
-const KADER_ROOK = [
-  "radial-gradient(62% 150% at 10% 50%, #000 0%, transparent 72%)",
-  "radial-gradient(48% 170% at 38% 50%, #000 0%, transparent 74%)",
-  "radial-gradient(56% 140% at 66% 50%, #000 0%, transparent 70%)",
-  "radial-gradient(44% 175% at 92% 50%, #000 0%, transparent 72%)",
-].join(", ");
+// Dezelfde wandeling, maar rond: hij eindigt op de kleur waarmee hij begint,
+// zodat de lus naadloos is. Zonder dat zie je bij elke ronde een sprong.
+export const KADER_LIJN_LOOP =
+  "linear-gradient(115deg, #FFCF4A 0%, #FFB347 9%, #C88BFF 30%, #9A4BF0 44%, #FF6FBC 62%, #E0409A 74%, #C88BFF 86%, #FFCF4A 100%)";
 
 // De glans: bijna wit, en ALLEEN in het midden van de boven- en onderrand. Daar
 // vangt de lijn het licht; naar de uiteinden toe hoort er niets te zitten.
@@ -305,6 +301,7 @@ export function NeonKader({
   lijn = KADER_LIJN,
   hoek,
   gloed = "0 0 10px rgba(139,83,255,.26), 0 3px 12px rgba(0,0,0,.38)",
+  animeer = false,
 }: {
   children: ReactNode;
   style?: CSSProperties;
@@ -320,6 +317,9 @@ export function NeonKader({
    *  dat zodra de lijn meer dan twee kleuren heeft, anders gloeit er iets anders
    *  dan er staat. */
   gloed?: string;
+  /** Laat de kleuren van de lijn rondlopen. Gebruik dan een reeks die eindigt
+   *  op de kleur waarmee hij begint, anders zie je elke ronde een sprong. */
+  animeer?: boolean;
   /** De afsnijding van de hoeken, in pixels, zoals de rol-skin. Zonder deze
    *  blijft het een gewone ronding. Met een afsnijding wordt de lijst glazig:
    *  een dun waas met een vervaging erachter, want glas hoort iets te doen met
@@ -336,19 +336,48 @@ export function NeonKader({
 }) {
   const KADER_R = radius;
   const vorm = hoek ? { clipPath: schuin(hoek) } : { borderRadius: KADER_R };
-  const ring = (d: number): CSSProperties =>
-    hoek
-      ? { ...ringLaag(0, d), borderRadius: 0, clipPath: schuin(hoek) }
-      : ringLaag(KADER_R, d);
+  // Bij een AFSNIJDING kan de gewone ringtruc niet. Die maakt het gat met een
+  // masker op de content-doos, en die doos is rechthoekig: de buitenkant volgt
+  // dan wel de schuine hoek maar de binnenkant niet, dus in de hoeken loopt de
+  // lijn dood.
+  //
+  // `mix-blend-mode: destination-out` om er een gat in te slaan werkt ook niet:
+  // Chrome ondersteunt de compositie-modi daar niet, en dan wordt die laag
+  // gewoon zwart. Geprobeerd, en het hele vlak werd zwart.
+  //
+  // Wat wel werkt is hoe de rol-skin het doet: EEN pad met twee contouren, de
+  // buitenste en de binnenste, met de even-oneven-regel. Dat vraagt echte
+  // pixels, dus de doos meet zichzelf op.
+  const doos = useRef<HTMLDivElement | null>(null);
+  const [maat, setMaat] = useState<{ w: number; h: number } | null>(null);
+  useEffect(() => {
+    const el = doos.current;
+    if (!hoek || !el) return;
+    const ro = new ResizeObserver(() => {
+      const r = el.getBoundingClientRect();
+      if (r.width && r.height) setMaat({ w: r.width, h: r.height });
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [hoek]);
+  const ringPad = (d: number): string | undefined => {
+    if (!hoek || !maat) return undefined;
+    const buiten = chamferPath(maat.w, maat.h, hoek, 2);
+    const binnen = chamferPath(maat.w - d * 2, maat.h - d * 2, Math.max(1, hoek - d), 2);
+    // De binnenste contour verschoven naar zijn plek, zodat de wand overal even
+    // dik is.
+    return `path(evenodd, "${buiten} M ${d} ${d} ${binnen.replace(/^M /, "m ").replace(/M /g, "m ")}")`;
+  };
+  const ring = (d: number): CSSProperties => ringLaag(KADER_R, d);
   return (
-    <div style={{ position: "relative", ...style }}>
+    <div ref={doos} style={{ position: "relative", ...style }}>
       {/* 1. zachte buitengloed. Met een afsnijding kan dit geen box-shadow zijn,
           want die volgt de rechthoek en niet de vorm; dan is het een vervaagde
           kopie van de vorm zelf. */}
       {gloed === "verloop" ? (
         // Een box-shadow kan geen verloop dragen, dus dit is een vervaagde kopie
         // van de LIJN zelf: dan gloeit er precies wat er staat, op de plek waar
-        // het staat. Met het rookmasker eroverheen walmt hij ongelijkmatig.
+        // het staat.
         <span
           aria-hidden
           style={{
@@ -357,9 +386,8 @@ export function NeonKader({
             ...(hoek ? { clipPath: schuin(hoek) } : { borderRadius: KADER_R + 3 }),
             backgroundImage: lijn,
             filter: "blur(7px)",
-            opacity: 0.55,
-            WebkitMaskImage: KADER_ROOK,
-            maskImage: KADER_ROOK,
+            opacity: 0.5,
+            ...(animeer ? { backgroundSize: "200% 100%", animation: "kader-loop 11s linear infinite" } : null),
             pointerEvents: "none",
           }}
         />
@@ -382,13 +410,24 @@ export function NeonKader({
           position: "relative",
           ...vorm,
           overflow: "hidden",
-          backdropFilter: hoek ? "blur(5px)" : undefined,
-          WebkitBackdropFilter: hoek ? "blur(5px)" : undefined,
+          // GLAS, geen mist. Alleen vervagen is niet genoeg: op een donkere
+          // achtergrond wordt dat een vlek. Wat het glas maakt zijn drie dingen
+          // erbij:
+          //   `saturate`, want glas versterkt de kleur die erdoorheen komt en
+          //   een blur alleen wast die juist uit;
+          //   een schuine glans van linksboven, want dat is de weerspiegeling;
+          //   en een binnenschaduw onderaan, waardoor het dikte krijgt.
+          backdropFilter: hoek ? "blur(7px) saturate(170%)" : undefined,
+          WebkitBackdropFilter: hoek ? "blur(7px) saturate(170%)" : undefined,
+          boxShadow: hoek ? "inset 0 -6px 10px rgba(8,3,22,.35), inset 0 1px 0 rgba(255,255,255,.14)" : undefined,
           backgroundImage:
             vulling === "geen" && !hoek
               ? undefined
               : hoek
-                ? "linear-gradient(180deg, rgba(186,156,255,.10) 0%, rgba(62,32,112,.14) 46%, rgba(18,8,38,.20) 100%)"
+                ? [
+                    "linear-gradient(135deg, rgba(255,255,255,.13) 0%, rgba(255,255,255,.04) 34%, rgba(255,255,255,0) 56%)",
+                    "linear-gradient(180deg, rgba(150,110,235,.10) 0%, rgba(40,18,80,.12) 60%, rgba(14,6,32,.18) 100%)",
+                  ].join(", ")
                 : "linear-gradient(180deg, rgba(66,36,116,.20) 0%, rgba(30,14,58,.26) 50%, rgba(16,7,34,.30) 100%)",
           ...binnen,
         }}
@@ -412,9 +451,19 @@ export function NeonKader({
         aria-hidden
         style={{ position: "absolute", inset: 0, WebkitMaskImage: KADER_TEXTUUR, maskImage: KADER_TEXTUUR, pointerEvents: "none" }}
       >
-        <span aria-hidden style={{ ...ring(dik + 1.4), backgroundImage: lijn, filter: "blur(3px)", opacity: 0.26 }} />
-        <span aria-hidden style={{ ...ring(dik), backgroundImage: lijn, opacity: 0.68 }} />
-        <span aria-hidden style={{ ...ring(dik), backgroundImage: KADER_GLANS }} />
+        {hoek ? (
+          <>
+            <span aria-hidden style={{ position: "absolute", inset: 0, clipPath: ringPad(Math.max(1, dik + 1.4)), backgroundImage: lijn, filter: "blur(3px)", opacity: 0.3, pointerEvents: "none" }} />
+            <span aria-hidden style={{ position: "absolute", inset: 0, clipPath: ringPad(Math.max(0.8, dik)), backgroundImage: lijn, opacity: 0.85, pointerEvents: "none" }} />
+            <span aria-hidden style={{ position: "absolute", inset: 0, clipPath: ringPad(Math.max(0.8, dik)), backgroundImage: KADER_GLANS, pointerEvents: "none" }} />
+          </>
+        ) : (
+          <>
+            <span className={animeer ? "kader-loop" : undefined} aria-hidden style={{ ...ring(dik + 1.4), backgroundImage: lijn, filter: "blur(3px)", opacity: 0.26 }} />
+            <span className={animeer ? "kader-loop" : undefined} aria-hidden style={{ ...ring(dik), backgroundImage: lijn, opacity: 0.68 }} />
+            <span aria-hidden style={{ ...ring(dik), backgroundImage: KADER_GLANS }} />
+          </>
+        )}
       </span>
     </div>
   );

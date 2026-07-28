@@ -6,7 +6,7 @@ import { ArrowLeft, Award, BookOpen, Camera, Check, ChevronDown, CircleDot, Copy
 import { Avatar, RANK_RING } from "../components/Avatar";
 import { Plek } from "../components/ProfileShowcase";
 import { HexArt } from "../components/HexArt";
-import { GOUD, KADER_LIJN_KLEUR, KADER_LIJN_XP, NeonKader, Paneel, PlekWapen, Prestatie, RingFoto, RingPortret, SCHILD_KLEUREN, SectieKop, SierKop, StatKaart, type SchildKleur } from "../components/ProfileHero";
+import { GOUD, KADER_LIJN_LOOP, KADER_LIJN_XP, NeonKader, Paneel, PlekWapen, Prestatie, RingFoto, RingPortret, SCHILD_KLEUREN, SectieKop, SierKop, StatKaart, type SchildKleur } from "../components/ProfileHero";
 import { isTester } from "../util/testers";
 import { AvatarZoom } from "../components/AvatarZoom";
 import { Button } from "../components/Button";
@@ -470,7 +470,9 @@ function CollapsibleCard({
         radius={18}
         vulling="geen"
         dik={0.35}
-        lijn={KADER_LIJN_KLEUR}
+        lijn={KADER_LIJN_LOOP}
+        gloed="none"
+        animeer
         // De statistiekkaartjes zijn 74 breed in kolommen van 84, dus ze staan
         // vijf pixels van de kolomrand af. Zet je deze lijst tegen die rand, dan
         // steekt hij precies die vijf pixels uit ten opzichte van wat je erboven
@@ -1212,7 +1214,9 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
         radius={18}
         vulling="geen"
         dik={0.35}
-        lijn={KADER_LIJN_KLEUR}
+        lijn={KADER_LIJN_LOOP}
+        gloed="none"
+        animeer
         style={{ marginInline: 5 }}
         binnen={{ padding: "10px 11px 11px", display: "flex", flexDirection: "column", gap: 9 }}
       >
