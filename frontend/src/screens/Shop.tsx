@@ -85,24 +85,7 @@ function CoinItem({ title, owned, price, coins, index, veeg, onBuy, children }: 
   const affordable = coins >= price;
   return (
     <GlasVak groen={owned} index={index} veeg={veeg}>
-      <div style={{ position: "relative", width: "100%", aspectRatio: "1 / 1", display: "grid", placeItems: "center", overflow: "hidden" }}>
-        {/* Een glasplaatje ACHTER het product. Het ligt eronder, dus het
-            product blijft scherp; wat je krijgt is een vitrine in plaats van
-            een waas. Bezit je het al, dan is de plaat groen. */}
-        <span
-          aria-hidden
-          style={{
-            position: "absolute", inset: 2, borderRadius: 10, pointerEvents: "none",
-            background: owned
-              ? "linear-gradient(150deg, rgba(120,235,150,.14) 0%, rgba(40,150,80,.08) 45%, rgba(10,40,22,.12) 100%)"
-              : "linear-gradient(150deg, rgba(210,190,255,.13) 0%, rgba(140,110,220,.07) 45%, rgba(30,16,62,.12) 100%)",
-            boxShadow: owned
-              ? "inset 0 1px 0 rgba(220,255,230,.16), inset 0 -8px 16px rgba(6,26,14,.24)"
-              : "inset 0 1px 0 rgba(255,255,255,.14), inset 0 -8px 16px rgba(10,4,26,.24)",
-          }}
-        />
-        <span style={{ position: "relative", display: "grid", placeItems: "center", width: "100%", height: "100%" }}>{children}</span>
-      </div>
+      <div style={{ width: "100%", aspectRatio: "1 / 1", display: "grid", placeItems: "center", overflow: "hidden" }}>{children}</div>
       <span style={{ fontFamily: font.ui, fontSize: 11.5, fontWeight: 600, color: colors.ink, textAlign: "center", lineHeight: 1.15 }}>{title}</span>
       {owned ? (
         <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontFamily: font.ui, fontSize: 11.5, fontWeight: 700, color: colors.green }}>
