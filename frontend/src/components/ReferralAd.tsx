@@ -219,7 +219,7 @@ function Popup({
             // op midden. (Die eerste meting was fout: het meetvenster liep zelf
             // op 32% af, dus ik mat mijn eigen venster in plaats van het bordje.)
             left: "49.9%",
-            top: "4.5%",
+            top: "5.6%",
             transform: "translate(-50%, -50%)",
             fontFamily: font.wide,
             fontSize: "clamp(13px, 3.9vw, 17px)",
@@ -273,7 +273,7 @@ function Popup({
             element gaat altijd voor een niet-geplaatst blok. */}
         <div style={{ position: "relative", zIndex: 1, padding: "9% 7.5% 7%", display: "flex", flexDirection: "column" }}>
           <div style={{ display: "flex", alignItems: "flex-start" }}>
-            <div style={{ flex: "1 1 100%", minWidth: 0, maxWidth: "58%", paddingTop: "2%" }}>
+            <div style={{ flex: "1 1 100%", minWidth: 0, maxWidth: "76%", paddingTop: "2%" }}>
               <h2
                 style={{
                   margin: 0,
@@ -281,7 +281,7 @@ function Popup({
                   // advertentiekop moet zijn. Wel met een eigen regelafstand,
                   // want dit font zet zijn hoofdletters hoog in de regel.
                   fontFamily: '"KA1", "Bebas Neue", sans-serif',
-                  fontSize: "clamp(25px, 8.7vw, 38px)",
+                  fontSize: "clamp(29px, 10.2vw, 44px)",
                   lineHeight: 1.16,
                   letterSpacing: 0.5,
                   backgroundImage: "linear-gradient(168deg, #FFEBB8 0%, #FFC23D 46%, #E39A12 100%)",
@@ -299,7 +299,7 @@ function Popup({
                   de kop de lucht geeft om groot te mogen zijn. */}
               <p
                 style={{
-                  margin: "30px 0 0",
+                  margin: "9px 0 0",
                   // De smalle hoofdletterstijl die eerst de kop droeg. Naast
                   // een blokkerige kop leest die rustiger dan een gewone zin.
                   fontFamily: font.wide,
@@ -318,7 +318,7 @@ function Popup({
           {/* De ladder als strookje in plaats van als kader. Een kader eromheen
               maakt er een tweede paneel van binnen een paneel, en dat vrat de
               hoogte die de kop nodig heeft. Het opschrift ligt nu OP de lijn. */}
-          <div style={{ marginTop: 18, position: "relative", display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ marginTop: 30, position: "relative", display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ flex: 1, height: 1, background: `linear-gradient(90deg, transparent, ${withAlpha(colors.gold, 0.45)})` }} />
             <span
               style={{
