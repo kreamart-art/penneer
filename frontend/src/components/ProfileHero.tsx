@@ -202,28 +202,29 @@ export function RingFoto({ userId, versie, heeftFoto, naam, kleur }: { userId: s
   );
 }
 
-/** De lijst om een rij: verlicht metaal, geen neonbuis.
+/** De lijst om een rij, laag voor laag naar de referentie.
  *
- *  Zes lagen, van achter naar voren, want de volgorde IS het effect:
- *    1. een paarse omgevingsgloed, zo zwak dat je hem eerder voelt dan ziet;
- *    2. de buitengloed, een vervaagde kopie van de lijn zelf, dus goud boven en
- *       violet onder zonder dat daar een tweede verloop voor nodig is;
- *    3. de lijn: een haarlijn van anderhalve pixel, als laag ERONDER, want een
- *       `border` kan geen verloop dragen;
- *    4. de vulling, bijna doorzichtig; de lijn moet het werk doen;
- *    5. een binnenglans van een pixel, waardoor het glazig wordt;
- *    6. de bovenrand, het felst van allemaal, want het licht komt van
- *       linksboven.
+ *  Elke laag doet EEN ding en is los te regelen. Eén rand of één box-shadow die
+ *  alles tegelijk moet doen komt er niet in de buurt: dan kun je de gloed niet
+ *  anders sturen dan de lijn, en de bovenrand niet anders dan de onderrand.
  *
- *  Let op de blurwaarden: een ontwerpprogramma noemt een blur van 22, maar CSS
- *  rekent met de standaardafwijking en dat is de HELFT. Neem je die getallen
- *  een op een over, dan wordt alles twee keer zo wazig als bedoeld. */
+ *  Van achter naar voren:
+ *    1. buitengloed   violet, strak om de vorm, plus een gewone schaduw eronder
+ *    2. paneel        donker en doorschijnend, zodat de nevel erachter meedoet
+ *    3. hoeklicht     warm, linksboven, want daar komt het licht vandaan
+ *    4. de lijn       een haarlijn als RING, geknipt met een masker
+ *    5. binnenglans   een wit streepje net binnen de bovenrand, kort
+ *
+ *  Blurwaarden: een ontwerpprogramma noemt 22, CSS rekent met de
+ *  standaardafwijking en dat is de helft. Een op een overnemen maakt alles twee
+ *  keer zo wazig als bedoeld. */
+const KADER_R = 15;
+
+// De lijn loopt van lavendel bovenaan naar diep violet onderaan, met een warme
+// gloed in de linkerbovenhoek waar het licht vandaan komt.
 const KADER_LIJN = [
-  // De hoeken vangen het warme licht; links en rechts even sterk.
-  "radial-gradient(72% 130% at 0% 0%, #FFCF4A 0%, transparent 52%)",
-  "radial-gradient(72% 130% at 100% 0%, #FFCF4A 0%, transparent 52%)",
-  // En daaronder de wandeling van goud naar violet.
-  "linear-gradient(180deg, #FFD96A 0%, #FFC13A 14%, #C98C2A 30%, #9E63FF 66%, #6B2ECF 100%)",
+  "radial-gradient(58% 150% at 3% 8%, rgba(255,196,90,.85) 0%, rgba(255,196,90,.25) 34%, transparent 62%)",
+  "linear-gradient(180deg, #C09AFF 0%, #9159E8 30%, #6A38BE 66%, #3E1E78 100%)",
 ].join(", ");
 
 export function NeonKader({
@@ -238,62 +239,72 @@ export function NeonKader({
 }) {
   return (
     <div style={{ position: "relative", ...style }}>
+      {/* 1. buitengloed */}
+      <span
+        aria-hidden
+        style={{
+          position: "absolute",
+          inset: 0,
+          borderRadius: KADER_R,
+          boxShadow: "0 0 10px rgba(139,83,255,.30), 0 3px 12px rgba(0,0,0,.45)",
+          pointerEvents: "none",
+        }}
+      />
+      {/* 2. het paneel */}
       <div
         style={{
           position: "relative",
-          borderRadius: 20,
-          backgroundImage: "linear-gradient(180deg, rgba(84,41,140,.10) 0%, rgba(26,10,46,.12) 100%)",
-          boxShadow: [
-            // 5. de binnenglans, waardoor het glazig wordt
-            "inset 0 1px 2px rgba(255,255,255,.12)",
-            // 2. de buitengloed: goud van boven, violet iets lager, allebei zwak
-            "0 0 12px rgba(255,207,74,.17)",
-            // 1. en de paarse omgevingsgloed, eerder te voelen dan te zien
-            "0 5px 16px rgba(125,60,255,.13)",
-          ].join(", "),
+          borderRadius: KADER_R,
+          overflow: "hidden",
+          backgroundImage: "linear-gradient(180deg, rgba(52,28,92,.60) 0%, rgba(30,14,58,.72) 45%, rgba(16,7,34,.80) 100%)",
           ...binnen,
         }}
       >
-        {children}
-        {/* 3. De lijn: een RING, geknipt met een masker.
-            Twee bekende trucs werken hier niet, allebei geprobeerd:
-            een verlooplaag eronder die er net onderuit steekt schijnt door de
-            bijna doorzichtige vulling heen, en `background-clip: padding-box,
-            border-box` doet dat ook, want border-box betekent "over de hele
-            doos" en niet "alleen de rand". Een masker dat het midden eruit
-            haalt is het enige dat het vlak echt leeg laat. */}
+        {/* 3. hoeklicht linksboven */}
         <span
           aria-hidden
           style={{
             position: "absolute",
             inset: 0,
-            borderRadius: 20,
-            padding: 1.5,
-            backgroundImage: KADER_LIJN,
-            WebkitMask: "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
-            WebkitMaskComposite: "xor",
-            mask: "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
-            maskComposite: "exclude",
+            backgroundImage: "radial-gradient(75% 155% at 5% 0%, rgba(255,190,90,.11) 0%, transparent 56%)",
             pointerEvents: "none",
           }}
         />
+        {/* 5. binnenglans: kort, alleen waar het oppervlak het licht vangt */}
+        <span
+          aria-hidden
+          style={{
+            position: "absolute",
+            left: "8%",
+            right: "8%",
+            top: 0,
+            height: 1,
+            background: "linear-gradient(90deg, transparent, rgba(255,255,255,.20), transparent)",
+            pointerEvents: "none",
+          }}
+        />
+        {children}
       </div>
-      {/* De bovenrand krijgt er een derde bij, met een korte bloom eromheen.
-          Kort, want een verloop dat over de halve rand licht is leest niet als
-          licht maar als een gekleurd vlak. */}
+      {/* 4. de lijn, als ring.
+          Twee bekende manieren werken hier NIET, allebei geprobeerd: een
+          verlooplaag eronder die er net onderuit steekt schijnt door het
+          doorschijnende paneel heen, en `background-clip: border-box` betekent
+          "over de hele doos" en niet "alleen de rand". Alleen een masker dat
+          het midden eruit haalt laat het vlak echt vrij. */}
       <span
         aria-hidden
-        style={{ position: "absolute", left: "14%", right: "14%", top: 0, height: 1.5, borderRadius: 1, background: "linear-gradient(90deg, transparent, #FFD55A, transparent)", pointerEvents: "none" }}
-      />
-      <span
-        aria-hidden
-        style={{ position: "absolute", left: "20%", right: "20%", top: -1, height: 3, background: "linear-gradient(90deg, transparent, #FFD55A, transparent)", filter: "blur(5px)", opacity: 0.5, pointerEvents: "none" }}
-      />
-      {/* En de onderrand een violette zoom, zwak, zodat het vlak naar beneden
-          wegzakt in plaats van overal even hard te stralen. */}
-      <span
-        aria-hidden
-        style={{ position: "absolute", left: "18%", right: "18%", bottom: -1, height: 3, background: "linear-gradient(90deg, transparent, #8B53FF, transparent)", filter: "blur(5px)", opacity: 0.2, pointerEvents: "none" }}
+        style={{
+          position: "absolute",
+          inset: 0,
+          borderRadius: KADER_R,
+          padding: 1,
+          backgroundImage: KADER_LIJN,
+          WebkitMask: "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
+          WebkitMaskComposite: "xor",
+          mask: "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
+          maskComposite: "exclude",
+          pointerEvents: "none",
+        }}
       />
     </div>
   );

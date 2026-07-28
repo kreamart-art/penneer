@@ -338,7 +338,7 @@ function XpRij({ level }: { level: LevelInfo }) {
   const nu = Math.max(0, level.xp - level.level_start);
   const deel = Math.min(1, nu / span);
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 1, marginLeft: 34, marginRight: 16, marginBottom: 8 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 1, marginLeft: 34, marginRight: 16, marginBottom: 1 }}>
       {/* Het totaal staat BOVEN de balk en niet ernaast, anders eet het een hap
           uit de breedte en houdt de balk halverwege de sectie op. Regelhoogte 1
           zodat de tekst TEGEN de balk staat: de lucht die een gewone regel

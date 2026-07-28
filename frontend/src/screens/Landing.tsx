@@ -766,6 +766,10 @@ function CountBadge({ n, x, y, size = 23 }: { n: number; x: string; y: string; s
             fontWeight: 800,
             fontSize: Math.round(size * 0.52),
             lineHeight: 1,
+            // Een cijfer staat op de basislijn en laat onder zich ruimte voor
+            // staartletters. Centreer je de REGEL, dan hangt het cijfer net te
+            // hoog; dit zet het optisch in het midden.
+            marginTop: Math.max(1, Math.round(size * 0.05)),
             color: GOUD[3],
             textShadow: "0 1px 2px rgba(8,3,20,.85)",
           }}
