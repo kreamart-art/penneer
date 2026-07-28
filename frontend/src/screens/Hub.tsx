@@ -1821,24 +1821,35 @@ function ClubScreen({ game, onBack, embedded }: { game: GameApi; onBack?: () => 
           <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13.5, color: colors.sub, lineHeight: 1.55 }}>{t("clubIntroLong")}</p>
           </Card>
-          <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase", color: colors.faint }}>{t("clubCreateTitle")}</span>
-            <input style={inputStyle} placeholder={t("clubNamePlaceholder")} value={name} maxLength={24} onChange={(e) => setName(e.target.value)} />
-            <Button variant="gold" full disabled={name.trim().length < 2} onClick={() => { sound.uiTap(); game.createClub(name.trim()); }}>
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Plus size={16} /> {t("clubCreateBtn")}</span>
-            </Button>
-          </Card>
-          <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase", color: colors.faint }}>{t("clubJoinTitle")}</span>
-            <input
-              style={{ ...inputStyle, fontFamily: font.display, letterSpacing: 4, textAlign: "center", textTransform: "uppercase" }}
-              placeholder={t("clubCodePlaceholder")}
-              value={code}
-              maxLength={6}
-              onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
-            />
-            <Button variant="primary" full disabled={code.length < 6} onClick={() => { sound.uiTap(); game.joinClub(code); }}>{t("clubJoinBtn")}</Button>
-          </Card>
+          {/* De twee keuzes staan in de sierlijst van het profiel. Die art heeft
+              een VASTE verhouding, dus de inhoud voegt zich naar het paneel en
+              niet andersom: de knoppen zijn een slag kleiner zodat opschrift,
+              veld en knop samen binnen de lijst passen. Rekken zou de gouden
+              hoeken vervormen, en dat zijn juist de stukken die je herkent. */}
+          <Paneel>
+            <div style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", gap: 9, paddingInline: 4 }}>
+              <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase", color: colors.faint }}>{t("clubCreateTitle")}</span>
+              {/* Even breed als de knop eronder: een veld dat breder is dan wat
+                  het bedient, leest als twee losse dingen in plaats van een paar. */}
+              <input style={{ ...inputStyle, padding: "9px 12px", width: "min(100%, 232px)" }} placeholder={t("clubNamePlaceholder")} value={name} maxLength={24} onChange={(e) => setName(e.target.value)} />
+              <Button variant="gold" full compact disabled={name.trim().length < 2} onClick={() => { sound.uiTap(); game.createClub(name.trim()); }}>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Plus size={15} /> {t("clubCreateBtn")}</span>
+              </Button>
+            </div>
+          </Paneel>
+          <Paneel>
+            <div style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", gap: 9, paddingInline: 4 }}>
+              <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase", color: colors.faint }}>{t("clubJoinTitle")}</span>
+              <input
+                style={{ ...inputStyle, padding: "9px 12px", width: "min(100%, 232px)", fontFamily: font.display, letterSpacing: 4, textAlign: "center", textTransform: "uppercase" }}
+                placeholder={t("clubCodePlaceholder")}
+                value={code}
+                maxLength={6}
+                onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
+              />
+              <Button variant="primary" full compact disabled={code.length < 6} onClick={() => { sound.uiTap(); game.joinClub(code); }}>{t("clubJoinBtn")}</Button>
+            </div>
+          </Paneel>
         </div>
     );
   }

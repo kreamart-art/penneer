@@ -14,6 +14,13 @@ type Variant = "primary" | "gold" | "danger" | "ghost";
 interface Props extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
   full?: boolean;
+  /** Een slag kleiner, voor een knop in een paneel met een vaste hoogte.
+   *
+   *  Alleen de BREEDTE gaat omlaag. De plaat heeft een vaste verhouding, dus
+   *  smaller is vanzelf ook lager, en het opschrift blijft op zijn eigen maat
+   *  staan: een knop die kleiner moet passen is nog steeds even belangrijk om te
+   *  kunnen lezen. */
+  compact?: boolean;
 }
 
 // Welke variant welke plaat krijgt; de rest blijft gewoon CSS.
@@ -52,7 +59,7 @@ const palette: Record<
   },
 };
 
-export function Button({ variant = "primary", full, style, children, disabled, ...rest }: Props) {
+export function Button({ variant = "primary", full, compact, style, children, disabled, ...rest }: Props) {
   const [down, setDown] = useState(false);
   // De plaat kan ontbreken (asset weg / offline); dan valt de knop terug op de
   // CSS-vorm en blijft hij gewoon werken.
@@ -103,6 +110,8 @@ export function Button({ variant = "primary", full, style, children, disabled, .
           // een BLOK. Vandaar grid: dan pakken de automatische marges wel.
           display: full ? "grid" : "inline-grid",
           ...(full ? fullWidthButton : null),
+        ...(full && compact ? { width: `min(100%, 232px)` } : null),
+          ...(full && compact ? { width: `min(100%, 232px)` } : null),
           boxShadow: down
             ? "0 2px 6px rgba(0,0,0,.45), 0 1px 0 rgba(80,12,6,.9)"
             : "0 5px 12px rgba(0,0,0,.45), 0 3px 0 rgba(80,12,6,.9)",
@@ -171,6 +180,7 @@ export function Button({ variant = "primary", full, style, children, disabled, .
         // uitrekken), de breedte laat ruimte over voor de gloed naast de plaat,
         // en het plafond houdt de knop op een tablet normaal van formaat.
         ...(full ? fullWidthButton : null),
+        ...(full && compact ? { width: `min(100%, 232px)` } : null),
         display: full ? "grid" : undefined,
         placeItems: full ? "center" : undefined,
         textAlign: "center",
