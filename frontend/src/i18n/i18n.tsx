@@ -373,6 +373,8 @@ const nl: Dict = {
   shopTabAvatars: "Avatars",
   shopTabCats: "Lijsten",
   withdrawRequest: "Intrekken",
+  // De korte versie, voor waar de lange regel niet past (het AI-paneel).
+  shopPaypalSoonShort: "Betalen kan binnenkort",
   shopAvatarsLead: "Elk pack heeft 9 nieuwe avatars. Kies ze in je profiel.",
   shopAvPack1: "Avatarpack 1",
   shopAvPack2: "Avatarpack 2",
@@ -1093,6 +1095,7 @@ const en: Dict = {
   shopTabAvatars: "Avatars",
   shopTabCats: "Lists",
   withdrawRequest: "Withdraw",
+  shopPaypalSoonShort: "Paying opens soon",
   shopAvatarsLead: "Each pack has 9 new avatars. Pick them in your profile.",
   shopAvPack1: "Avatar pack 1",
   shopAvPack2: "Avatar pack 2",

@@ -30,7 +30,7 @@ export type NavKey = "shop" | "leaderboard" | "home" | "friends" | "profile";
 // naam vervangt. De service worker bewaart plaatjes cache-first en ruimt pas op
 // bij zijn volgende activatie, dus alleen zijn versie ophogen laat er nog een
 // laadbeurt de oude bytes doorheen. Een andere URL kan dat niet gebeuren.
-const NAV_ART = 3;
+const NAV_ART = 4; // 4: wit met een lichtpaarse zweem i.p.v. goud
 const SLOTS = [11.6, 31.0, 50, 69.1, 88.4];
 // De scheiding staat MIDDEN tussen de twee pictogrammen van een vak, dus op het
 // gemiddelde van hun posities. Twee vakken, twee groeven; over het gouden

@@ -354,6 +354,39 @@ function Raster({ kolommen, aantal, children }: { kolommen: number; aantal: numb
   );
 }
 
+/** De kleine gouden knopplaat uit de UI-map, met een opschrift erop.
+ *
+ *  De gewone Button vulde het hele vakje: die is gemaakt voor een regel over de
+ *  volle breedte, niet voor een prijskaartje in een raster. Deze is art, dus hij
+ *  houdt zijn eigen verhouding en groeit niet mee met de doos. */
+const KNOP_VERH = 150 / 384;
+
+function KnopPlaat({ label, breed = 92, uit, onClick }: { label: React.ReactNode; breed?: number; uit?: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={() => { if (!uit) { sound.uiTap(); onClick(); } }}
+      disabled={uit}
+      className={uit ? undefined : "pressable"}
+      style={{
+        position: "relative", width: breed, height: Math.round(breed * KNOP_VERH),
+        border: "none", background: "transparent", padding: 0, cursor: uit ? "default" : "pointer",
+        opacity: uit ? 0.55 : 1, flexShrink: 0, display: "block",
+      }}
+    >
+      <img src="/ui/knop-klein.webp" alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} />
+      <span
+        style={{
+          position: "absolute", inset: 0, display: "grid", placeItems: "center",
+          fontFamily: font.display, fontWeight: 800, fontSize: Math.round(breed * 0.155), lineHeight: 1,
+          color: "#3A2405", textShadow: "0 1px 0 rgba(255,240,190,.5)",
+        }}
+      >
+        {label}
+      </span>
+    </button>
+  );
+}
+
 export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
   const { t } = useT();
   // De winkel hoort bij de main page: dezelfde achtergrond, zodat het voelt als
@@ -489,7 +522,18 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
           <Paneel>
             <div style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", gap: 7, padding: "6px 10px 2px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <img src="/ui/ai-scheids.webp" alt="" aria-hidden style={{ width: 46, height: 46, objectFit: "contain", display: "block", flexShrink: 0 }} />
+                {/* Een zachte witte halo ERACHTER, geen drop-shadow: die laat iOS
+                    de laag apart rasteren en dan zie je zijn rechthoek. */}
+                <span aria-hidden style={{ position: "relative", width: 42, height: 42, flexShrink: 0, display: "inline-grid", placeItems: "center" }}>
+                  <span
+                    style={{
+                      position: "absolute", inset: "4%", borderRadius: "50%",
+                      background: "radial-gradient(closest-side, rgba(255,255,255,.42) 0%, rgba(226,214,255,.18) 55%, transparent 100%)",
+                      filter: "blur(7px)",
+                    }}
+                  />
+                  <img src="/ui/ai-scheids.webp" alt="" style={{ position: "relative", width: 42, height: 42, objectFit: "contain", display: "block" }} />
+                </span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15.5, lineHeight: 1.15, color: colors.ink }}>{t("shopAiTitle")}</div>
                   <div style={{ fontFamily: font.ui, fontSize: 11.5, lineHeight: 1.25, color: colors.faint }}>{t("shopAiTag")}</div>
@@ -508,7 +552,7 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
                 </div>
               )}
               {!aiActive && status && !status.enabled && (
-                <p style={{ margin: 0, textAlign: "center", fontFamily: font.ui, fontSize: 10, color: colors.faint, lineHeight: 1.25 }}>{t("shopPaypalSoon")}</p>
+                <p style={{ margin: 0, textAlign: "center", fontFamily: font.ui, fontSize: 10, color: colors.faint, lineHeight: 1.2 }}>{t("shopPaypalSoonShort")}</p>
               )}
             </div>
           </Paneel>
@@ -533,9 +577,12 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
                     {i === 3 && <span style={{ position: "absolute", top: 5, right: 10, fontFamily: font.ui, fontSize: 8.5, fontWeight: 800, letterSpacing: 0.4, textTransform: "uppercase", color: colors.gold }}>{t("shopBestValue")}</span>}
                     <img src="/coins-stack.webp" alt="" style={{ width: 44, height: 44, objectFit: "contain", display: "block" }} />
                     <Coins n={b.coins} size={16} />
-                    <Button variant="gold" full compact style={{ padding: "5px 8px", fontSize: 12 }} disabled={!account || buying !== null || !status?.enabled} onClick={() => startPaypal(b.product)}>
-                      {buying === b.product ? t("shopOpeningPaypal") : money(b.price, status?.currency ?? "EUR")}
-                    </Button>
+                    <KnopPlaat
+                      breed={92}
+                      uit={!account || buying !== null || !status?.enabled}
+                      onClick={() => startPaypal(b.product)}
+                      label={buying === b.product ? "..." : money(b.price, status?.currency ?? "EUR")}
+                    />
                   </GlasVak>
                 ))}
               </Raster>
