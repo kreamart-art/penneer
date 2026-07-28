@@ -454,7 +454,7 @@ function CollapsibleCard({
     // De binnenste lijsten krijgen een kleinere ronding, anders botsen de twee
     // hoeken op elkaar in plaats van in elkaar te vallen.
     return (
-      <NeonKader radius={18} vulling="geen" dik={0.5} binnen={{ padding: "9px 9px 10px", display: "flex", flexDirection: "column", gap: 9 }}>
+      <NeonKader radius={18} vulling="geen" dik={0.5} binnen={{ padding: "10px 11px 11px", display: "flex", flexDirection: "column", gap: 7 }}>
         <SectieKop
           label={title}
           actie={hidden > 0 ? (open ? t("showLess") : t("showAll")) : undefined}
@@ -589,7 +589,7 @@ function HistoryCard({ game, meId, vitrine }: { game: GameApi; meId: string; vit
         const tegen = anderen[0];
         const rest = Math.max(0, g.player_count - 2);
         const zij = (
-          <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 15, color: colors.ink, flexShrink: 0 }}>
+          <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 14, color: colors.ink, flexShrink: 0 }}>
             {g.score}
           </span>
         );
@@ -598,13 +598,13 @@ function HistoryCard({ game, meId, vitrine }: { game: GameApi; meId: string; vit
             key={`${g.finished_at}-${i}`}
             radius={12}
             dik={0.4}
-            binnen={{ display: "flex", alignItems: "center", gap: 9, padding: "5px 8px" }}
+            binnen={{ display: "flex", alignItems: "center", gap: 8, padding: "3px 7px" }}
           >
             <PlekWapen plek={g.place} />
             <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
                 {ik && (
-                  <Avatar name={ik.name} color={ik.color} size={22} userId={ik.user_id} hasAvatar={ik.has_avatar} avatarVer={ik.avatar_ver} />
+                  <Avatar name={ik.name} color={ik.color} size={20} userId={ik.user_id} hasAvatar={ik.has_avatar} avatarVer={ik.avatar_ver} />
                 )}
                 <span style={{ display: "flex", alignItems: "center", gap: 4, minWidth: 0, flex: 1 }}>
                   {g.is_winner && <Crown size={12} color={colors.gold} style={{ flexShrink: 0 }} />}
@@ -613,10 +613,10 @@ function HistoryCard({ game, meId, vitrine }: { game: GameApi; meId: string; vit
                 {tegen ? (
                   <>
                     <span style={{ fontFamily: font.wide, fontSize: 10, letterSpacing: 0.8, color: colors.faint, flexShrink: 0 }}>VS</span>
-                    <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15, color: colors.sub, flexShrink: 0 }}>
+                    <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 14, color: colors.sub, flexShrink: 0 }}>
                       {tegen.score}
                     </span>
-                    <Avatar name={tegen.name} color={tegen.color} size={22} userId={tegen.user_id} hasAvatar={tegen.has_avatar} avatarVer={tegen.avatar_ver} />
+                    <Avatar name={tegen.name} color={tegen.color} size={20} userId={tegen.user_id} hasAvatar={tegen.has_avatar} avatarVer={tegen.avatar_ver} />
                     {rest > 0 && (
                       <span style={{ fontFamily: font.ui, fontSize: 11, color: colors.faint, flexShrink: 0 }}>+{rest}</span>
                     )}

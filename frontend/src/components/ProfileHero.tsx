@@ -516,8 +516,8 @@ export function PlekWapen({ plek }: { plek: number }) {
   return (
     <span
       style={{
-        width: 44,
-        height: 46,
+        width: 38,
+        height: 40,
         flexShrink: 0,
         display: "grid",
         placeItems: "center",
@@ -528,7 +528,7 @@ export function PlekWapen({ plek }: { plek: number }) {
           : "linear-gradient(162deg, rgba(255,255,255,.2), rgba(0,0,0,.4))",
         fontFamily: font.display,
         fontWeight: 800,
-        fontSize: 15,
+        fontSize: 13,
         color: plek === 1 ? "#3A2500" : plek === 2 ? "#241640" : plek === 3 ? "#3A1C05" : colors.sub,
         textShadow: metaal ? "0 1px 0 rgba(255,255,255,.4)" : "none",
       }}
