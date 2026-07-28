@@ -85,24 +85,12 @@ function CoinItem({ title, owned, price, coins, onBuy, children }: {
   const { t } = useT();
   const affordable = coins >= price;
   return (
-    // Elk product in een eigen lijst met rondlopende kleuren. Bezit je het al,
-    // dan loopt diezelfde lijst in GROEN en staat hij stil: het is dan geen
-    // aanbod meer, dus hij hoeft ook geen aandacht meer te trekken.
-    <NeonKader
-      radius={16}
-      dik={0.5}
-      vulling="geen"
-      animeer={!owned}
-      lijn={owned ? KADER_LIJN_GROEN : undefined}
-      gloed={owned ? `0 0 12px ${withAlpha(colors.green, 0.3)}` : undefined}
-      binnen={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: 10, height: "100%", boxSizing: "border-box" }}
-      style={{ height: "100%" }}
-    >
+    <GlasVak groen={owned}>
       <div style={{ width: "100%", aspectRatio: "1 / 1", display: "grid", placeItems: "center", overflow: "hidden" }}>{children}</div>
-      <span style={{ fontFamily: font.ui, fontSize: 12.5, fontWeight: 600, color: colors.ink, textAlign: "center", lineHeight: 1.2 }}>{title}</span>
+      <span style={{ fontFamily: font.ui, fontSize: 11.5, fontWeight: 600, color: colors.ink, textAlign: "center", lineHeight: 1.15 }}>{title}</span>
       {owned ? (
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontFamily: font.ui, fontSize: 12.5, fontWeight: 700, color: colors.green }}>
-          <Check size={14} /> {t("shopItemOwned")}
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontFamily: font.ui, fontSize: 11.5, fontWeight: 700, color: colors.green }}>
+          <Check size={13} /> {t("shopItemOwned")}
         </span>
       ) : (
         <button
@@ -111,15 +99,38 @@ function CoinItem({ title, owned, price, coins, onBuy, children }: {
           aria-label={`${t("shopItemBuy")} ${title}`}
           className={affordable ? "pressable" : undefined}
           style={{
-            display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 14px", borderRadius: 999,
+            display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 11px", borderRadius: 999,
             background: affordable ? withAlpha(colors.gold, 0.16) : withAlpha("#000000", 0.3),
             border: `1px solid ${affordable ? withAlpha(colors.gold, 0.5) : colors.panelBorder}`,
             cursor: affordable ? "pointer" : "default",
           }}
         >
-          <Coins n={price} color={affordable ? colors.gold : colors.faint} size={15} />
+          <Coins n={price} color={affordable ? colors.gold : colors.faint} size={14} />
         </button>
       )}
+    </GlasVak>
+  );
+}
+
+/** Een productvakje in glas. Dezelfde behandeling als een rij in de
+ *  vriendenlijst, alleen dan rechthoekig: de afgeschuinde hoek, de lijn op een
+ *  derde sterkte en de gouden kappen op de schuine kanten. De neonlijn hoort om
+ *  de SECTIE en niet ook nog om elk vakje erin, want dan zie je een raster van
+ *  kaders in plaats van een sectie met inhoud. */
+function GlasVak({ groen, children }: { groen?: boolean; children: React.ReactNode }) {
+  return (
+    <NeonKader
+      hoek={11}
+      dik={0.3}
+      sterkte={groen ? 0.6 : 0.3}
+      vulling="geen"
+      eindkap
+      lijn={groen ? KADER_LIJN_GROEN : undefined}
+      gloed={groen ? `0 0 10px ${withAlpha(colors.green, 0.25)}` : undefined}
+      binnen={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5, padding: "8px 7px 9px", height: "100%", boxSizing: "border-box" }}
+      style={{ height: "100%" }}
+    >
+      {children}
     </NeonKader>
   );
 }
@@ -287,7 +298,7 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
               </span>
               <div style={{ flex: 1 }}>
                 <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>{t("shopAiTitle")}</div>
-                <div style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint }}>{t("shopAiTag")}</div>
+                <div style={{ fontFamily: font.ui, fontSize: 12, lineHeight: 1.3, color: colors.faint }}>{t("shopAiTag")}</div>
               </div>
               {status?.enabled && !aiActive && (
                 <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 18, color: colors.gold }}>{money(status.ai_price ?? status.price, status.currency)}</div>
@@ -321,137 +332,141 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
         {vak === "coins" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <div>
-              <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink }}>{t("shopCoinsHeader")}</div>
-              <div style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint }}>{t("shopCoinsLead")}</div>
+              <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15, lineHeight: 1.15, color: colors.ink }}>{t("shopCoinsHeader")}</div>
+              <div style={{ fontFamily: font.ui, fontSize: 12, lineHeight: 1.3, color: colors.faint }}>{t("shopCoinsLead")}</div>
             </div>
             {/* De vakjes staan er ALTIJD, ook zolang betalen nog niet aanstaat.
                 Je moet kunnen zien wat er te koop komt; de melding erboven zegt
                 dat het nog niet kan en de knoppen staan dan uit. */}
             {status && !status.enabled && (
-              <Card><p style={{ margin: 0, textAlign: "center", fontFamily: font.ui, fontSize: 12.5, color: colors.faint, lineHeight: 1.5 }}>{t("shopPaypalSoon")}</p></Card>
+              <p style={{ margin: 0, textAlign: "center", fontFamily: font.ui, fontSize: 11.5, color: colors.faint, lineHeight: 1.35 }}>{t("shopPaypalSoon")}</p>
             )}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
-              {(status?.bundles ?? []).map((b, i) => (
-                <NeonKader
-                  key={b.product}
-                  radius={16}
-                  dik={i === 3 ? 0.7 : 0.5}
-                  vulling="geen"
-                  animeer
-                  binnen={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "14px 10px", position: "relative", height: "100%", boxSizing: "border-box" }}
-                  style={{ height: "100%" }}
-                >
-                  {i === 3 && <span style={{ position: "absolute", top: 8, right: 8, fontFamily: font.ui, fontSize: 9.5, fontWeight: 800, letterSpacing: 0.4, textTransform: "uppercase", color: colors.gold }}>{t("shopBestValue")}</span>}
-                  <img src="/coins-stack.webp" alt="" style={{ width: 66, height: 66, objectFit: "contain", display: "block" }} />
-                  <Coins n={b.coins} size={19} />
-                  <Button variant="gold" full disabled={!account || buying !== null || !status?.enabled} onClick={() => startPaypal(b.product)}>
-                    {buying === b.product ? t("shopOpeningPaypal") : money(b.price, status?.currency ?? "EUR")}
-                  </Button>
-                </NeonKader>
-              ))}
-            </div>
+            <Card style={{ padding: "10px 9px 12px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
+                {(status?.bundles ?? []).map((b, i) => (
+                  <GlasVak key={b.product}>
+                    {i === 3 && <span style={{ position: "absolute", top: 5, right: 10, fontFamily: font.ui, fontSize: 8.5, fontWeight: 800, letterSpacing: 0.4, textTransform: "uppercase", color: colors.gold }}>{t("shopBestValue")}</span>}
+                    <img src="/coins-stack.webp" alt="" style={{ width: 44, height: 44, objectFit: "contain", display: "block" }} />
+                    <Coins n={b.coins} size={16} />
+                    <Button variant="gold" full compact style={{ padding: "5px 8px", fontSize: 12 }} disabled={!account || buying !== null || !status?.enabled} onClick={() => startPaypal(b.product)}>
+                      {buying === b.product ? t("shopOpeningPaypal") : money(b.price, status?.currency ?? "EUR")}
+                    </Button>
+                  </GlasVak>
+                ))}
+              </div>
+            </Card>
           </div>
         )}
 
         {vak === "cats" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <div>
-                <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink }}>{t("shopCatsHeader")}</div>
-                <div style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint }}>{t("shopCatsLead")}</div>
+                <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15, lineHeight: 1.15, color: colors.ink }}>{t("shopCatsHeader")}</div>
+                <div style={{ fontFamily: font.ui, fontSize: 12, lineHeight: 1.3, color: colors.faint }}>{t("shopCatsLead")}</div>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
-                {catsForSale.map((c) => (
-                  <CoinItem
-                    key={c.id}
-                    title={c.name}
-                    owned={c.owned || owned.has(`cat:${c.id}`)}
-                    price={c.price}
-                    coins={coins}
-                    onBuy={() => game.buyItemCoins(`cat:${c.id}`)}
-                  >
-                    <div style={{ display: "grid", placeItems: "center", width: "100%", height: "100%", gap: 3 }}>
-                      <ListChecks size={26} color={colors.gold} />
-                      <span style={{ fontFamily: font.ui, fontSize: 10, color: colors.faint }}>
-                        {c.checked ? t("catChecked") : t("catOpenList")}
-                      </span>
-                    </div>
-                  </CoinItem>
-                ))}
-              </div>
+              <Card style={{ padding: "10px 9px 12px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+                  {catsForSale.map((c) => (
+                    <CoinItem
+                      key={c.id}
+                      title={c.name}
+                      owned={c.owned || owned.has(`cat:${c.id}`)}
+                      price={c.price}
+                      coins={coins}
+                      onBuy={() => game.buyItemCoins(`cat:${c.id}`)}
+                    >
+                      <div style={{ display: "grid", placeItems: "center", width: "100%", height: "100%", gap: 3 }}>
+                        <ListChecks size={26} color={colors.gold} />
+                        <span style={{ fontFamily: font.ui, fontSize: 10, color: colors.faint }}>
+                          {c.checked ? t("catChecked") : t("catOpenList")}
+                        </span>
+                      </div>
+                    </CoinItem>
+                  ))}
+                </div>
+              </Card>
             </div>
         )}
 
         {vak === "buzzers" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <div>
-              <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink }}>{t("shopBuzzHeader")}</div>
-              <div style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint }}>{t("shopBuzzLead")}</div>
+              <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15, lineHeight: 1.15, color: colors.ink }}>{t("shopBuzzHeader")}</div>
+              <div style={{ fontFamily: font.ui, fontSize: 12, lineHeight: 1.3, color: colors.faint }}>{t("shopBuzzLead")}</div>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
-              {BUZZERS_FOR_SALE.map((bz) => (
-                <CoinItem key={bz.id} title={t(bz.name)} owned={owned.has(bz.id)} price={prices[bz.id] ?? buzzPrice} coins={coins} onBuy={() => game.buyItemCoins(bz.id)}>
-                  <img src={`/buzzers/${bz.id}.webp`} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
-                </CoinItem>
-              ))}
-            </div>
+            <Card style={{ padding: "10px 9px 12px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+                {BUZZERS_FOR_SALE.map((bz) => (
+                  <CoinItem key={bz.id} title={t(bz.name)} owned={owned.has(bz.id)} price={prices[bz.id] ?? buzzPrice} coins={coins} onBuy={() => game.buyItemCoins(bz.id)}>
+                    <img src={`/buzzers/${bz.id}.webp`} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
+                  </CoinItem>
+                ))}
+              </div>
+            </Card>
           </div>
         )}
 
         {vak === "reels" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <div>
-              <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink }}>{t("shopReelsHeader")}</div>
-              <div style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint }}>{t("shopReelsLead")}</div>
+              <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15, lineHeight: 1.15, color: colors.ink }}>{t("shopReelsHeader")}</div>
+              <div style={{ fontFamily: font.ui, fontSize: 12, lineHeight: 1.3, color: colors.faint }}>{t("shopReelsLead")}</div>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
-              {REELS_FOR_SALE.map((rs) => (
-                <CoinItem key={rs.id} title={t(rs.name)} owned={owned.has(rs.id)} price={prices[rs.id] ?? 100} coins={coins} onBuy={() => game.buyItemCoins(rs.id)}>
-                  <ReelSwatch id={rs.id} />
-                </CoinItem>
-              ))}
-            </div>
+            <Card style={{ padding: "10px 9px 12px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+                {REELS_FOR_SALE.map((rs) => (
+                  <CoinItem key={rs.id} title={t(rs.name)} owned={owned.has(rs.id)} price={prices[rs.id] ?? 100} coins={coins} onBuy={() => game.buyItemCoins(rs.id)}>
+                    <ReelSwatch id={rs.id} />
+                  </CoinItem>
+                ))}
+              </div>
+            </Card>
           </div>
         )}
 
         {vak === "emotes" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <div>
-              <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink }}>{t("shopEmotesHeader")}</div>
-              <div style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint }}>{t("shopEmotesLead")}</div>
+              <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15, lineHeight: 1.15, color: colors.ink }}>{t("shopEmotesHeader")}</div>
+              <div style={{ fontFamily: font.ui, fontSize: 12, lineHeight: 1.3, color: colors.faint }}>{t("shopEmotesLead")}</div>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
-              {EMOTE_PACKS_FOR_SALE.map((pk) => (
-                <CoinItem key={pk.id} title={t(pk.name)} owned={owned.has(pk.id)} price={prices[pk.id] ?? 200} coins={coins} onBuy={() => game.buyItemCoins(pk.id)}>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 2, width: "100%" }}>
-                    {pk.emotes.slice(0, 6).map((id) => (
-                      <img key={id} src={EMOTE_SRC(id)} alt="" loading="lazy" style={{ width: "100%", aspectRatio: "1 / 1", objectFit: "contain", display: "block" }} />
-                    ))}
-                  </div>
-                </CoinItem>
-              ))}
-            </div>
+            <Card style={{ padding: "10px 9px 12px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
+                {EMOTE_PACKS_FOR_SALE.map((pk) => (
+                  <CoinItem key={pk.id} title={t(pk.name)} owned={owned.has(pk.id)} price={prices[pk.id] ?? 200} coins={coins} onBuy={() => game.buyItemCoins(pk.id)}>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 2, width: "100%" }}>
+                      {pk.emotes.slice(0, 6).map((id) => (
+                        <img key={id} src={EMOTE_SRC(id)} alt="" loading="lazy" style={{ width: "100%", aspectRatio: "1 / 1", objectFit: "contain", display: "block" }} />
+                      ))}
+                    </div>
+                  </CoinItem>
+                ))}
+              </div>
+            </Card>
           </div>
         )}
 
         {vak === "avatars" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <div>
-              <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink }}>{t("shopAvatarsHeader")}</div>
-              <div style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint }}>{t("shopAvatarsLead")}</div>
+              <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15, lineHeight: 1.15, color: colors.ink }}>{t("shopAvatarsHeader")}</div>
+              <div style={{ fontFamily: font.ui, fontSize: 12, lineHeight: 1.3, color: colors.faint }}>{t("shopAvatarsLead")}</div>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
-              {AVATAR_PACKS.map((pk) => (
-                <CoinItem key={pk.id} title={t(pk.name)} owned={owned.has(pk.id)} price={prices[pk.id] ?? packPrice} coins={coins} onBuy={() => game.buyItemCoins(pk.id)}>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 4, width: "100%" }}>
-                    {pk.preview.map((n) => (
-                      <div key={n} style={{ aspectRatio: "1 / 1", borderRadius: 8, overflow: "hidden", border: `1px solid ${colors.panelBorder}` }}>
-                        <img src={`/avatars/av${n}.jpg?v=${AVATAR_ART_VERSION}`} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-                      </div>
-                    ))}
-                  </div>
-                </CoinItem>
-              ))}
-            </div>
+            <Card style={{ padding: "10px 9px 12px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
+                {AVATAR_PACKS.map((pk) => (
+                  <CoinItem key={pk.id} title={t(pk.name)} owned={owned.has(pk.id)} price={prices[pk.id] ?? packPrice} coins={coins} onBuy={() => game.buyItemCoins(pk.id)}>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 4, width: "100%" }}>
+                      {pk.preview.map((n) => (
+                        <div key={n} style={{ aspectRatio: "1 / 1", borderRadius: 8, overflow: "hidden", border: `1px solid ${colors.panelBorder}` }}>
+                          <img src={`/avatars/av${n}.jpg?v=${AVATAR_ART_VERSION}`} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                        </div>
+                      ))}
+                    </div>
+                  </CoinItem>
+                ))}
+              </div>
+            </Card>
           </div>
         )}
 
