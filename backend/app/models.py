@@ -63,6 +63,8 @@ class Player:
     # Chosen reel theme; the whole room sees this on the roulette during this
     # player's spelleider turn. None = the default gold reel.
     reel_skin: Optional[str] = None
+    # De trede op de divisieladder; kleurt de rand om de avatar. 0 voor gasten.
+    divisie: int = 0
     has_avatar: bool = False
     avatar_ver: int = 0
 
@@ -83,6 +85,7 @@ class Player:
             "reel_skin": self.reel_skin,
             "has_avatar": self.has_avatar,
             "avatar_ver": self.avatar_ver,
+            "divisie": self.divisie,
         }
 
 

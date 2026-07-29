@@ -29,7 +29,7 @@ import { rampFrom } from "../theme/neon";
 import { reelFace } from "../theme/reelSkins";
 import { colors, font, radius, withAlpha } from "../theme/tokens";
 
-interface Person { id: string; name: string; color: string; has_avatar: boolean | number; avatar_ver: number }
+interface Person { id: string; name: string; color: string; has_avatar: boolean | number; avatar_ver: number; divisie?: number }
 interface Slot { word: string; tier: string; points: number }
 interface DetailRow { idx: number; letter: string; category: string; mine: Slot | null; theirs: Slot | null }
 interface CurrentRound { idx: number; letter: string; category: string; seconds: number; seconds_left: number; served: boolean }
@@ -295,7 +295,7 @@ export function Duel({ game, onBack, onProfile }: { game: GameApi; onBack: () =>
     return (
       <Screen top={header}>
         <Card style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "center" }}>
-          <Avatar name={duel.opponent.name} color={duel.opponent.color} size={52} userId={duel.opponent.id} hasAvatar={!!duel.opponent.has_avatar} avatarVer={duel.opponent.avatar_ver} />
+          <Avatar name={duel.opponent.name} color={duel.opponent.color} size={52} userId={duel.opponent.id} hasAvatar={!!duel.opponent.has_avatar} avatarVer={duel.opponent.avatar_ver} divisie={duel.opponent.divisie} />
           <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink, textAlign: "center" }}>
             {t("duelStakeVoorstel", { name: duel.opponent.name, n: duel.stake })}
           </span>
@@ -944,7 +944,7 @@ function DuelRij({ d, i, eerste, onOpen, t, mij }: {
       >
         {groef}
         <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 6 }}>
-          <Avatar name={mij.name} color={mij.color} size={34} userId={mij.id} hasAvatar={!!mij.has_avatar} avatarVer={mij.avatar_ver} />
+          <Avatar name={mij.name} color={mij.color} size={34} userId={mij.id} hasAvatar={!!mij.has_avatar} avatarVer={mij.avatar_ver} divisie={mij.divisie} />
           <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 1 }}>
             {naam(mij.name)}
             {score(d.my_score, gewonnen)}
@@ -969,7 +969,7 @@ function DuelRij({ d, i, eerste, onOpen, t, mij }: {
                 dat is de hele spanning van om beurten spelen. */}
             {score(klaar ? d.their_score ?? 0 : null, verloren)}
           </div>
-          <Avatar name={d.opponent.name} color={d.opponent.color} size={34} userId={d.opponent.id} hasAvatar={!!d.opponent.has_avatar} avatarVer={d.opponent.avatar_ver} />
+          <Avatar name={d.opponent.name} color={d.opponent.color} size={34} userId={d.opponent.id} hasAvatar={!!d.opponent.has_avatar} avatarVer={d.opponent.avatar_ver} divisie={d.opponent.divisie} />
         </div>
         {groef}
         {/* Waar de laatste potjes hun opbrengst tonen, staat hier de stand van
@@ -1093,7 +1093,7 @@ function FriendPicker({ friends, onPick, onClose, busy, coins }: { friends: Pers
                   className="pressable"
                   style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0, padding: 0, background: "transparent", border: "none", cursor: "pointer", textAlign: "left" }}
                 >
-                  <Avatar name={f.name} color={f.color} size={30} userId={f.id} hasAvatar={!!f.has_avatar} avatarVer={f.avatar_ver} />
+                  <Avatar name={f.name} color={f.color} size={30} userId={f.id} hasAvatar={!!f.has_avatar} avatarVer={f.avatar_ver} divisie={f.divisie} />
                   <span style={{ flex: 1, minWidth: 0, fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: colors.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
                   <Swords size={15} color={colors.gold} />
                 </button>

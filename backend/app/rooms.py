@@ -363,6 +363,7 @@ class RoomManager:
         player.level = lvl["level"]
         player.rank = lvl["rank"]
         player.title = get_db().get_title(account["id"])
+        player.divisie = int(account.get("divisie") or 0)
         player.frame = get_db().get_avatar_frame(account["id"])
         player.reel_skin = get_db().get_reel_skin(account["id"])
 

@@ -738,7 +738,7 @@ function HistoryCard({ game, meId, vitrine }: { game: GameApi; meId: string; vit
                   {score(tegen.score, !g.is_winner)}
                 </div>
                 <span style={{ position: "relative", flexShrink: 0, display: "flex" }}>
-                  <Avatar name={tegen.name} color={tegen.color} size={34} userId={tegen.user_id} hasAvatar={tegen.has_avatar} avatarVer={tegen.avatar_ver} />
+                  <Avatar name={tegen.name} color={tegen.color} size={34} userId={tegen.user_id} hasAvatar={tegen.has_avatar} avatarVer={tegen.avatar_ver} divisie={tegen.divisie} />
                   {rest > 0 && (
                     // Meer tegenstanders dan er passen: de beste staat er, de
                     // teller hangt als een muntje aan diens portret.
@@ -863,7 +863,7 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
       >
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", borderBottom: `1px solid ${colors.hairline}` }}>
           {partner ? (
-            <Avatar name={partner.name} color={partner.color} size={34} userId={partner.id} hasAvatar={partner.has_avatar} avatarVer={partner.avatar_ver} />
+            <Avatar name={partner.name} color={partner.color} size={34} userId={partner.id} hasAvatar={partner.has_avatar} avatarVer={partner.avatar_ver} divisie={partner.divisie} />
           ) : null}
           <span style={{ flex: 1, fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {partner?.name ?? "..."}
@@ -2217,7 +2217,7 @@ function ClubScreen({ game, onBack, embedded }: { game: GameApi; onBack?: () => 
               return (
                 <GlasRij key={m.id}>
                   <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 14, color: i === 0 ? colors.gold : colors.faint, width: 18, textAlign: "center", flexShrink: 0 }}>{i + 1}</span>
-                  <Avatar name={m.name} color={m.color} size={30} crown={m.is_owner} userId={m.id} hasAvatar={!!m.has_avatar} avatarVer={m.avatar_ver} />
+                  <Avatar name={m.name} color={m.color} size={30} crown={m.is_owner} userId={m.id} hasAvatar={!!m.has_avatar} avatarVer={m.avatar_ver} divisie={m.divisie} />
                   <span style={{ flex: 1, minWidth: 0, fontFamily: font.ui, fontSize: 13.5, fontWeight: 600, color: colors.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {m.name}{mine && <span style={{ color: colors.faint, fontWeight: 500 }}> · {t("you")}</span>}
                   </span>
@@ -2668,7 +2668,7 @@ function SocialSettings({ game, onBack }: { game: GameApi; onBack: () => void })
             <Lijst n={leden.length} rij={46} toon={5}>
               {leden.map((m) => (
                 <GlasRij key={m.id} dun>
-                  <Avatar name={m.name} color={m.color} size={28} crown={m.is_owner} userId={m.id} hasAvatar={!!m.has_avatar} avatarVer={m.avatar_ver} />
+                  <Avatar name={m.name} color={m.color} size={28} crown={m.is_owner} userId={m.id} hasAvatar={!!m.has_avatar} avatarVer={m.avatar_ver} divisie={m.divisie} />
                   <span style={{ flex: 1, minWidth: 0, fontFamily: font.ui, fontSize: 13.5, color: colors.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.name}</span>
                   <button
                     onClick={() => { if (window.confirm(t("clubTransferConfirm", { naam: m.name }))) { sound.uiTap(); game.clubOverdragen(m.id); } }}
@@ -2710,7 +2710,7 @@ function SocialSettings({ game, onBack }: { game: GameApi; onBack: () => void })
             <Lijst n={game.state.blocked.length} rij={44} toon={5}>
               {game.state.blocked.map((b) => (
                 <GlasRij key={b.id} dun>
-                  <Avatar name={b.name} color={b.color} size={28} userId={b.id} hasAvatar={b.has_avatar} avatarVer={b.avatar_ver} />
+                  <Avatar name={b.name} color={b.color} size={28} userId={b.id} hasAvatar={b.has_avatar} avatarVer={b.avatar_ver} divisie={b.divisie} />
                   <span style={{ flex: 1, minWidth: 0, fontFamily: font.ui, fontSize: 13.5, color: colors.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.name}</span>
                   <KnopPlaat breed={86} onClick={() => { sound.uiTap(); game.friendBlock(b.id, true); }} label={t("unblockBtn")} />
                 </GlasRij>
@@ -3954,7 +3954,7 @@ function RangRij({ r, plek, deel }: { r: LeaderboardRow; plek: number; deel: num
       {/* Streepjes scheiden wat NIET bij elkaar hoort. Portret, naam en balk
           gaan samen: dat is een speler. Daarna elk cijfer op zichzelf. */}
       <Scheiding />
-      <Avatar name={r.name} color={r.color} size={eerste ? 44 : 40} userId={r.id} hasAvatar={r.has_avatar} avatarVer={r.avatar_ver} />
+      <Avatar name={r.name} color={r.color} size={eerste ? 44 : 40} userId={r.id} hasAvatar={r.has_avatar} avatarVer={r.avatar_ver} divisie={r.divisie} />
       <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 5 }}>
         {/* Het schild voor de naam: hier zie je in een oogopslag in welke
             divisie iemand zit. Klein en zonder gloed, want in een rij van vijf

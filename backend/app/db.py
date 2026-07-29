@@ -2159,7 +2159,7 @@ class Database:
             for g in games:
                 rows = self._q(
                     """
-                    SELECT gp.user_id, gp.score, u.name, u.color, u.avatar_ver,
+                    SELECT gp.user_id, gp.score, u.name, u.color, u.avatar_ver, u.divisie,
                            u.avatar IS NOT NULL AS has_avatar
                     FROM game_players gp JOIN users u ON u.id = gp.user_id
                     WHERE gp.game_id = ? ORDER BY gp.score DESC

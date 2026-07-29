@@ -40,7 +40,7 @@ interface BoardRow {
   id: string;
   name: string;
   color: string;
-  avatar_ver: number;
+  avatar_ver: number; divisie?: number;
   has_avatar: number;
   score: number;
   time_ms: number;
@@ -385,7 +385,7 @@ export function Topo({ game, onBack, onProfile, played }: { game: GameApi; onBac
             return (
               <div key={row.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 10px", borderRadius: 10, background: mine ? withAlpha(colors.gold, 0.1) : withAlpha("#000000", 0.18), border: `1px solid ${mine ? withAlpha(colors.gold, 0.45) : colors.hairline}` }}>
                 <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 14, color: i === 0 ? colors.gold : colors.faint, width: 22 }}>{i + 1}</span>
-                <Avatar name={row.name} color={row.color} size={26} userId={row.id} hasAvatar={!!row.has_avatar} avatarVer={row.avatar_ver} />
+                <Avatar name={row.name} color={row.color} size={26} userId={row.id} hasAvatar={!!row.has_avatar} avatarVer={row.avatar_ver} divisie={row.divisie} />
                 <span style={{ flex: 1, fontFamily: font.ui, fontSize: 13.5, fontWeight: 600, color: colors.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.name}</span>
                 <span style={{ fontFamily: font.ui, fontSize: 11.5, color: colors.faint }}>{Math.max(1, Math.round(row.time_ms / 1000))}s</span>
                 <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16, color: i === 0 ? colors.gold : colors.ink, width: 30, textAlign: "right" }}>{row.score}</span>

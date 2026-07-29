@@ -708,6 +708,7 @@ def _duel_user_card(db, user_id: str) -> dict:
         "color": u.get("color") or "#FFC23D",
         "has_avatar": bool(u.get("has_avatar")),
         "avatar_ver": u.get("avatar_ver", 0),
+        "divisie": int(u.get("divisie") or 0),
     }
 
 

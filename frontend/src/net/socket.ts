@@ -23,6 +23,7 @@ export interface Player {
   title?: string | null; // chosen cosmetic title key (shown instead of rank)
   frame?: string | null; // chosen avatar-frame id (level reward), drawn around the avatar
   reel_skin?: string | null; // chosen reel theme; the room sees it on their spin turn
+  divisie?: number; // trede op de divisieladder; kleurt de rand om de avatar
 }
 
 // ---- accounts + social ------------------------------------------------------
@@ -251,6 +252,7 @@ export interface HistoryPlayer {
   name: string;
   color: string;
   avatar_ver: number;
+  divisie?: number;
   has_avatar: boolean;
 }
 

@@ -37,7 +37,7 @@ interface BoardRow {
   id: string;
   name: string;
   color: string;
-  avatar_ver: number;
+  avatar_ver: number; divisie?: number;
   has_avatar: number;
   score: number;
   time_ms: number;
@@ -538,7 +538,7 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
                 // bovenlijn op het knikpunt van de schuine hoek, en de eerste
                 // plek krijgt de gouden kappen.
                 <GlasRij key={row.id} wapen={<PlekWapen plek={i + 1} maat={26} />}>
-                  <Avatar name={row.name} color={row.color} size={30} userId={row.id} hasAvatar={!!row.has_avatar} avatarVer={row.avatar_ver} />
+                  <Avatar name={row.name} color={row.color} size={30} userId={row.id} hasAvatar={!!row.has_avatar} avatarVer={row.avatar_ver} divisie={row.divisie} />
                   <span style={{ flex: 1, minWidth: 0, fontFamily: font.ui, fontSize: 13.5, fontWeight: 600, color: mine ? GOUD[3] : colors.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {row.name}{mine && <span style={{ color: colors.faint, fontWeight: 500 }}> · {t("you")}</span>}
                   </span>

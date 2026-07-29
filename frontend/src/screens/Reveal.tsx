@@ -69,7 +69,7 @@ export function Reveal({ game }: { game: GameApi }) {
             <TurnBanner
               name={game.isActive ? null : active?.name ?? "?"}
               label={game.isActive ? t("youSpin") : t("xSpinsRound", { name: active?.name ?? "?" })}
-              avatar={active ? <Avatar name={active.name} color={active.color} size={40} userId={active.user_id} hasAvatar={active.has_avatar} avatarVer={active.avatar_ver} frame={active.frame} /> : null}
+              avatar={active ? <Avatar name={active.name} color={active.color} size={40} userId={active.user_id} hasAvatar={active.has_avatar} avatarVer={active.avatar_ver} frame={active.frame} divisie={active.divisie} /> : null}
             />
           </div>
 

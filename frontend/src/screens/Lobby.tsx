@@ -54,7 +54,7 @@ function Rij({
   return (
     <GlasRij dun>
       <div style={{ position: "relative", flexShrink: 0 }}>
-        <Avatar name={u.name} color={u.color} size={28} userId={u.id} hasAvatar={u.has_avatar} avatarVer={u.avatar_ver} />
+        <Avatar name={u.name} color={u.color} size={28} userId={u.id} hasAvatar={u.has_avatar} avatarVer={u.avatar_ver} divisie={u.divisie} />
         <span style={{ position: "absolute", bottom: -2, right: -2, width: 9, height: 9, borderRadius: "50%", background: u.online ? colors.green : colors.faint, border: `2px solid ${colors.bg1}` }} />
       </div>
       <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 1 }}>
@@ -303,7 +303,7 @@ export function Lobby({ game }: { game: GameApi }) {
                   aria-label={p.name}
                   style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 0, background: "transparent", border: "none", padding: 0, textAlign: "left", cursor: opent ? "pointer" : "default" }}
                 >
-                <Avatar name={p.name} color={p.color} size={34} crown={p.is_host} dim={!p.connected || p.is_spectator} userId={p.user_id} hasAvatar={p.has_avatar} avatarVer={p.avatar_ver} frame={p.frame} />
+                <Avatar name={p.name} color={p.color} size={34} crown={p.is_host} dim={!p.connected || p.is_spectator} userId={p.user_id} hasAvatar={p.has_avatar} avatarVer={p.avatar_ver} frame={p.frame} divisie={p.divisie} />
                 <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
                   <span style={{ fontFamily: font.ui, fontWeight: 600, fontSize: 15, color: colors.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {p.name}

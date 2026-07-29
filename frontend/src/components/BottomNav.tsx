@@ -357,7 +357,7 @@ export function ProfileButton({ game, onClick }: { game: GameApi; onClick: () =>
       style={{ display: "flex", alignItems: "center", background: "transparent", border: "none", cursor: "pointer", padding: 2 }}
     >
       {account ? (
-        <Avatar name={account.name} color={account.color} size={30} userId={account.id} hasAvatar={account.has_avatar} avatarVer={account.avatar_ver} />
+        <Avatar name={account.name} color={account.color} size={30} userId={account.id} hasAvatar={account.has_avatar} avatarVer={account.avatar_ver} divisie={account ? SCHILDEN.indexOf(account.shield || "paars") : undefined} />
       ) : (
         <span style={{ width: 30, height: 30, borderRadius: 10, display: "grid", placeItems: "center", background: withAlpha(colors.gold, 0.14), border: `1px solid ${withAlpha(colors.gold, 0.4)}`, color: colors.gold }}>
           <UserRound size={17} />
