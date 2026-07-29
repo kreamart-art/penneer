@@ -83,8 +83,26 @@ const RING_GAT_X = 0.499;
 const RING_GAT_Y = 0.441;
 const SCHILD_VERH = 972 / 821;
 
-export const SCHILD_KLEUREN = ["paars", "blauw", "lichtblauw", "groen", "rood", "zwart", "zilver"] as const;
+/** De divisieladder, van laag naar hoog. De vololgorde IS de rang: het schild
+ *  is geen smaak meer maar iets wat je elke maandag kunt winnen of verliezen.
+ *  Zwart-met-goud staat bovenaan omdat het als enige niet als kleur leest maar
+ *  als materiaal, en dat hoort bij de top. Deze reeks moet gelijk blijven aan
+ *  DIVISIES in backend/app/divisies.py. */
+export const SCHILD_KLEUREN = ["paars", "blauw", "lichtblauw", "groen", "rood", "zilver", "zwart"] as const;
 export type SchildKleur = (typeof SCHILD_KLEUREN)[number];
+
+/** De naam van elke divisie, in speltaal en niet in kleurnamen: "Paars" zegt
+ *  niets over hoe hoog je staat, "Saffier" wel. */
+export const DIVISIE_NAMEN = ["Amethist", "Saffier", "Azuur", "Smaragd", "Robijn", "Platina", "Obsidiaan"] as const;
+
+/** De accentkleur van een divisie, gemeten aan de schild-art. Voor de gloed en
+ *  de lijn om alles wat bij die divisie hoort. */
+export const DIVISIE_ACCENT = ["172,123,233", "86,124,240", "88,196,236", "84,206,124", "231,76,90", "196,204,220", "232,168,23"] as const;
+
+export function divisieKleur(divisie: number | undefined | null): SchildKleur {
+  const i = Math.max(0, Math.min(SCHILD_KLEUREN.length - 1, Math.round(divisie || 0)));
+  return SCHILD_KLEUREN[i];
+}
 
 export function RingPortret({
   maat,

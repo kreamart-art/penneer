@@ -1,7 +1,7 @@
 // Settings + About — reachable from the Landing gear. Language, sound, how-to,
 // install-as-app, and an About card with the version and studio credit.
 import { useEffect, useState } from "react";
-import { ArrowLeft, Download, HelpCircle, Music, Share, Trash2, Volume2 } from "lucide-react";
+import { ArrowLeft, Compass, Download, Globe, HelpCircle, Mail, Music, Share, Trash2, Volume2 } from "lucide-react";
 import { Logo } from "../components/Logo";
 import { Button } from "../components/Button";
 import { Toggle } from "../components/Toggle";
@@ -165,7 +165,7 @@ function Fader({
   );
 }
 
-export function Settings({ game, onBack, onShowRules }: { game: GameApi; onBack: () => void; onShowRules: () => void }) {
+export function Settings({ game, onBack, onShowRules, onShowTour, onShowLegal }: { game: GameApi; onBack: () => void; onShowRules: () => void; onShowTour: () => void; onShowLegal: (tab: "privacy" | "terms") => void }) {
   const { t, lang, setLang } = useT();
   const [musicVol, setMusicVol] = useState(sound.musicVolume());
   const [sfxVol, setSfxVol] = useState(sound.sfxVolume());
@@ -260,6 +260,45 @@ export function Settings({ game, onBack, onShowRules }: { game: GameApi; onBack:
             <HelpCircle size={18} /> {t("howItWorks")}
           </span>
         </Button>
+
+        {/* De rondleiding. Apart van "Hoe werkt het": dat gaat over de REGELS,
+            dit over de app. Wie hier komt zoeken zoekt meestal het tweede. */}
+        <Button variant="ghost" full onClick={onShowTour}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+            <Compass size={18} /> {t("tourStart")}
+          </span>
+        </Button>
+
+        {/* Contact en het juridische. Eén kaart, want het is hetzelfde soort
+            informatie: hoe je ons bereikt en waar je aan toe bent. */}
+        <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <SectionLabel>{t("contactTitle")}</SectionLabel>
+          <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, lineHeight: 1.5, color: colors.faint }}>{t("contactHint")}</p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            <a
+              href="mailto:kream.art@gmail.com?subject=Pen%20Neer"
+              style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "9px 14px", borderRadius: 999, textDecoration: "none", fontFamily: font.ui, fontSize: 13.5, fontWeight: 600, color: colors.ink, background: withAlpha(colors.gold, 0.12), border: `1px solid ${withAlpha(colors.gold, 0.45)}` }}
+            >
+              <Mail size={15} color={colors.gold} /> {t("contactMail")}
+            </a>
+            <a
+              href="https://artnomad.nl"
+              target="_blank"
+              rel="noreferrer"
+              style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "9px 14px", borderRadius: 999, textDecoration: "none", fontFamily: font.ui, fontSize: 13.5, fontWeight: 600, color: colors.sub, background: "transparent", border: `1px solid ${colors.panelBorder}` }}
+            >
+              <Globe size={15} /> {t("contactSite")}
+            </a>
+          </div>
+          <div style={{ display: "flex", gap: 14, paddingTop: 2 }}>
+            <button onClick={() => onShowLegal("privacy")} style={{ background: "transparent", border: "none", padding: 0, cursor: "pointer", fontFamily: font.ui, fontSize: 12.5, color: withAlpha(colors.gold, 0.85), textDecoration: "underline" }}>
+              {t("privacyTitle")}
+            </button>
+            <button onClick={() => onShowLegal("terms")} style={{ background: "transparent", border: "none", padding: 0, cursor: "pointer", fontFamily: font.ui, fontSize: 12.5, color: withAlpha(colors.gold, 0.85), textDecoration: "underline" }}>
+              {t("termsTitle")}
+            </button>
+          </div>
+        </Card>
 
         {/* iOS has no beforeinstallprompt (Apple ships no install API in WebKit, and
             every iOS browser is WebKit), so the button can never fire there. Show the

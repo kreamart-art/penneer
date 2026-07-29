@@ -113,7 +113,9 @@ export interface Account {
   frame_rewards: FrameReward[]; // level-milestone avatar frames + unlock state
   pending_rewards: PendingReward[]; // earned but not yet celebrated (victory popup)
   reel_skin: string | null; // chosen reel theme id, null = default gold reel
-  shield: string | null; // gekozen kleur van het level-schild, null = paars
+  shield: string; // de schildkleur die bij je divisie hoort (afgeleid, niet gekozen)
+  divisie_change: DivisieChange | null; // stijging/daling die je nog moet zien
+  divisie_maandag: number; // wanneer de volgende beoordeling valt (seconden)
   emote_packs: string[]; // emote packs unlocked (free + earned + bought)
   coins: number; // currency balance
   coins_pending: number; // new coins since the last coin popup was seen
@@ -137,6 +139,43 @@ export interface PublicUser {
   has_avatar: boolean;
   avatar_ver: number;
   online: boolean;
+  /** De trede op de divisieladder; bepaalt de kleur van het schild. */
+  divisie?: number;
+}
+
+/** Wat er maandag met je divisie gebeurde. */
+export interface DivisieChange {
+  week: number;
+  datum: string;
+  van: number;
+  naar: number;
+  richting: "op" | "neer";
+  plek: number | null;
+  gespeeld: number;
+}
+
+/** Eén melding uit de catalogus (backend/app/meldingen.py). */
+export interface Melding {
+  id: number;
+  soort: string;
+  titel: string;
+  body: string;
+  icoon: string | null;
+  /** Waar de melding heen wijst: inbox, dm, duel, profiel, vrienden, dagronde. */
+  naar: string | null;
+  /** JSON met wat er nodig is om erheen te gaan (user_id, duel_id, ...). */
+  data: string | null;
+  created_at: number;
+  gelezen: boolean;
+}
+
+/** Waar je nu staat op weg naar de eerstvolgende maandag. */
+export interface DivisieStand {
+  divisie: number;
+  plek: number | null;
+  gespeeld: number;
+  maandag: number;
+  top: LeaderboardRow[];
 }
 
 export interface ClubSummary {
@@ -337,6 +376,11 @@ export interface ClientState {
   leaderboard: { period: "all" | "week" | "month"; rows: LeaderboardRow[]; climb: number | null } | null;
   club: ClubBoard | null; // the club board for the open club view
   viewedProfile: PublicProfile | null;
+  divisieStand: DivisieStand | null;
+  meldingen: Melding[];
+  meldingenOngelezen: number;
+  /** De laatst binnengekomen melding, voor de balk. */
+  meldingNieuw: Melding | null;
   history: HistoryGame[];
   // Direct messages (profile-to-profile): thread list + the open conversation.
   dmThreads: DmThreadSummary[];
@@ -414,6 +458,9 @@ type ServerMessage =
   | { type: "inbox"; items: InboxItem[] }
   | { type: "user_search"; users: PublicUser[] }
   | { type: "profile"; profile: PublicProfile }
+  | { type: "divisie"; divisie: number; plek: number | null; gespeeld: number; maandag: number; top: LeaderboardRow[] }
+  | { type: "meldingen"; items: Melding[]; ongelezen: number }
+  | { type: "melding"; melding: Melding; ongelezen: number }
   | { type: "history"; games: HistoryGame[] }
   | { type: "dm"; message: DmMessage }
   | { type: "dm_thread"; user_id: string; messages: DmMessage[] }
@@ -513,6 +560,10 @@ const initialState: ClientState = {
   leaderboard: null,
   club: null,
   viewedProfile: null,
+  divisieStand: null,
+  meldingen: [],
+  meldingenOngelezen: 0,
+  meldingNieuw: null,
   history: [],
   dmThreads: [],
   dmOpenWith: null,
@@ -646,6 +697,20 @@ function reducer(state: ClientState, action: Action): ClientState {
       return { ...state, searchResults: msg.users };
     case "profile":
       return { ...state, viewedProfile: msg.profile };
+    case "meldingen":
+      return { ...state, meldingen: msg.items, meldingenOngelezen: msg.ongelezen };
+    case "melding":
+      // Vooraan in de lijst EN als losse "nieuw", want de lijst is de
+      // geschiedenis en de balk is het moment; die twee hebben elk hun eigen
+      // levensduur.
+      return {
+        ...state,
+        meldingen: [msg.melding, ...state.meldingen].slice(0, 40),
+        meldingenOngelezen: msg.ongelezen,
+        meldingNieuw: msg.melding,
+      };
+    case "divisie":
+      return { ...state, divisieStand: { divisie: msg.divisie, plek: msg.plek, gespeeld: msg.gespeeld, maandag: msg.maandag, top: msg.top } };
     case "history":
       return { ...state, history: msg.games };
     case "dm": {
@@ -822,7 +887,10 @@ export interface GameApi {
   setLenient: (on: boolean) => void;
   setBuzzerSkin: (skin: string | null) => void;
   setReelSkin: (skin: string | null) => void;
-  setShield: (kleur: string | null) => void;
+  divisieStand: () => void;
+  divisieGezien: () => void;
+  meldingenLaden: () => void;
+  meldingenLezen: () => void;
   setAvatarFrame: (frame: string | null) => void;
   claimBuzzerReward: (skin: string, equip: boolean) => void;
   claimReward: (id: string, equip?: boolean) => void;
@@ -1064,7 +1132,10 @@ export function useGame(): GameApi {
     setLenient: (on) => send({ type: "set_lenient", on }),
     setBuzzerSkin: (skin) => send({ type: "set_buzzer_skin", skin }),
     setReelSkin: (skin) => send({ type: "set_reel_skin", skin }),
-    setShield: (shield) => send({ type: "set_shield", shield }),
+    divisieStand: () => send({ type: "divisie_stand" }),
+    divisieGezien: () => send({ type: "divisie_gezien" }),
+    meldingenLaden: () => send({ type: "meldingen" }),
+    meldingenLezen: () => send({ type: "meldingen_lees" }),
     setAvatarFrame: (frame) => send({ type: "set_avatar_frame", frame }),
     claimBuzzerReward: (skin, equip) => send({ type: "claim_buzzer_reward", skin, equip }),
     claimReward: (id, equip) => send({ type: "claim_reward", id, equip: !!equip }),

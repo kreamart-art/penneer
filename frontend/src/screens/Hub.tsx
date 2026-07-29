@@ -9,7 +9,10 @@ import { ArrowLeft, BookOpen, CalendarDays, Camera, Check, ChevronDown, Copy, Cr
 import { Avatar, RANK_RING } from "../components/Avatar";
 import { Plek } from "../components/ProfileShowcase";
 import { HexArt } from "../components/HexArt";
-import { GOUD, KADER_LIJN_LOOP, KADER_LIJN_ROOD, KADER_LIJN_XP, NeonKader, Paneel, PlekWapen, Prestatie, RingFoto, RingPortret, SCHILD_KLEUREN, SectieKop, SierKop, StatKaart, type SchildKleur } from "../components/ProfileHero";
+import { DIVISIE_ACCENT, GOUD, KADER_LIJN_GOUD, KADER_LIJN_LOOP, KADER_LIJN_ROOD, KADER_LIJN_XP, NeonKader, Paneel, PlekWapen, Prestatie, RingFoto, RingPortret, SCHILD_KLEUREN, SectieKop, SierKop, StatKaart, divisieKleur, type SchildKleur } from "../components/ProfileHero";
+import { DivisieLadder, Schild, divisieNaam } from "../components/Divisie";
+import { MeldingRij } from "../components/Meldingen";
+import { ensurePushSubscription } from "../pwa/push";
 import { AvatarZoom } from "../components/AvatarZoom";
 import { Button } from "../components/Button";
 import { MicButton } from "../components/MicButton";
@@ -62,7 +65,9 @@ export function Hub({ game, section, onBack, onShowShop, onOpenInbox, onChalleng
   const { t } = useT();
   const tab: Tab = section;
   const inboxCount =
-    (game.state.inbox.length || game.state.account?.inbox_count || 0) + (game.state.account?.dm_unread || 0);
+    (game.state.inbox.length || game.state.account?.inbox_count || 0) +
+    (game.state.account?.dm_unread || 0) +
+    game.state.meldingenOngelezen;
   const account = game.state.account;
   // Profielinstellingen + delen leven nu in de bovenbalk (naast de muziekknop),
   // dus hun state hangt op Hub-niveau i.p.v. in de ProfileTab.
@@ -89,6 +94,8 @@ export function Hub({ game, section, onBack, onShowShop, onOpenInbox, onChalleng
         levelText: t("profileCardLevel", { n: lvl.level }),
         level: lvl.level,
         shield: account.shield || "paars",
+        divisieNaam: divisieNaam(SCHILD_KLEUREN.indexOf((account.shield as SchildKleur) || "paars")),
+        divisieAccent: DIVISIE_ACCENT[Math.max(0, SCHILD_KLEUREN.indexOf((account.shield as SchildKleur) || "paars"))],
         xpNow: Math.max(0, lvl.xp - lvl.level_start),
         xpSpan: Math.max(1, lvl.next_level - lvl.level_start),
         xpLabel: `${Math.max(0, lvl.xp - lvl.level_start)} / ${Math.max(1, lvl.next_level - lvl.level_start)} XP`,
@@ -1168,9 +1175,9 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
         />
       )}
       {schildOpen && (
-        <SchildKiezer
-          huidig={(account.shield as SchildKleur) || "paars"}
-          onKies={(k) => { game.setShield(k === "paars" ? null : k); setSchildOpen(false); }}
+        <DivisieLadder
+          divisie={SCHILD_KLEUREN.indexOf((account.shield as SchildKleur) || "paars")}
+          stand={game.state.divisieStand}
           onClose={() => setSchildOpen(false)}
         />
       )}
@@ -1270,7 +1277,7 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
               maat={134}
               level={account.level.level}
               kleur={(account.shield as SchildKleur) || "paars"}
-              onSchild={() => { sound.uiTap(); setSchildOpen(true); }}
+              onSchild={() => { sound.uiTap(); game.divisieStand(); setSchildOpen(true); }}
             >
               <RingFoto userId={account.id} versie={account.avatar_ver} heeftFoto={account.has_avatar} naam={account.name} kleur={account.color} />
             </RingPortret>
@@ -2301,53 +2308,6 @@ function AvatarMenu({
   );
 }
 
-/** Kies de kleur van het schild onder je portret. Alle kleuren zijn vrij: het
- *  schild zegt niets over wat je verdiend hebt, het is smaak. */
-function SchildKiezer({ huidig, onKies, onClose }: { huidig: SchildKleur; onKies: (k: SchildKleur) => void; onClose: () => void }) {
-  const { t } = useT();
-  return (
-    <div
-      onClick={onClose}
-      style={{ position: "fixed", inset: 0, zIndex: 85, background: "rgba(6,3,18,.72)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)", display: "grid", placeItems: "center", padding: 22 }}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="pop-in"
-        style={{ width: "100%", maxWidth: 340, display: "flex", flexDirection: "column", gap: 14, padding: "22px 18px 16px", borderRadius: 22, background: "linear-gradient(180deg, #241738, #160D30)", border: `1px solid ${withAlpha(colors.gold, 0.4)}`, boxShadow: "0 24px 70px rgba(0,0,0,.6)", textAlign: "center" }}
-      >
-        <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 18, color: colors.ink }}>{t("shieldTitle")}</span>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
-          {SCHILD_KLEUREN.map((k) => (
-            <button
-              key={k}
-              onClick={() => { sound.uiTap(); onKies(k); }}
-              aria-label={k}
-              className="pressable"
-              style={{
-                position: "relative",
-                padding: "8px 4px",
-                borderRadius: 12,
-                cursor: "pointer",
-                background: k === huidig ? withAlpha(colors.gold, 0.14) : "rgba(0,0,0,.24)",
-                border: `1.5px solid ${k === huidig ? withAlpha(colors.gold, 0.85) : colors.hairline}`,
-              }}
-            >
-              <img src={`/ui/shield/${k}.webp`} alt="" style={{ width: "100%", display: "block" }} />
-              {k === huidig && (
-                <span style={{ position: "absolute", right: 3, top: 3, width: 15, height: 15, borderRadius: "50%", display: "grid", placeItems: "center", background: colors.gold, color: colors.bg0 }}>
-                  <Check size={10} strokeWidth={3.2} />
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-        <button onClick={onClose} style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, fontFamily: font.ui, fontSize: 13.5, padding: "2px 4px" }}>
-          {t("avatarMenuCancel")}
-        </button>
-      </div>
-    </div>
-  );
-}
 
 function AvatarPickerScreen({
   current,
@@ -2410,6 +2370,64 @@ function AvatarPickerScreen({
 
 // Profile settings: email linking, blocked players and account management,
 // grouped in one sub-screen behind the "Profielinstellingen" button.
+/** Meldingen aan- of uitzetten. De browser laat toestemming niet intrekken via
+ *  code, dus zodra iemand ze uit heeft staan kunnen wij alleen nog uitleggen
+ *  waar hij ze terug aanzet. Een schakelaar die doet alsof hij dat wel kan is
+ *  erger dan geen schakelaar. */
+function MeldingenKaart() {
+  const { t } = useT();
+  const kan = typeof window !== "undefined" && "Notification" in window;
+  const [staat, setStaat] = useState<NotificationPermission | "none">(kan ? Notification.permission : "none");
+  const aan = staat === "granted";
+
+  const zetAan = () => {
+    if (!kan) return;
+    sound.uiTap();
+    Notification.requestPermission().then((perm) => {
+      setStaat(perm);
+      if (perm === "granted") void ensurePushSubscription();
+    });
+  };
+
+  return (
+    <Card style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <span style={{ flex: 1, fontFamily: font.ui, fontWeight: 600, fontSize: 14, color: colors.ink }}>{t("notifTitle")}</span>
+        {aan ? (
+          <span style={{ fontFamily: font.ui, fontSize: 12.5, fontWeight: 700, color: colors.green }}>{t("notifOn")}</span>
+        ) : staat === "denied" ? (
+          <span style={{ fontFamily: font.ui, fontSize: 12.5, fontWeight: 700, color: colors.faint }}>{t("notifBlocked")}</span>
+        ) : (
+          <KnopPlaat breed={92} onClick={zetAan} label={t("notifEnable")} />
+        )}
+      </div>
+      <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.faint, lineHeight: 1.5 }}>
+        {staat === "denied" ? t("notifBlockedHint") : t("notifSettingsHint")}
+      </p>
+    </Card>
+  );
+}
+
+/** Je divisie in het klein, met de ladder een tik verderop. */
+function DivisieKaart({ game }: { game: GameApi }) {
+  const { t } = useT();
+  const [open, setOpen] = useState(false);
+  const divisie = Math.max(0, SCHILD_KLEUREN.indexOf((game.state.account?.shield as SchildKleur) || "paars"));
+  return (
+    <>
+      <Card style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <Schild divisie={divisie} maat={34} />
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <span style={{ display: "block", fontFamily: font.ui, fontWeight: 600, fontSize: 14, color: colors.ink }}>{t("divisieTitle")}</span>
+          <span style={{ display: "block", fontFamily: font.ui, fontSize: 12.5, color: `rgb(${DIVISIE_ACCENT[divisie]})` }}>{divisieNaam(divisie)}</span>
+        </span>
+        <KnopPlaat breed={86} onClick={() => { sound.uiTap(); game.divisieStand(); setOpen(true); }} label={t("divisieBekijk")} />
+      </Card>
+      {open && <DivisieLadder divisie={divisie} stand={game.state.divisieStand} onClose={() => setOpen(false)} />}
+    </>
+  );
+}
+
 function ProfileSettings({
   game,
   email,
@@ -2458,6 +2476,14 @@ function ProfileSettings({
 
       {/* Titel: hoorde bij de tabs, die zijn weg, dus hij staat nu hier */}
       <TitlePicker game={game} />
+
+      {/* Meldingen. Stond alleen in de balk die één keer langskwam; wie hem
+          toen wegtikte kon ze nergens meer aanzetten. */}
+      <MeldingenKaart />
+
+      {/* Je divisie: hier staat wat het schild om je portret betekent, met de
+          hele ladder erachter. Het is geen keuze meer, dus het is geen kiezer. */}
+      <DivisieKaart game={game} />
 
       {/* e-mail koppelen */}
       <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -2799,26 +2825,41 @@ export function ProfileViewModal({ game, userId, onClose }: { game: GameApi; use
   return (
     <div
       onClick={onClose}
-      style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(6,3,18,.65)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)", display: "grid", placeItems: "center", padding: 20 }}
+      className="reward-veil"
+      style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(6,3,18,.72)", backdropFilter: "blur(5px)", WebkitBackdropFilter: "blur(5px)", display: "grid", placeItems: "center", padding: 20 }}
     >
+      {/* De lijst om het profiel is dezelfde als om elke sectie in de app: een
+          gouden verlooplijn die rondloopt, met kappen op de schuine uiteinden.
+          Vroeger was dit een eigen gouden ring met een eigen vulling; dat was
+          een tweede stijl voor hetzelfde ding. Achter de inhoud ligt de
+          profiel-art, zodat een profiel er ook binnen een popup als een profiel
+          uitziet en niet als een dialoogvenster. */}
+      <NeonKader
+        radius={22}
+        dik={0.85}
+        lijn={KADER_LIJN_GOUD}
+        gloed="verloop"
+        animeer
+        eindkap
+        style={{ width: "100%", maxWidth: 380 }}
+        binnen={{ padding: 0, overflow: "hidden" }}
+      >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="neon-ring"
         style={{
-          width: "100%", maxWidth: 380, maxHeight: "82vh", overflowY: "auto",
-          borderRadius: 22, padding: "20px 18px", display: "flex", flexDirection: "column", gap: 14,
-          // Zelfde opbouw als een paneel: gouden verlooprand, licht dat van
-          // bovenaf in het vlak valt, en randverdonkering zodat het bol leest.
+          maxHeight: "80vh", overflowY: "auto",
+          padding: "20px 18px", display: "flex", flexDirection: "column", gap: 14,
           backgroundImage: [
-            "linear-gradient(180deg, rgba(255,243,181,.1) 0%, transparent 15%)",
-            `radial-gradient(90% 55% at 50% 0%, ${withAlpha(colors.gold, 0.13)}, transparent 66%)`,
-            "radial-gradient(130% 105% at 50% 46%, transparent 55%, rgba(6,3,18,.45) 100%)",
+            "linear-gradient(180deg, rgba(255,243,181,.09) 0%, transparent 14%)",
+            "radial-gradient(120% 80% at 50% 6%, transparent 34%, rgba(6,3,18,.72) 100%)",
+            'url("/ui/profile-bg.webp")',
             "linear-gradient(180deg, #2C1E4C 0%, #201340 48%, #130B2A 100%)",
           ].join(", "),
-          ...neonSkin(colors.gold),
-          ["--ng-w" as string]: "1.5px",
-          boxShadow: "0 24px 70px rgba(0,0,0,.6), inset 0 1.5px 0 rgba(255,243,181,.3), inset 0 -14px 22px rgba(6,3,18,.4)",
+          backgroundSize: "100% 100%, 100% 100%, cover, 100% 100%",
+          backgroundPosition: "top, top, center top, top",
+          backgroundRepeat: "no-repeat",
         } as React.CSSProperties}
+        className="reward-card zachtscroll"
       >
         {zoom && loaded && (
           <AvatarZoom name={p.name} color={p.color} userId={p.id} hasAvatar={p.has_avatar} avatarVer={p.avatar_ver} onClose={() => setZoom(false)} />
@@ -2829,17 +2870,45 @@ export function ProfileViewModal({ game, userId, onClose }: { game: GameApi; use
           <>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               {/* Tik op de foto om hem uitvergroot te zien. Alleen als er een
-                  echte foto is: bij een letter valt er niets te bekijken. */}
+                  echte foto is: bij een letter valt er niets te bekijken. De
+                  ring en het schild komen uit dezelfde art als op je eigen
+                  profiel, want dit IS een profiel, alleen dan van een ander. */}
               <button
                 onClick={() => p.has_avatar && setZoom(true)}
                 aria-label={p.name}
-                style={{ background: "transparent", border: "none", padding: 0, cursor: p.has_avatar ? "zoom-in" : "default", lineHeight: 0 }}
+                style={{ background: "transparent", border: "none", padding: 0, cursor: p.has_avatar ? "zoom-in" : "default", lineHeight: 0, flexShrink: 0 }}
               >
-                <Avatar name={p.name} color={p.color} size={54} userId={p.id} hasAvatar={p.has_avatar} avatarVer={p.avatar_ver} />
+                <RingPortret maat={78} level={p.level.level} kleur={divisieKleur(p.divisie)}>
+                  <RingFoto userId={p.id} versie={p.avatar_ver} heeftFoto={p.has_avatar} naam={p.name} kleur={p.color} />
+                </RingPortret>
               </button>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 19, color: colors.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</div>
-                <div style={{ fontFamily: font.ui, fontSize: 12, color: p.online ? colors.green : colors.faint }}>{p.online ? "online" : "offline"}</div>
+                <div
+                  style={{
+                    fontFamily: font.display,
+                    fontWeight: 800,
+                    fontSize: 15,
+                    letterSpacing: 0.4,
+                    textTransform: "uppercase",
+                    backgroundImage: `linear-gradient(172deg, ${GOUD[3]} 0%, ${GOUD[2]} 46%, ${GOUD[1]} 78%, ${GOUD[2]} 100%)`,
+                    WebkitBackgroundClip: "text",
+                    backgroundClip: "text",
+                    color: "transparent",
+                  }}
+                >
+                  {t(`rank_${p.level.rank}`)}
+                </div>
+                {/* De divisie staat er als tekst NAAST het schild op de ring:
+                    het schild zegt welke kleur, dit zegt wat die kleur waard
+                    is. Zonder de naam blijft het versiering. */}
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 1 }}>
+                  <Schild divisie={p.divisie ?? 0} maat={13} gloed={false} />
+                  <span style={{ fontFamily: font.ui, fontSize: 11.5, fontWeight: 600, color: `rgb(${DIVISIE_ACCENT[Math.max(0, Math.min(DIVISIE_ACCENT.length - 1, p.divisie ?? 0))]})` }}>
+                    {divisieNaam(p.divisie ?? 0)}
+                  </span>
+                  <span style={{ fontFamily: font.ui, fontSize: 11.5, color: p.online ? colors.green : colors.faint }}>{p.online ? "online" : "offline"}</span>
+                </div>
               </div>
               {p.is_friend && (
                 <button
@@ -2861,8 +2930,8 @@ export function ProfileViewModal({ game, userId, onClose }: { game: GameApi; use
             <LevelBar level={p.level} compact />
             <StatGrid stats={p.stats} />
             {p.h2h && p.h2h.games > 0 && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "10px 12px", borderRadius: 12, background: withAlpha(colors.violet, 0.12), border: `1px solid ${withAlpha(colors.violet, 0.35)}` }}>
-                <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint }}>
+              <NeonKader hoek={12} dik={0.4} sterkte={0.5} vulling="geen" eindkap animeer binnen={{ display: "flex", flexDirection: "column", gap: 6, padding: "10px 14px" }}>
+                <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint, textAlign: "center" }}>
                   {t("h2hTitle")}
                 </span>
                 <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: 12 }}>
@@ -2875,7 +2944,7 @@ export function ProfileViewModal({ game, userId, onClose }: { game: GameApi; use
                 <span style={{ textAlign: "center", fontFamily: font.ui, fontSize: 11.5, color: colors.faint }}>
                   {t("h2hGames", { n: p.h2h.games })}
                 </span>
-              </div>
+              </NeonKader>
             )}
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint }}>{t("badgesTitle")}</span>
@@ -2883,16 +2952,17 @@ export function ProfileViewModal({ game, userId, onClose }: { game: GameApi; use
                 <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13, color: colors.faint }}>{t("noBadges")}</p>
               ) : (
                 p.badges.map((b) => (
-                  <div key={b.badge} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 10, background: withAlpha(colors.gold, 0.08), border: `1px solid ${withAlpha(colors.gold, 0.25)}` }}>
+                  <GlasRij key={b.badge} dun>
                     <ArtIcoon naam="krans" size={18} />
-                    <span style={{ fontFamily: font.ui, fontSize: 13.5, color: colors.ink }}>{t(`badge_${b.badge}`)}</span>
-                  </div>
+                    <span style={{ flex: 1, minWidth: 0, fontFamily: font.ui, fontSize: 13.5, color: colors.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t(`badge_${b.badge}`)}</span>
+                  </GlasRij>
                 ))
               )}
             </div>
           </>
         )}
       </div>
+      </NeonKader>
     </div>
   );
 }
@@ -2901,12 +2971,27 @@ export function ProfileViewModal({ game, userId, onClose }: { game: GameApi; use
 
 function InboxTab({ game }: { game: GameApi }) {
   const { t } = useT();
+  const [viewing, setViewing] = useState<string | null>(null);
+  // Een tik op een melding brengt je naar waar hij over gaat, voor zover dat
+  // binnen deze lijst ligt: een gesprek of het profiel van wie hem stuurde. De
+  // rest (duel, dagronde) hangt aan de banner in App, want daar zitten die
+  // schermen; hier zou je alsnog moeten terugtikken.
+  const onMelding = (m: { naar: string | null; data: string | null }) => {
+    sound.uiTap();
+    let d: Record<string, string> = {};
+    try { d = m.data ? JSON.parse(m.data) : {}; } catch { /* rommel is geen reden om niets te doen */ }
+    if (m.naar === "dm" && d.user_id) game.dmOpen(d.user_id);
+    else if (d.user_id) { game.viewProfile(d.user_id); setViewing(d.user_id); }
+  };
   const account = game.state.account;
   const threads = game.state.dmThreads;
 
-  // Load the DM thread list alongside the invites.
+  // Load the DM thread list alongside the invites, plus the notifications.
   useEffect(() => {
-    if (account) game.dmRefreshThreads();
+    if (account) {
+      game.dmRefreshThreads();
+      game.meldingenLaden();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [!!account]);
 
@@ -2914,8 +2999,23 @@ function InboxTab({ game }: { game: GameApi }) {
     return <Card><p style={{ margin: 0, fontFamily: font.ui, fontSize: 13.5, color: colors.sub }}>{t("profileNeeded")}</p></Card>;
   }
   const items = game.state.inbox;
+  const meldingen = game.state.meldingen;
   return (
     <>
+    {meldingen.length > 0 && (
+      <Card style={{ display: "flex", flexDirection: "column", gap: 3, padding: "13px 7px 14px" }}>
+        <SectieKop
+          label={t("meldingenTitle")}
+          actie={game.state.meldingenOngelezen > 0 ? t("meldingenLees") : undefined}
+          onActie={game.state.meldingenOngelezen > 0 ? () => { sound.uiTap(); game.meldingenLezen(); } : undefined}
+        />
+        <Lijst n={meldingen.length} rij={46} toon={4.5}>
+          {meldingen.map((m) => (
+            <MeldingRij key={m.id} melding={m} onOpen={() => onMelding(m)} />
+          ))}
+        </Lijst>
+      </Card>
+    )}
     {threads.length > 0 && (
       <Card style={{ display: "flex", flexDirection: "column", gap: 3, padding: "13px 7px 14px" }}>
         <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint, marginBottom: 4 }}>
@@ -2971,6 +3071,7 @@ function InboxTab({ game }: { game: GameApi }) {
         ))
       )}
     </Card>
+    {viewing && <ProfileViewModal game={game} userId={viewing} onClose={() => setViewing(null)} />}
     </>
   );
 }
@@ -3321,7 +3422,13 @@ function RangRij({ r, plek, deel }: { r: LeaderboardRow; plek: number; deel: num
       <Scheiding />
       <Avatar name={r.name} color={r.color} size={eerste ? 44 : 40} userId={r.id} hasAvatar={r.has_avatar} avatarVer={r.avatar_ver} />
       <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 5 }}>
-        <span style={{ fontFamily: font.ui, fontWeight: 700, fontSize: 14.5, color: colors.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</span>
+        {/* Het schild voor de naam: hier zie je in een oogopslag in welke
+            divisie iemand zit. Klein en zonder gloed, want in een rij van vijf
+            wordt licht per regel al gauw een lichtkrans over de hele lijst. */}
+        <span style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0 }}>
+          <Schild divisie={r.divisie ?? 0} maat={11} gloed={false} />
+          <span style={{ flex: 1, minWidth: 0, fontFamily: font.ui, fontWeight: 700, fontSize: 14.5, color: colors.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</span>
+        </span>
         {/* De balk zegt in EEN blik hoe ver iemand van de koploper af staat.
             Zonder die balk zijn het losse getallen die je met elkaar moet
             vergelijken, en dat doet niemand. */}

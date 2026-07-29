@@ -290,11 +290,22 @@ body {
 }
 
 /* Inputs reset to the arcade look. */
-input {
+input,
+textarea {
   font-family: "Inter", system-ui, sans-serif;
+  /* De TEKSTCURSOR. Zonder deze regel pakt de browser bij `color-scheme: dark`
+     zijn eigen accentkleur, en dat is op deze telefoons een violette streep:
+     precies het paarse streepje dat tijdens het typen naast je woord stond.
+     Goud, want dat is de kleur van alles wat in deze app "jij" is. */
+  caret-color: #ffc23d;
 }
-input:focus {
+input:focus,
+textarea:focus {
   outline: none;
+}
+::selection {
+  background: rgba(255, 194, 61, 0.3);
+  color: #f4efff;
 }
 
 /* Slot reel spin: a fast vertical letter flicker. */
@@ -599,6 +610,14 @@ a:active .hex-aan {
   animation: reward-art 520ms cubic-bezier(0.34, 1.4, 0.5, 1) 260ms both;
 }
 
+/* De lichtslag op het moment dat je schild van kleur wisselt: één ring die
+   uitdijt en meteen weer weg is. Kort, want het is een klap en geen puls. */
+@keyframes divisie-slag {
+  0% { opacity: 0.95; transform: scale(0.5); border-width: 3px; }
+  70% { opacity: 0.25; }
+  100% { opacity: 0; transform: scale(2.3); border-width: 1px; }
+}
+
 /* Alphabet strip: the drawn letter flares gold, then falls out (dims). The
    resting dim state lives in the chip's inline style; this only decorates. */
 @keyframes letter-out {
@@ -635,7 +654,8 @@ a:active .hex-aan {
   .caret-blink,
   .reward-veil,
   .reward-card,
-  .reward-art {
+  .reward-art,
+  .divisie-slag {
     animation: none;
   }
   .pressable {

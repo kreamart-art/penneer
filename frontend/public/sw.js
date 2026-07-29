@@ -10,7 +10,7 @@
 //    briefly-stale shell can still boot from cache instead of going black.
 //  - Every activation purges ALL old caches (drops any poisoned shell).
 // Never touches the WebSocket or the API.
-const CACHE = "penneer-v63"; // v63: letterregel-fix, wereld- en letter-art, koppen lager
+const CACHE = "penneer-v64"; // v64: divisies, meldingen, rondleiding, privacy en voorwaarden
 
 self.addEventListener("install", () => {
   self.skipWaiting();

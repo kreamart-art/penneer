@@ -12,11 +12,12 @@ link is logged so local dev still works.
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import time
 from typing import Any, Optional
 
-from . import daily, missions, push, titles
+from . import daily, divisies, meldingen, missions, push, titles
 from .db import (get_db, LEVEL_BUZZERS, BUZZER_SKIN_IDS, LEVEL_FOR_BUZZER, LEVEL_FRAMES,
                  LEVEL_FOR_FRAME, REEL_SKIN_IDS, EMOTE_IDS, EMOTE_PACKS,
                  EMOTE_PACK_UNLOCK, PACK_FOR_EMOTE)
@@ -104,6 +105,66 @@ class AccountManager:
         except Exception:
             pass
 
+    # ---- meldingen -----------------------------------------------------------
+
+    async def stuur(self, user_id: str, soort: str, data: Optional[dict] = None, **vars) -> None:
+        """De ENIGE weg naar buiten voor een melding.
+
+        Bewaart hem, zet hem meteen in beeld bij wie verbonden is, en duwt hem
+        naar de telefoon van wie dat niet is. Push alleen bij afwezigheid: een
+        melding op je telefoon over iets wat net in beeld sprong is ruis.
+
+        De catalogus staat in app/meldingen.py; hier staat alleen het vervoer.
+        """
+        if not user_id:
+            return
+        m = meldingen.maak(soort, **vars)
+        if not m:
+            return
+        rij = self.db.melding_add(user_id, m, json.dumps(data) if data else None)
+        if self.online(user_id):
+            await self._push(user_id, {"type": "melding", "melding": rij,
+                                       "ongelezen": self.db.meldingen_ongelezen(user_id)})
+        elif m["push"]:
+            asyncio.create_task(push.notify(user_id, m["titel"], m["body"], tag=m["tag"]))
+
+    async def meldingen_lijst(self, ws: Any, data: dict) -> None:
+        uid = self.user_of(ws)
+        if not uid:
+            return
+        await self._send(ws, {
+            "type": "meldingen",
+            "items": self.db.meldingen_of(uid),
+            "ongelezen": self.db.meldingen_ongelezen(uid),
+        })
+
+    async def meldingen_lees(self, ws: Any, data: dict) -> None:
+        uid = self.user_of(ws)
+        if not uid:
+            return
+        self.db.meldingen_gelezen(uid)
+        await self.meldingen_lijst(ws, {})
+
+    async def herinneringen_ronde(self) -> None:
+        """Eén veegbeurt: wie heeft er iets openstaan dat blijft liggen?
+
+        Draait op een lus in main.py. Alles zit achter een dagslot per soort per
+        speler, dus wie niets doet krijgt hooguit één zetje per dag en niet elk
+        kwartier dezelfde regel.
+        """
+        nu = time.time()
+        dag = nu - DAY
+
+        for r in self.db.wie_wacht_op_verzoek(nu - 6 * 3600):
+            uid = r["user_id"]
+            if self.db.melding_laatst(uid, "herinnering_verzoek") < dag:
+                await self.stuur(uid, "herinnering_verzoek", n=int(r["n"]))
+
+        for r in self.db.wie_heeft_ongelezen(nu - 2 * 3600):
+            uid = r["user_id"]
+            if self.db.melding_laatst(uid, "herinnering_bericht") < dag:
+                await self.stuur(uid, "herinnering_bericht", n=int(r["n"]))
+
     # ---- public profile snippet ---------------------------------------------
 
     def _public(self, user: dict) -> dict:
@@ -114,6 +175,10 @@ class AccountManager:
             "has_avatar": bool(user.get("has_avatar")),
             "avatar_ver": user.get("avatar_ver", 0),
             "online": self.online(user["id"]),
+            # De divisie hoort overal mee te reizen waar een speler getoond
+            # wordt: het schild is een rang, en een rang die je alleen op je
+            # eigen profiel ziet is geen rang.
+            "divisie": int(user.get("divisie") or 0),
         }
 
     def _allowed_buzzers(self, user: dict, level: int) -> set:
@@ -158,6 +223,9 @@ class AccountManager:
         return out
 
     async def _account_payload(self, ws: Any, user_id: str) -> dict:
+        # Divisies worden lazy ingehaald, bij het openen van de app. Dit staat
+        # vóór get_user zodat de nieuwe trede meteen in de payload zit.
+        divisie_change = divisies.inhalen(self.db, user_id)
         user = self.db.get_user(user_id)
         if user is None:
             return {"type": "account", "account": None}
@@ -201,7 +269,9 @@ class AccountManager:
                 ],
                 "avatar_frame": user.get("avatar_frame"),
                 "reel_skin": user.get("reel_skin"),
-                "shield": user.get("shield"),
+                "shield": divisies.kleur_van(int(user.get("divisie") or 0)),
+                "divisie_change": divisie_change,
+                "divisie_maandag": divisies.volgende_maandag(),
                 "emote_packs": sorted(self.db.emote_packs_of(user_id)),
                 "frame_rewards": [
                     {"frame": fid, "level": lvl, "name": key,
@@ -266,7 +336,10 @@ class AccountManager:
             "set_lenient": self.set_lenient,
             "set_buzzer_skin": self.set_buzzer_skin,
             "set_reel_skin": self.set_reel_skin,
-            "set_shield": self.set_shield,
+            "divisie_stand": self.divisie_stand,
+            "meldingen": self.meldingen_lijst,
+            "meldingen_lees": self.meldingen_lees,
+            "divisie_gezien": self.divisie_gezien,
             "set_avatar_frame": self.set_avatar_frame,
             "claim_buzzer_reward": self.claim_buzzer_reward,
             "claim_reward": self.claim_reward,
@@ -510,15 +583,13 @@ class AccountManager:
         payload = {"type": "dm", "message": msg}
         await self._push(uid, payload)
         await self._push(to, payload)
-        # Real push when the recipient has no live connection (app closed).
-        if not self.online(to):
-            sender = self.db.get_user(uid)
-            preview = "Sticker" if msg.get("emote") else "Spraakbericht" if msg.get("voice_id") else msg["text"][:120]
-            asyncio.create_task(push.notify(
-                to, "Pen Neer",
-                f"{sender['name'] if sender else 'Iemand'}: {preview}",
-                tag=f"dm-{uid}",
-            ))
+        sender = self.db.get_user(uid)
+        preview = "Sticker" if msg.get("emote") else "Spraakbericht" if msg.get("voice_id") else msg["text"][:120]
+        # De melding gaat door de catalogus heen, ook als de ontvanger in de app
+        # zit: daar wordt hij een balk in plaats van een push, en hij blijft in
+        # de meldingenlijst staan.
+        await self.stuur(to, "bericht", data={"user_id": uid},
+                         naam=sender["name"] if sender else "Iemand", tekst=preview)
 
     async def dm_thread(self, ws: Any, data: dict) -> None:
         uid = self.user_of(ws)
@@ -570,13 +641,14 @@ class AccountManager:
         await self.friends_list(ws, {})
         if result in ("sent", "accepted"):
             await self._push_inbox(data["user_id"])
-            if result == "sent" and not self.online(data["user_id"]):
-                me = self.db.get_user(uid)
-                asyncio.create_task(push.notify(
-                    data["user_id"], "Pen Neer",
-                    f"{me['name'] if me else 'Iemand'} wil je vriend worden",
-                    tag="friend",
-                ))
+            me = self.db.get_user(uid)
+            naam = me["name"] if me else "Iemand"
+            if result == "sent":
+                await self.stuur(data["user_id"], "vriend_verzoek", data={"user_id": uid}, naam=naam)
+            else:
+                # "accepted": er lag al een verzoek de andere kant op, dus dit
+                # tikje maakt er meteen een vriendschap van.
+                await self.stuur(data["user_id"], "vriend_ja", data={"user_id": uid}, naam=naam)
 
     async def friend_respond(self, ws: Any, data: dict) -> None:
         uid = self.user_of(ws)
@@ -588,6 +660,9 @@ class AccountManager:
         await self._push_inbox(uid)
         if data.get("accept"):
             await self._push_inbox(other)
+            me = self.db.get_user(uid)
+            await self.stuur(other, "vriend_ja", data={"user_id": uid},
+                             naam=me["name"] if me else "Iemand")
             # Social badge: your very first friend, on both sides.
             for user in (uid, other):
                 if self.db.is_friend(uid, other) and self.db.grant_badge(user, "eerste_vriend"):
@@ -632,14 +707,10 @@ class AccountManager:
         inv = self.db.create_invite(uid, to_user, room_code, kind)
         if inv:
             await self._push_inbox(to_user)
-            if not self.online(to_user):
-                me = self.db.get_user(uid)
-                naam = me["name"] if me else "Iemand"
-                body = (
-                    f"{naam} daagt je uit voor een potje" if kind == "challenge"
-                    else f"{naam} nodigt je uit voor room {room_code}"
-                )
-                asyncio.create_task(push.notify(to_user, "Pen Neer", body, tag="invite"))
+            me = self.db.get_user(uid)
+            naam = me["name"] if me else "Iemand"
+            await self.stuur(to_user, "uitdaging" if kind == "challenge" else "uitnodiging",
+                             data={"user_id": uid, "room_code": room_code}, naam=naam)
         await self._send(ws, {"type": "invite_sent", "to_user": to_user})
 
     async def invite_respond(self, ws: Any, data: dict) -> None:
@@ -675,10 +746,9 @@ class AccountManager:
         inv = self.db.create_invite(uid, to, club["code"], "club_invite")
         if inv:
             await self._push_inbox(to)
-            if not self.online(to):
-                me = self.db.get_user(uid)
-                naam = me["name"] if me else "Iemand"
-                asyncio.create_task(push.notify(to, "Pen Neer", f"{naam} nodigt je uit voor club {club['name']}", tag="club-invite"))
+            me = self.db.get_user(uid)
+            naam = me["name"] if me else "Iemand"
+            await self.stuur(to, "club_uitnodiging", data={"user_id": uid}, naam=naam, club=club["name"])
         await self._send(ws, {"type": "invite_sent", "to_user": to})
 
     @staticmethod
@@ -864,12 +934,35 @@ class AccountManager:
         self.db.set_reel_skin(uid, skin, self._allowed_reels(user))
         await self._send(ws, await self._account_payload(ws, uid))
 
-    async def set_shield(self, ws: Any, data: dict) -> None:
+    async def divisie_stand(self, ws: Any, data: dict) -> None:
+        """Waar je nu staat, en waar je deze week op af koerst.
+
+        Het schild is geen keuze meer, dus dit vervangt `set_shield`: de app
+        vraagt om de stand in plaats van er een te zetten.
+        """
         uid = self.user_of(ws)
         if not uid:
             return
-        kleur = data.get("shield")
-        self.db.set_shield(uid, kleur if isinstance(kleur, str) and kleur else None)
+        nu = time.time()
+        week = divisies.week_van(nu)
+        start, eind = divisies.week_grenzen(week)
+        plek, gespeeld = self.db.week_plek(uid, start, eind)
+        rij = self.db.divisie_van(uid)
+        await self._send(ws, {
+            "type": "divisie",
+            "divisie": int(rij.get("divisie") or 0),
+            "plek": plek,
+            "gespeeld": gespeeld,
+            "maandag": divisies.volgende_maandag(nu),
+            "top": self.db.leaderboard(start, eind, 3),
+        })
+
+    async def divisie_gezien(self, ws: Any, data: dict) -> None:
+        """De maandag-animatie is bekeken; niet nog eens tonen."""
+        uid = self.user_of(ws)
+        if not uid:
+            return
+        self.db.divisie_change_wis(uid)
         await self._send(ws, await self._account_payload(ws, uid))
 
     async def set_avatar_frame(self, ws: Any, data: dict) -> None:

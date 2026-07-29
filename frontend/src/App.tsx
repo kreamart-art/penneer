@@ -20,6 +20,10 @@ import { Duel } from "./screens/Duel";
 import { BadgeToasts } from "./components/BadgeToasts";
 import { BottomNav, type NavKey } from "./components/BottomNav";
 import { BuzzerRewardPopup } from "./components/BuzzerRewardPopup";
+import { DivisiePopup } from "./components/Divisie";
+import { MeldingBanner, useMeldingWachtrij } from "./components/Meldingen";
+import { Tour, tourGezien } from "./components/Tour";
+import { Juridisch } from "./screens/Juridisch";
 import { InviteBanner } from "./components/InviteBanner";
 import { DmBanner } from "./components/DmBanner";
 import { localNotify } from "./components/NotifyNudge";
@@ -53,6 +57,9 @@ export default function App() {
   const [showTraining, setShowTraining] = useState(false);
   const [showDaily, setShowDaily] = useState(false);
   const [showDuel, setShowDuel] = useState(false);
+  const [showTour, setShowTour] = useState(false);
+  const [tourAf, setTourAf] = useState(tourGezien);
+  const [showLegal, setShowLegal] = useState<"privacy" | "terms" | null>(null);
   const [bannerInvite, setBannerInvite] = useState<InboxItem | null>(null);
   const [paypalFlash, setPaypalFlash] = useState<"ok" | "cancel" | "fail" | "pending" | null>(null);
   // A challenge creates a room first; once its lobby is up we send the invite.
@@ -173,6 +180,42 @@ export default function App() {
     game.joinRoom(joinCode, game.state.account?.name ?? "Speler");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [joinCode]);
+
+  // Meldingen: de balk toont er één tegelijk, en een tik erop brengt je naar
+  // de plek waar de melding over gaat. De catalogus zegt WAAR ("naar"), dus dit
+  // is een tabel en geen rij ifs per soort.
+  const meldingen = useMeldingWachtrij(game.state.meldingNieuw);
+  const openMelding = (naar: string | null, data: string | null) => {
+    meldingen.volgende();
+    let d: Record<string, string> = {};
+    try { d = data ? JSON.parse(data) : {}; } catch { /* rommel in de data is geen reden om niets te doen */ }
+    setShowShop(false);
+    setShowRules(false);
+    setShowSettings(false);
+    if (naar === "duel") {
+      setShowHub(null);
+      setShowDuel(true);
+    } else if (naar === "dagronde") {
+      setShowHub(null);
+      setShowDaily(true);
+    } else if (naar === "dm" && d.user_id) {
+      setShowHub("inbox");
+      game.dmOpen(d.user_id);
+    } else if (naar === "vrienden") {
+      setShowHub("friends");
+    } else if (naar === "profiel") {
+      setShowHub("profile");
+    } else {
+      setShowHub("inbox");
+    }
+  };
+
+  // Meldingen ophalen zodra er een account is: het bolletje op de balk hoort te
+  // kloppen voordat je de inbox opent, niet erna.
+  useEffect(() => {
+    if (accountId) game.meldingenLaden();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accountId]);
 
   // Challenge sequencing: room lobby is live -> send the challenge invite.
   useEffect(() => {
@@ -332,6 +375,8 @@ export default function App() {
         }}
       />
     );
+  } else if (showLegal) {
+    screen = <Juridisch start={showLegal} onBack={() => setShowLegal(null)} />;
   } else if (showSettings) {
     screen = (
       <Settings
@@ -341,6 +386,8 @@ export default function App() {
           setShowSettings(false);
           setShowRules(true);
         }}
+        onShowTour={() => setShowTour(true)}
+        onShowLegal={(tab) => setShowLegal(tab)}
       />
     );
   } else {
@@ -350,7 +397,7 @@ export default function App() {
   // Which bar item is lit. Sub-flows that are not bar destinations (rules,
   // dagronde, oefenen, instellingen) hide the bar entirely.
   const navKey: NavKey | null =
-    inRoom || !introDone || !lang || showRules || showDaily || showDuel || showTraining || showSettings
+    inRoom || !introDone || !lang || showRules || showDaily || showDuel || showTraining || showSettings || showLegal
       ? null
       : showShop
       ? "shop"
@@ -401,7 +448,25 @@ export default function App() {
           </div>
         </div>
       )}
+      {/* De rondleiding. Eén keer vanzelf zodra je op de main page staat, en
+          daarna alleen als je hem uit de instellingen opent. Niet over de
+          intro, niet over een potje: dan is het geen rondleiding maar een
+          onderbreking. */}
+      {(showTour || (introDone && !!lang && !inRoom && !showRules && !showDaily && !showDuel &&
+        !showTraining && !showShop && !showHub && !showSettings && !showLegal && !tourAf)) && (
+        <Tour onKlaar={() => { setShowTour(false); setTourAf(true); }} />
+      )}
       {inRoom && <BadgeToasts game={game} />}
+      {/* De meldingsbalk mag overal komen behalve tijdens het invullen: daar
+          zou hij precies over het toetsenbordveld vallen dat je op dat moment
+          nodig hebt. */}
+      {meldingen.huidig && introDone && !!lang && room?.phase !== "fill" && (
+        <MeldingBanner
+          melding={meldingen.huidig}
+          onOpen={() => openMelding(meldingen.huidig!.naar, meldingen.huidig!.data)}
+          onClose={meldingen.volgende}
+        />
+      )}
       {/* Reward popup ONLY on the main landing page (never over the intro, a
           sub-screen, or an active game): match the Landing's render condition. */}
       {game.state.account &&
@@ -415,6 +480,22 @@ export default function App() {
         !showShop &&
         !showHub &&
         !showSettings && <BuzzerRewardPopup game={game} />}
+      {/* De maandag-uitslag gaat VOOR de beloningen: hij hoort bij de week die
+          net eindigde, en pas daarna kijk je naar wat je nog te claimen hebt.
+          Dezelfde plek-voorwaarden, want ook dit moet niet over een potje heen. */}
+      {game.state.account?.divisie_change &&
+        introDone &&
+        !!lang &&
+        !inRoom &&
+        !showRules &&
+        !showDaily &&
+        !showDuel &&
+        !showTraining &&
+        !showShop &&
+        !showHub &&
+        !showSettings && (
+          <DivisiePopup change={game.state.account.divisie_change} onSluit={() => game.divisieGezien()} />
+        )}
       {paypalFlash && (
         <div
           onClick={() => setPaypalFlash(null)}

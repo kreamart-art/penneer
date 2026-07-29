@@ -60,6 +60,78 @@ function loadImage(src: string): Promise<HTMLImageElement | null> {
   });
 }
 
+
+/** Een afgeschuinde rechthoek: de vorm van elke glasrij in de app. */
+function schuinPad(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, c: number) {
+  ctx.beginPath();
+  ctx.moveTo(x + c, y);
+  ctx.lineTo(x + w - c, y);
+  ctx.lineTo(x + w, y + c);
+  ctx.lineTo(x + w, y + h - c);
+  ctx.lineTo(x + w - c, y + h);
+  ctx.lineTo(x + c, y + h);
+  ctx.lineTo(x, y + h - c);
+  ctx.lineTo(x, y + c);
+  ctx.closePath();
+}
+
+/** De glasrij zoals in de ranglijst: doorzichtig van binnen, een haarlijn die
+ *  bijna uit staat, en een lichtstreep over de bovenrand met zijn piek. Op het
+ *  scherm is die streep een eigen laag; op canvas is het een verloop, en dat
+ *  komt op deze maat op hetzelfde neer. */
+function glasRij(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, accent: string, piek = 0.5) {
+  const c = 16;
+  ctx.save();
+  schuinPad(ctx, x, y, w, h, c);
+  ctx.fillStyle = "rgba(10,4,26,.34)";
+  ctx.fill();
+  ctx.strokeStyle = "rgba(200,160,255,.22)";
+  ctx.lineWidth = 1.4;
+  ctx.stroke();
+  ctx.restore();
+
+  // de lichtstreep met zijn piek, boven en (zachter) onder
+  const streep = (yy: number, sterkte: number) => {
+    const g = ctx.createLinearGradient(x, 0, x + w, 0);
+    const k = (v: number) => Math.max(0, Math.min(1, piek + v));
+    g.addColorStop(0, "rgba(0,0,0,0)");
+    g.addColorStop(k(-0.24), "rgba(0,0,0,0)");
+    g.addColorStop(k(-0.1), `rgba(138,80,240,${0.3 * sterkte})`);
+    g.addColorStop(k(0), `rgba(255,250,238,${0.9 * sterkte})`);
+    g.addColorStop(k(0.1), `rgba(138,80,240,${0.3 * sterkte})`);
+    g.addColorStop(k(0.24), "rgba(0,0,0,0)");
+    g.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(x + c, yy, w - c * 2, 2);
+  };
+  streep(y, 1);
+  streep(y + h - 2, 0.45);
+
+  // gouden kappen in de vier hoeken, net als op het scherm
+  const arm = 14;
+  const g = ctx.createLinearGradient(0, y, 0, y + h);
+  g.addColorStop(0, "#FFEBB8");
+  g.addColorStop(0.38, "#FFCF4A");
+  g.addColorStop(0.72, "#E2A33C");
+  g.addColorStop(1, "#9C6B1F");
+  ctx.save();
+  ctx.strokeStyle = accent === "goud" ? g : "rgba(200,160,255,.5)";
+  ctx.lineWidth = 2;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  for (const [sx, sy] of [[1, 1], [-1, 1], [1, -1], [-1, -1]] as const) {
+    const px = sx > 0 ? x : x + w;
+    const py = sy > 0 ? y : y + h;
+    ctx.beginPath();
+    ctx.moveTo(px + sx * (c + arm), py);
+    ctx.lineTo(px + sx * c, py);
+    ctx.lineTo(px, py + sy * c);
+    ctx.lineTo(px, py + sy * (c + arm));
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
 export async function makeShareCard(opts: CardOpts): Promise<Blob | null> {
   const W = 1080;
   const H = 1350;
@@ -69,7 +141,6 @@ export async function makeShareCard(opts: CardOpts): Promise<Blob | null> {
   const ctx = canvas.getContext("2d");
   if (!ctx) return null;
 
-  // Ensure fonts are ready so canvas text uses them.
   try {
     await Promise.all([
       document.fonts.load("700 120px 'Space Grotesk'"),
@@ -79,95 +150,113 @@ export async function makeShareCard(opts: CardOpts): Promise<Blob | null> {
     /* fall back to default fonts */
   }
 
-  // background
+  // De ARENA als achtergrond, dezelfde als op de lobby en de dagronde: een
+  // kaart die je deelt hoort er hetzelfde uit te zien als het scherm waar hij
+  // vandaan komt. Valt de art weg, dan blijft het oude verloop over.
   const grad = ctx.createRadialGradient(W / 2, -H * 0.08, 100, W / 2, H * 0.5, H);
   grad.addColorStop(0, colors.glow);
   grad.addColorStop(0.42, colors.bg1);
   grad.addColorStop(1, colors.bg0);
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, W, H);
+  const arena = await loadImage("/ui/lobby-bg.webp");
+  if (arena) {
+    const sc = Math.max(W / arena.width, H / arena.height);
+    ctx.drawImage(arena, (W - arena.width * sc) / 2, (H - arena.height * sc) / 2, arena.width * sc, arena.height * sc);
+    const vig = ctx.createRadialGradient(W / 2, H * 0.3, H * 0.08, W / 2, H * 0.5, H * 0.8);
+    vig.addColorStop(0, "rgba(6,4,14,.1)");
+    vig.addColorStop(1, "rgba(4,2,10,.82)");
+    ctx.fillStyle = vig;
+    ctx.fillRect(0, 0, W, H);
+  }
 
   ctx.textAlign = "center";
 
-  // Brand logo (studio pen-nib coin, same-origin so the canvas stays untainted).
-  // Falls back to the drawn emblem if the image can't load.
   const logo = await loadImage("/logo.png");
   if (logo) {
-    const S = 250;
-    ctx.drawImage(logo, W / 2 - S / 2, 210 - S / 2, S, S);
+    const S = 190;
+    ctx.drawImage(logo, W / 2 - S / 2, 190 - S / 2, S, S);
   } else {
-    drawEmblem(ctx, W / 2, 210, 90);
+    drawEmblem(ctx, W / 2, 190, 80);
   }
 
-  // wordmark
-  ctx.font = "700 96px 'Space Grotesk'";
+  ctx.font = "700 78px 'Space Grotesk'";
   ctx.fillStyle = colors.ink;
   ctx.shadowColor = colors.violet;
-  ctx.shadowBlur = 40;
-  ctx.fillText("PEN NEER", W / 2, 410);
+  ctx.shadowBlur = 36;
+  ctx.fillText("PEN NEER", W / 2, 350);
   ctx.shadowBlur = 0;
 
-  // winner label
-  ctx.font = "600 34px Inter";
-  ctx.fillStyle = colors.faint;
-  ctx.fillText(opts.winnerLabel.toUpperCase(), W / 2, 500);
+  // De winnaar in een eigen neonlijst: dat is waar de kaart om gaat, dus die
+  // krijgt een lijst en de rest niet.
+  const kx = 110;
+  const kw = W - 220;
+  const ky = 410;
+  const kh = 230;
+  ctx.save();
+  schuinPad(ctx, kx, ky, kw, kh, 22);
+  ctx.fillStyle = "rgba(10,4,26,.4)";
+  ctx.fill();
+  ctx.restore();
+  kaderLijn(ctx, kx, ky, kw, kh, 22, 2.4);
 
-  // winner name
-  ctx.font = "700 76px 'Space Grotesk'";
+  ctx.font = "600 30px Inter";
+  ctx.fillStyle = colors.faint;
+  ctx.fillText(opts.winnerLabel.toUpperCase(), W / 2, ky + 62);
+
+  ctx.font = "700 72px 'Space Grotesk'";
   ctx.fillStyle = colors.gold;
   ctx.shadowColor = colors.gold;
-  ctx.shadowBlur = 30;
-  ctx.fillText(opts.winnerNames, W / 2, 580);
+  ctx.shadowBlur = 28;
+  ctx.fillText(opts.winnerNames, W / 2, ky + 142);
   ctx.shadowBlur = 0;
 
-  // points pill
-  ctx.font = "700 40px 'Space Grotesk'";
+  ctx.font = "700 36px 'Space Grotesk'";
   const pillText = opts.pointsText;
-  const pillW = ctx.measureText(pillText).width + 80;
-  const pillX = W / 2 - pillW / 2;
-  ctx.fillStyle = colors.gold;
-  roundRect(ctx, pillX, 615, pillW, 70, 35);
+  const pillW = ctx.measureText(pillText).width + 70;
+  ctx.fillStyle = "rgba(255,207,74,.14)";
+  roundRect(ctx, W / 2 - pillW / 2, ky + 166, pillW, 54, 27);
   ctx.fill();
-  ctx.fillStyle = "#2A1B05";
-  ctx.fillText(pillText, W / 2, 663);
+  ctx.strokeStyle = "rgba(255,207,74,.5)";
+  ctx.lineWidth = 1.5;
+  roundRect(ctx, W / 2 - pillW / 2, ky + 166, pillW, 54, 27);
+  ctx.stroke();
+  ctx.fillStyle = colors.gold;
+  ctx.fillText(pillText, W / 2, ky + 203);
 
-  // scoreboard
+  // De stand als glasrijen, met de gouden kappen voor wie bovenaan staat en het
+  // lichtpunt op een andere plek per rij, precies als in de app.
   const rows = opts.rows.slice(0, 8);
-  let y = 760;
-  const rowH = 84;
-  const left = 120;
-  const right = W - 120;
-  ctx.textAlign = "left";
+  const left = 110;
+  const right = W - 110;
+  const rowH = 92;
+  let y = ky + kh + 60;
   rows.forEach((r, i) => {
-    const leader = i === 0;
-    ctx.fillStyle = leader ? "rgba(255,194,61,0.16)" : "rgba(255,255,255,0.05)";
-    roundRect(ctx, left, y, right - left, rowH - 14, 18);
-    ctx.fill();
+    const leider = i === 0;
+    glasRij(ctx, left, y, right - left, rowH - 14, leider ? "goud" : "paars", 0.3 + ((i * 0.618034) % 1) * 0.4);
 
-    ctx.font = "700 36px 'Space Grotesk'";
-    ctx.fillStyle = leader ? colors.gold : colors.faint;
-    ctx.fillText(String(i + 1), left + 30, y + 48);
+    ctx.textAlign = "left";
+    ctx.font = "700 34px 'Space Grotesk'";
+    ctx.fillStyle = leider ? colors.gold : colors.faint;
+    ctx.fillText(String(i + 1), left + 34, y + 50);
 
-    // color token
     ctx.fillStyle = r.color;
-    roundRect(ctx, left + 80, y + 16, 38, 38, 10);
+    ctx.beginPath();
+    ctx.arc(left + 106, y + 39, 21, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.font = "600 36px Inter";
+    ctx.font = "600 34px Inter";
     ctx.fillStyle = colors.ink;
-    const name = r.name.length > 16 ? r.name.slice(0, 15) + "…" : r.name;
-    ctx.fillText(name, left + 140, y + 48);
+    const name = r.name.length > 16 ? r.name.slice(0, 15) + "\u2026" : r.name;
+    ctx.fillText(name, left + 146, y + 50);
 
     ctx.textAlign = "right";
     ctx.font = "700 40px 'Space Grotesk'";
-    ctx.fillStyle = leader ? colors.gold : colors.ink;
-    ctx.fillText(String(r.score), right - 30, y + 50);
-    ctx.textAlign = "left";
-
+    ctx.fillStyle = leider ? colors.gold : colors.ink;
+    ctx.fillText(String(r.score), right - 34, y + 52);
     y += rowH;
   });
 
-  // footer
   ctx.textAlign = "center";
   ctx.font = "500 26px Inter";
   ctx.fillStyle = colors.faint;
@@ -184,7 +273,9 @@ interface ProfileCardOpts {
   rankTitle: string; // localized rank name
   levelText: string; // "Level 7"
   level: number; // het cijfer op het schild
-  shield: string; // kleur van het level-schild (paars, blauw, ...)
+  shield: string; // kleur van het schild, afgeleid van de divisie
+  divisieNaam: string; // "Smaragd" — de naam van de divisie
+  divisieAccent: string; // "84,206,124" — de kleur van die divisie
   xpNow: number; // XP binnen dit level
   xpSpan: number; // XP dat dit level in totaal kost
   xpLabel: string; // "90 / 200 XP"
@@ -341,10 +432,17 @@ export async function makeProfileCard(opts: ProfileCardOpts): Promise<Blob | nul
   ctx.fillText(opts.rankTitle.toUpperCase(), W / 2, 786);
   ctx.shadowBlur = 0;
 
+  // De DIVISIE eronder, in zijn eigen kleur. De rang zegt hoe ver je bent, de
+  // divisie hoe je er deze maand voor staat: twee verschillende dingen, dus
+  // twee regels. In de kleur van het schild, zodat het bij elkaar hoort.
+  ctx.font = "600 32px Inter";
+  ctx.fillStyle = `rgb(${opts.divisieAccent})`;
+  ctx.fillText(opts.divisieNaam.toUpperCase(), W / 2, 828);
+
   // De XP-balk: een GROEF met een neon-lijst eromheen, zoals op het profiel.
   const bw = W - 260;
   const bx = 130;
-  const by = 828;
+  const by = 858;
   const bh = 26;
   ctx.fillStyle = "rgba(0,0,0,.5)";
   roundRect(ctx, bx, by, bw, bh, bh / 2);
@@ -375,7 +473,7 @@ export async function makeProfileCard(opts: ProfileCardOpts): Promise<Blob | nul
   const vh = 132;
   opts.stats.slice(0, 4).forEach(([label, value], i) => {
     const vx = 130 + (i % 2) * (vw + 24);
-    const vy = 940 + Math.floor(i / 2) * (vh + 24);
+    const vy = 964 + Math.floor(i / 2) * (vh + 24);
     ctx.fillStyle = "rgba(20,10,40,.42)";
     roundRect(ctx, vx, vy, vw, vh, 22);
     ctx.fill();
@@ -391,7 +489,7 @@ export async function makeProfileCard(opts: ProfileCardOpts): Promise<Blob | nul
   // badges line + footer
   ctx.font = "600 30px Inter";
   ctx.fillStyle = colors.sub;
-  ctx.fillText(opts.badgesLine, W / 2, 1268);
+  ctx.fillText(opts.badgesLine, W / 2, 1288);
   ctx.font = "500 26px Inter";
   ctx.fillStyle = colors.faint;
   ctx.fillText(opts.footer, W / 2, H - 40);
@@ -433,6 +531,17 @@ export async function makeDailyCard(opts: DailyCardOpts): Promise<Blob | null> {
   grad.addColorStop(1, colors.bg0);
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, W, H);
+  // Dezelfde arena als op de dagronde zelf.
+  const arena = await loadImage("/ui/lobby-bg.webp");
+  if (arena) {
+    const sc = Math.max(W / arena.width, H / arena.height);
+    ctx.drawImage(arena, (W - arena.width * sc) / 2, (H - arena.height * sc) / 2, arena.width * sc, arena.height * sc);
+    const vig = ctx.createRadialGradient(W / 2, H * 0.3, H * 0.08, W / 2, H * 0.5, H * 0.8);
+    vig.addColorStop(0, "rgba(6,4,14,.1)");
+    vig.addColorStop(1, "rgba(4,2,10,.82)");
+    ctx.fillStyle = vig;
+    ctx.fillRect(0, 0, W, H);
+  }
 
   ctx.textAlign = "center";
 
@@ -458,7 +567,7 @@ export async function makeDailyCard(opts: DailyCardOpts): Promise<Blob | null> {
   const T = 340;
   const tx = W / 2 - T / 2;
   const ty = 420;
-  ctx.fillStyle = "rgba(255,255,255,0.05)";
+  ctx.fillStyle = "rgba(10,4,26,.42)";
   roundRect(ctx, tx, ty, T, T, 56);
   ctx.fill();
   ctx.strokeStyle = colors.gold;

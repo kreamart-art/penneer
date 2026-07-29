@@ -359,6 +359,23 @@ CREATE TABLE IF NOT EXISTS custom_categories (
     created_by TEXT REFERENCES users(id) ON DELETE SET NULL,
     created_at REAL NOT NULL
 );
+-- Meldingen: één rij per melding die iemand nog moet zien. De catalogus van
+-- soorten staat in app/meldingen.py; hier ligt alleen wat er verstuurd is.
+-- Bewaard en niet vluchtig, want een melding die aankomt terwijl je scherm uit
+-- staat hoort er nog te zijn als je 'm weer aanzet.
+CREATE TABLE IF NOT EXISTS meldingen (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    soort TEXT NOT NULL,
+    titel TEXT NOT NULL,
+    body TEXT NOT NULL,
+    icoon TEXT,
+    naar TEXT,
+    data TEXT,
+    created_at REAL NOT NULL,
+    gelezen INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_meldingen_user ON meldingen(user_id, gelezen, created_at);
 CREATE INDEX IF NOT EXISTS idx_duels_a ON duels(a, status);
 CREATE INDEX IF NOT EXISTS idx_duels_b ON duels(b, status);
 CREATE INDEX IF NOT EXISTS idx_game_players_user ON game_players(user_id);
@@ -603,6 +620,21 @@ class Database:
         # Het schild onder je portret op het profiel (NULL = het paarse).
         if "shield" not in cols:
             self._conn.execute("ALTER TABLE users ADD COLUMN shield TEXT")
+            self._conn.commit()
+        # Divisie: de trede op de ladder die de schildkleur bepaalt, plus het
+        # weeknummer tot wanneer die al beoordeeld is. Zie app/divisies.py.
+        if "divisie" not in cols:
+            self._conn.execute("ALTER TABLE users ADD COLUMN divisie INTEGER NOT NULL DEFAULT 0")
+            self._conn.commit()
+        if "divisie_week" not in cols:
+            self._conn.execute("ALTER TABLE users ADD COLUMN divisie_week INTEGER NOT NULL DEFAULT 0")
+            self._conn.commit()
+        # De laatste stijging of daling, als JSON, tot de speler hem gezien
+        # heeft. Zou hij alleen in de payload zitten van het moment waarop hij
+        # berekend werd, dan mist iemand die net dan de app herlaadt zijn eigen
+        # promotie, en dat is precies het moment dat je wilt vieren.
+        if "divisie_change" not in cols:
+            self._conn.execute("ALTER TABLE users ADD COLUMN divisie_change TEXT")
             self._conn.commit()
         # Emotes in DMs (room chat keeps its message dicts in memory).
         dcols2 = {r["name"] for r in self._conn.execute("PRAGMA table_info(dms)").fetchall()}
@@ -1027,7 +1059,7 @@ class Database:
         with self._lock:
             rows = self._q(
                 """
-                SELECT u.id, u.name, u.color, u.avatar_ver, u.avatar IS NOT NULL AS has_avatar,
+                SELECT u.id, u.name, u.color, u.avatar_ver, u.divisie, u.avatar IS NOT NULL AS has_avatar,
                        MAX(g.finished_at) AS laatst, COUNT(*) AS samen
                 FROM game_players mij
                 JOIN games g        ON g.id = mij.game_id
@@ -1056,7 +1088,7 @@ class Database:
         with self._lock:
             rows = self._q(
                 """
-                SELECT u.id, u.name, u.color, u.avatar_ver, u.avatar IS NOT NULL AS has_avatar
+                SELECT u.id, u.name, u.color, u.avatar_ver, u.divisie, u.avatar IS NOT NULL AS has_avatar
                 FROM blocks b JOIN users u ON u.id = b.blocked_id
                 WHERE b.user_id=? ORDER BY u.name_lower
                 """,
@@ -1069,7 +1101,7 @@ class Database:
         with self._lock:
             rows = self._q(
                 """
-                SELECT u.id, u.name, u.color, u.avatar_ver, u.avatar IS NOT NULL AS has_avatar,
+                SELECT u.id, u.name, u.color, u.avatar_ver, u.divisie, u.avatar IS NOT NULL AS has_avatar,
                        f.status, f.requested_by
                 FROM friends f
                 JOIN users u ON u.id = CASE WHEN f.a=? THEN f.b ELSE f.a END
@@ -1108,7 +1140,7 @@ class Database:
                 """
                 SELECT i.id, i.room_code, i.kind, i.created_at,
                        u.id AS from_id, u.name AS from_name, u.color AS from_color,
-                       u.avatar_ver, u.avatar IS NOT NULL AS has_avatar
+                       u.avatar_ver, u.divisie, u.avatar IS NOT NULL AS has_avatar
                 FROM invites i JOIN users u ON u.id=i.from_user
                 WHERE i.to_user=? AND i.status='pending'
                 ORDER BY i.created_at DESC
@@ -1118,7 +1150,7 @@ class Database:
             reqs = self._q(
                 """
                 SELECT u.id AS from_id, u.name AS from_name, u.color AS from_color,
-                       u.avatar_ver, u.avatar IS NOT NULL AS has_avatar, f.created_at
+                       u.avatar_ver, u.divisie, u.avatar IS NOT NULL AS has_avatar, f.created_at
                 FROM friends f
                 JOIN users u ON u.id = f.requested_by
                 WHERE (f.a=? OR f.b=?) AND f.status='pending' AND f.requested_by<>?
@@ -1370,7 +1402,7 @@ class Database:
             ph = ",".join("?" for _ in ids)
             rows = self._q(
                 f"""
-                SELECT u.id, u.name, u.color, u.avatar_ver, u.avatar IS NOT NULL AS has_avatar,
+                SELECT u.id, u.name, u.color, u.avatar_ver, u.divisie, u.avatar IS NOT NULL AS has_avatar,
                        COALESCE(SUM(gp.score),0) AS points, COUNT(gp.game_id) AS games,
                        COALESCE(SUM(gp.is_winner),0) AS wins
                 FROM users u
@@ -1392,7 +1424,7 @@ class Database:
         with self._lock:
             rows = self._q(
                 """
-                SELECT u.id, u.name, u.color, u.avatar_ver, u.avatar IS NOT NULL AS has_avatar,
+                SELECT u.id, u.name, u.color, u.avatar_ver, u.divisie, u.avatar IS NOT NULL AS has_avatar,
                        COALESCE(SUM(gp.score),0) AS points, COUNT(*) AS games,
                        COALESCE(SUM(gp.is_winner),0) AS wins
                 FROM game_players gp
@@ -1477,7 +1509,7 @@ class Database:
         with self._lock:
             rows = self._q(
                 """
-                SELECT u.id, u.name, u.color, u.avatar_ver, u.avatar IS NOT NULL AS has_avatar,
+                SELECT u.id, u.name, u.color, u.avatar_ver, u.divisie, u.avatar IS NOT NULL AS has_avatar,
                        ds.score, ds.time_ms
                 FROM daily_scores ds JOIN users u ON u.id = ds.user_id
                 WHERE ds.day = ?
@@ -1579,7 +1611,7 @@ class Database:
         with self._lock:
             rows = self._q(
                 """
-                SELECT u.id, u.name, u.color, u.avatar_ver, u.avatar IS NOT NULL AS has_avatar,
+                SELECT u.id, u.name, u.color, u.avatar_ver, u.divisie, u.avatar IS NOT NULL AS has_avatar,
                        ts.score, ts.time_ms
                 FROM topo_scores ts JOIN users u ON u.id = ts.user_id
                 WHERE ts.day = ?
@@ -2238,11 +2270,13 @@ class Database:
 
     # ---- reel skins (bought with coins) ------------------------------------
 
-    # ---- level-schild op het profiel --------------------------------------
-    # Alle kleuren zijn vrij te kiezen: het schild zegt niets over wat je hebt
-    # verdiend, het is smaak. Vandaar geen ontgrendel-lijst zoals bij de rollen
-    # en de knoppen, alleen een controle of de kleur bestaat.
-    SHIELDS = ("paars", "blauw", "lichtblauw", "groen", "rood", "zwart", "zilver")
+    # ---- schild en divisie -------------------------------------------------
+    # Het schild was vrij te kiezen. Nu is het je DIVISIE: de kleur verschuift
+    # als je stijgt of zakt, elke maandag. De volgorde hieronder is de ladder,
+    # van laag naar hoog, en hij hoort gelijk te zijn aan DIVISIES in
+    # app/divisies.py. `set_shield` blijft bestaan omdat een beheerder er soms
+    # eentje moet rechtzetten; de speler kiest niet meer.
+    SHIELDS = ("paars", "blauw", "lichtblauw", "groen", "rood", "zilver", "zwart")
 
     def set_shield(self, user_id: str, kleur: Optional[str]) -> bool:
         if not kleur or kleur == self.SHIELDS[0]:
@@ -2252,6 +2286,153 @@ class Database:
             return False
         self._exec("UPDATE users SET shield=? WHERE id=?", (kleur, user_id))
         return True
+
+    def divisie_van(self, user_id: str) -> dict:
+        """De trede, het weeknummer tot wanneer die beoordeeld is, en de
+        verandering die de speler nog moet zien."""
+        with self._lock:
+            rows = self._q("SELECT divisie, divisie_week, divisie_change FROM users WHERE id=?", (user_id,))
+        if not rows:
+            return {"divisie": 0, "divisie_week": 0, "divisie_change": None}
+        return {"divisie": int(rows[0]["divisie"] or 0),
+                "divisie_week": int(rows[0]["divisie_week"] or 0),
+                "divisie_change": rows[0]["divisie_change"]}
+
+    def zet_divisie(self, user_id: str, divisie: int, week: int, change: Optional[str] = None) -> None:
+        if change is None:
+            self._exec("UPDATE users SET divisie=?, divisie_week=? WHERE id=?", (int(divisie), int(week), user_id))
+        else:
+            self._exec("UPDATE users SET divisie=?, divisie_week=?, divisie_change=? WHERE id=?",
+                       (int(divisie), int(week), change, user_id))
+
+    def divisie_change_wis(self, user_id: str) -> None:
+        self._exec("UPDATE users SET divisie_change=NULL WHERE id=?", (user_id,))
+
+    # ---- meldingen ---------------------------------------------------------
+    # De catalogus van soorten staat in app/meldingen.py. Hier alleen opslag.
+
+    MELDING_MAX = 40   # ouder dan dit valt vanzelf weg; niemand scrolt zo ver
+
+    def melding_add(self, user_id: str, m: dict, data: Optional[str] = None) -> dict:
+        nu = time.time()
+        with self._lock:
+            cur = self._conn.execute(
+                "INSERT INTO meldingen (user_id, soort, titel, body, icoon, naar, data, created_at, gelezen)"
+                " VALUES (?,?,?,?,?,?,?,?,0)",
+                (user_id, m["soort"], m["titel"], m["body"], m.get("icoon"), m.get("naar"), data, nu),
+            )
+            mid = cur.lastrowid
+            # De lijst afkappen op MELDING_MAX. Zonder dit groeit hij eeuwig,
+            # en meldingen van vorig jaar zijn geen geschiedenis maar rommel.
+            self._conn.execute(
+                "DELETE FROM meldingen WHERE user_id=? AND id NOT IN"
+                " (SELECT id FROM meldingen WHERE user_id=? ORDER BY created_at DESC LIMIT ?)",
+                (user_id, user_id, self.MELDING_MAX),
+            )
+            self._conn.commit()
+        return {"id": mid, **m, "created_at": nu, "gelezen": False}
+
+    def meldingen_of(self, user_id: str, limit: int = 30) -> list[dict]:
+        with self._lock:
+            rows = self._q(
+                "SELECT id, soort, titel, body, icoon, naar, data, created_at, gelezen"
+                " FROM meldingen WHERE user_id=? ORDER BY created_at DESC LIMIT ?",
+                (user_id, limit),
+            )
+        return [{**dict(r), "gelezen": bool(r["gelezen"])} for r in rows]
+
+    def meldingen_ongelezen(self, user_id: str) -> int:
+        with self._lock:
+            rows = self._q("SELECT COUNT(*) AS n FROM meldingen WHERE user_id=? AND gelezen=0", (user_id,))
+        return int(rows[0]["n"]) if rows else 0
+
+    def meldingen_gelezen(self, user_id: str) -> None:
+        self._exec("UPDATE meldingen SET gelezen=1 WHERE user_id=? AND gelezen=0", (user_id,))
+
+    def melding_laatst(self, user_id: str, soort: str) -> float:
+        """Wanneer deze soort voor het laatst naar deze speler ging. Voor de
+        herinneringen: hoogstens één per dag, anders is het gezeur."""
+        with self._lock:
+            rows = self._q(
+                "SELECT created_at FROM meldingen WHERE user_id=? AND soort=? ORDER BY created_at DESC LIMIT 1",
+                (user_id, soort),
+            )
+        return float(rows[0]["created_at"]) if rows else 0.0
+
+    def wie_wacht_op_verzoek(self, ouder_dan: float) -> list[dict]:
+        """Iedereen met een openstaand vriendschapsverzoek dat er al even ligt.
+
+        Alleen verzoeken die aan HEN gericht zijn: de verstuurder krijgt geen
+        herinnering over zijn eigen verzoek.
+        """
+        with self._lock:
+            # De rij bewaart het paar als (a, b) met a < b, dus de ONTVANGER is
+            # wie van de twee niet de aanvrager is.
+            rows = self._q(
+                "SELECT CASE WHEN requested_by = a THEN b ELSE a END AS user_id, COUNT(*) AS n"
+                " FROM friends WHERE status='pending' AND created_at < ? GROUP BY user_id",
+                (ouder_dan,),
+            )
+        return [dict(r) for r in rows]
+
+    def duel_wachtend(self, ouder_dan: float) -> list[dict]:
+        """Openstaande duels waarin de TEGENSTANDER klaar is en jij nog niet.
+
+        Een duel waar allebei nog niets aan deden is geen wachttijd maar een
+        duel dat net begon, dus dat telt hier niet mee.
+        """
+        with self._lock:
+            rows = self._q(
+                """
+                SELECT d.id, d.created_at,
+                       CASE WHEN p.user_id = d.a THEN d.a ELSE d.b END AS user_id,
+                       CASE WHEN p.user_id = d.a THEN d.b ELSE d.a END AS other
+                FROM duels d
+                JOIN (SELECT DISTINCT a AS user_id, id FROM duels
+                      UNION SELECT DISTINCT b AS user_id, id FROM duels) p ON p.id = d.id
+                WHERE d.status='open' AND d.created_at < ?
+                  AND (SELECT COUNT(*) FROM duel_answers x
+                       WHERE x.duel_id=d.id AND x.user_id=p.user_id AND x.answered_at IS NOT NULL) = 0
+                  AND (SELECT COUNT(*) FROM duel_answers y
+                       WHERE y.duel_id=d.id AND y.user_id<>p.user_id AND y.answered_at IS NOT NULL) > 0
+                """,
+                (ouder_dan,),
+            )
+        return [dict(r) for r in rows]
+
+    def wie_heeft_ongelezen(self, ouder_dan: float) -> list[dict]:
+        """Iedereen met ongelezen berichten die er al even staan."""
+        with self._lock:
+            rows = self._q(
+                "SELECT to_user AS user_id, COUNT(*) AS n FROM dms"
+                " WHERE read=0 AND created_at < ? GROUP BY to_user",
+                (ouder_dan,),
+            )
+        return [dict(r) for r in rows]
+
+    def week_plek(self, user_id: str, since: float, until: float) -> tuple[Optional[int], int]:
+        """Je plek op de ranglijst van één week, plus hoeveel je toen speelde.
+
+        De plek wordt over de HELE week berekend en niet over een afgekapte
+        lijst: sta je 14e, dan moet dat 14 opleveren en niet "buiten de lijst",
+        want op het randje van degraderen is dat precies het verschil.
+        """
+        with self._lock:
+            rows = self._q(
+                """
+                SELECT gp.user_id AS uid, COALESCE(SUM(gp.score),0) AS points,
+                       COALESCE(SUM(gp.is_winner),0) AS wins, COUNT(*) AS games
+                FROM game_players gp
+                JOIN games g ON g.id=gp.game_id
+                WHERE g.finished_at >= ? AND g.finished_at < ?
+                GROUP BY gp.user_id ORDER BY points DESC, wins DESC
+                """,
+                (since, until),
+            )
+        for i, r in enumerate(rows):
+            if r["uid"] == user_id:
+                return i + 1, int(r["games"] or 0)
+        return None, 0
 
     def get_reel_skin(self, user_id: str) -> Optional[str]:
         if not user_id:

@@ -5,6 +5,7 @@ static files. CORS is open in dev so Vite (5173) can reach the API.
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 from datetime import datetime
@@ -101,6 +102,49 @@ async def _seed_rarity_table() -> None:
     n = get_db().answer_seed_from_daily()
     if n:
         print(f"[penneer] zeldzaamheidstabel gevuld met {n} dagronde-antwoorden", flush=True)
+
+
+@app.on_event("startup")
+async def _start_herinneringen() -> None:
+    """De lus die openstaande dingen aantikt: verzoeken en berichten die blijven
+    liggen, en duels waar iemand op wacht.
+
+    Een lus en geen cron, want er is geen cron in deze container. Elk half uur
+    is ruim genoeg: alles zit achter een dagslot per speler per soort, dus de
+    frequentie hier bepaalt alleen hoe snel een herinnering na zijn drempel
+    vertrekt, niet hoe vaak iemand er een krijgt.
+
+    De eerste ronde wacht een minuut: bij een herstart is de app nog bezig met
+    opstarten, en dan is een veegbeurt over de hele gebruikerstabel het laatste
+    wat er bij moet.
+    """
+    async def lus() -> None:
+        await asyncio.sleep(60)
+        while True:
+            try:
+                await accounts.herinneringen_ronde()
+                await _duel_herinneringen(get_db())
+            except Exception as exc:  # nooit de lus laten sneuvelen
+                print(f"[penneer] herinneringen: {exc}", flush=True)
+            await asyncio.sleep(1800)
+
+    asyncio.create_task(lus())
+
+
+async def _duel_herinneringen(db) -> None:
+    """Duels waar iemand al een dag op je zet wacht.
+
+    Niet elk openstaand duel: alleen die waar de ANDER al klaar is en jij nog
+    niets deed. Een duel waar allebei nog niets aan deden is geen wachttijd
+    maar gewoon een duel dat net begon.
+    """
+    nu = time.time()
+    for d in db.duel_wachtend(nu - 24 * 3600):
+        naam = (db.get_user(d["other"]) or {}).get("name") or "?"
+        if db.melding_laatst(d["user_id"], "herinnering_duel") < nu - 24 * 3600:
+            dagen = max(1, int((nu - float(d["created_at"])) // 86400))
+            await accounts.stuur(d["user_id"], "herinnering_duel",
+                                 data={"duel_id": d["id"]}, naam=naam, dagen=dagen)
 
 
 # ---- avatars (HTTP: binary in/out is awkward over the game WebSocket) -------
@@ -784,7 +828,8 @@ async def _duel_settle(db, d: dict) -> None:
         mine = score_a if uid == a else score_b
         opp = score_b if uid == a else score_a
         verdict = "Gelijkspel" if res == "draw" else ("Je wint" if mine > opp else "Je verliest")
-        await push.notify(uid, "Pen Neer", f"Duel tegen {name} is klaar. {verdict}: {mine} - {opp}.", tag="duel")
+        await accounts.stuur(uid, "duel_klaar", data={"duel_id": d["id"]},
+                             naam=name, uitslag=f"{verdict} met {mine} - {opp}")
         await accounts.push_account(uid)
 
 
@@ -939,7 +984,7 @@ async def duel_start(request: Request) -> JSONResponse:
     did = db.duel_create(uid, other, rounds, time.time() + duel.EXPIRY_H * 3600)
     db.duel_pair_set(uid, other, new_used, new_combos)
     name = (db.get_user(uid) or {}).get("name") or "?"
-    await push.notify(other, "Pen Neer", f"{name} daagt je uit voor een duel.", tag="duel")
+    await accounts.stuur(other, "uitdaging", data={"duel_id": did}, naam=name)
     d = db.duel_get(did)
     return JSONResponse(_duel_payload(db, uid, d))
 
@@ -1038,7 +1083,7 @@ async def duel_answer(duel_id: str, request: Request) -> JSONResponse:
             finished = True
         else:
             name = (db.get_user(uid) or {}).get("name") or "?"
-            await push.notify(other, "Pen Neer", f"{name} heeft gespeeld. Jij bent aan de beurt.", tag="duel")
+            await accounts.stuur(other, "duel_beurt", data={"duel_id": duel_id}, naam=name)
         await accounts.push_missions(uid, missions.bump_all(db, uid, daily.today(), (("duel_play", 1),)))
     d = db.duel_get(duel_id)
     return JSONResponse({
@@ -1071,7 +1116,7 @@ async def duel_rematch(duel_id: str, request: Request) -> JSONResponse:
     did = db.duel_create(uid, other, rounds, time.time() + duel.EXPIRY_H * 3600)
     db.duel_pair_set(uid, other, new_used, new_combos)
     name = (db.get_user(uid) or {}).get("name") or "?"
-    await push.notify(other, "Pen Neer", f"{name} wil een herkansing.", tag="duel")
+    await accounts.stuur(other, "duel_herkansing", data={"duel_id": did}, naam=name)
     return JSONResponse(_duel_payload(db, uid, db.duel_get(did)))
 
 
