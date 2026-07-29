@@ -37,9 +37,6 @@ export function SchermTip({ id, tekst }: { id: string; tekst: string }) {
         boxShadow: `inset 0 1px 0 ${withAlpha("#FFEBB8", 0.25)}`,
       }}
     >
-      {/* De lamp uit de UI-map, niet de lijn-versie van lucide: een tip is een
-          klein cadeautje en mag er zo uitzien. */}
-      <img src="/ui/lamp.webp?v=1" alt="" width={18} height={18} style={{ flexShrink: 0, marginTop: 1, objectFit: "contain" }} />
       <p style={{ flex: 1, margin: 0, fontFamily: font.ui, fontSize: 12.5, lineHeight: 1.45, color: colors.ink }}>{tekst}</p>
       <button
         onClick={() => { sound.uiTap(); sluit(); }}

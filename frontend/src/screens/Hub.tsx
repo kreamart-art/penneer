@@ -6,7 +6,7 @@ import { CloseIcon } from "../components/CloseIcon";
 import { KnopPlaat } from "../components/KnopPlaat";
 import { ReferralAd } from "../components/ReferralAd";
 import { ArrowLeft, BookOpen, CalendarDays, Camera, Check, ChevronDown, Copy, Crown, Flame, Gem, Lock, LogOut, Medal, MessageCircle, MoreVertical, Pencil, Percent, Plus, Rocket, Search, Send, Settings as SettingsIcon, Share2, Shield, ShoppingCart, Smile, Sparkles, Star, Swords, Target, Trash2, Trophy, UserPlus, Users, X, Zap, ZoomIn, ZoomOut } from "lucide-react";
-import { Avatar, RANK_RING } from "../components/Avatar";
+import { Avatar, SCHILD_RAND } from "../components/Avatar";
 import { Plek } from "../components/ProfileShowcase";
 import { HexArt } from "../components/HexArt";
 import { SchermTip } from "../components/SchermTip";
@@ -143,8 +143,10 @@ export function Hub({ game, section, onBack, onShowShop, onOpenInbox, onChalleng
                     <Send size={17} />
                   </HexPlate>
                   {inboxCount > 0 && (
-                    <span style={{ position: "absolute", top: -2, right: -4, minWidth: 16, height: 16, padding: "0 4px", borderRadius: 999, background: colors.gold, color: colors.bg0, fontFamily: font.ui, fontSize: 10, fontWeight: 800, lineHeight: "16px", textAlign: "center" }}>
-                      {inboxCount > 9 ? "9+" : inboxCount}
+                    // Zelfde badge-taal als overal: de zwarte zeshoek met het
+                    // gouden cijfer, geen gele stip.
+                    <span style={{ position: "absolute", top: -5, right: -6, pointerEvents: "none" }}>
+                      <TelHex n={inboxCount} />
                     </span>
                   )}
                 </button>
@@ -564,6 +566,11 @@ function CollapsibleCard({
 function HistoryCard({ game, meId, vitrine }: { game: GameApi; meId: string; vitrine?: boolean }) {
   const { t } = useT();
   const games = game.state.history;
+  // Mijn ring is mijn RANG, niet mijn kleur: hij volgt het schild van mijn
+  // divisie. Van oude tegenstanders kennen we de divisie niet, dus die houden
+  // hun spelerkleur; liever eerlijk de kleur dan een verzonnen rang.
+  const account = game.state.account;
+  const mijnDivisie = account ? Math.max(0, SCHILD_KLEUREN.indexOf((account.shield as SchildKleur) || "paars")) : undefined;
 
   useEffect(() => {
     game.historyGet();
@@ -611,7 +618,7 @@ function HistoryCard({ game, meId, vitrine }: { game: GameApi; meId: string; vit
               <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                 {g.players.slice(0, 6).map((pl) => (
                   <span key={pl.user_id} style={{ opacity: pl.user_id === meId ? 1 : 0.85 }}>
-                    <Avatar name={pl.name} color={pl.color} size={20} userId={pl.user_id} hasAvatar={pl.has_avatar} avatarVer={pl.avatar_ver} />
+                    <Avatar name={pl.name} color={pl.color} size={20} userId={pl.user_id} hasAvatar={pl.has_avatar} avatarVer={pl.avatar_ver} divisie={pl.user_id === meId ? mijnDivisie : undefined} />
                   </span>
                 ))}
                 {g.player_count > 6 && (
@@ -703,7 +710,7 @@ function HistoryCard({ game, meId, vitrine }: { game: GameApi; meId: string; vit
                 zodat de VS vanzelf in het MIDDEN van de lijst hangt. */}
             <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 6 }}>
               {ik && (
-                <Avatar name={ik.name} color={ik.color} size={34} userId={ik.user_id} hasAvatar={ik.has_avatar} avatarVer={ik.avatar_ver} />
+                <Avatar name={ik.name} color={ik.color} size={34} userId={ik.user_id} hasAvatar={ik.has_avatar} avatarVer={ik.avatar_ver} divisie={mijnDivisie} />
               )}
               <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 1 }}>
                 {ik && naam(ik)}
@@ -1045,7 +1052,10 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
         name: account.name,
         color: account.color,
         avatarUrl: account.has_avatar ? `/api/avatar/${account.id}?v=${account.avatar_ver}` : null,
-        ringColor: RANK_RING[lvl.rank] ?? null,
+        // De ring op de kaart is dezelfde als om je avatar in de app: je
+        // SCHILD, niet je rang. Eén ring-taal, en hij vernieuwt elke maandag
+        // vanzelf mee met de divisie-uitslag.
+        ringColor: SCHILD_RAND[Math.max(0, Math.min(SCHILD_RAND.length - 1, divisie))] ?? null,
         rankTitle: t(`rank_${lvl.rank}`),
         levelText: t("profileCardLevel", { n: lvl.level }),
         level: lvl.level,

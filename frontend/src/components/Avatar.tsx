@@ -55,7 +55,7 @@ interface Props {
 // Dezelfde tinten als DIVISIE_ACCENT in ProfileHero, hier als hex omdat de
 // neon-rand hex verwacht. Volgorde = de ladder: paars, blauw, lichtblauw,
 // groen, rood, zilver, zwart(goud).
-const SCHILD_RAND = ["#AC7BE9", "#567CF0", "#58C4EC", "#54CE7C", "#E74C5A", "#C4CCDC", "#E8A817"] as const;
+export const SCHILD_RAND = ["#AC7BE9", "#567CF0", "#58C4EC", "#54CE7C", "#E74C5A", "#C4CCDC", "#E8A817"] as const;
 
 export function Avatar({ name, color, size = 40, crown, dim, userId, hasAvatar, avatarVer, frame, divisie, glow = false }: Props) {
   const initial = (name.trim()[0] || "?").toUpperCase();

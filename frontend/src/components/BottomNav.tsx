@@ -18,6 +18,9 @@ import { colors, font, withAlpha } from "../theme/tokens";
 
 // De felle goudtint van de cijfers, dezelfde als in de profiel-zeshoeken.
 const GOUD_HI = "#FFEBB8";
+// Dezelfde ladder als SCHILD_KLEUREN in ProfileHero; hier los om geen zware
+// import de balk in te trekken.
+const SCHILDEN = ["paars", "blauw", "lichtblauw", "groen", "rood", "zilver", "zwart"];
 
 export type NavKey = "shop" | "leaderboard" | "home" | "friends" | "profile";
 
@@ -67,6 +70,8 @@ export function BottomNav({
   //  - winkel: een nieuwe drop die je nog niet gezien hebt (lokaal vinkje)
   //  - ranglijst: een divisie-uitslag die je nog niet hebt bekeken
   //  - home: verdiende beloningen waar hun victory-popup nog van wacht
+  // Mijn ring volgt mijn schild, ook hier op de balk.
+  const eigenDivisie = account ? Math.max(0, SCHILDEN.indexOf(account.shield || "paars")) : undefined;
   const vriendenTeller = account ? (game.state.inbox.length || account.inbox_count || 0) + (account.dm_unread || 0) : 0;
   const meldTeller = account ? game.state.meldingenOngelezen : 0;
   const shopTeller = account && Number(localStorage.getItem("penneer.shopDrop") || 0) < SHOP_DROP ? 1 : 0;
@@ -127,7 +132,7 @@ export function BottomNav({
       label: t("profile"),
       badge: badges.profile,
       icon: account ? (
-        <Avatar name={account.name} color={account.color} size={av} userId={account.id} hasAvatar={account.has_avatar} avatarVer={account.avatar_ver} />
+        <Avatar name={account.name} color={account.color} size={av} userId={account.id} hasAvatar={account.has_avatar} avatarVer={account.avatar_ver} divisie={eigenDivisie} />
       ) : (
         <UserRound size={s} strokeWidth={2.1} />
       ),
