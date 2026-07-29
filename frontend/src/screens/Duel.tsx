@@ -500,9 +500,11 @@ export function Duel({ game, onBack, onProfile, openId, onGeopend }: {
                   <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 40, lineHeight: 1, color: duel.winner === "them" ? colors.gold : colors.ink }}>{duel.their_score ?? 0}</span>
                 </span>
                 {duel.stake > 0 && duel.stake_accepted && (
-                  // Los van de onderrand: hij zat er tegenaan en dan lijkt hij
-                  // eruit te vallen in plaats van in de kaart te liggen.
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 4, marginBottom: "6%", padding: "4px 12px", borderRadius: 999, background: withAlpha(colors.gold, 0.14), border: `1px solid ${withAlpha(colors.gold, 0.4)}` }}>
+                  // ONDERIN het paneel, niet aan de score geplakt: de uitslag
+                  // is de kop en de score het middelpunt; wat er met de pot
+                  // gebeurde is de voetnoot, en een voetnoot staat onderaan.
+                  // Absoluut, zodat hij de gecentreerde score niet omlaag duwt.
+                  <span style={{ position: "absolute", left: "50%", bottom: "9%", transform: "translateX(-50%)", display: "inline-flex", alignItems: "center", gap: 5, whiteSpace: "nowrap", padding: "4px 12px", borderRadius: 999, background: withAlpha(colors.gold, 0.14), border: `1px solid ${withAlpha(colors.gold, 0.4)}` }}>
                     <img src="/coin.webp" alt="" width={15} height={15} style={{ display: "block" }} />
                     <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 700, color: colors.gold }}>
                       {duel.winner === "draw"
@@ -1117,7 +1119,9 @@ function ZaalTekst({ tekst, maat, gloed, spatie = 0 }: { tekst: string; maat: nu
   };
   const laag: React.CSSProperties = { ...basis, position: "absolute", left: 0, top: 0, pointerEvents: "none" };
   const knip: React.CSSProperties = { WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" };
-  const lijn = Math.max(1.5, maat * 0.045);
+  // Even dun als de neon-kaders elders (1,4px), NIET meeschalend met de maat:
+  // de lijn is een lijn, geen rand die dikker wordt als de letter groeit.
+  const lijn = 1.4;
   return (
     <span style={{ position: "relative", display: "inline-block", ...basis }}>
       {/* 1. het licht van de zaal, ruim vervaagd, achter alles */}
@@ -1317,7 +1321,7 @@ function InzetCarrousel({
           {/* Geen muntje ernaast: de zaal zelf zegt al waar het over gaat, en
               het cijfer mag daardoor de ruimte nemen die het verdient. */}
           <ZaalTekst
-            tekst={n === 0 ? t("duelStakeGeen") : String(n)}
+            tekst={n === 0 ? t("duelStakeTrainen") : String(n)}
             maat={48}
             gloed={ZAAL_KLEUR[n] ?? colors.gold}
             spatie={n === 0 ? 1.6 : 0.6}
