@@ -3,7 +3,7 @@
 // the TopBar, so it's reachable on every in-room screen.
 import { useEffect, useRef, useState } from "react";
 import { CloseIcon } from "./CloseIcon";
-import { MessageCircle, Send, Smile } from "lucide-react";
+import { MessageCircle, Send } from "lucide-react";
 import { HexPlate } from "./HexPlate";
 import type { GameApi } from "../net/socket";
 import { MicButton } from "./MicButton";
@@ -304,17 +304,19 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
               flexShrink: 0,
               width: 44,
               height: 44,
-              borderRadius: "50%",
-              border: `1px solid ${emotesOpen ? withAlpha(colors.gold, 0.5) : colors.panelBorder}`,
+              border: "none",
+              background: "transparent",
+              padding: 0,
               cursor: "pointer",
-              background: emotesOpen ? withAlpha(colors.gold, 0.14) : "rgba(0,0,0,.25)",
-              color: emotesOpen ? colors.gold : colors.sub,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
+              opacity: emotesOpen ? 1 : 0.82,
             }}
           >
-            <Smile size={20} />
+            {/* De eerste sticker uit het Blij-pak, kaal. Zie de privéberichten:
+                de sticker IS de knop. */}
+            <img src={EMOTE_SRC("ce01")} alt="" aria-hidden style={{ width: 32, height: 32, objectFit: "contain", display: "block" }} />
           </button>
           <input
             ref={inputRef}
@@ -331,10 +333,12 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
             style={{
               flex: 1,
               minWidth: 0,
-              background: "rgba(0,0,0,.28)",
+              // Dezelfde pil als in de privéberichten: rond, met een violette
+              // lijn die je ziet. Overal waar je iets zegt hoort hetzelfde vak.
+              background: "rgba(6,3,18,.55)",
               border: "none",
-              boxShadow: `inset 0 0 0 1.2px ${withAlpha("#C8A0FF", draft.trim() ? 0.4 : 0.2)}`,
-              clipPath: schuin(10),
+              boxShadow: `inset 0 0 0 1.6px ${withAlpha("#A868F5", draft.trim() ? 0.85 : 0.6)}, 0 0 10px ${withAlpha("#8B45E8", 0.22)}`,
+              borderRadius: 999,
               padding: "11px 16px",
               color: colors.ink,
               fontFamily: font.ui,

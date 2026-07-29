@@ -5,7 +5,7 @@ import { ArtIcoon, STAT_ART } from "../components/ArtIcoon";
 import { CloseIcon } from "../components/CloseIcon";
 import { KnopPlaat } from "../components/KnopPlaat";
 import { ReferralAd } from "../components/ReferralAd";
-import { ArrowLeft, BookOpen, Image as ImageIcon, CalendarDays, Camera, Check, ChevronDown, Copy, Crown, Flame, Gem, Lock, LogOut, Medal, MessageCircle, MoreVertical, Pencil, Percent, Plus, Rocket, Search, Send, Settings as SettingsIcon, Share2, Shield, ShoppingCart, Smile, Sparkles, Star, Swords, Target, Trash2, Trophy, UserPlus, Users, X, Zap, ZoomIn, ZoomOut } from "lucide-react";
+import { ArrowLeft, BookOpen, CalendarDays, Camera, Check, ChevronDown, Copy, Crown, Flame, Gem, Lock, LogOut, Medal, MessageCircle, MoreVertical, Pencil, Percent, Plus, Rocket, Search, Send, Settings as SettingsIcon, Share2, Shield, ShoppingCart, Smile, Sparkles, Star, Swords, Target, Trash2, Trophy, UserPlus, Users, X, Zap, ZoomIn, ZoomOut } from "lucide-react";
 import { Avatar, RANK_RING } from "../components/Avatar";
 import { Plek } from "../components/ProfileShowcase";
 import { HexArt } from "../components/HexArt";
@@ -62,7 +62,7 @@ const PACK_OF_PRESET: Record<string, string> = Object.fromEntries(
 // picker's static images cache-bust instead of serving the stale ones.
 const AVATAR_ART_VERSION = 9;
 
-export function Hub({ game, section, onBack, onShowShop, onOpenInbox, onChallenge }: { game: GameApi; section: HubSection; onBack: () => void; onShowShop: () => void; onOpenInbox: () => void; onChallenge: (userId: string) => void }) {
+export function Hub({ game, section, onBack, onShowShop, onOpenInbox, onChallenge, onGaNaar }: { game: GameApi; section: HubSection; onBack: () => void; onShowShop: () => void; onOpenInbox: () => void; onChallenge: (userId: string) => void; onGaNaar: (naar: string) => void }) {
   const { t } = useT();
   const tab: Tab = section;
   const inboxCount =
@@ -176,7 +176,7 @@ export function Hub({ game, section, onBack, onShowShop, onOpenInbox, onChalleng
             {sociaal === "friends" && account && <ReferralAd sectie />}
           </>
         )}
-        {tab === "inbox" && <InboxTab game={game} />}
+        {tab === "inbox" && <InboxTab game={game} onGaNaar={onGaNaar} />}
         {tab === "leaderboard" && <LeaderboardTab game={game} />}
       </div>
 
@@ -866,7 +866,7 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
             className="pressable"
             style={{ background: "transparent", border: "none", cursor: "pointer", color: behangOpen ? GOUD[2] : colors.faint, display: "flex", padding: 4 }}
           >
-            <ImageIcon size={19} />
+            <img src="/ui/wallpaper.webp" alt="" aria-hidden style={{ width: 22, height: 22, objectFit: "contain", display: "block" }} />
           </button>
           <button onClick={game.dmClose} aria-label={t("back")} style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 4 }}>
             <CloseIcon size={26} />
@@ -947,12 +947,13 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
             type="button"
             onClick={() => { sound.uiTap(); setDmEmotesOpen((v) => !v); }}
             aria-label={t("emoteTitle")}
-            style={{ flexShrink: 0, width: 44, height: 44, borderRadius: 12, cursor: "pointer", border: "none",
-              boxShadow: `inset 0 0 0 1.5px ${dmEmotesOpen ? withAlpha(colors.gold, 0.7) : withAlpha("#C8A0FF", 0.35)}`,
-              background: dmEmotesOpen ? withAlpha(colors.gold, 0.16) : withAlpha("#000000", 0.36),
-              color: dmEmotesOpen ? colors.gold : colors.sub, display: "flex", alignItems: "center", justifyContent: "center" }}
+            style={{ flexShrink: 0, width: 44, height: 44, cursor: "pointer", border: "none", background: "transparent", padding: 0,
+              display: "flex", alignItems: "center", justifyContent: "center", opacity: dmEmotesOpen ? 1 : 0.82 }}
           >
-            <Smile size={20} />
+            {/* De eerste sticker uit het Blij-pak in plaats van een lijnicoon.
+                Kaal, zonder vakje: de sticker IS de knop, en een kader eromheen
+                maakt er een knop met een plaatje in van. */}
+            <img src={EMOTE_SRC("ce01")} alt="" aria-hidden style={{ width: 32, height: 32, objectFit: "contain", display: "block" }} />
           </button>
           {/* Een PIL, en een die je ziet. Een neonlijst op halve sterkte
               verdwijnt tegen behang; hier is de lijn vol en helemaal rond, want
@@ -2576,9 +2577,12 @@ function SocialSettings({ game, onBack }: { game: GameApi; onBack: () => void })
   const account = game.state.account;
   const club = account?.club ?? null;
   const eigenaar = !!club?.is_owner;
+  // De ledenlijst komt uit de clubranglijst; die is er toch al en bevat precies
+  // wie erin zit. Jezelf eruit: je kunt jezelf niet wegsturen.
+  const leden = (game.state.club?.members ?? []).filter((m) => m.id !== account?.id);
 
   useEffect(() => {
-    if (account) game.refreshBlocked();
+    if (account) { game.refreshBlocked(); game.loadClub("month"); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -2620,7 +2624,44 @@ function SocialSettings({ game, onBack }: { game: GameApi; onBack: () => void })
               <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.orange, lineHeight: 1.45 }}>{t("clubOwnerOnly")}</p>
             )}
           </Card>
-        ) : (
+        ) : null}
+
+        {/* Ledenbeheer, alleen voor de eigenaar. Iemand wegsturen en de club
+            overdragen zijn de twee dingen die je nergens anders kon: zonder het
+            tweede kun je er zelf niet uit zonder de club op te heffen. */}
+        {club && eigenaar && leden.length > 0 && (
+          <Card style={{ display: "flex", flexDirection: "column", gap: 3, padding: "13px 7px 14px" }}>
+            <SierKop label={t("clubMembersTitle")} />
+            <Lijst n={leden.length} rij={46} toon={5}>
+              {leden.map((m) => (
+                <GlasRij key={m.id} dun>
+                  <Avatar name={m.name} color={m.color} size={28} crown={m.is_owner} userId={m.id} hasAvatar={!!m.has_avatar} avatarVer={m.avatar_ver} />
+                  <span style={{ flex: 1, minWidth: 0, fontFamily: font.ui, fontSize: 13.5, color: colors.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.name}</span>
+                  <button
+                    onClick={() => { if (window.confirm(t("clubTransferConfirm", { naam: m.name }))) { sound.uiTap(); game.clubOverdragen(m.id); } }}
+                    aria-label={t("clubTransfer")}
+                    title={t("clubTransfer")}
+                    className="pressable"
+                    style={{ width: 26, height: 26, flexShrink: 0, display: "grid", placeItems: "center", borderRadius: 8, border: `1px solid ${withAlpha(GOUD[2], 0.45)}`, background: "rgba(0,0,0,.34)", color: GOUD[2], cursor: "pointer", padding: 0 }}
+                  >
+                    <Crown size={13} />
+                  </button>
+                  <button
+                    onClick={() => { if (window.confirm(t("clubKickConfirm", { naam: m.name }))) { sound.uiTap(); game.clubKick(m.id); } }}
+                    aria-label={t("clubKick")}
+                    title={t("clubKick")}
+                    className="pressable"
+                    style={{ width: 26, height: 26, flexShrink: 0, display: "grid", placeItems: "center", borderRadius: 8, border: `1px solid ${withAlpha(colors.red, 0.5)}`, background: "rgba(0,0,0,.34)", color: colors.red, cursor: "pointer", padding: 0 }}
+                  >
+                    <X size={13} />
+                  </button>
+                </GlasRij>
+              ))}
+            </Lijst>
+          </Card>
+        )}
+
+        {!club && (
           <Card>
             <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13.5, color: colors.sub, lineHeight: 1.5 }}>{t("clubNoneHint")}</p>
           </Card>
@@ -3268,7 +3309,7 @@ function TelHex({ n }: { n: number }) {
   );
 }
 
-function InboxTab({ game }: { game: GameApi }) {
+function InboxTab({ game, onGaNaar }: { game: GameApi; onGaNaar: (naar: string) => void }) {
   const { t } = useT();
   const [viewing, setViewing] = useState<string | null>(null);
   const [vak, setVak] = useState<"inbox" | "meld">("inbox");
@@ -3280,7 +3321,10 @@ function InboxTab({ game }: { game: GameApi }) {
     sound.uiTap();
     let d: Record<string, string> = {};
     try { d = m.data ? JSON.parse(m.data) : {}; } catch { /* rommel is geen reden om niets te doen */ }
+    // Een gesprek en een profiel kunnen hier open; alles wat een EIGEN SCHERM
+    // is (duel, dagronde, je profiel) gaat via App, want die kent de schermen.
     if (m.naar === "dm" && d.user_id) game.dmOpen(d.user_id);
+    else if (m.naar === "duel" || m.naar === "dagronde" || m.naar === "profiel") onGaNaar(m.naar);
     else if (d.user_id) { game.viewProfile(d.user_id); setViewing(d.user_id); }
   };
   const account = game.state.account;
@@ -3322,6 +3366,7 @@ function InboxTab({ game }: { game: GameApi }) {
     {vak === "meld" && (
       <Card style={{ display: "flex", flexDirection: "column", gap: 3, padding: "13px 7px 14px" }}>
         <SectieKop
+          style={{ paddingInline: 6 }}
           label={t("meldingenTitle")}
           actie={ongelezenMeld > 0 ? t("meldingenLees") : undefined}
           onActie={ongelezenMeld > 0 ? () => { sound.uiTap(); game.meldingenLezen(); } : undefined}

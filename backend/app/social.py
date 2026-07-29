@@ -334,6 +334,8 @@ class AccountManager:
             "club_set_emblem": self.club_set_emblem,
             "club_rename": self.club_rename,
             "club_regels": self.club_regels,
+            "club_kick": self.club_kick,
+            "club_overdragen": self.club_overdragen,
             "set_lenient": self.set_lenient,
             "set_buzzer_skin": self.set_buzzer_skin,
             "set_reel_skin": self.set_reel_skin,
@@ -903,6 +905,30 @@ class AccountManager:
             await self._send(ws, {"type": "error", "message": "Alleen de eigenaar kan dit wijzigen."})
             return
         await self._send(ws, await self._account_payload(ws, uid))
+
+    async def club_kick(self, ws: Any, data: dict) -> None:
+        uid = self.user_of(ws)
+        if not uid:
+            return
+        weg = str(data.get("user_id") or "")
+        if not self.db.club_kick(uid, weg):
+            await self._send(ws, {"type": "error", "message": "Dat kan niet."})
+            return
+        await self._send(ws, self._club_payload(uid, data.get("period") or "month"))
+        # De ander moet het ook merken: zijn clubtabblad is nu leeg.
+        await self._push_account(weg)
+
+    async def club_overdragen(self, ws: Any, data: dict) -> None:
+        uid = self.user_of(ws)
+        if not uid:
+            return
+        naar = str(data.get("user_id") or "")
+        if not self.db.club_overdragen(uid, naar):
+            await self._send(ws, {"type": "error", "message": "Dat kan niet."})
+            return
+        await self._send(ws, await self._account_payload(ws, uid))
+        await self._send(ws, self._club_payload(uid, data.get("period") or "month"))
+        await self._push_account(naar)
 
     async def club_rename(self, ws: Any, data: dict) -> None:
         """De eigenaar past de clubnaam aan."""

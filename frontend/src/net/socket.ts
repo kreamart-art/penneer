@@ -887,6 +887,8 @@ export interface GameApi {
   setClubEmblem: (emblem: string | null) => void;
   renameClub: (name: string) => void;
   clubRegels: (openInvite: boolean, openRename: boolean) => void;
+  clubKick: (userId: string) => void;
+  clubOverdragen: (userId: string) => void;
   leaveClub: () => void;
   loadClub: (period: "month" | "all") => void;
   setLenient: (on: boolean) => void;
@@ -1134,6 +1136,8 @@ export function useGame(): GameApi {
     setClubEmblem: (emblem) => send({ type: "club_set_emblem", emblem }),
     renameClub: (name) => send({ type: "club_rename", name }),
     clubRegels: (openInvite, openRename) => send({ type: "club_regels", open_invite: openInvite, open_rename: openRename }),
+    clubKick: (userId) => send({ type: "club_kick", user_id: userId }),
+    clubOverdragen: (userId) => send({ type: "club_overdragen", user_id: userId }),
     loadClub: (period) => send({ type: "club_get", period }),
     setLenient: (on) => send({ type: "set_lenient", on }),
     setBuzzerSkin: (skin) => send({ type: "set_buzzer_skin", skin }),

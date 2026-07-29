@@ -30,6 +30,14 @@ type Info = { code: string; count: number; tiers: Tier[]; repeat: number; ends_a
 
 const KLEIN_SLEUTEL = "penneer.refAdKlein"; // popup al eens weggetikt in deze sessie
 
+/** Signaal voor de rest van de app: de grote advertentie is weg.
+ *
+ *  Waarom een gebeurtenis en geen prop: de advertentie hangt in Landing, de
+ *  uitslagpopup in App, en die twee weten niets van elkaar. Een gebeurtenis op
+ *  het venster is hier het lichtste dat werkt; er is precies één luisteraar en
+ *  precies één zender. */
+export const AD_WEG = "penneer:ad-weg";
+
 function authHeaders(): Record<string, string> {
   const tok = localStorage.getItem("penneer.accountToken");
   return tok ? { Authorization: `Bearer ${tok}` } : {};
@@ -156,6 +164,7 @@ export function ReferralAd({ sectie = false }: { sectie?: boolean } = {}) {
     } catch {
       /* geen opslag */
     }
+    window.dispatchEvent(new Event(AD_WEG));
     if (vanaf) {
       const doelX = 60;
       const doelY = (pilTop ?? 90) + 25;

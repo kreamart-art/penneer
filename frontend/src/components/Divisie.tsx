@@ -10,6 +10,7 @@
 // en die kun je vieren.
 import { useEffect, useRef, useState } from "react";
 import { CloseIcon } from "./CloseIcon";
+import { NeonText } from "./NeonText";
 import { KnopPlaat } from "./KnopPlaat";
 import {
   DIVISIE_ACCENT,
@@ -330,18 +331,36 @@ export function DivisiePopup({ change, onSluit }: { change: DivisieChange; onSlu
           gap: 12,
           alignItems: "center",
           textAlign: "center",
+          // Dezelfde opbouw als de werf-advertentie: art onderin, een vignet
+          // dat hem naar de randen wegtrekt, en licht van boven zodat het schild
+          // ergens IN staat en niet op een vlak plakt.
           backgroundImage: [
-            "linear-gradient(180deg, rgba(255,243,181,.08) 0%, transparent 14%)",
+            "linear-gradient(180deg, rgba(255,243,181,.1) 0%, transparent 15%)",
+            "radial-gradient(120% 70% at 50% 4%, transparent 30%, rgba(6,3,18,.8) 100%)",
+            'url("/ui/lobby-bg.webp")',
             "linear-gradient(180deg, #241740 0%, #1A1035 52%, #100926 100%)",
           ].join(", "),
+          backgroundSize: "100% 100%, 100% 100%, cover, 100% 100%",
+          backgroundPosition: "top, top, center bottom, top",
+          backgroundRepeat: "no-repeat",
         }}
       >
         <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 700, letterSpacing: 1.4, textTransform: "uppercase", color: colors.faint }}>
           {t("divisieMaandag")}
         </span>
-        <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 22, color: op ? colors.gold : colors.red, textShadow: `0 0 24px ${withAlpha(op ? colors.gold : colors.red, 0.5)}` }}>
+        {/* Het WOORD is de kop van deze kaart, dus het krijgt de behandeling van
+            een kop en niet van een regel tekst: de smalle hoofdletters van de
+            advertentie, ruim gespatieerd, met echt licht erachter in plaats van
+            een schaduw. Een `text-shadow` op een vette letter maakt hem alleen
+            wolliger; een vervaagde kopie erachter geeft hem gloed. */}
+        <NeonText
+          accent={op ? colors.gold : colors.red}
+          blur={22}
+          glow={0.85}
+          style={{ fontFamily: font.wide, fontSize: 38, lineHeight: 1, letterSpacing: 3, textTransform: "uppercase" }}
+        >
           {op ? t("divisiePromotie") : t("divisieDegradatie")}
-        </span>
+        </NeonText>
 
         {/* Het schild zelf. De sleutel wisselt mee, zodat React hem opnieuw
             opbouwt en de pop-in-animatie echt opnieuw speelt. */}

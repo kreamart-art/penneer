@@ -1372,6 +1372,44 @@ class Database:
             )
         return bool(rows and rows[0]["mag"])
 
+    def club_kick(self, owner_id: str, member_id: str) -> bool:
+        """De eigenaar zet iemand uit de club. Zichzelf kan hij niet wegsturen:
+        daarvoor is "verlaat club", en dan moet er eerst een nieuwe eigenaar
+        zijn."""
+        if not member_id or owner_id == member_id:
+            return False
+        with self._lock:
+            rows = self._q("SELECT id FROM clubs WHERE owner_id=?", (owner_id,))
+            if not rows:
+                return False
+            cid = rows[0]["id"]
+            leden = self._q("SELECT user_id FROM club_members WHERE club_id=? AND user_id=?", (cid, member_id))
+            if not leden:
+                return False
+            self._exec("DELETE FROM club_members WHERE club_id=? AND user_id=?", (cid, member_id))
+        return True
+
+    def club_overdragen(self, owner_id: str, naar: str) -> bool:
+        """Geef de club aan een ander lid.
+
+        Een club zonder eigenaar is een club die niemand meer kan beheren, dus
+        dit is de enige nette manier om er zelf uit te stappen zonder hem op te
+        heffen. De ontvanger moet al lid zijn: iemand tot eigenaar maken die er
+        niet in zit zou hem stilzwijgend toevoegen.
+        """
+        if not naar or owner_id == naar:
+            return False
+        with self._lock:
+            rows = self._q("SELECT id FROM clubs WHERE owner_id=?", (owner_id,))
+            if not rows:
+                return False
+            cid = rows[0]["id"]
+            leden = self._q("SELECT user_id FROM club_members WHERE club_id=? AND user_id=?", (cid, naar))
+            if not leden:
+                return False
+            self._exec("UPDATE clubs SET owner_id=? WHERE id=?", (naar, cid))
+        return True
+
     def club_regels_zet(self, user_id: str, open_invite: bool, open_rename: bool) -> bool:
         """De eigenaar zet de twee schakelaars. Alleen de eigenaar."""
         with self._lock:

@@ -21,6 +21,7 @@ import { BadgeToasts } from "./components/BadgeToasts";
 import { BottomNav, type NavKey } from "./components/BottomNav";
 import { BuzzerRewardPopup } from "./components/BuzzerRewardPopup";
 import { DivisiePopup } from "./components/Divisie";
+import { AD_WEG } from "./components/ReferralAd";
 import { MeldingBanner, useMeldingWachtrij } from "./components/Meldingen";
 import { Tour, tourGezien } from "./components/Tour";
 import { Juridisch } from "./screens/Juridisch";
@@ -217,6 +218,24 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accountId]);
 
+  // De uitslag van maandag komt NA de werf-advertentie, nooit ervoor: twee
+  // vensters die tegelijk opengaan vechten om dezelfde tik, en dan klik je de
+  // ene weg zonder hem gezien te hebben. Twee tellen ertussen, zodat de eerste
+  // eerst weg is voor de tweede binnenkomt.
+  const [uitslagKlaar, setUitslagKlaar] = useState(false);
+  useEffect(() => {
+    // Is de advertentie deze sessie al weggetikt, dan hoeft er niets gewacht
+    // te worden: er komt vandaag geen advertentie meer.
+    let alWeg = false;
+    try { alWeg = sessionStorage.getItem("penneer.refAdKlein") === "1"; } catch { /* geen opslag */ }
+    if (alWeg) { setUitslagKlaar(true); return; }
+    const na = () => window.setTimeout(() => setUitslagKlaar(true), 2000);
+    let timer: number | undefined;
+    const luister = () => { timer = na(); };
+    window.addEventListener(AD_WEG, luister);
+    return () => { window.removeEventListener(AD_WEG, luister); window.clearTimeout(timer); };
+  }, []);
+
   // Challenge sequencing: room lobby is live -> send the challenge invite.
   useEffect(() => {
     if (room?.phase === "lobby" && game.me && pendingChallenge.current) {
@@ -369,6 +388,13 @@ export default function App() {
           setShowShop(true);
         }}
         onOpenInbox={() => setShowHub("inbox")}
+        onGaNaar={(naar) => {
+          // Dezelfde sprong als vanuit de meldingsbalk, alleen komt hij nu uit
+          // de lijst in de inbox.
+          if (naar === "duel") { setShowHub(null); setShowDuel(true); }
+          else if (naar === "dagronde") { setShowHub(null); setShowDaily(true); }
+          else if (naar === "profiel") setShowHub("profile");
+        }}
         onChallenge={(userId) => {
           pendingChallenge.current = userId;
           game.createRoom(game.state.account?.name ?? "Speler");
@@ -484,6 +510,7 @@ export default function App() {
           net eindigde, en pas daarna kijk je naar wat je nog te claimen hebt.
           Dezelfde plek-voorwaarden, want ook dit moet niet over een potje heen. */}
       {game.state.account?.divisie_change &&
+        uitslagKlaar &&
         introDone &&
         !!lang &&
         !inRoom &&

@@ -733,9 +733,9 @@ export function SierKop({ label }: { label: string }) {
 }
 
 /** Kop van een sectie met een doorverwijzing rechts. */
-export function SectieKop({ label, actie, onActie }: { label: string; actie?: string; onActie?: () => void }) {
+export function SectieKop({ label, actie, onActie, style }: { label: string; actie?: string; onActie?: () => void; style?: CSSProperties }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 8, ...style }}>
       <span style={{ flex: 1, fontFamily: font.wide, fontSize: 15, letterSpacing: 1.4, color: colors.ink }}>{label}</span>
       {actie && (
         <button
