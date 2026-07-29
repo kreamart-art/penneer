@@ -12,9 +12,9 @@
 /* Bebas Neue: de smalle hoofdletter-stijl voor de tagline en de spelernaam op
    de main page. Ook op de Duel-koppen, want die willen dezelfde toon. */
 @font-face {
-  /* De gameshow-letter voor de bedragen in de duelzalen. */
-  font-family: "Gameshow";
-  src: url("/fonts/gameshow.woff2") format("woff2");
+  /* De letter voor de bedragen in de duelzalen. */
+  font-family: "AngelWish";
+  src: url("/fonts/angel-wish.woff2") format("woff2");
   font-display: swap;
 }
 

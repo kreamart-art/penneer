@@ -1110,9 +1110,7 @@ const ZAAL_ART: Record<number, string> = {
  * verloop heen. */
 function ZaalTekst({ tekst, maat, gloed, spatie = 0 }: { tekst: string; maat: number; gloed: string; spatie?: number }) {
   const basis: React.CSSProperties = {
-    // De gameshow-letter: dit IS een spelshow-moment, en de brede vormen van
-    // dit font dragen het glas en de neonlijn beter dan de systeemletter.
-    fontFamily: '"Gameshow", ' + font.display,
+    fontFamily: '"AngelWish", ' + font.display,
     fontWeight: 400,
     fontSize: maat,
     lineHeight: 1,
@@ -1121,14 +1119,30 @@ function ZaalTekst({ tekst, maat, gloed, spatie = 0 }: { tekst: string; maat: nu
   };
   const laag: React.CSSProperties = { ...basis, position: "absolute", left: 0, top: 0, pointerEvents: "none" };
   const knip: React.CSSProperties = { WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" };
-  // Haarfijn: de lijn moet je bijna niet ZIEN, alleen voelen. De vorm komt van
-  // het glas en de gloed; de lijn tekent hem alleen scherp af.
-  const lijn = 0.7;
+  // Zo dun als een omlijning kan: een halve pixel. Daaronder verdwijnt hij
+  // helemaal op een scherm van 1x, en op de telefoon (3x) is dit anderhalve
+  // apparaatpixel, dus precies scherp.
+  const lijn = 0.5;
   return (
     <span style={{ position: "relative", display: "inline-block", ...basis }}>
       {/* 1. het licht van de zaal, ruim vervaagd, achter alles */}
       <span aria-hidden style={{ ...laag, color: gloed, filter: `blur(${Math.round(maat * 0.3)}px)`, opacity: 0.55 }}>{tekst}</span>
-      {/* 2. de neonlijn zelf, met zijn eigen halo eromheen */}
+      {/* 2a. de DIEPTE onder de lijn: dezelfde omlijning in bijna zwart, een
+             halve pixel naar beneden. Daardoor lijkt de lijn een rand met dikte
+             in plaats van een geschilderd streepje. */}
+      <span
+        aria-hidden
+        style={{
+          ...laag,
+          WebkitTextStrokeWidth: lijn,
+          WebkitTextStrokeColor: "rgba(8,3,18,.9)",
+          color: "transparent",
+          transform: `translateY(${Math.max(0.5, maat * 0.014)}px)`,
+        }}
+      >
+        {tekst}
+      </span>
+      {/* 2b. de neonlijn zelf, met zijn eigen halo eromheen */}
       <span
         aria-hidden
         style={{
@@ -1137,6 +1151,24 @@ function ZaalTekst({ tekst, maat, gloed, spatie = 0 }: { tekst: string; maat: nu
           WebkitTextStrokeColor: gloed,
           color: "transparent",
           filter: `drop-shadow(0 0 ${Math.round(maat * 0.16)}px ${withAlpha(gloed, 0.9)}) drop-shadow(0 0 ${Math.round(maat * 0.42)}px ${withAlpha(gloed, 0.45)})`,
+        }}
+      >
+        {tekst}
+      </span>
+      {/* 2c. het LICHT op de lijn: dezelfde omlijning in bijna wit, een halve
+             pixel naar BOVEN, en met een masker dat halverwege stopt. Zo licht
+             alleen de bovenkant van de rand op, waar het licht hem raakt, en
+             blijft de onderkant in de schaduw uit 2a. */}
+      <span
+        aria-hidden
+        style={{
+          ...laag,
+          WebkitTextStrokeWidth: lijn,
+          WebkitTextStrokeColor: "rgba(255,246,224,.85)",
+          color: "transparent",
+          transform: `translateY(-${Math.max(0.5, maat * 0.012)}px)`,
+          WebkitMaskImage: "linear-gradient(180deg, #000 0%, rgba(0,0,0,.35) 30%, transparent 52%)",
+          maskImage: "linear-gradient(180deg, #000 0%, rgba(0,0,0,.35) 30%, transparent 52%)",
         }}
       >
         {tekst}
