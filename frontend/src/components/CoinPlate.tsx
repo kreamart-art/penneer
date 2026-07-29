@@ -7,7 +7,7 @@
 //
 // Alles rekent met `height`, zodat hetzelfde vak op de main page en in de
 // winkel op hun eigen maat kunnen staan zonder dat de verhoudingen verschuiven.
-import { colors, font } from "../theme/tokens";
+import { colors, font, GROEN } from "../theme/tokens";
 
 const SIZES = [
   { max: 3, src: "/tiles/coinbar-xs.webp", ratio: 753 / 300 },
@@ -16,7 +16,15 @@ const SIZES = [
   { max: 99, src: "/tiles/coinbar-l.webp", ratio: 1301 / 300 },
 ];
 
-export function CoinPlate({ coins, height = 33 }: { coins: number; height?: number }) {
+/* Cash krijgt HETZELFDE vak. Het is dezelfde plaat uit `coins vak.svg`, alleen
+ * met het biljet in plaats van het muntje en de groene reeks in plaats van de
+ * gouden. Twee verschillende vakvormen naast elkaar op dezelfde regel lezen als
+ * twee losse dingen; hetzelfde vak twee keer leest als twee munten. */
+export function CashPlate({ cash, height = 33 }: { cash: number; height?: number }) {
+  return <CoinPlate coins={cash} height={height} munt="cash" />;
+}
+
+export function CoinPlate({ coins, height = 33, munt = "coin" }: { coins: number; height?: number; munt?: "coin" | "cash" }) {
   const label = String(coins);
   const size = SIZES.find((s) => label.length <= s.max) ?? SIZES[SIZES.length - 1];
   const width = Math.round(height * size.ratio);
@@ -24,14 +32,20 @@ export function CoinPlate({ coins, height = 33 }: { coins: number; height?: numb
     <span style={{ position: "relative", display: "block", width, height, lineHeight: 0 }}>
       <img alt="" src={size.src} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} />
       <span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: height * 0.16 }}>
-        <img src="/coin.webp" alt="" width={Math.round(height * 0.62)} height={Math.round(height * 0.62)} style={{ display: "block" }} />
+        <img
+          src={munt === "cash" ? "/ui/valuta/cash.webp?v=1" : "/coin.webp"}
+          alt=""
+          width={Math.round(height * 0.62)}
+          height={Math.round(height * 0.62)}
+          style={{ display: "block" }}
+        />
         <span
           style={{
             fontFamily: font.display,
             fontWeight: 700,
             fontSize: Math.round(height * 0.5),
             lineHeight: 1,
-            color: colors.goldHi,
+            color: munt === "cash" ? GROEN[3] : colors.goldHi,
             textShadow: "0 1px 2px rgba(0,0,0,.65)",
           }}
         >

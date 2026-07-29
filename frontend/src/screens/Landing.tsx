@@ -16,7 +16,7 @@ import { sound } from "../sound/sound";
 import { NeonText } from "../components/NeonText";
 import { neonSkin } from "../theme/neon";
 import { TILE_ART, plateShadow, shadowSrc, useTileSkin } from "../theme/tileSkin";
-import { CoinPlate } from "../components/CoinPlate";
+import { CashPlate, CoinPlate } from "../components/CoinPlate";
 import { HexPlate } from "../components/HexPlate";
 import { HexArt } from "../components/HexArt";
 import { EmblemLight, EmblemLightFront } from "../components/EmblemLight";
@@ -259,16 +259,20 @@ export function Landing({
               onClick={() => { sound.uiTap(); onShowShop(); }}
               aria-label={t("cashTitle")}
               className="pressable"
-              style={{
-                display: "inline-flex", alignItems: "center", gap: 5,
-                background: withAlpha(GROEN[1], 0.14),
-                border: `1px solid ${withAlpha(GROEN[2], 0.45)}`,
-                boxShadow: `0 0 14px ${withAlpha(GROEN[2], 0.2)}, inset 0 1px 0 ${withAlpha(GROEN[3], 0.3)}`,
-                borderRadius: 999, cursor: "pointer", padding: "4px 11px 4px 4px",
-              }}
+              style={
+                skin
+                  ? { position: "relative", border: "none", background: "transparent", padding: 0, cursor: "pointer", display: "block", lineHeight: 0 }
+                  : { display: "inline-flex", alignItems: "center", gap: 5, background: withAlpha(GROEN[1], 0.14), border: `1px solid ${withAlpha(GROEN[2], 0.45)}`, borderRadius: 999, cursor: "pointer", padding: "4px 11px 4px 4px" }
+              }
             >
-              <img src="/ui/valuta/cash.webp?v=1" alt="" width={22} height={22} style={{ display: "block" }} />
-              <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15, color: GROEN[3] }}>{account.cash ?? 0}</span>
+              {skin ? (
+                <CashPlate cash={account.cash ?? 0} height={34} />
+              ) : (
+                <>
+                  <img src="/ui/valuta/cash.webp?v=1" alt="" width={22} height={22} style={{ display: "block" }} />
+                  <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15, color: GROEN[3] }}>{account.cash ?? 0}</span>
+                </>
+              )}
             </button>
           )}
         </div>
