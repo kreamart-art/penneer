@@ -115,9 +115,14 @@ export function Hub({ game, section, onBack, onShowShop, onOpenInbox, onChalleng
   const topIconBtn: React.CSSProperties = { background: "transparent", border: "none", cursor: "pointer", color: colors.sub, display: "flex", padding: 0 };
   const HEX = 38;
 
-  // Profielinstellingen open its own full screen.
+  // Het tandwiel opent de instellingen die bij DEZE pagina horen: op je profiel
+  // je profielinstellingen, op vrienden en club die van vrienden en club. Eén
+  // knop die naar twee verschillende schermen wijst, want "instellingen" hangt
+  // af van waar je staat.
   if (settingsOpen && account) {
-    return <ProfileSettings game={game} email={email} setEmail={setEmail} onShowShop={onShowShop} onBack={() => setSettingsOpen(false)} />;
+    return tab === "friends"
+      ? <SocialSettings game={game} onBack={() => setSettingsOpen(false)} />
+      : <ProfileSettings game={game} email={email} setEmail={setEmail} onShowShop={onShowShop} onBack={() => setSettingsOpen(false)} />;
   }
 
   return (
@@ -142,7 +147,7 @@ export function Hub({ game, section, onBack, onShowShop, onOpenInbox, onChalleng
                   )}
                 </button>
               )}
-              <button onClick={() => { sound.uiTap(); setSettingsOpen(true); }} aria-label={t("profileSettings")} title={t("profileSettings")} className="pressable" style={topIconBtn}>
+              <button onClick={() => { sound.uiTap(); setSettingsOpen(true); }} aria-label={t(tab === "friends" ? "socialSettings" : "profileSettings")} title={t(tab === "friends" ? "socialSettings" : "profileSettings")} className="pressable" style={topIconBtn}>
                 <HexPlate on size={HEX}>
                   <SettingsIcon size={16} />
                 </HexPlate>
@@ -2501,6 +2506,95 @@ function AvatarPickerScreen({
 
 // Profile settings: email linking, blocked players and account management,
 // grouped in one sub-screen behind the "Profielinstellingen" button.
+/** Instellingen voor vrienden en club.
+ *
+ *  Het tandwiel op de vriendenpagina bracht je naar je PROFIEL-instellingen, en
+ *  dat is een ander onderwerp: daar staat je avatar en je wachtwoord. Wat je
+ *  hier zoekt gaat over de mensen om je heen, dus dat heeft nu een eigen
+ *  scherm.
+ *
+ *  De twee schakelaars zijn wat een club echt nodig heeft: een club groeit door
+ *  zijn leden, dus uitnodigen staat standaard open; de naam en het embleem zijn
+ *  de identiteit, dus die staan standaard dicht. Alleen de eigenaar kan eraan
+ *  draaien, en wie dat niet is ziet ze grijs met de reden erbij. */
+function SocialSettings({ game, onBack }: { game: GameApi; onBack: () => void }) {
+  const { t } = useT();
+  const account = game.state.account;
+  const club = account?.club ?? null;
+  const eigenaar = !!club?.is_owner;
+
+  useEffect(() => {
+    if (account) game.refreshBlocked();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const zet = (invite: boolean, rename: boolean) => {
+    sound.uiTap();
+    game.clubRegels(invite, rename);
+  };
+
+  return (
+    <Screen
+      top={
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 14px 14px 18px", paddingTop: "calc(36px + env(safe-area-inset-top))" }}>
+          <button onClick={onBack} aria-label={t("back")} style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 2 }}>
+            <ArrowLeft size={20} />
+          </button>
+          <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>{t("socialSettings")}</span>
+        </div>
+      }
+    >
+      <div style={{ display: "flex", flexDirection: "column", gap: 14, paddingBottom: 20 }}>
+        {club ? (
+          <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <SierKop label={club.name} />
+            <div style={{ display: "flex", alignItems: "center", gap: 12, opacity: eigenaar ? 1 : 0.6 }}>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ display: "block", fontFamily: font.ui, fontWeight: 600, fontSize: 14, color: colors.ink }}>{t("clubOpenInvite")}</span>
+                <span style={{ display: "block", fontFamily: font.ui, fontSize: 12.5, color: colors.faint, lineHeight: 1.45 }}>{t("clubOpenInviteHint")}</span>
+              </span>
+              <Toggle on={!!club.open_invite} onChange={(v) => eigenaar && zet(v, !!club.open_rename)} />
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, opacity: eigenaar ? 1 : 0.6 }}>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ display: "block", fontFamily: font.ui, fontWeight: 600, fontSize: 14, color: colors.ink }}>{t("clubOpenRename")}</span>
+                <span style={{ display: "block", fontFamily: font.ui, fontSize: 12.5, color: colors.faint, lineHeight: 1.45 }}>{t("clubOpenRenameHint")}</span>
+              </span>
+              <Toggle on={!!club.open_rename} onChange={(v) => eigenaar && zet(!!club.open_invite, v)} />
+            </div>
+            {!eigenaar && (
+              <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.orange, lineHeight: 1.45 }}>{t("clubOwnerOnly")}</p>
+            )}
+          </Card>
+        ) : (
+          <Card>
+            <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13.5, color: colors.sub, lineHeight: 1.5 }}>{t("clubNoneHint")}</p>
+          </Card>
+        )}
+
+        {/* De blokkeerlijst hoort bij vrienden, niet bij je avatar. Hij stond in
+            de profielinstellingen en staat nu waar hij over gaat. */}
+        <Card style={{ display: "flex", flexDirection: "column", gap: 8, padding: "13px 7px 14px" }}>
+          <SierKop label={t("blockedTitle")} />
+          {game.state.blocked.length === 0 ? (
+            <p style={{ margin: "6px 0 0", paddingInline: 8, fontFamily: font.ui, fontSize: 13, color: colors.faint }}>{t("noBlocked")}</p>
+          ) : (
+            <Lijst n={game.state.blocked.length} rij={44} toon={5}>
+              {game.state.blocked.map((b) => (
+                <GlasRij key={b.id} dun>
+                  <Avatar name={b.name} color={b.color} size={28} userId={b.id} hasAvatar={b.has_avatar} avatarVer={b.avatar_ver} />
+                  <span style={{ flex: 1, minWidth: 0, fontFamily: font.ui, fontSize: 13.5, color: colors.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.name}</span>
+                  <KnopPlaat breed={86} onClick={() => { sound.uiTap(); game.friendBlock(b.id, true); }} label={t("unblockBtn")} />
+                </GlasRij>
+              ))}
+            </Lijst>
+          )}
+        </Card>
+      </div>
+    </Screen>
+  );
+}
+
 /** Meldingen aan- of uitzetten. De browser laat toestemming niet intrekken via
  *  code, dus zodra iemand ze uit heeft staan kunnen wij alleen nog uitleggen
  *  waar hij ze terug aanzet. Een schakelaar die doet alsof hij dat wel kan is

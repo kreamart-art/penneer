@@ -333,6 +333,7 @@ class AccountManager:
             "club_invite": self.club_invite,
             "club_set_emblem": self.club_set_emblem,
             "club_rename": self.club_rename,
+            "club_regels": self.club_regels,
             "set_lenient": self.set_lenient,
             "set_buzzer_skin": self.set_buzzer_skin,
             "set_reel_skin": self.set_reel_skin,
@@ -740,6 +741,9 @@ class AccountManager:
         if not club:
             await self._send(ws, {"type": "error", "message": "Je zit niet in een club."})
             return
+        if not self.db.club_mag(uid, "invite"):
+            await self._send(ws, {"type": "error", "message": "Alleen de eigenaar mag mensen uitnodigen."})
+            return
         if not self.db.is_friend(uid, to) or self.db.is_blocked(uid, to):
             await self._send(ws, {"type": "error", "message": "Je kunt alleen vrienden uitnodigen."})
             return
@@ -889,13 +893,24 @@ class AccountManager:
         await self._send(ws, await self._account_payload(ws, uid))
         await self._send(ws, self._club_payload(uid, data.get("period") or "month"))
 
+    async def club_regels(self, ws: Any, data: dict) -> None:
+        """De eigenaar zet wie in de club wat mag."""
+        uid = self.user_of(ws)
+        if not uid:
+            return
+        ok = self.db.club_regels_zet(uid, bool(data.get("open_invite")), bool(data.get("open_rename")))
+        if not ok:
+            await self._send(ws, {"type": "error", "message": "Alleen de eigenaar kan dit wijzigen."})
+            return
+        await self._send(ws, await self._account_payload(ws, uid))
+
     async def club_rename(self, ws: Any, data: dict) -> None:
         """De eigenaar past de clubnaam aan."""
         uid = self.user_of(ws)
         if not uid:
             return
         if not self.db.rename_club(uid, str(data.get("name") or "")):
-            await self._send(ws, {"type": "error", "message": "Alleen de eigenaar kan de naam wijzigen."})
+            await self._send(ws, {"type": "error", "message": "Je mag de naam van deze club niet wijzigen."})
             return
         await self._send(ws, await self._account_payload(ws, uid))
         await self._send(ws, self._club_payload(uid, data.get("period") or "month"))

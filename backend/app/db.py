@@ -641,6 +641,16 @@ class Database:
         if dcols2 and "emote" not in dcols2:
             self._conn.execute("ALTER TABLE dms ADD COLUMN emote TEXT")
             self._conn.commit()
+        # Wie in een club WAT mag. Standaard mag iedereen uitnodigen (een club
+        # groeit door zijn leden, niet door zijn eigenaar) maar alleen de
+        # eigenaar verandert de naam en het embleem: dat is de identiteit.
+        ccols0 = {r["name"] for r in self._conn.execute("PRAGMA table_info(clubs)").fetchall()}
+        if ccols0 and "open_invite" not in ccols0:
+            self._conn.execute("ALTER TABLE clubs ADD COLUMN open_invite INTEGER NOT NULL DEFAULT 1")
+            self._conn.commit()
+        if ccols0 and "open_rename" not in ccols0:
+            self._conn.execute("ALTER TABLE clubs ADD COLUMN open_rename INTEGER NOT NULL DEFAULT 0")
+            self._conn.commit()
         # Club emblem: the badge the owner picked for the club (NULL = default).
         ccols = {r["name"] for r in self._conn.execute("PRAGMA table_info(clubs)").fetchall()}
         if ccols and "emblem" not in ccols:
@@ -1299,7 +1309,7 @@ class Database:
         with self._lock:
             rows = self._q(
                 """
-                SELECT c.id, c.name, c.code, c.owner_id, c.emblem,
+                SELECT c.id, c.name, c.code, c.owner_id, c.emblem, c.open_invite, c.open_rename,
                        (SELECT COUNT(*) FROM club_members m WHERE m.club_id=c.id) AS member_count
                 FROM club_members cm JOIN clubs c ON c.id = cm.club_id
                 WHERE cm.user_id = ? LIMIT 1
@@ -1310,7 +1320,8 @@ class Database:
             return None
         r = dict(rows[0])
         return {"id": r["id"], "name": r["name"], "code": r["code"], "emblem": r["emblem"],
-                "member_count": int(r["member_count"]), "is_owner": r["owner_id"] == user_id}
+                "member_count": int(r["member_count"]), "is_owner": r["owner_id"] == user_id,
+                "open_invite": bool(r["open_invite"]), "open_rename": bool(r["open_rename"])}
 
     def set_club_emblem(self, user_id: str, emblem: Optional[str]) -> bool:
         """Pick the club badge. Only the OWNER may change it; None = default."""
@@ -1324,15 +1335,53 @@ class Database:
         return True
 
     def rename_club(self, user_id: str, name: str) -> bool:
-        """Hernoem de club. Alleen de EIGENAAR mag dat, net als bij het embleem."""
+        """Hernoem de club. De eigenaar mag altijd; de rest alleen als de
+        eigenaar dat heeft opengezet."""
         naam = (name or "").strip()[:24]
         if len(naam) < 2:
             return False
         with self._lock:
-            rows = self._q("SELECT id FROM clubs WHERE owner_id=?", (user_id,))
+            rows = self._q(
+                """
+                SELECT c.id FROM club_members cm JOIN clubs c ON c.id=cm.club_id
+                WHERE cm.user_id=? AND (c.owner_id=? OR c.open_rename=1) LIMIT 1
+                """,
+                (user_id, user_id),
+            )
             if not rows:
                 return False
             self._exec("UPDATE clubs SET name=? WHERE id=?", (naam, rows[0]["id"]))
+        return True
+
+    def club_mag(self, user_id: str, wat: str) -> bool:
+        """Mag deze speler `wat` in zijn club? `wat` is "invite" of "rename".
+
+        De eigenaar mag alles. Voor de rest telt de schakelaar die de eigenaar
+        heeft gezet. Dit staat hier en niet in de handler, zodat de regel op
+        precies één plek staat en de knop en de controle nooit uit elkaar lopen.
+        """
+        kolom = "open_invite" if wat == "invite" else "open_rename"
+        with self._lock:
+            rows = self._q(
+                f"""
+                SELECT (c.owner_id=? OR c.{kolom}=1) AS mag
+                FROM club_members cm JOIN clubs c ON c.id=cm.club_id
+                WHERE cm.user_id=? LIMIT 1
+                """,
+                (user_id, user_id),
+            )
+        return bool(rows and rows[0]["mag"])
+
+    def club_regels_zet(self, user_id: str, open_invite: bool, open_rename: bool) -> bool:
+        """De eigenaar zet de twee schakelaars. Alleen de eigenaar."""
+        with self._lock:
+            rows = self._q("SELECT id FROM clubs WHERE owner_id=?", (user_id,))
+            if not rows:
+                return False
+            self._exec(
+                "UPDATE clubs SET open_invite=?, open_rename=? WHERE id=?",
+                (int(bool(open_invite)), int(bool(open_rename)), rows[0]["id"]),
+            )
         return True
 
     def _gen_club_code(self) -> str:

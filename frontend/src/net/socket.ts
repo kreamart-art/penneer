@@ -185,6 +185,10 @@ export interface ClubSummary {
   emblem: string | null; // chosen club badge (emNN), null = the default mark
   member_count: number;
   is_owner: boolean;
+  /** Mag ELK lid mensen uitnodigen, of alleen de eigenaar? */
+  open_invite: boolean;
+  /** Mag elk lid de naam en het embleem veranderen? */
+  open_rename: boolean;
 }
 
 export interface ClubMember extends PublicUser {
@@ -882,6 +886,7 @@ export interface GameApi {
   clubInvite: (userId: string) => void;
   setClubEmblem: (emblem: string | null) => void;
   renameClub: (name: string) => void;
+  clubRegels: (openInvite: boolean, openRename: boolean) => void;
   leaveClub: () => void;
   loadClub: (period: "month" | "all") => void;
   setLenient: (on: boolean) => void;
@@ -1128,6 +1133,7 @@ export function useGame(): GameApi {
     leaveClub: () => send({ type: "club_leave" }),
     setClubEmblem: (emblem) => send({ type: "club_set_emblem", emblem }),
     renameClub: (name) => send({ type: "club_rename", name }),
+    clubRegels: (openInvite, openRename) => send({ type: "club_regels", open_invite: openInvite, open_rename: openRename }),
     loadClub: (period) => send({ type: "club_get", period }),
     setLenient: (on) => send({ type: "set_lenient", on }),
     setBuzzerSkin: (skin) => send({ type: "set_buzzer_skin", skin }),
