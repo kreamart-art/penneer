@@ -91,8 +91,11 @@ function ensureCtx(): AudioContext | null {
     sfxGain.connect(ctx.destination);
     startKeepAlive();
     // De sfx (2,5MB samen) hoeven de eerste seconden niet voor de voeten te
-    // lopen: decodeer ze pas als de boel op adem is. Tot die tijd vangt de
-    // synth-terugval elk geluid op.
+    // lopen: decodeer ze pas als de boel op adem is. BEHALVE de typemachine:
+    // die klinkt METEEN in de intro, en de synth-terugval klinkt anders dan de
+    // echte aanslag. Wie de eerste drie tikken synth hoort en daarna het
+    // sample, hoort de wissel. Dus die twee eerst, de rest na de adempauze.
+    void Promise.all([decodeOne("twKey", FILES.twKey), decodeOne("twBell", FILES.twBell)]);
     setTimeout(() => { void decodeAll(); }, 2500);
     // Re-resume whenever the page comes back to the foreground (iOS suspends).
     document.addEventListener("visibilitychange", () => {
@@ -137,6 +140,8 @@ const FILES: Record<string, string> = {
 const buffers: Record<string, AudioBuffer | null | undefined> = {};
 
 async function decodeOne(name: string, file: string) {
+  // Al gedecodeerd (de typemachine gaat voor de rest uit): niet nog een keer.
+  if (buffers[name] !== undefined) return;
   if (!ctx) return;
   try {
     const res = await fetch(`/sfx/${file}.mp3`);
