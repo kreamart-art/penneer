@@ -20,7 +20,7 @@ import { Screen, Card } from "../components/Layout";
 import type { GameApi } from "../net/socket";
 import { ArtIcoon } from "../components/ArtIcoon";
 import { GlasVeld } from "../components/GlasVeld";
-import { GOUD, KADER_LIJN_GOUD, KADER_LIJN_PAARS, KADER_LIJN_ROOD, NeonKader, Paneel, PlekWapen, SCHILD_KLEUREN, type SchildKleur } from "../components/ProfileHero";
+import { GOUD, KADER_LIJN_GOUD, KADER_LIJN_PAARS, KADER_LIJN_ROOD, NeonKader, Paneel, PlekWapen, RingFoto, RingPortret, SCHILD_KLEUREN, type SchildKleur } from "../components/ProfileHero";
 import { GlasRij } from "./Hub";
 import { SchermTip } from "../components/SchermTip";
 import { useT } from "../i18n/i18n";
@@ -29,7 +29,9 @@ import { rampFrom } from "../theme/neon";
 import { reelFace } from "../theme/reelSkins";
 import { colors, font, radius, withAlpha } from "../theme/tokens";
 
-interface Person { id: string; name: string; color: string; has_avatar: boolean | number; avatar_ver: number; divisie?: number }
+// `level` is met opzet los van het Account-type: daar is level een OBJECT met
+// xp en rang, hier is het het kale getal dat in het schild onder de ring staat.
+interface Person { id: string; name: string; color: string; has_avatar: boolean | number; avatar_ver: number; divisie?: number; level?: number }
 interface Slot { word: string; tier: string; points: number }
 interface DetailRow { idx: number; letter: string; category: string; mine: Slot | null; theirs: Slot | null }
 interface CurrentRound { idx: number; letter: string; category: string; seconds: number; seconds_left: number; served: boolean }
@@ -114,7 +116,7 @@ export function Duel({ game, onBack, onProfile, openId, onGeopend }: {
   const [aanneemIdx, setAanneemIdx] = useState(0);
   const [herkansOpen, setHerkansOpen] = useState(false);
   const [herkansIdx, setHerkansIdx] = useState(0);
-  const mijnDivisie = account ? Math.max(0, SCHILD_KLEUREN.indexOf((account.shield as SchildKleur) || "paars")) : undefined;
+
   const [note, setNote] = useState("");
   const deadline = useRef(0);
   const wordRef = useRef("");
@@ -461,19 +463,27 @@ export function Duel({ game, onBack, onProfile, openId, onGeopend }: {
               // van de sierlijst af (die loopt schuin door de hoek) met een
               // marge op beide assen.
               <>
+                {/* De ECHTE ring uit de UI-map met het schild eronder, dezelfde
+                    als op je profiel, en niet de kale rangring om een vierkant
+                    portret. Dit is de uitslag van een duel: dan hoort er te
+                    staan wat je bent, in de vorm waarin je dat elders ook ziet. */}
                 <span
                   aria-hidden
-                  style={{ position: "absolute", left: "7%", top: "50%", transform: "translateY(-50%)", display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}
+                  style={{ position: "absolute", left: "5%", top: "50%", transform: "translateY(-50%)", display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}
                 >
-                  <Avatar name={account.name} color={account.color} size={54} userId={account.id} hasAvatar={account.has_avatar} avatarVer={account.avatar_ver} divisie={mijnDivisie} glow />
-                  <span style={{ fontFamily: font.ui, fontSize: 10.5, fontWeight: 600, letterSpacing: 0.3, color: colors.sub, maxWidth: 64, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{account.name}</span>
+                  <RingPortret maat={72} level={account.level.level} kleur={(account.shield as SchildKleur) || "paars"}>
+                    <RingFoto userId={account.id} versie={account.avatar_ver} heeftFoto={!!account.has_avatar} naam={account.name} kleur={account.color} />
+                  </RingPortret>
+                  <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, letterSpacing: 0.3, color: colors.sub, maxWidth: 68, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{account.name}</span>
                 </span>
                 <span
                   aria-hidden
-                  style={{ position: "absolute", right: "7%", top: "50%", transform: "translateY(-50%)", display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}
+                  style={{ position: "absolute", right: "5%", top: "50%", transform: "translateY(-50%)", display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}
                 >
-                  <Avatar name={opp.name} color={opp.color} size={54} userId={opp.id} hasAvatar={!!opp.has_avatar} avatarVer={opp.avatar_ver} divisie={opp.divisie} glow />
-                  <span style={{ fontFamily: font.ui, fontSize: 10.5, fontWeight: 600, letterSpacing: 0.3, color: colors.sub, maxWidth: 64, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{opp.name}</span>
+                  <RingPortret maat={72} level={opp.level ?? 0} kleur={SCHILD_KLEUREN[Math.max(0, Math.min(SCHILD_KLEUREN.length - 1, opp.divisie ?? 0))]}>
+                    <RingFoto userId={opp.id} versie={opp.avatar_ver} heeftFoto={!!opp.has_avatar} naam={opp.name} kleur={opp.color} />
+                  </RingPortret>
+                  <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, letterSpacing: 0.3, color: colors.sub, maxWidth: 68, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{opp.name}</span>
                 </span>
 
                 {/* De kop in de smalle hoofdletters van de advertentie, ruim
@@ -596,9 +606,9 @@ export function Duel({ game, onBack, onProfile, openId, onGeopend }: {
         </div>
         {!!note && <p style={{ margin: 0, textAlign: "center", fontFamily: font.ui, fontSize: 13, color: colors.orange }}>{note}</p>}
 
-        {mine.length > 0 && <Section title={t("duelYourTurn")} items={mine} onOpen={openDuel} t={t} mij={account} />}
-        {waiting.length > 0 && <Section title={t("duelWaitingTitle")} items={waiting} onOpen={openDuel} t={t} mij={account} />}
-        {past.length > 0 && <Section title={t("duelPastTitle")} items={past} onOpen={openDuel} t={t} mij={account} />}
+        {mine.length > 0 && <Section title={t("duelYourTurn")} items={mine} onOpen={openDuel} t={t} mij={{ ...account, level: account.level.level }} />}
+        {waiting.length > 0 && <Section title={t("duelWaitingTitle")} items={waiting} onOpen={openDuel} t={t} mij={{ ...account, level: account.level.level }} />}
+        {past.length > 0 && <Section title={t("duelPastTitle")} items={past} onOpen={openDuel} t={t} mij={{ ...account, level: account.level.level }} />}
         {duels.length === 0 && list && (
           <p style={{ margin: 0, textAlign: "center", fontFamily: font.ui, fontSize: 13.5, color: colors.faint }}>{t("duelEmpty")}</p>
         )}
@@ -1081,58 +1091,72 @@ const ZAAL_ART: Record<number, string> = {
   0: "/ui/inzet/z0.webp?v=3", 50: "/ui/inzet/z50.webp?v=3", 100: "/ui/inzet/z100.webp?v=3",
   250: "/ui/inzet/z250.webp?v=3", 500: "/ui/inzet/z500.webp?v=3", 1000: "/ui/inzet/z1000.webp?v=3",
 };
-/* Het bedrag als GESMEED letterwerk in plaats van platte tekst.
+/* Het bedrag als GLAZEN letterwerk met een neon-omlijning.
  *
- * Vijf lagen, in deze volgorde, want de volgorde IS het effect:
- *   1. een vervaagde warme kopie erachter  -> de zaal die op de letters schijnt
- *   2. een bijna zwarte kopie een pixel lager -> de omgevingsschaduw
- *   3. een donkergouden kopie op 2px       -> de afschuining, de dikte
- *   4. het verloop ivoor -> goud           -> het metaal zelf
- *   5. een licht verloop dat bovenaan stopt -> de glans op de bovenranden
+ * De letter is een RUIT waar je doorheen kijkt: de vulling is glas (een koele
+ * schuine glans over een half doorzichtige bodem) en de rand is de neonlijn,
+ * met de gloed van de zaal erachter. Geen goud dus, en geen afschuining: dat
+ * zou er weer massief metaal van maken.
+ *
+ * De omlijning gaat via `-webkit-text-stroke` op een laag ONDER de vulling.
+ * Een stroke op dezelfde laag tekent voor de helft OVER de letter heen en
+ * halveert de vulling; eronder blijft alleen het buitenste deel staan en houd
+ * je de hele glasvorm.
  *
  * De gloed MOET een vervaagde kopie zijn en geen text-shadow: `background-clip:
  * text` en `text-shadow` gaan niet samen, de schaduw tekent over het geknipte
- * verloop heen. En de glans stopt halverwege, want een verloop dat over de hele
- * letter licht is leest niet als licht maar als een lichtere kleur.
- *
- * De kleur van de LETTER is overal hetzelfde warme ivoorgoud; alleen de gloed
- * erachter neemt de kleur van de zaal over. Zo hoort het bedrag bij de kamer
- * zonder dat de reeks uit elkaar valt in zes verschillende tinten. */
-const IVOOR = "#FFF3D8";
-const GOUD_WARM = "#F5C66A";
-
+ * verloop heen. */
 function ZaalTekst({ tekst, maat, gloed, spatie = 0 }: { tekst: string; maat: number; gloed: string; spatie?: number }) {
   const basis: React.CSSProperties = {
     fontFamily: font.display,
-    fontWeight: 600,
+    fontWeight: 800,
     fontSize: maat,
     lineHeight: 1,
-    letterSpacing: spatie + maat * 0.012,
+    letterSpacing: spatie + maat * 0.01,
     whiteSpace: "nowrap",
   };
   const laag: React.CSSProperties = { ...basis, position: "absolute", left: 0, top: 0, pointerEvents: "none" };
-  const knip: React.CSSProperties = {
-    WebkitBackgroundClip: "text",
-    backgroundClip: "text",
-    color: "transparent",
-  };
+  const knip: React.CSSProperties = { WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" };
+  const lijn = Math.max(1.5, maat * 0.045);
   return (
     <span style={{ position: "relative", display: "inline-block", ...basis }}>
-      {/* 1. het vuur van de zaal, ruim vervaagd en zwak */}
-      <span aria-hidden style={{ ...laag, color: gloed, filter: `blur(${Math.round(maat * 0.28)}px)`, opacity: 0.5 }}>{tekst}</span>
-      {/* 2. omgevingsschaduw: laag, zacht, bijna zwart */}
-      <span aria-hidden style={{ ...laag, color: "rgba(10,4,2,.85)", transform: `translateY(${Math.max(1, maat * 0.045)}px)`, filter: `blur(${Math.max(1, maat * 0.035)}px)` }}>{tekst}</span>
-      {/* 3. de afschuining: dezelfde letter in donker goud, net eronder */}
-      <span aria-hidden style={{ ...laag, color: "#8A5A1E", transform: `translateY(${Math.max(1, maat * 0.055)}px)` }}>{tekst}</span>
-      {/* 4. het metaal */}
-      <span style={{ ...laag, position: "relative", backgroundImage: `linear-gradient(178deg, ${IVOOR} 6%, #FFE6AE 34%, ${GOUD_WARM} 72%, #E0AC4F 100%)`, ...knip }}>{tekst}</span>
-      {/* 5. de glans, alleen op de bovenranden */}
-      <span aria-hidden style={{ ...laag, backgroundImage: "linear-gradient(180deg, rgba(255,255,255,.75) 0%, rgba(255,255,255,.12) 26%, transparent 44%)", ...knip }}>{tekst}</span>
+      {/* 1. het licht van de zaal, ruim vervaagd, achter alles */}
+      <span aria-hidden style={{ ...laag, color: gloed, filter: `blur(${Math.round(maat * 0.3)}px)`, opacity: 0.55 }}>{tekst}</span>
+      {/* 2. de neonlijn zelf, met zijn eigen halo eromheen */}
+      <span
+        aria-hidden
+        style={{
+          ...laag,
+          WebkitTextStrokeWidth: lijn,
+          WebkitTextStrokeColor: gloed,
+          color: "transparent",
+          filter: `drop-shadow(0 0 ${Math.round(maat * 0.16)}px ${withAlpha(gloed, 0.9)}) drop-shadow(0 0 ${Math.round(maat * 0.42)}px ${withAlpha(gloed, 0.45)})`,
+        }}
+      >
+        {tekst}
+      </span>
+      {/* 3. het glas: donker onderin, een schuine glans erover, licht bovenaan.
+             Half doorzichtig, zodat de zaal er doorheen schemert. */}
+      <span
+        style={{
+          ...laag,
+          position: "relative",
+          backgroundImage: [
+            "linear-gradient(118deg, transparent 34%, rgba(255,255,255,.5) 45%, rgba(255,255,255,.06) 54%, transparent 62%)",
+            "linear-gradient(180deg, rgba(255,255,255,.62) 0%, rgba(255,255,255,.2) 40%, rgba(255,255,255,.07) 62%, rgba(8,4,20,.34) 100%)",
+          ].join(", "),
+          ...knip,
+        }}
+      >
+        {tekst}
+      </span>
+      {/* 4. de dunne glans op de bovenrand, waar het glas het licht vangt */}
+      <span aria-hidden style={{ ...laag, backgroundImage: "linear-gradient(180deg, rgba(255,255,255,.95) 0%, rgba(255,255,255,.18) 14%, transparent 26%)", ...knip }}>{tekst}</span>
     </span>
   );
 }
 
-/* De gloedkleur per zaal. GEMETEN aan de art: van elke
+/* De gloedkleur per zaal./* De gloedkleur per zaal. GEMETEN aan de art: van elke
  * zaal is de mediaan van de warme, verzadigde pixels genomen (het vuur, het
  * goud, de schat) en die tint is opgetrokken tot vol licht. Zo hoort het cijfer
  * bij de kamer waar het in staat in plaats van er als sticker op te liggen, en
@@ -1226,8 +1250,13 @@ function InzetCarrousel({
   const n = waardes[index] ?? 0;
   const art = ZAAL_ART[n];
   const kan = n <= coins;
+  // Welke kant de nieuwe zaal vandaan komt. Bewaard in een ref en niet in de
+  // staat: hij stuurt alleen de klasse van de volgende weergave, en een extra
+  // hertekening ervoor zou de animatie juist opnieuw starten.
+  const richting = useRef<"links" | "rechts">("rechts");
   const ga = (stap: number) => {
     sound.uiTap();
+    richting.current = stap > 0 ? "rechts" : "links";
     onIndex((index + stap + waardes.length) % waardes.length);
   };
   // Kale pijlen: de cirkel eromheen was een knop-vorm om iets wat al een knop
@@ -1266,7 +1295,7 @@ function InzetCarrousel({
             key={n}
             src={art}
             alt=""
-            className="reward-art"
+            className={`zaal-${richting.current}`}
             style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block" }}
           />
         )}
@@ -1275,6 +1304,8 @@ function InzetCarrousel({
             gaat. Onderaan lag het tegen de vloer aan. De donkere voet houdt het
             leesbaar, de gloed in de zaalkleur bindt het aan de kamer. */}
         <span
+          key={`b${n}`}
+          className={`bedrag-${richting.current}`}
           style={{
             position: "absolute", inset: 0,
             display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
@@ -1283,13 +1314,14 @@ function InzetCarrousel({
             // heen tekenen.
           }}
         >
+          {/* Geen muntje ernaast: de zaal zelf zegt al waar het over gaat, en
+              het cijfer mag daardoor de ruimte nemen die het verdient. */}
           <ZaalTekst
             tekst={n === 0 ? t("duelStakeGeen") : String(n)}
-            maat={34}
+            maat={48}
             gloed={ZAAL_KLEUR[n] ?? colors.gold}
-            spatie={n === 0 ? 1.2 : 0.4}
+            spatie={n === 0 ? 1.6 : 0.6}
           />
-          {n > 0 && <img src="/coin.webp" alt="" width={26} height={26} style={{ display: "block" }} />}
         </span>
       </button>
 

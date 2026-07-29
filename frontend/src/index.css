@@ -1006,3 +1006,37 @@ a:active .hex-aan {
   -ms-overflow-style: none;
 }
 .zachtscroll::-webkit-scrollbar { width: 0; height: 0; }
+
+/* De inzetzalen schuiven, ze poppen niet. Een zaal is een PLEK, en van plek
+   wisselen doe je door op te schuiven; een pop-in leest als "hier verschijnt
+   iets" en niet als "we zijn ergens anders". De richting volgt het pijltje:
+   naar rechts bladeren haalt de volgende zaal van rechts binnen.
+   Iets verder dan de tegel breed is, zodat hij echt van buiten komt, met een
+   korte afremming aan het eind in plaats van een veer. */
+@keyframes zaal-van-rechts {
+  from { transform: translateX(58%); opacity: 0; }
+  to   { transform: translateX(0);   opacity: 1; }
+}
+@keyframes zaal-van-links {
+  from { transform: translateX(-58%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+.zaal-rechts { animation: zaal-van-rechts .34s cubic-bezier(.22,.68,.24,1) both; }
+.zaal-links  { animation: zaal-van-links  .34s cubic-bezier(.22,.68,.24,1) both; }
+
+/* Het bedrag komt NA de zaal en over een kortere weg: eerst is de kamer er, dan
+   staat het bedrag erin. Alles tegelijk laten schuiven leest als één plaatje. */
+@keyframes bedrag-van-rechts {
+  from { transform: translateX(26%); opacity: 0; }
+  to   { transform: translateX(0);   opacity: 1; }
+}
+@keyframes bedrag-van-links {
+  from { transform: translateX(-26%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+.bedrag-rechts { animation: bedrag-van-rechts .3s cubic-bezier(.22,.68,.24,1) .07s both; }
+.bedrag-links  { animation: bedrag-van-links  .3s cubic-bezier(.22,.68,.24,1) .07s both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .zaal-rechts, .zaal-links, .bedrag-rechts, .bedrag-links { animation: none; }
+}

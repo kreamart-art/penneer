@@ -21,7 +21,7 @@ from fastapi.staticfiles import StaticFiles
 from . import ai_referee, daily, duel, game, missions, paypal, push
 from . import topo
 from .db import AVATAR_MAX_BYTES, get_db
-from .social import accounts
+from .social import accounts, _level_of
 from .ws import manager, router as ws_router
 
 app = FastAPI(title="Pen Neer")
@@ -709,6 +709,8 @@ def _duel_user_card(db, user_id: str) -> dict:
         "has_avatar": bool(u.get("has_avatar")),
         "avatar_ver": u.get("avatar_ver", 0),
         "divisie": int(u.get("divisie") or 0),
+        # Het schild onder de ring draagt je level, dus dat moet mee.
+        "level": _level_of(db.stats_of(user_id))["level"],
     }
 
 
