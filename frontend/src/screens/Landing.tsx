@@ -676,9 +676,25 @@ function MissionsSheet({
       onClick={onClose}
       style={{ position: "fixed", inset: 0, zIndex: 80, display: "grid", placeItems: "center", padding: 22, background: "rgba(6,3,18,.6)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)" }}
     >
+      {/* Een eigen DONKERE bodem. De sectiestijl is doorzichtig, en dat werkt op
+          een pagina omdat het decor eronder rustig is; boven een popup zie je de
+          hele main page erdoorheen en valt de tekst weg. Een venster hoort af te
+          dekken wat eronder ligt. */}
       <Card
         className="pop-in"
-        style={{ width: "100%", maxWidth: 360, display: "flex", flexDirection: "column", gap: 12, padding: 20 }}
+        style={{
+          width: "100%",
+          maxWidth: 360,
+          display: "flex",
+          flexDirection: "column",
+          gap: 12,
+          padding: 20,
+          backgroundImage: [
+            "linear-gradient(180deg, rgba(255,243,181,.07) 0%, transparent 14%)",
+            "linear-gradient(180deg, #241740 0%, #1A1035 55%, #120A28 100%)",
+          ].join(", "),
+          boxShadow: "0 24px 70px rgba(0,0,0,.6)",
+        }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 8 }} onClick={(e) => e.stopPropagation()}>
           <Target size={17} color={colors.gold} />

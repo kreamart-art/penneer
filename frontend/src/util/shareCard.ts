@@ -6,14 +6,58 @@ interface Row {
   name: string;
   score: number;
   color: string;
+  /** Het portret, van dezelfde herkomst (same-origin), of null voor een letter. */
+  avatarUrl?: string | null;
 }
 
 interface CardOpts {
   winnerLabel: string; // "Winnaar" / "Shared lead"
   winnerNames: string; // joined names
   pointsText: string; // "120 punten"
+  /** De winnaars, met portret. Bij gedeelde koppositie staan er meer naast
+   *  elkaar; boven de drie worden het alleen namen, want dan past er niets. */
+  winners?: { name: string; color: string; avatarUrl: string | null }[];
   rows: Row[];
   footer: string;
+}
+
+/** Een rond portret op canvas: de foto in een cirkel, of de eerste letter op de
+ *  spelerskleur als er geen foto is. Twee keer nodig (winnaar en stand), dus
+ *  een keer geschreven. */
+async function portret(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  r: number,
+  naam: string,
+  kleur: string,
+  url: string | null | undefined,
+) {
+  const foto = url ? await loadImage(url) : null;
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.fillStyle = foto ? "#140B26" : kleur;
+  ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+  if (foto) {
+    ctx.drawImage(foto, cx - r, cy - r, r * 2, r * 2);
+  } else {
+    ctx.textAlign = "center";
+    ctx.font = `700 ${Math.round(r * 1.05)}px 'Space Grotesk'`;
+    ctx.fillStyle = "#1A0B33";
+    ctx.fillText((naam.trim()[0] || "?").toUpperCase(), cx, cy + r * 0.38);
+  }
+  ctx.restore();
+  // Een dunne gouden ring eromheen: zonder rand loopt een donkere foto over in
+  // het glas eronder en is het portret geen vorm meer.
+  ctx.save();
+  ctx.strokeStyle = "rgba(255,207,74,.55)";
+  ctx.lineWidth = Math.max(1.5, r * 0.08);
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
 }
 
 function drawEmblem(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number) {
@@ -202,27 +246,44 @@ export async function makeShareCard(opts: CardOpts): Promise<Blob | null> {
 
   ctx.font = "600 30px Inter";
   ctx.fillStyle = colors.faint;
-  ctx.fillText(opts.winnerLabel.toUpperCase(), W / 2, ky + 62);
+  ctx.fillText(opts.winnerLabel.toUpperCase(), W / 2, ky + 56);
 
-  ctx.font = "700 72px 'Space Grotesk'";
+  // De portretten van de winnaars. Een uitslag zonder gezichten is een lijstje;
+  // met gezichten is het een uitslag van MENSEN. Boven de drie past het niet
+  // meer, dan blijven alleen de namen over.
+  const wns = (opts.winners ?? []).slice(0, 3);
+  let naamY = ky + 142;
+  if (wns.length > 0) {
+    const R = wns.length > 1 ? 46 : 58;
+    const stap = R * 2 + 20;
+    const startX = W / 2 - ((wns.length - 1) * stap) / 2;
+    for (let i = 0; i < wns.length; i++) {
+      await portret(ctx, startX + i * stap, ky + 88 + R, R, wns[i].name, wns[i].color, wns[i].avatarUrl);
+    }
+    naamY = ky + 88 + R * 2 + 52;
+  }
+
+  ctx.textAlign = "center";
+  ctx.font = `700 ${wns.length > 1 ? 52 : 64}px 'Space Grotesk'`;
   ctx.fillStyle = colors.gold;
   ctx.shadowColor = colors.gold;
   ctx.shadowBlur = 28;
-  ctx.fillText(opts.winnerNames, W / 2, ky + 142);
+  ctx.fillText(opts.winnerNames, W / 2, naamY);
   ctx.shadowBlur = 0;
 
   ctx.font = "700 36px 'Space Grotesk'";
   const pillText = opts.pointsText;
   const pillW = ctx.measureText(pillText).width + 70;
+  const pillY = naamY + 22;
   ctx.fillStyle = "rgba(255,207,74,.14)";
-  roundRect(ctx, W / 2 - pillW / 2, ky + 166, pillW, 54, 27);
+  roundRect(ctx, W / 2 - pillW / 2, pillY, pillW, 54, 27);
   ctx.fill();
   ctx.strokeStyle = "rgba(255,207,74,.5)";
   ctx.lineWidth = 1.5;
-  roundRect(ctx, W / 2 - pillW / 2, ky + 166, pillW, 54, 27);
+  roundRect(ctx, W / 2 - pillW / 2, pillY, pillW, 54, 27);
   ctx.stroke();
   ctx.fillStyle = colors.gold;
-  ctx.fillText(pillText, W / 2, ky + 203);
+  ctx.fillText(pillText, W / 2, pillY + 37);
 
   // De stand als glasrijen, met de gouden kappen voor wie bovenaan staat en het
   // lichtpunt op een andere plek per rij, precies als in de app.
@@ -231,7 +292,8 @@ export async function makeShareCard(opts: CardOpts): Promise<Blob | null> {
   const right = W - 110;
   const rowH = 92;
   let y = ky + kh + 60;
-  rows.forEach((r, i) => {
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
     const leider = i === 0;
     glasRij(ctx, left, y, right - left, rowH - 14, leider ? "goud" : "paars", 0.3 + ((i * 0.618034) % 1) * 0.4);
 
@@ -240,11 +302,9 @@ export async function makeShareCard(opts: CardOpts): Promise<Blob | null> {
     ctx.fillStyle = leider ? colors.gold : colors.faint;
     ctx.fillText(String(i + 1), left + 34, y + 50);
 
-    ctx.fillStyle = r.color;
-    ctx.beginPath();
-    ctx.arc(left + 106, y + 39, 21, 0, Math.PI * 2);
-    ctx.fill();
+    await portret(ctx, left + 106, y + 39, 24, r.name, r.color, r.avatarUrl);
 
+    ctx.textAlign = "left";
     ctx.font = "600 34px Inter";
     ctx.fillStyle = colors.ink;
     const name = r.name.length > 16 ? r.name.slice(0, 15) + "\u2026" : r.name;
@@ -255,7 +315,7 @@ export async function makeShareCard(opts: CardOpts): Promise<Blob | null> {
     ctx.fillStyle = leider ? colors.gold : colors.ink;
     ctx.fillText(String(r.score), right - 34, y + 52);
     y += rowH;
-  });
+  }
 
   ctx.textAlign = "center";
   ctx.font = "500 26px Inter";

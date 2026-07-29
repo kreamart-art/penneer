@@ -12,7 +12,8 @@ import { TopBar } from "../components/TopBar";
 import type { GameApi } from "../net/socket";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
-import { colors, font, radius, withAlpha } from "../theme/tokens";
+import { schuin } from "../components/ProfileHero";
+import { colors, font, withAlpha } from "../theme/tokens";
 
 export function Fill({ game }: { game: GameApi }) {
   const { t, tCat } = useT();
@@ -147,11 +148,15 @@ export function Fill({ game }: { game: GameApi }) {
                     fontFamily: font.ui,
                     fontSize: 16,
                     color: colors.ink,
-                    background: withAlpha("#000000", 0.25),
-                    border: `1.5px solid ${answers[cat] ? withAlpha(colors.gold, 0.5) : colors.panelBorder}`,
-                    borderRadius: radius.button,
+                    background: withAlpha("#000000", 0.28),
+                    border: "none",
+                    // De afgeschuinde glasvorm van de rest van de app. De lijn
+                    // licht op zodra er iets in staat: dat is het enige verschil
+                    // tussen een leeg en een gevuld veld, en het is genoeg.
+                    clipPath: schuin(11),
+                    boxShadow: `inset 0 0 0 1.5px ${answers[cat] ? withAlpha(colors.gold, 0.55) : withAlpha("#C8A0FF", 0.22)}`,
                     padding: "12px 14px",
-                    transition: "border-color .12s ease",
+                    transition: "box-shadow .12s ease",
                   }}
                 />
               </div>

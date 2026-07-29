@@ -4,11 +4,13 @@
 import { useEffect, useRef, useState } from "react";
 import { CloseIcon } from "./CloseIcon";
 import { MessageCircle, Send, Smile } from "lucide-react";
+import { HexPlate } from "./HexPlate";
 import type { GameApi } from "../net/socket";
 import { MicButton } from "./MicButton";
 import { VoiceNote } from "./VoiceNote";
 import { EmotePicker } from "./EmotePicker";
 import { EMOTE_SRC, FREE_EMOTE_PACKS } from "./emotes";
+import { schuin } from "./ProfileHero";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { colors, font, withAlpha } from "../theme/tokens";
@@ -25,17 +27,24 @@ export function ChatButton({ game }: { game: GameApi }) {
         onClick={() => game.openChat()}
         aria-label={t("chat")}
         title={t("chat")}
+        className="pressable"
         style={{
           position: "relative",
           background: "transparent",
           border: "none",
           cursor: "pointer",
-          color: colors.faint,
+          padding: 0,
+          lineHeight: 0,
           display: "flex",
-          padding: 2,
         }}
       >
-        <MessageCircle size={18} />
+        {/* Dezelfde zeshoekige plaat als de andere knoppen in de bovenbalk. Een
+            kaal lijnicoontje tussen platen leest als een knop die vergeten is;
+            en de plaat licht op zodra er iets ongelezen is, dus je ziet aan de
+            KNOP dat er iets is en niet alleen aan het bolletje erboven. */}
+        <HexPlate on={unread > 0} size={30}>
+          <MessageCircle size={16} />
+        </HexPlate>
         {unread > 0 && (
           <span
             style={{
@@ -232,11 +241,12 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
                     style={{
                       maxWidth: "82%",
                       padding: m.emote ? 4 : m.voice_id ? "7px 10px" : "8px 11px",
-                      borderRadius: 14,
-                      borderTopRightRadius: mine ? 4 : 14,
-                      borderTopLeftRadius: mine ? 14 : 4,
-                      background: m.emote ? "transparent" : mine ? withAlpha(colors.gold, 0.16) : colors.panel,
-                      border: m.emote ? "1px solid transparent" : `1px solid ${mine ? withAlpha(colors.gold, 0.3) : colors.panelBorder}`,
+                      // Dezelfde afgeschuinde glasvorm als in de privéberichten,
+                      // zodat een bericht er overal in de app hetzelfde uitziet.
+                      clipPath: m.emote ? undefined : schuin(9),
+                      borderRadius: m.emote ? 12 : undefined,
+                      background: m.emote ? "transparent" : mine ? withAlpha(colors.gold, 0.16) : withAlpha("#000000", 0.32),
+                      boxShadow: m.emote ? undefined : `inset 0 0 0 1px ${mine ? withAlpha(colors.gold, 0.4) : withAlpha("#C8A0FF", 0.2)}`,
                       color: colors.ink,
                       fontFamily: font.ui,
                       fontSize: 14.5,
@@ -321,9 +331,10 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
             style={{
               flex: 1,
               minWidth: 0,
-              background: "rgba(0,0,0,.25)",
-              border: `1px solid ${colors.panelBorder}`,
-              borderRadius: 999,
+              background: "rgba(0,0,0,.28)",
+              border: "none",
+              boxShadow: `inset 0 0 0 1.2px ${withAlpha("#C8A0FF", draft.trim() ? 0.4 : 0.2)}`,
+              clipPath: schuin(10),
               padding: "11px 16px",
               color: colors.ink,
               fontFamily: font.ui,

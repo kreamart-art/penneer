@@ -9,9 +9,10 @@ import { ArrowLeft, BookOpen, CalendarDays, Camera, Check, ChevronDown, Copy, Cr
 import { Avatar, RANK_RING } from "../components/Avatar";
 import { Plek } from "../components/ProfileShowcase";
 import { HexArt } from "../components/HexArt";
-import { DIVISIE_ACCENT, GOUD, KADER_LIJN_GOUD, KADER_LIJN_LOOP, KADER_LIJN_ROOD, KADER_LIJN_XP, NeonKader, Paneel, PlekWapen, Prestatie, RingFoto, RingPortret, SCHILD_KLEUREN, SectieKop, SierKop, StatKaart, divisieKleur, type SchildKleur } from "../components/ProfileHero";
+import { schuin, DIVISIE_ACCENT, GOUD, KADER_LIJN_GOUD, KADER_LIJN_LOOP, KADER_LIJN_ROOD, KADER_LIJN_XP, NeonKader, Paneel, PlekWapen, Prestatie, RingFoto, RingPortret, SCHILD_KLEUREN, SectieKop, SierKop, StatKaart, divisieKleur, type SchildKleur } from "../components/ProfileHero";
 import { DivisieLadder, Schild, divisieNaam } from "../components/Divisie";
 import { MeldingRij } from "../components/Meldingen";
+import { GlasVeld } from "../components/GlasVeld";
 import { ensurePushSubscription } from "../pwa/push";
 import { AvatarZoom } from "../components/AvatarZoom";
 import { Button } from "../components/Button";
@@ -820,7 +821,28 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 85, background: "rgba(6,3,18,.7)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
-      <div style={{ width: "100%", maxWidth: 430, height: "78dvh", display: "flex", flexDirection: "column", borderRadius: "22px 22px 0 0", background: "linear-gradient(180deg, #241738, #160D30)", border: `1px solid ${withAlpha(colors.gold, 0.3)}`, borderBottom: "none", boxShadow: "0 -18px 60px rgba(0,0,0,.55)" }}>
+      {/* De lade in de neonlijst van de app. Alleen de BOVENhoeken zijn rond en
+          de lijn loopt door tot onder het scherm: hij komt van beneden en zit
+          daar vast, dus een lijst helemaal rondom zou hem los laten zweven. */}
+      <NeonKader
+        radius={22}
+        dik={0.75}
+        lijn={KADER_LIJN_GOUD}
+        gloed="verloop"
+        animeer
+        vulling="geen"
+        style={{ width: "100%", maxWidth: 430 }}
+        binnen={{
+          height: "78dvh",
+          display: "flex",
+          flexDirection: "column",
+          padding: 0,
+          backgroundImage: [
+            "linear-gradient(180deg, rgba(255,243,181,.07) 0%, transparent 12%)",
+            "linear-gradient(180deg, #241740 0%, #1A1035 55%, #120A28 100%)",
+          ].join(", "),
+        }}
+      >
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", borderBottom: `1px solid ${colors.hairline}` }}>
           {partner ? (
             <Avatar name={partner.name} color={partner.color} size={34} userId={partner.id} hasAvatar={partner.has_avatar} avatarVer={partner.avatar_ver} />
@@ -841,7 +863,18 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
             const mine = m.from_user === me;
             return (
               <div key={m.id} style={{ alignSelf: mine ? "flex-end" : "flex-start", maxWidth: "78%" }}>
-                <div style={{ padding: m.emote ? 4 : m.voice_id ? "7px 10px" : "9px 12px", borderRadius: mine ? "14px 14px 4px 14px" : "14px 14px 14px 4px", background: m.emote ? "transparent" : mine ? withAlpha(colors.gold, 0.18) : withAlpha("#000000", 0.3), border: m.emote ? "1px solid transparent" : `1px solid ${mine ? withAlpha(colors.gold, 0.4) : colors.hairline}`, fontFamily: font.ui, fontSize: 14, color: colors.ink, lineHeight: 1.45, wordBreak: "break-word" }}>
+                {/* De bel heeft de afgeschuinde hoek van een glasrij, met de
+                    punt aan de kant waar hij vandaan komt. Een gewone bubbel
+                    met een randje hoort bij een chat-app; deze app is van glas
+                    en goud. */}
+                <div style={{
+                  padding: m.emote ? 4 : m.voice_id ? "7px 10px" : "9px 12px",
+                  clipPath: m.emote ? undefined : schuin(9),
+                  borderRadius: m.emote ? 12 : undefined,
+                  background: m.emote ? "transparent" : mine ? withAlpha(colors.gold, 0.16) : withAlpha("#000000", 0.32),
+                  boxShadow: m.emote ? undefined : `inset 0 0 0 1px ${mine ? withAlpha(colors.gold, 0.42) : withAlpha("#C8A0FF", 0.2)}`,
+                  fontFamily: font.ui, fontSize: 14, color: colors.ink, lineHeight: 1.45, wordBreak: "break-word",
+                }}>
                   {m.emote ? (
                     <img src={EMOTE_SRC(m.emote)} alt="" width={84} height={84} style={{ width: 84, height: 84, display: "block", objectFit: "contain" }} />
                   ) : m.voice_id ? (
@@ -869,20 +902,21 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
             type="button"
             onClick={() => { sound.uiTap(); setDmEmotesOpen((v) => !v); }}
             aria-label={t("emoteTitle")}
-            style={{ flexShrink: 0, width: 44, height: 44, borderRadius: 12, cursor: "pointer",
-              border: `1.5px solid ${dmEmotesOpen ? withAlpha(colors.gold, 0.5) : colors.panelBorder}`,
+            style={{ flexShrink: 0, width: 44, height: 44, clipPath: schuin(9), cursor: "pointer", border: "none",
+              boxShadow: `inset 0 0 0 1.5px ${dmEmotesOpen ? withAlpha(colors.gold, 0.6) : withAlpha("#C8A0FF", 0.22)}`,
               background: dmEmotesOpen ? withAlpha(colors.gold, 0.14) : withAlpha("#000000", 0.3),
               color: dmEmotesOpen ? colors.gold : colors.sub, display: "flex", alignItems: "center", justifyContent: "center" }}
           >
             <Smile size={20} />
           </button>
-          <input
+          <GlasVeld
             value={text}
             maxLength={500}
             placeholder={t("chatPlaceholder")}
+            gevuld={!!text.trim()}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") sendNow(); }}
-            style={{ flex: 1, minWidth: 0, fontFamily: font.ui, fontSize: 15, color: colors.ink, background: withAlpha("#000000", 0.3), border: `1.5px solid ${colors.panelBorder}`, borderRadius: 12, padding: "11px 13px" }}
+            kaderStyle={{ flex: 1, minWidth: 0 }}
           />
           {text.trim() ? (
             <KnopPlaat breed={76} onClick={sendNow} label={t("chatSend")} />
@@ -890,7 +924,7 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
             <MicButton upload={uploadVoice} onSent={(id, dur) => game.dmSend(partnerId, "", { id, dur })} />
           )}
         </div>
-      </div>
+      </NeonKader>
     </div>
   );
 }

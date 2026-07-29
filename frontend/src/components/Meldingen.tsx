@@ -9,8 +9,10 @@
 // De balk toont er ÉÉN tegelijk. Een stapel banners over elkaar leest als een
 // storing; wat er nog achter staat wacht gewoon zijn beurt.
 import { useEffect, useRef, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { ArtIcoon, type ArtNaam } from "./ArtIcoon";
 import { CloseIcon } from "./CloseIcon";
+import { KnopPlaat } from "./KnopPlaat";
 import { KADER_LIJN_GOUD, NeonKader } from "./ProfileHero";
 import type { Melding } from "../net/socket";
 import { useT } from "../i18n/i18n";
@@ -120,29 +122,54 @@ export function MeldingBanner({
 }
 
 /** Eén regel in de meldingenlijst. Ongelezen krijgt een gouden stip, want een
- *  hele rij oplichten maakt van een lijst een kerstboom. */
+ *  hele rij oplichten maakt van een lijst een kerstboom.
+ *
+ *  Een tik VOUWT HEM OPEN. De tekst stond op één regel met puntjes erachter en
+ *  de tik ging meteen ergens heen, dus je kon nooit lezen wat er stond: je werd
+ *  weggestuurd voor je het gelezen had. Nu klapt hij open, staat de hele tekst
+ *  er, en pas dan kun je met de knop eronder naar waar hij over gaat. */
 export function MeldingRij({ melding, onOpen }: { melding: Melding; onOpen: () => void }) {
   const { t } = useT();
+  const [open, setOpen] = useState(false);
+  // Alleen meldingen die ergens over gaan krijgen een knop. "Ongelezen bericht"
+  // zonder afzender heeft geen bestemming, en een knop die niets doet is erger
+  // dan geen knop.
+  let data: Record<string, string> = {};
+  try { data = melding.data ? JSON.parse(melding.data) : {}; } catch { /* rommel is geen reden om niets te tonen */ }
+  const heeftDoel = !!data.user_id || melding.naar === "duel" || melding.naar === "dagronde" || melding.naar === "profiel";
+
   return (
     <NeonKader
       hoek={9}
-      dik={melding.gelezen ? 0.26 : 0.42}
-      sterkte={melding.gelezen ? 0.24 : 0.55}
+      dik={melding.gelezen && !open ? 0.26 : 0.42}
+      sterkte={melding.gelezen && !open ? 0.24 : 0.55}
       vulling="geen"
       eindkap
       style={{ marginInline: 6 }}
-      binnen={{ display: "flex", alignItems: "center", gap: 9, padding: "8px 10px", minHeight: 46 }}
+      binnen={{ display: "flex", flexDirection: "column", gap: 7, padding: "8px 10px", minHeight: 46 }}
     >
       <button
-        onClick={onOpen}
-        style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 9, background: "transparent", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }}
+        onClick={() => { sound.uiTap(); setOpen((v) => !v); }}
+        aria-expanded={open}
+        style={{ width: "100%", minWidth: 0, display: "flex", alignItems: "center", gap: 9, background: "transparent", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }}
       >
         <ArtIcoon naam={icoonVan(melding.icoon)} size={20} gloed={!melding.gelezen} />
         <span style={{ flex: 1, minWidth: 0 }}>
           <span style={{ display: "block", fontFamily: font.ui, fontWeight: melding.gelezen ? 600 : 700, fontSize: 13, color: melding.gelezen ? colors.sub : colors.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {melding.titel}
           </span>
-          <span style={{ display: "block", fontFamily: font.ui, fontSize: 11.5, color: colors.faint, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <span
+            style={{
+              display: "block",
+              fontFamily: font.ui,
+              fontSize: 11.5,
+              lineHeight: open ? 1.45 : undefined,
+              color: colors.faint,
+              overflow: open ? undefined : "hidden",
+              textOverflow: open ? undefined : "ellipsis",
+              whiteSpace: open ? "normal" : "nowrap",
+            }}
+          >
             {melding.body}
           </span>
         </span>
@@ -151,8 +178,18 @@ export function MeldingRij({ melding, onOpen }: { melding: Melding; onOpen: () =
           {!melding.gelezen && (
             <span style={{ width: 7, height: 7, borderRadius: "50%", background: colors.gold, boxShadow: `0 0 7px ${withAlpha(colors.gold, 0.8)}` }} />
           )}
+          <ChevronDown
+            size={14}
+            color={colors.faint}
+            style={{ transform: open ? "rotate(180deg)" : undefined, transition: "transform .18s ease" }}
+          />
         </span>
       </button>
+      {open && heeftDoel && (
+        <span style={{ display: "flex", justifyContent: "flex-end" }}>
+          <KnopPlaat breed={92} onClick={onOpen} label={t("meldingOpen")} />
+        </span>
+      )}
     </NeonKader>
   );
 }

@@ -41,7 +41,17 @@ export function Final({ game }: { game: GameApi }) {
         winnerLabel: shared ? t("sharedLead") : t("winner"),
         winnerNames: winners.map((w) => w.name).join(", "),
         pointsText: t("pointsN", { score: top }),
-        rows: ranked.map((p) => ({ name: p.name, score: room.scores[p.id] ?? 0, color: p.color })),
+        winners: winners.map((w) => ({
+          name: w.name,
+          color: w.color,
+          avatarUrl: w.has_avatar && w.user_id ? `/api/avatar/${w.user_id}?v=${w.avatar_ver ?? 0}` : null,
+        })),
+        rows: ranked.map((p) => ({
+          name: p.name,
+          score: room.scores[p.id] ?? 0,
+          color: p.color,
+          avatarUrl: p.has_avatar && p.user_id ? `/api/avatar/${p.user_id}?v=${p.avatar_ver ?? 0}` : null,
+        })),
         footer: t("footer"),
       });
       if (blob) await shareOrDownload(blob, "penneer-uitslag.png");

@@ -11,6 +11,7 @@ import { NeonText } from "../components/NeonText";
 import { Paneel } from "../components/ProfileHero";
 import { Button } from "../components/Button";
 import { Screen, Card } from "../components/Layout";
+import { SierKop } from "../components/ProfileHero";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { colors, font, withAlpha } from "../theme/tokens";
@@ -136,7 +137,7 @@ export function Training({ onBack, lenient = false }: { onBack: () => void; leni
           </Card>
 
           <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase", color: colors.faint }}>{t("trainPickCats")}</span>
+            <SierKop label={t("trainPickCats")} />
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {TRAIN_CATS.map((c) => {
                 const on = selected.has(c);

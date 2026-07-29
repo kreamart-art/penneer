@@ -210,47 +210,28 @@ function ReelSwatch({ id }: { id: string }) {
  *
  *  De teller komt uit de scrollpositie zelf en niet uit een klik, want anders
  *  zou de wegwijzer achterlopen zodra je met je duim schuift. */
-function Baan({ index, onIndex, children }: { index: number; onIndex: (i: number) => void; children: React.ReactNode }) {
-  const baan = useRef<HTMLDivElement | null>(null);
-  const stuurt = useRef(false);
-  const rust = useRef<number | undefined>(undefined);
-  useEffect(() => {
-    const el = baan.current;
-    if (!el) return;
-    const stap = (el.firstElementChild as HTMLElement | null)?.offsetWidth || el.clientWidth;
-    const doel = index * stap;
-    if (Math.abs(el.scrollLeft - doel) <= 4) return;
-    stuurt.current = true;
-    el.scrollTo({ left: doel, behavior: "smooth" });
-    window.clearTimeout(rust.current);
-    rust.current = window.setTimeout(() => { stuurt.current = false; }, 500);
-  }, [index]);
+function Baan({ index, children }: { index: number; onIndex?: (i: number) => void; children: React.ReactNode }) {
+  // Alleen de PIJLTJES bladeren, je vinger niet meer.
+  //
+  // Waarom: elk vak is een raster van negen producten dat verder kan lopen dan
+  // het scherm, dus je scrolt er verticaal doorheen. Een baan die ook zijwaarts
+  // meegeeft betekent dat elke schuine veeg iets doet wat je niet bedoelde: je
+  // wilde omlaag en je staat ineens bij de draaiknoppen. Verticaal scrollen
+  // blijft dus van de pagina, horizontaal gaat via de wegwijzer.
+  //
+  // Vandaar `transform` en geen `scrollLeft`: zonder scrollcontainer is er ook
+  // niets om per ongeluk te verschuiven.
   return (
-    <div
-      ref={baan}
-      className="zachtscroll"
-      onScroll={(e) => {
-        if (stuurt.current) return;
-        const el = e.currentTarget;
-        // Pas kijken als het schuiven stil ligt: onderweg staat de baan tussen
-        // twee vakken in en dan zou de wegwijzer heen en weer springen.
-        window.clearTimeout(rust.current);
-        rust.current = window.setTimeout(() => {
-          const stap = (el.firstElementChild as HTMLElement | null)?.offsetWidth || el.clientWidth;
-          const i = Math.round(el.scrollLeft / Math.max(1, stap));
-          if (i !== index) onIndex(i);
-        }, 110);
-      }}
-      style={{
-        display: "flex",
-        overflowX: "auto",
-        scrollSnapType: "x mandatory",
-        // Iedere vinger schuift horizontaal; verticaal moet de PAGINA nog
-        // gewoon scrollen, dus die richting blijft van de browser.
-        touchAction: "pan-y pinch-zoom",
-      }}
-    >
-      {children}
+    <div style={{ overflow: "hidden" }}>
+      <div
+        style={{
+          display: "flex",
+          transform: `translateX(-${index * 100}%)`,
+          transition: "transform .34s cubic-bezier(.2,.8,.3,1)",
+        }}
+      >
+        {children}
+      </div>
     </div>
   );
 }
@@ -486,7 +467,11 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
             winkel te blijven staan. */}
         {toonAi && (
           <Paneel>
-            <div style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", gap: 7, padding: "6px 10px 2px" }}>
+            {/* Iets boven het midden. De sierlijst heeft onderaan een dikkere
+                rail dan bovenaan, dus wat GEOMETRISCH gecentreerd staat leest
+                als te laag. Een negatieve marge op het blok zelf, niet op de
+                doos: die verschuiven maakt de art scheef. */}
+            <div style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", gap: 7, padding: "6px 10px 2px", marginTop: "-5%" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 {/* Een zachte witte halo ERACHTER, geen drop-shadow: die laat iOS
                     de laag apart rasteren en dan zie je zijn rechthoek. */}
