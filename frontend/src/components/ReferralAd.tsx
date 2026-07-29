@@ -1,5 +1,4 @@
-// De werf-advertentie: haal je vrienden binnen, verdien munten en uiteindelijk
-// de AI-scheidsrechter.
+// De werf-advertentie: haal je vrienden binnen en verdien munten.
 //
 // Hij heeft twee gedaanten. De grote popup is de vraag zelf. Tik je hem weg,
 // dan blijft er een pil aan de zijkant hangen die voor het grootste deel buiten
@@ -11,10 +10,15 @@
 // sessie opnieuw, zonder dat hij iets blokkeert. Dat is het verschil tussen een
 // aanbod dat je een keer ziet en een aanbod dat je onthoudt.
 //
-// De ladder loopt OP en niet af (100, 150, 250, 100, dan de AI). De tweede
-// vriend kost meer moeite dan de eerste, want de makkelijkste vraag je het
-// eerst; een aflopende beloning voelt dan als straf. De grote prijs staat op
-// vijf, zodat er iets is om naartoe te werken.
+// De ladder loopt OP en niet af (100, 150, 250, 100, dan 500). De tweede vriend
+// kost meer moeite dan de eerste, want de makkelijkste vraag je het eerst; een
+// aflopende beloning voelt dan als straf. De grote prijs staat op vijf, zodat
+// er iets is om naartoe te werken.
+//
+// Vroeger gaf die vijfde de scheidsrechter zelf. Dat was een tweede weg naar
+// iets wat in de winkel een prijs heeft, en dus een sluiproute: nu zijn het
+// munten, en met de hele ladder erbij heb je er ruim genoeg voor. Wie hem al
+// zo gekregen heeft houdt hem gewoon.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "./Button";
 import { NeonText } from "./NeonText";
@@ -32,7 +36,7 @@ function authHeaders(): Record<string, string> {
 }
 
 /** De eerstvolgende beloning die nog niet binnen is. Dat is waar de tekst over
- *  gaat: niet "je hebt er drie", maar "nog twee tot de AI-scheidsrechter". */
+ *  gaat: niet "je hebt er drie", maar "nog twee tot vijfhonderd munten". */
 function volgende(info: Info | null): Tier | null {
   if (!info) return null;
   return info.tiers.find((t) => !t.reached) ?? null;
@@ -493,7 +497,7 @@ function Popup({
           <div style={{ marginTop: 10, width: "62%", alignSelf: "center" }}>
             {klaar.length > 0 ? (
               <Button variant="gold" full onClick={() => onHaalOp(klaar[0])} disabled={bezig} style={{ padding: "6px 9px", fontSize: 12.5 }}>
-                {klaar[0].kind === "ai" ? "AI erbij" : `+${klaar[0].amount} munten`}
+                {klaar[0].kind === "ai" ? "Scheidsrechter erbij" : `+${klaar[0].amount} munten`}
               </Button>
             ) : (
               <Button variant="gold" full onClick={onDeel} style={{ padding: "6px 9px", fontSize: 12.5 }}>
@@ -548,7 +552,7 @@ function Trede({ t, volgend }: { t: Tier; volgend: boolean }) {
         {t.n}
       </div>
       <div style={{ fontFamily: font.ui, fontSize: 9, color: aan ? colors.gold : colors.faint, marginTop: 3, lineHeight: 1.1 }}>
-        {t.kind === "ai" ? "AI" : `+${t.amount}`}
+        {t.kind === "ai" ? "Scheids" : `+${t.amount}`}
       </div>
     </div>
   );

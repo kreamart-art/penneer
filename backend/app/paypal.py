@@ -51,7 +51,7 @@ def _secret() -> str:
 # PayPal products: the AI referee, plus the coin bundles. Cosmetics (buzzers,
 # avatar packs) are bought with COINS now, not PayPal, so they are not here.
 PRODUCTS = {
-    "ai": {"env": "PENNEER_PRICE", "default": "3.99", "desc": "Pen Neer AI-scheidsrechter"},
+    "ai": {"env": "PENNEER_PRICE", "default": "3.99", "desc": "Pen Neer scheidsrechter"},
     "coins100": {"env": "PENNEER_COINS100_PRICE", "default": "0.99", "desc": "Pen Neer 100 coins"},
     "coins300": {"env": "PENNEER_COINS300_PRICE", "default": "2.49", "desc": "Pen Neer 300 coins"},
     "coins500": {"env": "PENNEER_COINS500_PRICE", "default": "3.99", "desc": "Pen Neer 500 coins"},

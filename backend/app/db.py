@@ -1860,6 +1860,7 @@ class Database:
     # ---- eigen categorieen (door de admin gemaakt, in de winkel verkocht) ----
 
     CATEGORY_ITEM = "cat:"          # voorvoegsel in owned_items
+    REFEREE_ITEM = "referee"        # de scheidsrechter, als winkelartikel
     CATEGORY_MAX_WORDS = 4000
 
     @staticmethod
@@ -2514,6 +2515,13 @@ class Database:
         "rs06": 100, "rs07": 100, "rs08": 100, "rs09": 100,
         "empack4": 200, "empack5": 200,
         "avpack1": 400, "avpack2": 400,
+        # De scheidsrechter is het duurste wat er te koop is, en met opzet: hij
+        # verandert het SPEL en niet hoe het eruitziet. Zeshonderd is ruim een
+        # halve ladder aan levels, dus je speelt ernaartoe; wie niet wil wachten
+        # koopt een muntenbundel. Voorheen kon je hem alleen met echt geld of
+        # met een code krijgen, en dat maakte hem onbereikbaar voor wie gewoon
+        # speelt.
+        REFEREE_ITEM: 600,
     }
     # PayPal coin BUNDLES: product id -> coins granted (price via env, see paypal.py).
     COIN_BUNDLES = {"coins100": 100, "coins300": 300, "coins500": 500, "coins1000": 1000}
@@ -2563,10 +2571,12 @@ class Database:
         if price is None:
             return "invalid"
         with self._lock:  # self._lock is non-reentrant: check ownership inline, never via owned_items_of
-            rows = self._q("SELECT coins, buzzer_skins, premium_avatars FROM users WHERE id=?", (user_id,))
+            rows = self._q("SELECT coins, buzzer_skins, premium_avatars, ai_unlocked FROM users WHERE id=?", (user_id,))
             if not rows:
                 return "invalid"
             owned = {r["item"] for r in self._q("SELECT item FROM owned_items WHERE user_id=?", (user_id,))}
+            if rows[0]["ai_unlocked"]:
+                owned.add(self.REFEREE_ITEM)
             if rows[0]["buzzer_skins"]:
                 owned |= set(BUZZER_SKIN_IDS)
             if rows[0]["premium_avatars"]:
@@ -2580,6 +2590,11 @@ class Database:
                 "INSERT OR IGNORE INTO owned_items (user_id, item, bought_at) VALUES (?,?,?)",
                 (user_id, item, time.time()),
             )
+            # De scheidsrechter is geen spulletje in een kiezer maar een schakelaar
+            # op je account, dus die zet ook zijn eigen vlag om. De rij in
+            # owned_items blijft staan als aankoopbewijs.
+            if item == self.REFEREE_ITEM:
+                self._exec("UPDATE users SET ai_unlocked=1 WHERE id=?", (user_id,))
         return "ok"
 
     def credit_level_coins(self, user_id: str, level: int) -> int:
@@ -2608,7 +2623,12 @@ class Database:
         {"n": 2, "kind": "coins", "amount": 150},
         {"n": 3, "kind": "coins", "amount": 250},
         {"n": 4, "kind": "coins", "amount": 100},
-        {"n": 5, "kind": "ai", "amount": 0},
+        # Vroeger gaf de vijfde vriend de scheidsrechter zelf. Wie hem zo al
+        # gekregen heeft houdt hem; voor iedereen daarna zijn het munten, want
+        # anders is er een tweede weg naar iets wat in de winkel een prijs heeft.
+        # Vijfhonderd plus de vier daarvoor is meer dan hij kost, dus werven
+        # brengt je er nog steeds.
+        {"n": 5, "kind": "coins", "amount": 500},
     ]
     #: Vanaf de zesde vriend blijft er iets tegenover staan, anders stopt het
     #: werven zodra de ladder op is.
