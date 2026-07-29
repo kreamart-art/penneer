@@ -1299,7 +1299,7 @@ class Database:
 
     # ---- dagelijkse missies ----------------------------------------------------
 
-    def mission_bump(self, user_id: str, day: str, key: str, inc: int, target: int, reward: int, coins: int = 0) -> bool:
+    def mission_bump(self, user_id: str, day: str, key: str, inc: int, target: int, reward: int, coins: int = 0, cash: int = 0) -> bool:
         """Add progress to a mission; True exactly when THIS bump completes it
         (the XP reward + coins land here, auto-claim)."""
         if inc <= 0:
@@ -1322,7 +1322,7 @@ class Database:
                 (prog, done, day, user_id, key),
             )
             if done:
-                self._exec("UPDATE users SET bonus_xp = bonus_xp + ?, coins = coins + ? WHERE id=?", (reward, coins, user_id))
+                self._exec("UPDATE users SET bonus_xp = bonus_xp + ?, coins = coins + ?, cash = cash + ? WHERE id=?", (reward, coins, max(0, int(cash)), user_id))
         return bool(done)
 
     def add_bonus_xp(self, user_id: str, xp: int) -> None:

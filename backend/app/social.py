@@ -1203,6 +1203,14 @@ class AccountManager:
         before = {p["user_id"]: _level_of(self.db.stats_of(p["user_id"])) for p in players}
         playing_count = len(playing_ids)
         day = daily.today()
+        # Plek-coins: de pot van een potje, van groot naar klein. Gedeelde
+        # scores delen de plek (allebei tweede = allebei het tweede bedrag),
+        # want wie gelijk eindigt hoort niet door alfabet of toeval minder te
+        # krijgen. Botpotjes komen hier nooit (die keren hierboven al om).
+        PLEK_COINS = (100, 75, 50)   # 1e, 2e, 3e; daarna 25 voor wie meedeed
+        REST_COINS = 25
+        volgorde = sorted({p["score"] for p in players}, reverse=True)
+        plek_van = {sc: i for i, sc in enumerate(volgorde)}
         gid = self.db.record_game(room.code, room.round_no, room.settings.lenient_spelling, players)
         for p in players:
             uid = p["user_id"]
@@ -1249,11 +1257,20 @@ class AccountManager:
             # mee haalde, dus het verschil tussen wat je bij beide niveaus
             # tegoed hebt.
             munten = max(0, self.db.coins_owed(after["level"]) - self.db.coins_owed(before[uid]["level"]))
+            # De plek-coins komen er los bovenop: dit is prijzengeld van HET
+            # potje, niet van het level. Iedereen die uitspeelt krijgt iets,
+            # zodat meedoen nooit nul oplevert, maar winnen echt meer is.
+            plek = plek_van.get(p["score"], len(volgorde) - 1)
+            plek_coins = PLEK_COINS[plek] if plek < len(PLEK_COINS) else REST_COINS
+            self.db.grant_coins(uid, plek_coins)
+            munten += plek_coins
             if gid:
                 self.db.set_game_rewards(gid, uid, xp_gained, munten)
             await self._push(uid, {
                 "type": "match_summary",
                 "won": bool(p["is_winner"]),
+                "coins_gained": plek_coins,
+                "plek": plek + 1,
                 "xp_gained": xp_gained,
                 "level_before": before[uid],
                 "level_after": after,

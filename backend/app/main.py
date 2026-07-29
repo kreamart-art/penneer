@@ -474,6 +474,13 @@ async def daily_submit(request: Request) -> JSONResponse:
         if elapsed <= daily.DURATION_S + daily.GRACE_S:
             time_ms = int(min(max(elapsed, 1.0), daily.DURATION_S) * 1000)
             ranked = db.daily_submit(uid, day, score, time_ms, json.dumps(answers)[:4000], now, lenient=lenient)
+            # Dagronde-coins: meedoen levert altijd iets op, en je score doet
+            # ertoe. 20 basis + 1 per punt, dus 20..~80. Achter de ranked-poort:
+            # alleen een echte (eerste of vers herkanste) inzending betaalt. Na
+            # een herkansing betaalt hij nog een keer, en dat is prima: die
+            # kostte 500, dus winst maken kan er nooit op.
+            if ranked:
+                db.grant_coins(uid, 20 + max(0, int(score)))
         # Missions: playing counts (even a late submit), but only today's
         # active missions ever get progress.
         cats = daily.categories_for(day)
@@ -661,6 +668,10 @@ async def topo_submit(request: Request) -> JSONResponse:
     if uid:
         time_ms = int(min(max(spent, 1.0), topo.DURATION_S) * 1000)
         ranked = db.topo_submit(uid, day, score, time_ms, json.dumps(answers)[:4000], now, lenient=lenient)
+        if ranked:
+            # Zelfde beloningsvorm als het woordendeel: 20 basis + 1 per punt,
+            # eenmalig per dag, want `ranked` is de eerste echte inzending.
+            db.grant_coins(uid, 20 + max(0, int(score)))
     return JSONResponse({**_topo_result_payload(db, uid, day, score, breakdown, ranked, time_ms, lang), "already": False})
 
 

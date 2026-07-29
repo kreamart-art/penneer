@@ -11,7 +11,7 @@ from __future__ import annotations
 import random
 
 # key -> (target, reward XP, reward COINS). Small missions pay 100 coins, medium
-# 15, the hard ones 20. Copy for names lives in the frontend i18n (mission_<key>).
+# 150, the hard ones 200. Copy for names lives in the frontend i18n (mission_<key>).
 # Keys are stored in mission_progress, so never rename one; only add.
 POOL: dict[str, tuple[int, int, int]] = {
     # --- potjes ---------------------------------------------------------
@@ -59,7 +59,27 @@ FAMILY: dict[str, str] = {
     "dubbel3": "dubbel", "dubbel5": "dubbel",
     "multi3": "multi", "multi4": "multi",
 }
-HARD_COINS = 20  # a day gets at most one mission at this reward tier
+# MOET meeschalen met de POOL-bedragen: toen de economie maal tien ging en dit
+# op 20 bleef staan, gold elke missie als zwaar en kwamen twee van de drie
+# sloten leeg te staan. Een dag had toen maar één missie.
+HARD_COINS = 200  # a day gets at most one mission at this reward tier
+
+# Twee vaste dagen per week draagt de zware missie van de dag 10 cash bovenop
+# zijn coins: woensdag (midweek-haakje) en zondag (de drukste speeldag). Dat is
+# 20 cash per week wie alles meepakt, dus de scheidsrechter (250) is via
+# missies alleen ruwweg een kwartaal spelen. Sneller dan de levels (level 45),
+# maar het blijft werken; en het is deterministisch uit de datum, dus elke
+# server en elke cliënt zien dezelfde dag.
+CASH_DAGEN = (2, 6)  # maandag = 0
+CASH_PRIJS = 10
+
+
+def cash_dag(day: str) -> bool:
+    import datetime
+    try:
+        return datetime.date.fromisoformat(day).weekday() in CASH_DAGEN
+    except ValueError:
+        return False
 
 
 def missions_for(day: str) -> list[dict]:
@@ -102,7 +122,15 @@ def missions_for(day: str) -> list[dict]:
     for candidates in (games, games, third):
         if not fill(candidates):
             fill(games + third)  # never hand out fewer than three
-    return [{"key": k, "target": POOL[k][0], "reward": POOL[k][1], "coins": POOL[k][2]} for k in picked]
+    # Op een cash-dag draagt de missie in het zware slot de cash. Niet "de
+    # zwaarste van de dag": het slot is deterministisch en bestaat altijd, ook
+    # als de terugval er een gewone missie in legde.
+    extra = CASH_PRIJS if cash_dag(day) else 0
+    return [
+        {"key": k, "target": POOL[k][0], "reward": POOL[k][1], "coins": POOL[k][2],
+         "cash": extra if i == hard_slot else 0}
+        for i, k in enumerate(picked)
+    ]
 
 
 def active_keys(day: str) -> set[str]:
@@ -115,12 +143,12 @@ def spec(key: str) -> tuple[int, int, int]:
 
 def bump_all(db, user_id: str, day: str, pairs) -> list[dict]:
     """Apply progress for today's active missions only; return the completed ones."""
-    active = active_keys(day)
+    vandaag = {m["key"]: m for m in missions_for(day)}
     done: list[dict] = []
     for key, inc in pairs:
-        if key not in active or inc <= 0:
+        m = vandaag.get(key)
+        if not m or inc <= 0:
             continue
-        target, reward, coins = spec(key)
-        if db.mission_bump(user_id, day, key, inc, target, reward, coins):
-            done.append({"key": key, "reward": reward, "coins": coins})
+        if db.mission_bump(user_id, day, key, inc, m["target"], m["reward"], m["coins"], cash=m["cash"]):
+            done.append({"key": key, "reward": m["reward"], "coins": m["coins"], "cash": m["cash"]})
     return done

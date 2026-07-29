@@ -651,7 +651,7 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
                     {cashBundels.map((b, i) => (
                       <GlasVak key={b.product} index={i} veeg={i === beurt}>
                         <img
-                          src={i >= 6 ? "/ui/valuta/cashbag.webp?v=1" : "/ui/valuta/cash-stack.webp?v=1"}
+                          src={i >= 6 ? "/ui/valuta/cashbag.webp?v=1" : "/ui/valuta/cash-stack.webp?v=2"}
                           alt=""
                           style={{ width: 54, height: 54, objectFit: "contain", display: "block" }}
                         />

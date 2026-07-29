@@ -192,7 +192,7 @@ export function Landing({
 
   // Today's missions (progress for accounts; guests see them with a nudge).
   // Lives behind the Target icon in the top bar; the badge counts what's open.
-  const [missions, setMissions] = useState<{ key: string; target: number; reward: number; coins: number; progress: number; done: boolean }[] | null>(null);
+  const [missions, setMissions] = useState<{ key: string; target: number; reward: number; coins: number; cash?: number; progress: number; done: boolean }[] | null>(null);
   const [missionsLeft, setMissionsLeft] = useState(0);
   const [showMissions, setShowMissions] = useState(false);
   const fetchMissions = () => {
@@ -691,7 +691,7 @@ function MissionsSheet({
   isAccount,
   onClose,
 }: {
-  missions: { key: string; target: number; reward: number; coins: number; progress: number; done: boolean }[];
+  missions: { key: string; target: number; reward: number; coins: number; cash?: number; progress: number; done: boolean }[];
   secondsLeft: number;
   isAccount: boolean;
   onClose: () => void;
@@ -759,8 +759,16 @@ function MissionsSheet({
                   <span style={{ fontFamily: font.ui, fontSize: 13.5, fontWeight: 600, color: m.done ? colors.sub : colors.ink, textDecoration: m.done ? "line-through" : "none" }}>
                     {t(`mission_${m.key}`)}
                   </span>
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontFamily: font.ui, fontSize: 11.5, fontWeight: 700, color: colors.gold, flexShrink: 0 }}>
-                    +{m.coins}<img src="/coin.webp" alt="" width={13} height={13} style={{ display: "block" }} />
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontFamily: font.ui, fontSize: 11.5, fontWeight: 700, color: colors.gold }}>
+                      +{m.coins}<img src="/coin.webp" alt="" width={13} height={13} style={{ display: "block" }} />
+                    </span>
+                    {/* Op woensdag en zondag draagt de zware missie 10 cash. */}
+                    {!!m.cash && (
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontFamily: font.ui, fontSize: 11.5, fontWeight: 700, color: GROEN[3] }}>
+                        +{m.cash}<img src="/ui/valuta/cash.webp?v=1" alt="" width={13} height={13} style={{ display: "block" }} />
+                      </span>
+                    )}
                   </span>
                 </div>
                 {m.target > 1 && !m.done && (

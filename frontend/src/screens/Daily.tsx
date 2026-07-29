@@ -315,7 +315,7 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
             </div>
           </Paneel>
           <PartTile
-            icon={<img src="/ui/letter.webp" alt="" aria-hidden style={{ width: 30, height: 30, objectFit: "contain", display: "block" }} />}
+            icon={<img src="/ui/letter.webp" alt="" aria-hidden style={{ width: 46, height: 46, objectFit: "contain", display: "block" }} />}
             title={t("partWords")}
             desc={t("partWordsDesc")}
             meta={info ? t("dailyPlayers", { n: info.players }) : ""}
@@ -324,7 +324,7 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
             onClick={() => { sound.uiTap(); setPart("words"); }}
           />
           <PartTile
-            icon={<img src="/ui/wereld.webp" alt="" aria-hidden style={{ width: 30, height: 30, objectFit: "contain", display: "block" }} />}
+            icon={<img src="/ui/wereld.webp" alt="" aria-hidden style={{ width: 46, height: 46, objectFit: "contain", display: "block" }} />}
             title={t("partTopo")}
             desc={t("partTopoDesc")}
             meta={info ? t("topoPlayers", { n: info.topo_players ?? 0 }) : ""}
@@ -578,10 +578,11 @@ function PartTile({
       style={{
         display: "flex", alignItems: "center", gap: 13, width: "100%", textAlign: "left",
         padding: "15px 14px", borderRadius: radius.card, cursor: "pointer",
-        // Doorzichtig van binnen, net als de secties elders: de achtergrond van
-        // de pagina hoort er doorheen te lopen. Een eigen gevuld vlak maakt er
-        // een kaart op een kaart van.
-        background: "transparent",
+        // Het licht valt rechtsboven binnen en dooft naar beneden uit, in de
+        // kleur van de tegel zelf: dezelfde behandeling als de sectiekaart op
+        // de ranglijst, alleen gespiegeld. Onderaan is hij weer doorzichtig,
+        // zodat de pagina-achtergrond er doorheen blijft lopen.
+        background: `radial-gradient(130% 150% at 100% 0%, ${withAlpha(done ? colors.green : colors.violet, 0.16)} 0%, ${withAlpha(done ? colors.green : colors.violet, 0.06)} 42%, transparent 76%)`,
         border: "none",
         // Dezelfde lijst als overal, maar in het GROEN zodra je dit deel gedaan
         // hebt: het is dan geen uitnodiging meer maar een afvinkje, en dat mag je
@@ -591,7 +592,10 @@ function PartTile({
       }}
       className="pressable panel-neon"
     >
-      <span style={{ display: "grid", placeItems: "center", width: 46, height: 46, flexShrink: 0, borderRadius: 14, color: colors.gold, background: withAlpha(done ? colors.green : colors.violet, 0.1), border: `1px solid ${withAlpha(done ? colors.green : colors.violet, 0.32)}` }}>
+      {/* Geen kader meer om het icoon: de art is zelf al een medaillon en een
+          rand eromheen maakte hem klein en opgesloten. Het icoon neemt de maat
+          van het oude kader over. */}
+      <span style={{ display: "grid", placeItems: "center", width: 46, height: 46, flexShrink: 0, color: colors.gold }}>
         {icon}
       </span>
       <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
