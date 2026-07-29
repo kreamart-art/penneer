@@ -56,21 +56,31 @@ PRODUCTS = {
     "coins300": {"env": "PENNEER_COINS300_PRICE", "default": "2.49", "desc": "Pen Neer 300 coins"},
     "coins500": {"env": "PENNEER_COINS500_PRICE", "default": "3.99", "desc": "Pen Neer 500 coins"},
     "coins1000": {"env": "PENNEER_COINS1000_PRICE", "default": "6.99", "desc": "Pen Neer 1000 coins"},
+    "coins1800": {"env": "PENNEER_COINS1800_PRICE", "default": "11.99", "desc": "Pen Neer 1800 coins"},
+    "coins3000": {"env": "PENNEER_COINS3000_PRICE", "default": "17.99", "desc": "Pen Neer 3000 coins"},
+    "coins5000": {"env": "PENNEER_COINS5000_PRICE", "default": "27.99", "desc": "Pen Neer 5000 coins"},
+    "coins8000": {"env": "PENNEER_COINS8000_PRICE", "default": "39.99", "desc": "Pen Neer 8000 coins"},
+    "coins12000": {"env": "PENNEER_COINS12000_PRICE", "default": "54.99", "desc": "Pen Neer 12000 coins"},
     "cash100": {"env": "PENNEER_CASH100_PRICE", "default": "1.99", "desc": "Pen Neer 100 cash"},
     "cash250": {"env": "PENNEER_CASH250_PRICE", "default": "3.99", "desc": "Pen Neer 250 cash"},
     "cash600": {"env": "PENNEER_CASH600_PRICE", "default": "7.99", "desc": "Pen Neer 600 cash"},
-    "cash1500": {"env": "PENNEER_CASH1500_PRICE", "default": "14.99", "desc": "Pen Neer 1500 cash"},
-    "starter": {"env": "PENNEER_STARTER_PRICE", "default": "9.99", "desc": "Pen Neer startpakket"},
+    "cash1200": {"env": "PENNEER_CASH1200_PRICE", "default": "13.99", "desc": "Pen Neer 1200 cash"},
+    "cash2000": {"env": "PENNEER_CASH2000_PRICE", "default": "21.99", "desc": "Pen Neer 2000 cash"},
+    "cash3500": {"env": "PENNEER_CASH3500_PRICE", "default": "34.99", "desc": "Pen Neer 3500 cash"},
+    "cash5500": {"env": "PENNEER_CASH5500_PRICE", "default": "49.99", "desc": "Pen Neer 5500 cash"},
+    "cash8000": {"env": "PENNEER_CASH8000_PRICE", "default": "69.99", "desc": "Pen Neer 8000 cash"},
+    "cash12000": {"env": "PENNEER_CASH12000_PRICE", "default": "94.99", "desc": "Pen Neer 12000 cash"},
 }
-# De negen producten in de winkel, in volgorde. Per product: hoeveel coins en
-# hoeveel cash het uitkeert. 250 cash staat er met opzet tussen, want dat is
-# exact de scheidsrechter.
-COIN_BUNDLES = [("coins100", 100), ("coins300", 300), ("coins500", 500), ("coins1000", 1000)]
-BUNDLES = [
-    ("coins100", 100, 0), ("coins300", 300, 0), ("coins500", 500, 0), ("coins1000", 1000, 0),
-    ("cash100", 0, 100), ("cash250", 0, 250), ("cash600", 0, 600), ("cash1500", 0, 1500),
-    ("starter", 500, 250),
-]
+# Twee ladders van negen. Coins zijn de dagelijkse munt, cash de zeldzame, dus
+# cash kost per stuk meer. De eerste zes tonen de STAPEL en de laatste drie de
+# ZAK: de zak is de grote koop, en dat verschil moet je aan de tegel zien
+# zonder de cijfers te lezen.
+COIN_BUNDLES = [("coins100", 100), ("coins300", 300), ("coins500", 500), ("coins1000", 1000), ("coins1800", 1800), ("coins3000", 3000), ("coins5000", 5000), ("coins8000", 8000), ("coins12000", 12000)]
+CASH_BUNDLES = [("cash100", 100), ("cash250", 250), ("cash600", 600), ("cash1200", 1200), ("cash2000", 2000), ("cash3500", 3500), ("cash5500", 5500), ("cash8000", 8000), ("cash12000", 12000)]
+BUNDLES = (
+    [("coins%d" % n, n, 0) for n in [100, 300, 500, 1000, 1800, 3000, 5000, 8000, 12000]]
+    + [("cash%d" % n, 0, n) for n in [100, 250, 600, 1200, 2000, 3500, 5500, 8000, 12000]]
+)
 
 
 def price(product: str = "ai") -> str:
@@ -99,7 +109,9 @@ def status() -> dict:
         "env": _env(),
         # coin bundles: [{product, coins, price}] in display order
         "bundles": [{"product": pid, "coins": n, "price": price(pid)} for pid, n in COIN_BUNDLES],
-        # de volledige negen, met beide munten per product
+        # negen coins en negen cash, elk met hun eigen prijs
+        "coin_bundles": [{"product": pid, "coins": n, "price": price(pid)} for pid, n in COIN_BUNDLES],
+        "cash_bundles": [{"product": pid, "cash": n, "price": price(pid)} for pid, n in CASH_BUNDLES],
         "producten": [
             {"product": pid, "coins": c, "cash": k, "price": price(pid)} for pid, c, k in BUNDLES
         ],

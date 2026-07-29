@@ -2619,7 +2619,7 @@ class Database:
         "avpack1": 400, "avpack2": 400,
     }
     # PayPal coin BUNDLES: product id -> coins granted (price via env, see paypal.py).
-    COIN_BUNDLES = {"coins100": 100, "coins300": 300, "coins500": 500, "coins1000": 1000}
+    COIN_BUNDLES = {"coins%d" % n: n for n in (100, 300, 500, 1000, 1800, 3000, 5000, 8000, 12000)}
 
     @classmethod
     def coins_owed(cls, level: int) -> int:
@@ -2744,7 +2744,7 @@ class Database:
     }
     # PayPal cash-BUNDELS: product id -> cash. 250 is er met opzet bij: dat is
     # exact de scheidsrechter, zodat niemand hoeft te puzzelen.
-    CASH_BUNDLES = {"cash100": 100, "cash250": 250, "cash600": 600, "cash1500": 1500}
+    CASH_BUNDLES = {"cash%d" % n: n for n in (100, 250, 600, 1200, 2000, 3500, 5500, 8000, 12000)}
 
     # Welke landenknop bij welk land hoort. Staat je land er niet bij, dan is er
     # (nog) geen knop voor je land en blijft alles gewoon met cash te koop.
@@ -3104,9 +3104,24 @@ class Database:
     # De combo geeft BEIDE munten, dus hij kan niet door fulfil_coins: die kent
     # maar een kolom. Vandaar een eigen tabel met wat elk product uitkeert.
     BUNDLE_GRANTS = {
-        "coins100": (100, 0), "coins300": (300, 0), "coins500": (500, 0), "coins1000": (1000, 0),
-        "cash100": (0, 100), "cash250": (0, 250), "cash600": (0, 600), "cash1500": (0, 1500),
-        "starter": (500, 250),
+        "coins100": (100, 0),
+        "coins300": (300, 0),
+        "coins500": (500, 0),
+        "coins1000": (1000, 0),
+        "coins1800": (1800, 0),
+        "coins3000": (3000, 0),
+        "coins5000": (5000, 0),
+        "coins8000": (8000, 0),
+        "coins12000": (12000, 0),
+        "cash100": (0, 100),
+        "cash250": (0, 250),
+        "cash600": (0, 600),
+        "cash1200": (0, 1200),
+        "cash2000": (0, 2000),
+        "cash3500": (0, 3500),
+        "cash5500": (0, 5500),
+        "cash8000": (0, 8000),
+        "cash12000": (0, 12000),
     }
 
     def fulfil_bundle(self, order_id: str, user_id: str, amount: str, currency: str, product: str) -> Optional[dict]:

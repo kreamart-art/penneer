@@ -18,7 +18,7 @@ import { useTileSkin } from "../theme/tileSkin";
 import { NeonKader, Paneel } from "../components/ProfileHero";
 import { GlasVeld } from "../components/GlasVeld";
 import { KnopPlaat } from "../components/KnopPlaat";
-import { CoinPlate } from "../components/CoinPlate";
+import { CashPlate, CoinPlate } from "../components/CoinPlate";
 
 const AVATAR_ART_VERSION = 9;
 // The five single Draai-knoppen for sale, with their country-name i18n keys.
@@ -59,6 +59,7 @@ interface Bundle { product: string; coins: number; price: string }
  * dat allebei geeft. Elk product weet zelf hoeveel van welke munt het uitkeert,
  * zodat de tegel de juiste zak kan tonen zonder de naam te hoeven raden. */
 interface Product { product: string; coins: number; cash: number; price: string }
+interface CashBundle { product: string; cash: number; price: string }
 interface ShopStatus {
   enabled: boolean;
   currency: string;
@@ -66,6 +67,8 @@ interface ShopStatus {
   price?: string; // legacy (= ai_price)
   bundles?: Bundle[];
   producten?: Product[];
+  coin_bundles?: Bundle[];
+  cash_bundles?: CashBundle[];
   coin_prices?: Record<string, number>;
   cash_prices?: Record<string, number>;
   land_buzzers?: Record<string, string>;
@@ -398,8 +401,11 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
   const eigenBuzzer = (status?.land_buzzers ?? {})[(account?.land || "NL").toUpperCase()] ?? null;
   // Oudere servers sturen alleen `bundles`; dan tonen we die, zodat de winkel
   // niet leeg is terwijl de backend nog aan het uitrollen is.
-  const producten: Product[] =
-    status?.producten ?? (status?.bundles ?? []).map((b) => ({ ...b, cash: 0 }));
+  // Twee ladders van negen. Oudere servers sturen alleen `bundles`; dan valt de
+  // coin-ladder daarop terug en blijft de cash-ladder leeg, zodat de winkel niet
+  // stukgaat terwijl de backend nog aan het uitrollen is.
+  const coinBundels: Bundle[] = status?.coin_bundles ?? status?.bundles ?? [];
+  const cashBundels: CashBundle[] = status?.cash_bundles ?? [];
   // Welk vak van de winkel je open hebt. De AI staat erbuiten, want die staat
   // altijd bovenaan.
   const [vak, setVak] = useState(0);
@@ -469,7 +475,7 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
     ...(catsForSale.length > 0 ? [t("shopTabCats")] : []),
   ];
   const tellingen = [
-    producten.length,
+    coinBundels.length + cashBundels.length,
     BUZZERS_FOR_SALE.length,
     REELS_FOR_SALE.length,
     EMOTE_PACKS_FOR_SALE.length,
@@ -487,17 +493,30 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
             <ArrowLeft size={20} />
           </button>
           <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>{t("shopTitle")}</span>
-          {account &&
-            (skin ? (
-              <span style={{ marginLeft: "auto" }}>
-                <CoinPlate coins={coins} height={32} />
-              </span>
-            ) : (
-              <span style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 12px 4px 8px", borderRadius: 999, background: withAlpha(colors.gold, 0.12), border: `1px solid ${withAlpha(colors.gold, 0.4)}` }}>
-                <img src="/coin.webp" alt="" width={20} height={20} style={{ display: "block" }} />
-                <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15, color: colors.gold }}>{coins}</span>
-              </span>
-            ))}
+          {/* Allebei je saldi in de kop, want je koopt hier met allebei. Ze
+              staan naast elkaar in hetzelfde vak, net als op de main page: één
+              vorm, twee munten. */}
+          {account && (
+            <span style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 5 }}>
+              {skin ? (
+                <>
+                  <CoinPlate coins={coins} height={30} />
+                  <CashPlate cash={cash} height={30} />
+                </>
+              ) : (
+                <>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "4px 10px 4px 7px", borderRadius: 999, background: withAlpha(colors.gold, 0.12), border: `1px solid ${withAlpha(colors.gold, 0.4)}` }}>
+                    <img src="/coin.webp" alt="" width={18} height={18} style={{ display: "block" }} />
+                    <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 14, color: colors.gold }}>{coins}</span>
+                  </span>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "4px 10px 4px 7px", borderRadius: 999, background: withAlpha(GROEN[1], 0.14), border: `1px solid ${withAlpha(GROEN[2], 0.45)}` }}>
+                    <img src="/ui/valuta/cash.webp?v=1" alt="" width={18} height={18} style={{ display: "block" }} />
+                    <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 14, color: GROEN[3] }}>{cash}</span>
+                  </span>
+                </>
+              )}
+            </span>
+          )}
           <div style={{ marginLeft: account ? 6 : "auto" }}><MusicToggle plate plateSize={34} size={15} padding={0} /></div>
         </div>
       }
@@ -590,36 +609,20 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
               <div style={{ fontFamily: font.ui, fontSize: 12, lineHeight: 1.3, color: colors.faint }}>{t("shopCoinsLead")}</div>
             </div>
             <Card style={{ padding: "9px 8px 10px" }}>
-              {/* Drie kolommen, want het zijn er negen: dan staat er een net
-                  vierkant van 3x3 in plaats van vier rijen met een wees. */}
-              <Raster kolommen={3} aantal={producten.length}>
-                {producten.map((b, i) => (
+              {/* Drie kolommen, want het zijn er negen: een net vierkant van
+                  3x3 in plaats van vier rijen met een wees. De eerste ZES
+                  dragen de stapel en de laatste DRIE de zak: de zak is de grote
+                  koop, en dat verschil moet je aan de tegel zien zonder de
+                  cijfers te lezen. */}
+              <Raster kolommen={3} aantal={coinBundels.length}>
+                {coinBundels.map((b, i) => (
                   <GlasVak key={b.product} index={i} veeg={i === beurt}>
-                    {b.product === "starter" && <span style={{ position: "absolute", top: 5, right: 8, fontFamily: font.ui, fontSize: 8, fontWeight: 800, letterSpacing: 0.4, textTransform: "uppercase", color: colors.gold }}>{t("shopBestValue")}</span>}
-                    {/* De zak hoort bij de munt die eruit komt. Het startpakket
-                        geeft allebei, dus daar staan ze naast elkaar, iets
-                        kleiner zodat de tegel niet uit zijn voegen groeit. */}
-                    {b.coins > 0 && b.cash > 0 ? (
-                      <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 54 }}>
-                        <img src="/ui/valuta/coinbag.webp?v=1" alt="" style={{ width: 36, height: 36, objectFit: "contain", display: "block" }} />
-                        <img src="/ui/valuta/cashbag.webp?v=1" alt="" style={{ width: 36, height: 36, objectFit: "contain", display: "block" }} />
-                      </div>
-                    ) : (
-                      <img
-                        src={b.cash > 0 ? "/ui/valuta/cashbag.webp?v=1" : "/ui/valuta/coinbag.webp?v=1"}
-                        alt=""
-                        style={{ width: 54, height: 54, objectFit: "contain", display: "block" }}
-                      />
-                    )}
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
-                      {b.coins > 0 && <Coins n={b.coins} size={14} />}
-                      {b.cash > 0 && (
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                          <img src="/ui/valuta/cash.webp?v=1" alt="" width={14} height={14} style={{ display: "block" }} />
-                          <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 14, color: GROEN[3] }}>{b.cash}</span>
-                        </span>
-                      )}
-                    </div>
+                    <img
+                      src={i >= 6 ? "/ui/valuta/coinbag.webp?v=1" : "/coins-stack.webp"}
+                      alt=""
+                      style={{ width: 54, height: 54, objectFit: "contain", display: "block" }}
+                    />
+                    <Coins n={b.coins} size={14} />
                     <KnopPlaat
                       breed={80}
                       uit={!account || buying !== null || !status?.enabled}
@@ -630,6 +633,38 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
                 ))}
               </Raster>
             </Card>
+
+            {/* Cash heeft zijn EIGEN ladder van negen, met dezelfde vorm en de
+                eigen art. Twee munten door elkaar in een raster laat je raden
+                wat je koopt; twee rasters onder elkaar niet. */}
+            {cashBundels.length > 0 && (
+              <>
+                <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 14, color: colors.ink, marginTop: 2 }}>{t("cashKopen")}</div>
+                <Card style={{ padding: "9px 8px 10px" }}>
+                  <Raster kolommen={3} aantal={cashBundels.length}>
+                    {cashBundels.map((b, i) => (
+                      <GlasVak key={b.product} index={i} veeg={i === beurt}>
+                        <img
+                          src={i >= 6 ? "/ui/valuta/cashbag.webp?v=1" : "/ui/valuta/cash-stack.webp?v=1"}
+                          alt=""
+                          style={{ width: 54, height: 54, objectFit: "contain", display: "block" }}
+                        />
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                          <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 14, color: GROEN[3] }}>{b.cash}</span>
+                          <img src="/ui/valuta/cash.webp?v=1" alt="" width={14} height={14} style={{ display: "block" }} />
+                        </span>
+                        <KnopPlaat
+                          breed={80}
+                          uit={!account || buying !== null || !status?.enabled}
+                          onClick={() => startPaypal(b.product)}
+                          label={buying === b.product ? "..." : money(b.price, status?.currency ?? "EUR")}
+                        />
+                      </GlasVak>
+                    ))}
+                  </Raster>
+                </Card>
+              </>
+            )}
             {/* De vakjes staan er ALTIJD, ook zolang betalen nog niet aanstaat.
                 Je moet kunnen zien wat er te koop komt. De melding staat er
                 ONDER: eerst zie je wat het is, dan lees je dat het nog even
