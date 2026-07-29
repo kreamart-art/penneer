@@ -21,6 +21,11 @@
 // bestandsnaam. Komt er nieuwe art, dan is dit de enige plek die het weet.
 import type { CSSProperties } from "react";
 
+/** Ophogen zodra de art in ui/stat/ overschreven wordt. De bestandsnamen
+ *  blijven gelijk, dus zonder dit blijft de oude versie in de cache van de
+ *  browser hangen en zie je op je eigen toestel niets veranderen. */
+export const STAT_ART = 2;
+
 /** Naam -> bestand + de gloedkleur die aan de art gemeten is. */
 const ART = {
   beker: { src: "/ui/stat/winsten.webp", gloed: "232,168,23" },
@@ -79,7 +84,7 @@ export function ArtIcoon({
         />
       )}
       <img
-        src={a.src}
+        src={`${a.src}?v=${STAT_ART}`}
         alt=""
         style={{ position: "relative", width: size, height: size, objectFit: "contain", display: "block" }}
       />

@@ -15,6 +15,8 @@ import {
   DIVISIE_ACCENT,
   DIVISIE_NAMEN,
   KADER_LIJN_GOUD,
+  SCHILD_HART_X,
+  SCHILD_HART_Y,
   NeonKader,
   SCHILD_KLEUREN,
   divisieKleur,
@@ -90,12 +92,12 @@ export function Schild({
         <span
           style={{
             position: "absolute",
-            inset: 0,
-            display: "grid",
-            placeItems: "center",
-            // Het schild loopt onderin in een punt, dus het cijfer staat hoger
-            // dan het midden van de doos; anders lijkt het te laag te hangen.
-            paddingBottom: maat * SCHILD_VERH * 0.16,
+            // Het zwaartepunt van de vorm, gemeten op de art. Zie SCHILD_HART_*
+            // in ProfileHero: het midden van de DOOS klopt niet, want een schild
+            // loopt onderin in een punt.
+            left: `${SCHILD_HART_X * 100}%`,
+            top: `${SCHILD_HART_Y * 100}%`,
+            transform: "translate(-50%, -50%)",
             fontFamily: font.display,
             fontWeight: 800,
             fontSize: maat * 0.5,

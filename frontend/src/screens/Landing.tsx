@@ -1087,7 +1087,7 @@ function LandingFX() {
         zIndex: -1,
         overflow: "hidden",
         pointerEvents: "none",
-        backgroundImage: "url(/bg-main.webp)",
+        backgroundImage: "url(/bg-main.webp?v=2)",
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundRepeat: "no-repeat",

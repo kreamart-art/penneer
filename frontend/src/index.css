@@ -230,7 +230,7 @@ body.winkel::after {
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
     linear-gradient(180deg, rgba(6, 4, 14, 0.52) 0%, rgba(6, 4, 14, 0.46) 45%, rgba(6, 4, 14, 0.7) 100%),
     radial-gradient(128% 31% at 50% 21%, rgba(3, 1, 10, 0) 0%, rgba(3, 1, 10, 0) 30%, rgba(3, 1, 10, 0.3) 46%, rgba(3, 1, 10, 0.68) 65%, rgba(3, 1, 10, 0.82) 100%),
-    url("/bg-main.webp"),
+    url("/bg-main.webp?v=2"),
     linear-gradient(180deg, #150e2e 0%, #100a24 50%, #06040e 100%);
   background-repeat: repeat, no-repeat, no-repeat, no-repeat, no-repeat;
   background-position: top left, top, top, center top, top;

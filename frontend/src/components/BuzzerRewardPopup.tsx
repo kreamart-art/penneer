@@ -8,16 +8,14 @@
 // rewards, then the coins.
 import { useEffect, useRef, useState } from "react";
 import { KnopPlaat } from "./KnopPlaat";
+import { KADER_LIJN_GOUD, NeonKader } from "./ProfileHero";
 import { CloseIcon } from "./CloseIcon";
-import {  } from "lucide-react";
 import { Button } from "./Button";
 import { EMOTE_PACKS, EMOTE_SRC } from "./emotes";
 import type { GameApi, PendingReward } from "../net/socket";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
-import { neonSkin } from "../theme/neon";
 import { colors, font, withAlpha } from "../theme/tokens";
-import { useTileSkin } from "../theme/tileSkin";
 
 /** The shared shell: veil, card and the staggered entrance. */
 function RewardCard({
@@ -31,7 +29,6 @@ function RewardCard({
   children: React.ReactNode;
   maxWidth?: number;
 }) {
-  const skin = useTileSkin();
   return (
     <div
       className="reward-veil"
@@ -47,41 +44,38 @@ function RewardCard({
         padding: 22,
       }}
     >
-      <div
-        className={skin ? "reward-card" : "reward-card neon-ring"}
-        style={{
-          position: "relative",
-          width: "100%",
-          maxWidth,
+      {/* Dezelfde lijst als om elke sectie: een gouden verlooplijn die rondloopt
+          met kappen op de uiteindes. Dit was nog een eigen gouden ring met een
+          eigen vulling. De entree zit op de LIJST en niet op de inhoud: schaalt
+          de inhoud binnen een lijst met `overflow: hidden`, dan zie je tijdens
+          die halve seconde de lijst zelf langs de randen doorschemeren. */}
+      <NeonKader
+        radius={24}
+        dik={0.9}
+        lijn={KADER_LIJN_GOUD}
+        gloed="verloop"
+        animeer
+        eindkap
+        vulling="geen"
+        className="reward-card"
+        style={{ width: "100%", maxWidth }}
+        binnen={{
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
           gap: 12,
           padding: "26px 22px 20px",
-          borderRadius: 24,
-          // De kaart van een beloning is gelaagd, niet vlak: een gouden ring met
-          // oplichtende hoeken eromheen, licht dat van bovenaf in het vlak valt,
-          // en een randverdonkering zodat het vlak bol leest. Dit is het moment
-          // waarop iets waardevol moet voelen, dus hier mag de gloed wel.
-          ...(skin
-            ? { isolation: "isolate" as const, padding: "32px 26px 26px" }
-            : {
-                backgroundImage: [
-                  "linear-gradient(180deg, rgba(255,243,181,.14) 0%, transparent 16%)",
-                  `radial-gradient(90% 55% at 50% 0%, ${withAlpha(colors.gold, 0.16)}, transparent 66%)`,
-                  "radial-gradient(130% 105% at 50% 46%, transparent 54%, rgba(6,3,18,.5) 100%)",
-                  "linear-gradient(180deg, #33235A 0%, #241748 46%, #140C2C 100%)",
-                ].join(", "),
-                ...neonSkin(colors.gold),
-                ["--ng-w" as string]: "1.5px",
-                boxShadow: `0 24px 80px rgba(0,0,0,.65), 0 0 60px ${withAlpha(colors.gold, 0.2)}, inset 0 1.5px 0 rgba(255,243,181,.35), inset 0 -14px 22px rgba(6,3,18,.45)`,
-              }),
           textAlign: "center",
+          // Licht dat van bovenaf in het vlak valt, en randverdonkering zodat
+          // het bol leest. Dit is het moment waarop iets waardevol moet voelen.
+          backgroundImage: [
+            "linear-gradient(180deg, rgba(255,243,181,.12) 0%, transparent 16%)",
+            `radial-gradient(90% 55% at 50% 0%, ${withAlpha(colors.gold, 0.14)}, transparent 66%)`,
+            "radial-gradient(130% 105% at 50% 46%, transparent 54%, rgba(6,3,18,.5) 100%)",
+            "linear-gradient(180deg, #33235A 0%, #241748 46%, #140C2C 100%)",
+          ].join(", "),
         }}
       >
-        {skin && (
-          <img aria-hidden alt="" src="/tiles/frame-popup.webp" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", zIndex: -1, pointerEvents: "none", filter: "drop-shadow(0 18px 40px rgba(0,0,0,.55))" }} />
-        )}
         {onClose && (
           <button
             onClick={onClose}
@@ -92,7 +86,7 @@ function RewardCard({
           </button>
         )}
         {children}
-      </div>
+      </NeonKader>
     </div>
   );
 }

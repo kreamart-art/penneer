@@ -4,6 +4,7 @@
 // transient event. Rendered on the main page, so it never covers gameplay.
 import { useEffect, useState } from "react";
 import { CloseIcon } from "./CloseIcon";
+import { KADER_LIJN_GOUD, NeonKader } from "./ProfileHero";
 import { Bell } from "lucide-react";
 import { useT } from "../i18n/i18n";
 import { ensurePushSubscription } from "../pwa/push";
@@ -70,19 +71,27 @@ export function NotifyNudge() {
         transition: "transform .38s cubic-bezier(.2,1,.3,1)",
       }}
     >
-      <div
-        style={{
-          pointerEvents: "auto",
-          width: "100%",
-          maxWidth: 440,
+      {/* Dezelfde lijst als de meldingsbalk: een gouden verlooplijn die
+          rondloopt, met kappen op de schuine uiteindes. Deze balk had nog zijn
+          eigen gouden ring met een eigen vulling, en dat was een tweede stijl
+          voor precies hetzelfde ding. */}
+      <NeonKader
+        radius={16}
+        dik={0.7}
+        lijn={KADER_LIJN_GOUD}
+        gloed="verloop"
+        animeer
+        eindkap
+        vulling="geen"
+        style={{ pointerEvents: "auto", width: "100%", maxWidth: 440 }}
+        binnen={{
           display: "flex",
           alignItems: "center",
           gap: 10,
           padding: "9px 10px 9px 12px",
-          borderRadius: 16,
-          background: "linear-gradient(180deg, #241738, #180F30)",
-          border: `1px solid ${withAlpha(colors.gold, 0.5)}`,
-          boxShadow: `0 14px 40px rgba(0,0,0,.55), 0 0 22px ${withAlpha(colors.gold, 0.18)}`,
+          background: "linear-gradient(180deg, rgba(36,23,56,.94), rgba(24,15,48,.94))",
+          backdropFilter: "blur(6px)",
+          WebkitBackdropFilter: "blur(6px)",
         }}
       >
         <span
@@ -116,7 +125,7 @@ export function NotifyNudge() {
         >
           <CloseIcon size={30} />
         </button>
-      </div>
+      </NeonKader>
     </div>
   );
 }

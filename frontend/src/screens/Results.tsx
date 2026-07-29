@@ -9,6 +9,7 @@ import { Screen, Card } from "../components/Layout";
 import { TopBar } from "../components/TopBar";
 import type { GameApi } from "../net/socket";
 import { ArtIcoon } from "../components/ArtIcoon";
+import { KADER_LIJN_GOUD, NeonKader, SierKop } from "../components/ProfileHero";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { neonSkin } from "../theme/neon";
@@ -110,20 +111,30 @@ export function Results({ game }: { game: GameApi }) {
   return (
     <Screen top={<TopBar code={room.code} roundNo={room.round_no} totalRounds={room.settings.rounds} connected={game.state.status === "open"} onLeave={game.leaveRoom} game={game} />}>
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        {/* De kop is de gouden sierkop van het profiel. Grijze kapitalen zijn
+            wat een formulier doet; dit is de uitslag van een ronde. */}
         <Card>
-          <div style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint, marginBottom: 12 }}>
-            {t("scoreboard")}
+          <SierKop label={t("scoreboard")} />
+          <div style={{ marginTop: 10 }}>
+            <Scoreboard players={room.players} scores={room.scores} meId={game.me?.id ?? null} />
           </div>
-          <Scoreboard players={room.players} scores={room.scores} meId={game.me?.id ?? null} />
         </Card>
 
         {(highlights.length > 0 || wordOfRound) && (
           <Card style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <div style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint }}>
-              {t("revealHighlights")}
-            </div>
+            <SierKop label={t("revealHighlights")} />
             {wordOfRound && (
-              <div className="reveal-rise" style={{ animationDelay: "0.15s", display: "flex", alignItems: "center", gap: 9, padding: "8px 10px", borderRadius: 10, background: withAlpha(colors.gold, 0.1), border: `1px solid ${withAlpha(colors.gold, 0.3)}` }}>
+              <NeonKader
+                className="reveal-rise"
+                hoek={10}
+                dik={0.5}
+                sterkte={0.7}
+                vulling="geen"
+                eindkap="kort"
+                lijn={KADER_LIJN_GOUD}
+                style={{ animationDelay: "0.15s" }}
+                binnen={{ display: "flex", alignItems: "center", gap: 9, padding: "8px 10px" }}
+              >
                 <ArtIcoon naam="sterren" size={17} />
                 <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
                   <span style={{ fontFamily: font.ui, fontSize: 10.5, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase", color: colors.faint }}>{t("wordOfRound")}</span>
@@ -131,7 +142,7 @@ export function Results({ game }: { game: GameApi }) {
                     {wordOfRound.word.toUpperCase()} <span style={{ fontFamily: font.ui, fontWeight: 500, fontSize: 12, color: colors.sub }}>· {wordOfRound.name}</span>
                   </span>
                 </div>
-              </div>
+              </NeonKader>
             )}
             {highlights.map((h, i) => (
               <div key={h.cat} className="reveal-rise" style={{ animationDelay: `${lineDelay(i)}s`, display: "flex", alignItems: "baseline", gap: 10 }}>

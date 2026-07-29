@@ -373,11 +373,6 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
   const [buying, setBuying] = useState<string | null>(null);
   const shopResult = game.state.shopResult;
   const prices = status?.coin_prices ?? {};
-  // De sleutel van het scheidsrechter-artikel staat gelijk aan REFEREE_ITEM
-  // in db.py; de prijs komt van de server mee, met een terugval voor het
-  // geval de winkelstatus nog niet binnen is.
-  const REFEREE_ITEM = "referee";
-  const refereePrijs = prices[REFEREE_ITEM] ?? 600;
   // Welk vak van de winkel je open hebt. De AI staat erbuiten, want die staat
   // altijd bovenaan.
   const [vak, setVak] = useState(0);
@@ -516,35 +511,17 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
               {aiActive ? (
                 <div style={{ textAlign: "center", fontFamily: font.ui, fontSize: 12.5, color: colors.green }}>{t("shopAiActive")}</div>
               ) : !account ? null : (
-                <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 8 }}>
-                  {/* MUNTEN eerst. De scheidsrechter was alleen met echt geld of
-                      met een code te krijgen, en dat maakte hem onbereikbaar
-                      voor wie gewoon speelt. Nu is hij het duurste wat je met
-                      munten kunt kopen, en PayPal is de snelle weg ernaartoe. */}
+                <div style={{ display: "flex", justifyContent: "center" }}>
                   <KnopPlaat
-                    breed={106}
-                    uit={buying !== null || coins < refereePrijs}
-                    onClick={() => { sound.uiTap(); game.buyItemCoins(REFEREE_ITEM); }}
-                    label={
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                        {refereePrijs}
-                        <img src="/coin.webp" alt="" width={13} height={13} style={{ display: "block" }} />
-                      </span>
-                    }
-                  />
-                  <KnopPlaat
-                    kleur="paars"
-                    breed={92}
+                    breed={100}
                     uit={buying !== null || !status?.enabled}
                     onClick={() => startPaypal("ai")}
                     label={buying === "ai" ? "..." : money(status?.ai_price ?? status?.price, status?.currency ?? "EUR")}
                   />
                 </div>
               )}
-              {!aiActive && account && coins < refereePrijs && (
-                <p style={{ margin: "-9px 0 0", textAlign: "center", fontFamily: font.ui, fontSize: 10.5, color: colors.faint, lineHeight: 1.15 }}>
-                  {t("shopNeedCoins", { n: refereePrijs - coins })}
-                </p>
+              {!aiActive && status && !status.enabled && (
+                <p style={{ margin: "-9px 0 0", textAlign: "center", fontFamily: font.ui, fontSize: 10.5, color: colors.faint, lineHeight: 1.15 }}>{t("shopPaypalSoonShort")}</p>
               )}
             </div>
           </Paneel>

@@ -3,12 +3,12 @@
 // full-screen modal — a compact strip with Accept / Decline.
 import { useEffect, useState } from "react";
 import { CloseIcon } from "./CloseIcon";
+import { KADER_LIJN_GOUD, NeonKader } from "./ProfileHero";
 import { Swords, UserPlus } from "lucide-react";
 import { Avatar } from "./Avatar";
 import type { InboxItem } from "../net/socket";
 import { useT } from "../i18n/i18n";
-import { colors, font, withAlpha } from "../theme/tokens";
-import { neonSkin } from "../theme/neon";
+import { colors, font } from "../theme/tokens";
 
 export function InviteBanner({
   invite,
@@ -53,21 +53,27 @@ export function InviteBanner({
         transition: "transform .38s cubic-bezier(.2,1,.3,1)",
       }}
     >
-      <div
-        className="panel-neon"
-        style={{
-          pointerEvents: "auto",
-          width: "100%",
-          maxWidth: 440,
+      {/* Dezelfde lijst als de meldingsbalk: een gouden verlooplijn die
+          rondloopt, met kappen op de schuine uiteindes. Deze balk had nog zijn
+          eigen gouden ring met een eigen vulling, en dat was een tweede stijl
+          voor precies hetzelfde ding. */}
+      <NeonKader
+        radius={16}
+        dik={0.7}
+        lijn={KADER_LIJN_GOUD}
+        gloed="verloop"
+        animeer
+        eindkap
+        vulling="geen"
+        style={{ pointerEvents: "auto", width: "100%", maxWidth: 440 }}
+        binnen={{
           display: "flex",
           alignItems: "center",
           gap: 10,
           padding: "9px 10px 9px 12px",
-          borderRadius: 16,
-          background: "linear-gradient(180deg, #241738, #180F30)",
-          border: "none",
-          ...neonSkin(colors.gold),
-          boxShadow: `0 14px 40px rgba(0,0,0,.55), 0 0 22px ${withAlpha(colors.gold, 0.18)}`,
+          background: "linear-gradient(180deg, rgba(36,23,56,.94), rgba(24,15,48,.94))",
+          backdropFilter: "blur(6px)",
+          WebkitBackdropFilter: "blur(6px)",
         }}
       >
         <Avatar name={invite.from_name} color={invite.from_color} size={38} userId={invite.from_id} hasAvatar={invite.has_avatar} avatarVer={invite.avatar_ver} />
@@ -93,7 +99,7 @@ export function InviteBanner({
         >
           <CloseIcon size={30} />
         </button>
-      </div>
+      </NeonKader>
     </div>
   );
 }

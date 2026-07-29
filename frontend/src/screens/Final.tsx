@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Share2, Star, Target } from "lucide-react";
 import { ArtIcoon } from "../components/ArtIcoon";
-import { Logo } from "../components/Logo";
+import { Paneel, SierKop } from "../components/ProfileHero";
 import { Avatar, RANK_RING } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { Scoreboard } from "../components/Scoreboard";
@@ -57,32 +57,41 @@ export function Final({ game }: { game: GameApi }) {
     <Screen top={<TopBar code={room.code} connected={game.state.status === "open"} onLeave={game.leaveRoom} game={game} />}>
       {iWon && <Confetti />}
       <div style={{ display: "flex", flexDirection: "column", gap: 18, paddingTop: 8 }}>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-          <Logo size={120} />
-          <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, letterSpacing: 1, textTransform: "uppercase", color: colors.faint }}>
-            {shared ? t("sharedLead") : t("winner")}
-          </span>
-          <div style={{ display: "flex", gap: 14, flexWrap: "wrap", justifyContent: "center" }}>
-            {winners.map((w) => (
-              <div key={w.id} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
-                <Avatar name={w.name} color={w.color} size={66} crown userId={w.user_id} hasAvatar={w.has_avatar} avatarVer={w.avatar_ver} />
-                <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 22, color: colors.ink }}>{w.name}</span>
-                {(() => {
-                  const sub = subLabelKey(w.title, w.rank);
-                  return sub ? <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: colors.gold }}>{t(sub)}</span> : null;
-                })()}
-              </div>
-            ))}
+        {/* De winnaar in de sierlijst van het profiel. Dit is het moment waar
+            het hele potje naartoe werkte, en dat hoort in dezelfde lijst als je
+            rang op je profiel te staan en niet als losse tekst op de pagina.
+            De art heeft een vaste verhouding, dus alleen portret, naam en
+            punten gaan erin; de rest komt eronder. */}
+        <Paneel>
+          <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, paddingInline: 10 }}>
+            <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 700, letterSpacing: 1.2, textTransform: "uppercase", color: colors.faint }}>
+              {shared ? t("sharedLead") : t("winner")}
+            </span>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
+              {winners.map((w) => (
+                <div key={w.id} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
+                  <Avatar name={w.name} color={w.color} size={winners.length > 1 ? 46 : 56} crown userId={w.user_id} hasAvatar={w.has_avatar} avatarVer={w.avatar_ver} />
+                  <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink, maxWidth: 130, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{w.name}</span>
+                  {(() => {
+                    const sub = subLabelKey(w.title, w.rank);
+                    return sub ? <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: colors.gold }}>{t(sub)}</span> : null;
+                  })()}
+                </div>
+              ))}
+            </div>
+            <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 15, color: "#2A1B05", background: `linear-gradient(180deg, ${colors.goldHi}, ${colors.gold})`, padding: "4px 15px", borderRadius: 999, boxShadow: `0 0 22px ${withAlpha(colors.gold, 0.45)}` }}>
+              {t("pointsN", { score: top })}
+            </span>
           </div>
-          <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 18, color: "#2A1B05", background: `linear-gradient(180deg, ${colors.goldHi}, ${colors.gold})`, padding: "6px 18px", borderRadius: 999, boxShadow: `0 0 26px ${withAlpha(colors.gold, 0.5)}` }}>
-            {t("pointsN", { score: top })}
-          </span>
-        </div>
+        </Paneel>
 
         {summary && <Ceremony summary={summary} />}
 
-        <Card>
-          <Scoreboard players={room.players} scores={room.scores} meId={game.me?.id ?? null} />
+        <Card style={{ padding: "13px 7px 14px" }}>
+          <SierKop label={t("scoreboard")} />
+          <div style={{ marginTop: 8 }}>
+            <Scoreboard players={room.players} scores={room.scores} meId={game.me?.id ?? null} />
+          </div>
         </Card>
 
         <Button variant="primary" full disabled={busy} onClick={share}>

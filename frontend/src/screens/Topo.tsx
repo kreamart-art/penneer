@@ -22,6 +22,7 @@ import { ArtIcoon } from "../components/ArtIcoon";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { NeonText } from "../components/NeonText";
+import { Paneel } from "../components/ProfileHero";
 import { neonSkin, rampFrom } from "../theme/neon";
 import { colors, font, radius, withAlpha } from "../theme/tokens";
 
@@ -326,18 +327,28 @@ export function Topo({ game, onBack, onProfile, played }: { game: GameApi; onBac
   return (
     <Screen top={header}>
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        <Card style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
-          <span style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.sub }}>{t("topoYourScore")}</span>
-          <NeonText accent={colors.gold} blur={18} glow={0.7} style={{ fontFamily: font.display, fontWeight: 700, fontSize: 54, lineHeight: 1 }}>{r.score}</NeonText>
-          <span style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint }}>{t("dailyScoreOf", { score: r.score, max: r.max_score })}</span>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", marginTop: 4 }}>
-            {r.ranked && r.rank > 0 && chip(<ArtIcoon naam="beker" size={15} />, t("dailyRankLine", { rank: r.rank, total: r.total }))}
-            {r.streak > 1 && chip(<ArtIcoon naam="vlam" size={15} />, t("dailyStreakLine", { n: r.streak }))}
+        {/* Dezelfde sierlijst als bij het woordendeel: de score van de dag
+            hoort in de lijst van het profiel, niet op een kale kaart. De art
+            heeft een vaste verhouding, dus alleen het cijferblok gaat erin. */}
+        <Paneel>
+          <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, paddingInline: 14 }}>
+            <span style={{ fontFamily: font.ui, fontSize: 12, color: colors.sub }}>{t("topoYourScore")}</span>
+            <NeonText accent={colors.gold} blur={18} glow={0.7} style={{ fontFamily: font.display, fontWeight: 700, fontSize: 48, lineHeight: 1 }}>{r.score}</NeonText>
+            <span style={{ fontFamily: font.ui, fontSize: 11.5, color: colors.faint }}>{t("dailyScoreOf", { score: r.score, max: r.max_score })}</span>
           </div>
-          {account && !r.ranked && (
-            <p style={{ margin: "4px 0 0", fontFamily: font.ui, fontSize: 12.5, color: colors.orange, textAlign: "center" }}>{t("dailyUnranked")}</p>
-          )}
-        </Card>
+        </Paneel>
+
+        {(r.ranked || r.streak > 1 || (account && !r.ranked)) && (
+          <Card style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center" }}>
+              {r.ranked && r.rank > 0 && chip(<ArtIcoon naam="beker" size={15} />, t("dailyRankLine", { rank: r.rank, total: r.total }))}
+              {r.streak > 1 && chip(<ArtIcoon naam="vlam" size={15} />, t("dailyStreakLine", { n: r.streak }))}
+            </div>
+            {account && !r.ranked && (
+              <p style={{ margin: "4px 0 0", fontFamily: font.ui, fontSize: 12.5, color: colors.orange, textAlign: "center" }}>{t("dailyUnranked")}</p>
+            )}
+          </Card>
+        )}
 
         {!account && (
           <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>

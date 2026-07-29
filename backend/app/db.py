@@ -1860,7 +1860,9 @@ class Database:
     # ---- eigen categorieen (door de admin gemaakt, in de winkel verkocht) ----
 
     CATEGORY_ITEM = "cat:"          # voorvoegsel in owned_items
-    REFEREE_ITEM = "referee"        # de scheidsrechter, als winkelartikel
+    REFEREE_ITEM = "referee"        # de scheidsrechter; staat NIET in COIN_PRICES,
+                                    # dus met munten kopen kan niet. Blijft bestaan
+                                    # als sleutel in owned_items voor wie hem al kocht.
     CATEGORY_MAX_WORDS = 4000
 
     @staticmethod
@@ -2515,13 +2517,6 @@ class Database:
         "rs06": 100, "rs07": 100, "rs08": 100, "rs09": 100,
         "empack4": 200, "empack5": 200,
         "avpack1": 400, "avpack2": 400,
-        # De scheidsrechter is het duurste wat er te koop is, en met opzet: hij
-        # verandert het SPEL en niet hoe het eruitziet. Zeshonderd is ruim een
-        # halve ladder aan levels, dus je speelt ernaartoe; wie niet wil wachten
-        # koopt een muntenbundel. Voorheen kon je hem alleen met echt geld of
-        # met een code krijgen, en dat maakte hem onbereikbaar voor wie gewoon
-        # speelt.
-        REFEREE_ITEM: 600,
     }
     # PayPal coin BUNDLES: product id -> coins granted (price via env, see paypal.py).
     COIN_BUNDLES = {"coins100": 100, "coins300": 300, "coins500": 500, "coins1000": 1000}

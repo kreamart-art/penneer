@@ -3,6 +3,7 @@
 // a voice note), and a press-and-hold opens the thread to reply.
 import { useEffect, useRef, useState } from "react";
 import { CloseIcon } from "./CloseIcon";
+import { KADER_LIJN_GOUD, NeonKader } from "./ProfileHero";
 import { MessageCircle } from "lucide-react";
 import { Avatar } from "./Avatar";
 import { VoiceNote } from "./VoiceNote";
@@ -10,8 +11,7 @@ import { EMOTE_SRC } from "./emotes";
 import type { DmMessage } from "../net/socket";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
-import { colors, font, withAlpha } from "../theme/tokens";
-import { neonSkin } from "../theme/neon";
+import { colors, font } from "../theme/tokens";
 
 export function DmBanner({
   dm,
@@ -70,31 +70,38 @@ export function DmBanner({
         transition: "transform .38s cubic-bezier(.2,1,.3,1)",
       }}
     >
-      <div
-        onPointerDown={startHold}
-        onPointerUp={cancelHold}
-        onPointerLeave={cancelHold}
-        onPointerCancel={cancelHold}
-        className="panel-neon"
-        style={{
-          pointerEvents: "auto",
-          width: "100%",
-          maxWidth: 440,
+      <NeonKader
+        radius={16}
+        dik={0.7}
+        lijn={KADER_LIJN_GOUD}
+        gloed="verloop"
+        animeer
+        eindkap
+        vulling="geen"
+        style={{ pointerEvents: "auto", width: "100%", maxWidth: 440 }}
+        binnen={{
           display: "flex",
           alignItems: "center",
           gap: 10,
           padding: "9px 10px 9px 12px",
-          borderRadius: 16,
-          background: "linear-gradient(180deg, #241738, #180F30)",
-          border: "none",
-          ...neonSkin(colors.gold),
-          boxShadow: `0 14px 40px rgba(0,0,0,.55), 0 0 22px ${withAlpha(colors.gold, 0.18)}`,
+          background: "linear-gradient(180deg, rgba(36,23,56,.94), rgba(24,15,48,.94))",
+          backdropFilter: "blur(6px)",
+          WebkitBackdropFilter: "blur(6px)",
           cursor: "pointer",
           userSelect: "none",
           WebkitUserSelect: "none",
           touchAction: "manipulation",
         }}
       >
+        {/* Indrukken-en-vasthouden zit op een eigen laag over de hele rij: de
+            lijst zelf tekent alleen, hij vangt geen aanraking. */}
+        <span
+          onPointerDown={startHold}
+          onPointerUp={cancelHold}
+          onPointerLeave={cancelHold}
+          onPointerCancel={cancelHold}
+          style={{ position: "absolute", inset: 0 }}
+        />
         <Avatar name={sender.name} color={sender.color} size={38} userId={sender.id} hasAvatar={sender.has_avatar} avatarVer={sender.avatar_ver} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 5, fontFamily: font.ui, fontWeight: 700, fontSize: 13.5, color: colors.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -121,7 +128,7 @@ export function DmBanner({
         >
           <CloseIcon size={30} />
         </button>
-      </div>
+      </NeonKader>
     </div>
   );
 }

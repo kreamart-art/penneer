@@ -82,6 +82,19 @@ const RING_GAT = 0.688;
 const RING_GAT_X = 0.499;
 const RING_GAT_Y = 0.441;
 const SCHILD_VERH = 972 / 821;
+/** Waar het CIJFER op het schild hoort, in delen van de doos.
+ *
+ *  Niet het midden van de doos: een schild loopt onderin in een punt, dus daar
+ *  zit veel doos en weinig schild. Dit zijn de coordinaten van het ZWAARTEPUNT
+ *  van de vorm, gemeten op het alfakanaal van de art (x 0,497 / y 0,464), en
+ *  dat is precies waar een cijfer optisch in het midden lijkt te staan.
+ *
+ *  Het stond op ongeveer 0,42 (een grid met padding-bottom), en dat is vier
+ *  procent van de hoogte te hoog: net genoeg om op de ene plek te kloppen en op
+ *  de andere niet. Nu staat het overal met hetzelfde getal, ook op de
+ *  deelkaart, want die tekent op canvas en had zijn eigen benadering. */
+export const SCHILD_HART_X = 0.497;
+export const SCHILD_HART_Y = 0.464;
 
 /** De divisieladder, van laag naar hoog. De volgorde IS de rang: het schild
  *  is geen smaak meer maar iets wat je elke maandag kunt winnen of verliezen.
@@ -168,10 +181,9 @@ export function RingPortret({
         <span
           style={{
             position: "absolute",
-            inset: 0,
-            display: "grid",
-            placeItems: "center",
-            paddingBottom: schildH * 0.16,
+            left: `${SCHILD_HART_X * 100}%`,
+            top: `${SCHILD_HART_Y * 100}%`,
+            transform: "translate(-50%, -50%)",
             fontFamily: font.display,
             fontWeight: 800,
             fontSize: schildB * 0.5,

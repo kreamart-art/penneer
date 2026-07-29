@@ -451,11 +451,21 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
   return (
     <Screen top={header}>
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        {/* De uitslag staat in de sierlijst van het profiel, net als de voordeur
+            van de dagronde. Dit is de plek waar je score staat, en dat verdient
+            dezelfde lijst als je level op je profiel. De art heeft een VASTE
+            verhouding, dus alleen het cijferblok gaat erin; de chips eronder
+            zouden hem uitrekken. */}
+        <Paneel>
+          <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, paddingInline: 14 }}>
+            <span style={{ fontFamily: font.ui, fontSize: 12, color: colors.sub }}>{t("dailyYourScore")}</span>
+            <NeonText accent={colors.gold} blur={18} glow={0.7} style={{ fontFamily: font.display, fontWeight: 700, fontSize: 48, lineHeight: 1 }}>{r.score}</NeonText>
+            <span style={{ fontFamily: font.ui, fontSize: 11.5, color: colors.faint }}>{t("dailyScoreOf", { score: r.score, max: MAX_SCORE })}</span>
+          </div>
+        </Paneel>
+
         <Card style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
-          <span style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.sub }}>{t("dailyYourScore")}</span>
-          <NeonText accent={colors.gold} blur={18} glow={0.7} style={{ fontFamily: font.display, fontWeight: 700, fontSize: 54, lineHeight: 1 }}>{r.score}</NeonText>
-          <span style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint }}>{t("dailyScoreOf", { score: r.score, max: MAX_SCORE })}</span>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", marginTop: 4 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center" }}>
             {r.ranked && r.rank > 0 && chip(<ArtIcoon naam="beker" size={15} />, t("dailyRankLine", { rank: r.rank, total: r.total }))}
             {r.streak > 1 && chip(<ArtIcoon naam="vlam" size={15} />, t("dailyStreakLine", { n: r.streak }))}
           </div>

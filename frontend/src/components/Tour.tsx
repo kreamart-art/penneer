@@ -17,6 +17,7 @@ import { Button } from "./Button";
 import { CloseIcon } from "./CloseIcon";
 import { KADER_LIJN_GOUD, NeonKader } from "./ProfileHero";
 import { KnopPlaat } from "./KnopPlaat";
+import { STAT_ART } from "./ArtIcoon";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { colors, font, withAlpha } from "../theme/tokens";
@@ -47,11 +48,11 @@ const STAPPEN: { key: string; art: string; artMaat?: number; nieuw?: boolean }[]
   { key: "welkom", art: "/logo.png", artMaat: 132 },
   { key: "spelen", art: "/buzzer.webp", artMaat: 150 },
   { key: "woorden", art: "/ui/letter.webp", artMaat: 130 },
-  { key: "dagronde", art: "/ui/stat/vlam.webp", artMaat: 120 },
-  { key: "duel", art: "/ui/stat/dubbel.webp", artMaat: 120 },
+  { key: "dagronde", art: `/ui/stat/vlam.webp?v=${STAT_ART}`, artMaat: 120 },
+  { key: "duel", art: `/ui/stat/dubbel.webp?v=${STAT_ART}`, artMaat: 120 },
   { key: "divisies", art: "/ui/shield/zilver.webp", artMaat: 118, nieuw: true },
-  { key: "meldingen", art: "/ui/stat/sterren.webp", artMaat: 120, nieuw: true },
-  { key: "vrienden", art: "/ui/stat/kroon.webp", artMaat: 122 },
+  { key: "meldingen", art: `/ui/stat/sterren.webp?v=${STAT_ART}`, artMaat: 120, nieuw: true },
+  { key: "vrienden", art: `/ui/stat/kroon.webp?v=${STAT_ART}`, artMaat: 122 },
   { key: "winkel", art: "/coins-stack.webp", artMaat: 130 },
 ];
 

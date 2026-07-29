@@ -7,6 +7,7 @@
 // laten uitrekenen.
 import { useEffect, useState } from "react";
 import { Avatar } from "./Avatar";
+import { KADER_LIJN_GOUD, NeonKader } from "./ProfileHero";
 import { colors, font } from "../theme/tokens";
 
 export function AvatarZoom({
@@ -36,6 +37,7 @@ export function AvatarZoom({
   return (
     <div
       onClick={onClose}
+      className="reward-veil"
       style={{
         position: "fixed",
         inset: 0,
@@ -51,8 +53,23 @@ export function AvatarZoom({
       }}
     >
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
-        <Avatar name={name} color={color} size={size} userId={userId} hasAvatar={hasAvatar} avatarVer={avatarVer} frame={frame ?? undefined} glow />
-        <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 20, color: colors.ink }}>{name}</span>
+        <span className="reward-art" style={{ display: "block", lineHeight: 0 }}>
+          <Avatar name={name} color={color} size={size} userId={userId} hasAvatar={hasAvatar} avatarVer={avatarVer} frame={frame ?? undefined} glow />
+        </span>
+        {/* De naam op dezelfde ronde neonpil als de prestatieteller op je
+            profiel. Losse tekst op een vlak veld leest als een bijschrift; op
+            een pil hoort hij bij het portret. */}
+        <NeonKader
+          radius={999}
+          dik={0.5}
+          lijn={KADER_LIJN_GOUD}
+          gloed="verloop"
+          animeer
+          vulling="geen"
+          binnen={{ padding: "6px 18px", background: "rgba(10,4,26,.5)" }}
+        >
+          <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 20, color: colors.ink }}>{name}</span>
+        </NeonKader>
       </div>
     </div>
   );

@@ -414,9 +414,14 @@ export async function makeProfileCard(opts: ProfileCardOpts): Promise<Blob | nul
     const sx = W / 2 - sb / 2;
     const sy = ry + R * (708 / 720) * 0.441 + gat / 2 - sh * 0.22;
     ctx.drawImage(schild, sx, sy, sb, sh);
-    ctx.font = "700 44px 'Space Grotesk'";
+    // Het cijfer op het ZWAARTEPUNT van het schild (0,497 / 0,464 van de doos,
+    // gemeten op het alfakanaal), niet op het midden: onderin loopt het schild
+    // in een punt. De basislijn ligt een derde van de letterhoogte onder dat
+    // punt, want canvas tekent vanaf de basislijn en niet vanaf het midden.
+    const cijfer = 44;
+    ctx.font = `700 ${cijfer}px 'Space Grotesk'`;
     ctx.fillStyle = "#FFFFFF";
-    ctx.fillText(String(opts.level), W / 2, sy + sh * 0.52);
+    ctx.fillText(String(opts.level), sx + sb * 0.497, sy + sh * 0.464 + cijfer * 0.35);
   }
 
   // naam + rang

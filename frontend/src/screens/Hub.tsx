@@ -1,7 +1,7 @@
 // Hub — profile, friends, inbox and leaderboard in one tabbed screen.
 // Reached from the Landing. A profile is optional: guests see the create form.
 import { Fragment, useEffect, useRef, useState } from "react";
-import { ArtIcoon } from "../components/ArtIcoon";
+import { ArtIcoon, STAT_ART } from "../components/ArtIcoon";
 import { CloseIcon } from "../components/CloseIcon";
 import { KnopPlaat } from "../components/KnopPlaat";
 import { ReferralAd } from "../components/ReferralAd";
@@ -299,15 +299,15 @@ const STAT_ICONEN = [Swords, Crown, Percent, Sparkles, Target, Gem, Users, Flame
 // De echte art uit de UI-map, in dezelfde volgorde als `statGrid`. De getekende
 // tekens hierboven blijven als terugval staan voor het geval er een bestand
 // ontbreekt.
-const STAT_ART = [
-  "/ui/stat/games.webp",    // Games: de controller
-  "/ui/stat/winsten.webp",  // Winsten: de beker
-  "/ui/stat/kroon.webp",    // Win %: de kroon
-  "/ui/stat/punten.webp",   // Punten: de stapel munten
-  "/ui/stat/sterren.webp",  // Beste game: de sterren
-  "/ui/stat/woorden.webp",  // Unieke woorden: het boek
-  "/ui/stat/dubbel.webp",   // Dubbels: de twee pijlen
-  "/ui/stat/vlam.webp",     // Winstreeks: de vlam
+const STAT_PADEN = [
+  `/ui/stat/games.webp?v=${STAT_ART}`,    // Games: de controller
+  `/ui/stat/winsten.webp?v=${STAT_ART}`,  // Winsten: de beker
+  `/ui/stat/kroon.webp?v=${STAT_ART}`,    // Win %: de kroon
+  `/ui/stat/punten.webp?v=${STAT_ART}`,   // Punten: de stapel munten
+  `/ui/stat/sterren.webp?v=${STAT_ART}`,  // Beste game: de sterren
+  `/ui/stat/woorden.webp?v=${STAT_ART}`,  // Unieke woorden: het boek
+  `/ui/stat/dubbel.webp?v=${STAT_ART}`,   // Dubbels: de twee pijlen
+  `/ui/stat/vlam.webp?v=${STAT_ART}`,     // Winstreeks: de vlam
 ];
 
 function StatGrid({ stats }: { stats: AccountStats }) {
@@ -317,7 +317,7 @@ function StatGrid({ stats }: { stats: AccountStats }) {
     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8 }}>
       {rijen.map(([label, value], i) => {
         const Icoon = STAT_ICONEN[i] ?? Sparkles;
-        return <StatKaart key={label} icoon={<Icoon size={15} />} art={STAT_ART[i]} waarde={value} label={label} />;
+        return <StatKaart key={label} icoon={<Icoon size={15} />} art={STAT_PADEN[i]} waarde={value} label={label} />;
       })}
     </div>
   );
@@ -3446,7 +3446,7 @@ function LeaderboardTab({ game }: { game: GameApi }) {
           }}
         >
           <HexArt maat={54} style={{ flexShrink: 0 }}>
-            <img src="/ui/stat/ster.webp" alt="" aria-hidden style={{ width: 27, height: 27, display: "block" }} />
+            <img src={`/ui/stat/ster.webp?v=${STAT_ART}`} alt="" aria-hidden style={{ width: 27, height: 27, display: "block" }} />
           </HexArt>
           <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 5 }}>
             <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 15.5, color: colors.ink }}>
@@ -3615,7 +3615,7 @@ function Cijfer({ art, icoon, waarde, label, kleur }: { art?: string; icoon?: Re
                 }}
               />
             )}
-            <img src={`/ui/stat/${art}.webp`} alt="" aria-hidden style={{ position: "relative", width: 34, height: 34, display: "block" }} />
+            <img src={`/ui/stat/${art}.webp?v=${STAT_ART}`} alt="" aria-hidden style={{ position: "relative", width: 34, height: 34, display: "block" }} />
           </span>
         ) : (
           icoon

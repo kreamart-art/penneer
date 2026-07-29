@@ -3,6 +3,7 @@
 // that they live in the shop, so people see what they could have.
 import { Lock } from "lucide-react";
 import { CloseIcon } from "./CloseIcon";
+import { schuin } from "./ProfileHero";
 import { EMOTE_PACKS, EMOTE_SRC } from "./emotes";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
@@ -22,6 +23,7 @@ export function EmotePicker({
 
   return (
     <div
+      className="zachtscroll"
       style={{
         borderTop: `1px solid ${colors.hairline}`,
         background: withAlpha("#000000", 0.22),
@@ -77,9 +79,13 @@ export function EmotePicker({
                     aspectRatio: "1 / 1",
                     minWidth: 0,
                     padding: 3,
-                    borderRadius: 10,
-                    border: `1px solid ${colors.panelBorder}`,
-                    background: withAlpha("#000000", 0.2),
+                    // De afgeschuinde hoek van een glastegel, met een haarlijn
+                    // die bijna uit staat. Een gewone rechthoek met een randje
+                    // hoort niet meer bij de rest van de app.
+                    clipPath: schuin(7),
+                    border: "none",
+                    boxShadow: `inset 0 0 0 1px ${withAlpha("#C8A0FF", has ? 0.24 : 0.1)}`,
+                    background: withAlpha("#000000", 0.24),
                     cursor: has ? "pointer" : "default",
                     display: "grid",
                     placeItems: "center",
