@@ -363,6 +363,8 @@ export interface ClientState {
   adminCategories: AdminCategory[] | null; // eigen categorieen die de admin maakte
   // Shop: result of the last code redeem (null until one happens).
   shopResult: ShopResult | null;
+  /** Wat er zojuist met munten gekocht is, tot het gevierd is. */
+  gekocht: string | null;
   // In-room chat (so players can ask what a word means without leaving).
   chat: ChatMessage[];
   chatSeen: number; // messages considered read (drives the unread badge)
@@ -428,6 +430,7 @@ type Action =
   | { type: "drainToasts" }
   | { type: "clearLoginSent" }
   | { type: "clearShopResult" }
+  | { type: "gekochtGezien" }
   | { type: "clearDmBanner" }
   | { type: "dmClose" }
   | { type: "msg"; msg: ServerMessage };
@@ -551,6 +554,7 @@ const initialState: ClientState = {
   avatarCodes: null,
   buzzerCodes: null,
   shopResult: null,
+  gekocht: null,
   chat: [],
   chatSeen: 0,
   chatOpen: false,
@@ -608,6 +612,9 @@ function reducer(state: ClientState, action: Action): ClientState {
   }
   if (action.type === "clearShopResult") {
     return { ...state, shopResult: null };
+  }
+  if (action.type === "gekochtGezien") {
+    return { ...state, gekocht: null };
   }
   if (action.type === "clearDmBanner") {
     return { ...state, dmBanner: null };
@@ -679,9 +686,11 @@ function reducer(state: ClientState, action: Action): ClientState {
     case "shop_result":
       return { ...state, shopResult: { ok: msg.ok, reason: msg.reason } };
     case "coins_result":
-      // The account payload that follows reflects the new balance / unlock; the
-      // buy button is gated client-side, so no separate message is needed.
-      return state;
+      // Het account-bericht dat volgt draagt het nieuwe saldo; hier onthouden we
+      // alleen WAT er gekocht is, zodat de app hem kan vieren zodra je de winkel
+      // uit loopt. Een popup boven de winkel zelf zou over het volgende product
+      // heen vallen dat je net wilde bekijken.
+      return msg.ok && msg.item ? { ...state, gekocht: msg.item } : state;
     case "account": {
       if (msg.token) saveAccountToken(msg.token);
       if (msg.deleted) saveAccountToken(null);
@@ -899,6 +908,7 @@ export interface GameApi {
   meldingenLaden: () => void;
   meldingenLezen: () => void;
   meldingWeg: (id: number) => void;
+  gekochtGezien: () => void;
   setAvatarFrame: (frame: string | null) => void;
   claimBuzzerReward: (skin: string, equip: boolean) => void;
   claimReward: (id: string, equip?: boolean) => void;
@@ -1148,6 +1158,7 @@ export function useGame(): GameApi {
     meldingenLaden: () => send({ type: "meldingen" }),
     meldingenLezen: () => send({ type: "meldingen_lees" }),
     meldingWeg: (id) => send({ type: "melding_weg", id }),
+    gekochtGezien: () => dispatch({ type: "gekochtGezien" }),
     setAvatarFrame: (frame) => send({ type: "set_avatar_frame", frame }),
     claimBuzzerReward: (skin, equip) => send({ type: "claim_buzzer_reward", skin, equip }),
     claimReward: (id, equip) => send({ type: "claim_reward", id, equip: !!equip }),

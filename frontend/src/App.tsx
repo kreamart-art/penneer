@@ -21,6 +21,7 @@ import { BadgeToasts } from "./components/BadgeToasts";
 import { BottomNav, type NavKey } from "./components/BottomNav";
 import { BuzzerRewardPopup } from "./components/BuzzerRewardPopup";
 import { DivisiePopup } from "./components/Divisie";
+import { KoopPopup } from "./components/KoopPopup";
 import { AD_WEG } from "./components/ReferralAd";
 import { MeldingBanner, useMeldingWachtrij } from "./components/Meldingen";
 import { Tour, tourGezien } from "./components/Tour";
@@ -482,6 +483,10 @@ export default function App() {
         !showTraining && !showShop && !showHub && !showSettings && !showLegal && !tourAf)) && (
         <Tour onKlaar={() => { setShowTour(false); setTourAf(true); }} />
       )}
+      {/* Wat je kocht, twee tellen nadat de winkel dicht is. `actief` gaat pas
+          aan als je er weg bent, dus de teller begint niet terwijl je nog aan
+          het kijken bent. */}
+      <KoopPopup game={game} actief={introDone && !!lang && !showShop && !inRoom} />
       {inRoom && <BadgeToasts game={game} />}
       {/* De meldingsbalk mag overal komen behalve tijdens het invullen: daar
           zou hij precies over het toetsenbordveld vallen dat je op dat moment

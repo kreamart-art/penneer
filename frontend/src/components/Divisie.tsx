@@ -12,6 +12,7 @@ import { useEffect, useRef, useState } from "react";
 import { CloseIcon } from "./CloseIcon";
 import { NeonText } from "./NeonText";
 import { KnopPlaat } from "./KnopPlaat";
+import { VictoryKaart } from "./VictoryKaart";
 import {
   DIVISIE_ACCENT,
   DIVISIE_NAMEN,
@@ -315,36 +316,10 @@ export function DivisiePopup({ change, onSluit }: { change: DivisieChange; onSlu
         padding: 22,
       }}
     >
-      <NeonKader
-        radius={22}
-        dik={0.9}
-        lijn={op ? KADER_LIJN_GOUD : `linear-gradient(115deg, #FF8A6B 0%, #F4543C 30%, #8B3A56 60%, #FF8A6B 100%)`}
-        gloed="verloop"
-        animeer
-        eindkap
-        vulling="geen"
-        style={{ width: "100%", maxWidth: 320 }}
-        binnen={{
-          padding: "26px 20px 20px",
-          display: "flex",
-          flexDirection: "column",
-          gap: 12,
-          alignItems: "center",
-          textAlign: "center",
-          // Dezelfde opbouw als de werf-advertentie: art onderin, een vignet
-          // dat hem naar de randen wegtrekt, en licht van boven zodat het schild
-          // ergens IN staat en niet op een vlak plakt.
-          backgroundImage: [
-            "linear-gradient(180deg, rgba(255,243,181,.1) 0%, transparent 15%)",
-            "radial-gradient(120% 70% at 50% 4%, transparent 30%, rgba(6,3,18,.8) 100%)",
-            'url("/ui/lobby-bg.webp")',
-            "linear-gradient(180deg, #241740 0%, #1A1035 52%, #100926 100%)",
-          ].join(", "),
-          backgroundSize: "100% 100%, 100% 100%, cover, 100% 100%",
-          backgroundPosition: "top, top, center bottom, top",
-          backgroundRepeat: "no-repeat",
-        }}
-      >
+      {/* Dezelfde sierlijst als bij elke beloning. De wimpel VICTORY! hangt er
+          alleen boven bij een promotie: een degradatie met "victory" erboven is
+          spot, geen uitslag. */}
+      <VictoryKaart kop={op} breed={330}>
         <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 700, letterSpacing: 1.4, textTransform: "uppercase", color: colors.faint }}>
           {t("divisieMaandag")}
         </span>
@@ -357,19 +332,19 @@ export function DivisiePopup({ change, onSluit }: { change: DivisieChange; onSlu
           accent={op ? colors.gold : colors.red}
           blur={22}
           glow={0.85}
-          style={{ fontFamily: font.wide, fontSize: 38, lineHeight: 1, letterSpacing: 3, textTransform: "uppercase" }}
+          style={{ fontFamily: font.wide, fontSize: 30, lineHeight: 1, letterSpacing: 2.5, textTransform: "uppercase" }}
         >
           {op ? t("divisiePromotie") : t("divisieDegradatie")}
         </NeonText>
 
         {/* Het schild zelf. De sleutel wisselt mee, zodat React hem opnieuw
             opbouwt en de pop-in-animatie echt opnieuw speelt. */}
-        <div style={{ position: "relative", display: "grid", placeItems: "center", width: 150, height: 150 }}>
+        <div style={{ position: "relative", display: "grid", placeItems: "center", width: 118, height: 118 }}>
           <span
             style={{
               position: "absolute",
-              width: 130,
-              height: 130,
+              width: 104,
+              height: 104,
               borderRadius: "50%",
               background: `radial-gradient(circle, rgba(${accent},.4), transparent 68%)`,
               animation: "breath-glow 3s ease-in-out infinite",
@@ -392,20 +367,20 @@ export function DivisiePopup({ change, onSluit }: { change: DivisieChange; onSlu
             />
           )}
           <span key={`schild-${toon}`} className="reward-art" style={{ position: "relative" }}>
-            <Schild divisie={toon} maat={96} />
+            <Schild divisie={toon} maat={76} />
           </span>
         </div>
 
-        <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 19, color: colors.ink }}>
+        <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>
           {divisieNaam(change.naar)}
         </span>
-        <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, lineHeight: 1.5, color: colors.sub }}>
+        <p style={{ margin: 0, fontFamily: font.ui, fontSize: 11.5, lineHeight: 1.45, color: colors.sub }}>
           {op
             ? t("divisiePromotieBody", { plek: change.plek ?? 1, naam: divisieNaam(change.naar) })
             : t("divisieDegradatieBody", { naam: divisieNaam(change.naar) })}
         </p>
-        <KnopPlaat breed={104} onClick={onSluit} label={t("coinsOk")} />
-      </NeonKader>
+        <KnopPlaat breed={100} onClick={onSluit} label={t("coinsOk")} />
+      </VictoryKaart>
     </div>
   );
 }

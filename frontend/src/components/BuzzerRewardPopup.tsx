@@ -8,8 +8,7 @@
 // rewards, then the coins.
 import { useEffect, useRef, useState } from "react";
 import { KnopPlaat } from "./KnopPlaat";
-import { KADER_LIJN_GOUD, NeonKader } from "./ProfileHero";
-import { CloseIcon } from "./CloseIcon";
+import { VictoryKaart } from "./VictoryKaart";
 import { Button } from "./Button";
 import { EMOTE_PACKS, EMOTE_SRC } from "./emotes";
 import type { GameApi, PendingReward } from "../net/socket";
@@ -17,12 +16,14 @@ import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { colors, font, withAlpha } from "../theme/tokens";
 
-/** The shared shell: veil, card and the staggered entrance. */
+/** De schil: sluier plus de sierlijst uit de UI-map.
+ *
+ *  Was een eigen gouden ring met een eigen vulling; dat is nu de gedeelde
+ *  VictoryKaart, zodat elk moment waarop je iets krijgt er hetzelfde uitziet. */
 function RewardCard({
   onClose,
   closeLabel,
   children,
-  maxWidth = 340,
 }: {
   onClose?: () => void;
   closeLabel?: string;
@@ -44,55 +45,15 @@ function RewardCard({
         padding: 22,
       }}
     >
-      {/* Dezelfde lijst als om elke sectie: een gouden verlooplijn die rondloopt
-          met kappen op de uiteindes. Dit was nog een eigen gouden ring met een
-          eigen vulling. De entree zit op de LIJST en niet op de inhoud: schaalt
-          de inhoud binnen een lijst met `overflow: hidden`, dan zie je tijdens
-          die halve seconde de lijst zelf langs de randen doorschemeren. */}
-      <NeonKader
-        radius={24}
-        dik={0.9}
-        lijn={KADER_LIJN_GOUD}
-        gloed="verloop"
-        animeer
-        eindkap
-        vulling="geen"
-        className="reward-card"
-        style={{ width: "100%", maxWidth }}
-        binnen={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: 12,
-          padding: "26px 22px 20px",
-          textAlign: "center",
-          // Licht dat van bovenaf in het vlak valt, en randverdonkering zodat
-          // het bol leest. Dit is het moment waarop iets waardevol moet voelen.
-          backgroundImage: [
-            "linear-gradient(180deg, rgba(255,243,181,.12) 0%, transparent 16%)",
-            `radial-gradient(90% 55% at 50% 0%, ${withAlpha(colors.gold, 0.14)}, transparent 66%)`,
-            "radial-gradient(130% 105% at 50% 46%, transparent 54%, rgba(6,3,18,.5) 100%)",
-            "linear-gradient(180deg, #33235A 0%, #241748 46%, #140C2C 100%)",
-          ].join(", "),
-        }}
-      >
-        {onClose && (
-          <button
-            onClick={onClose}
-            aria-label={closeLabel}
-            style={{ position: "absolute", top: 12, right: 12, background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 4 }}
-          >
-            <CloseIcon size={26} />
-          </button>
-        )}
+      <VictoryKaart kop onClose={onClose} closeLabel={closeLabel}>
         {children}
-      </NeonKader>
+      </VictoryKaart>
     </div>
   );
 }
 
 /** The prize itself: a breathing glow with the artwork popping in on top. */
-function RewardArt({ src, size = 180 }: { src: string; size?: number }) {
+function RewardArt({ src, size = 132 }: { src: string; size?: number }) {
   return (
     <div style={{ position: "relative", width: size, height: size, display: "grid", placeItems: "center" }}>
       <div style={{ position: "absolute", inset: 0, borderRadius: "50%", background: `radial-gradient(circle, ${withAlpha(colors.gold, 0.35)}, transparent 68%)`, animation: "breath-glow 3s ease-in-out infinite" }} />
@@ -137,7 +98,7 @@ export function BuzzerRewardPopup({ game }: { game: GameApi }) {
     return (
       <RewardCard>
         <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 21, color: colors.gold, textShadow: `0 0 22px ${withAlpha(colors.gold, 0.5)}` }}>{t("coinsRewardTitle")}</span>
-        <RewardArt src="/coin.webp" size={140} />
+        <RewardArt src="/coin.webp" size={118} />
         <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 30, color: colors.ink }}>+{coinsPending}</span>
         <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13, color: colors.sub, lineHeight: 1.5 }}>{t("coinsRewardBody")}</p>
         <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: colors.gold }}>{t("coinsBalance", { n: account!.coins })}</span>
