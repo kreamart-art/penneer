@@ -255,6 +255,13 @@ function Popup({
   // genoeg om niet te ergeren.
   const [magSluiten, setMagSluiten] = useState(false);
   const magSluitenRef = useRef(false);
+  // Een tik per minuut zodat de teller meeloopt. Per seconde zou hij vaker
+  // hertekenen dan er iets verandert: `resterend` telt in minuten.
+  const [, tik] = useState(0);
+  useEffect(() => {
+    const id = window.setInterval(() => tik((n) => n + 1), 60000);
+    return () => window.clearInterval(id);
+  }, []);
   useEffect(() => {
     const id = window.setTimeout(() => {
       magSluitenRef.current = true;
@@ -440,6 +447,22 @@ function Popup({
               >
                 ELKE VRIEND LEVERT MUNTEN OP
               </p>
+              {info.ends_at > 0 && (
+                <p
+                  style={{
+                    margin: "7px 0 0",
+                    fontFamily: font.wide,
+                    fontSize: "clamp(13px, 4vw, 16px)",
+                    letterSpacing: 1,
+                    lineHeight: 1,
+                    whiteSpace: "nowrap",
+                    color: colors.gold,
+                    textShadow: "0 1px 3px rgba(0,0,0,.65)",
+                  }}
+                >
+                  {resterend(info.ends_at)}
+                </p>
+              )}
             </div>
           </div>
 

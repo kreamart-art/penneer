@@ -562,7 +562,7 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
                 </div>
               )}
               {!aiActive && status && !status.enabled && (
-                <p style={{ margin: "3px 0 0", textAlign: "center", fontFamily: font.ui, fontSize: 10, color: colors.faint, lineHeight: 1.2 }}>{t("shopPaypalSoonShort")}</p>
+                <p style={{ margin: "9px 0 0", textAlign: "center", fontFamily: font.ui, fontSize: 10.5, color: colors.faint, lineHeight: 1.2 }}>{t("shopPaypalSoonShort")}</p>
               )}
             </div>
           </Paneel>
