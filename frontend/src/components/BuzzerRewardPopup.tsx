@@ -53,9 +53,9 @@ function RewardCard({
 }
 
 /** The prize itself: a breathing glow with the artwork popping in on top. */
-function RewardArt({ src, size = 160 }: { src: string; size?: number }) {
+function RewardArt({ src, size = 116 }: { src: string; size?: number }) {
   return (
-    <div style={{ position: "relative", width: size, height: size, display: "grid", placeItems: "center", marginTop: -24, zIndex: 1 }}>
+    <div style={{ position: "relative", width: size, height: size, display: "grid", placeItems: "center", marginTop: -10, zIndex: 1 }}>
       <div style={{ position: "absolute", inset: 0, borderRadius: "50%", background: `radial-gradient(circle, ${withAlpha(colors.gold, 0.35)}, transparent 68%)`, animation: "breath-glow 3s ease-in-out infinite" }} />
       <img className="reward-art" src={src} alt="" style={{ position: "relative", width: size, height: size, objectFit: "contain", filter: "drop-shadow(0 10px 24px rgba(0,0,0,.55))" }} />
     </div>
@@ -97,9 +97,9 @@ export function BuzzerRewardPopup({ game }: { game: GameApi }) {
     };
     return (
       <RewardCard>
-        <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 26, color: colors.gold, textShadow: `0 0 22px ${withAlpha(colors.gold, 0.5)}` }}>{t("coinsRewardTitle")}</span>
+        <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 18, lineHeight: 1.15, color: colors.gold, textShadow: `0 0 18px ${withAlpha(colors.gold, 0.5)}` }}>{t("coinsRewardTitle")}</span>
         <RewardArt src="/coin.webp" size={118} />
-        <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 30, color: colors.ink }}>+{coinsPending}</span>
+        <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 26, color: colors.ink }}>+{coinsPending}</span>
         <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13, color: colors.sub, lineHeight: 1.5 }}>{t("coinsRewardBody")}</p>
         <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: colors.gold }}>{t("coinsBalance", { n: account!.coins })}</span>
         <KnopPlaat breed={104} onClick={ackCoins} label={t("coinsOk")} />
@@ -129,27 +129,27 @@ export function BuzzerRewardPopup({ game }: { game: GameApi }) {
 
     return (
       <RewardCard onClose={() => done(false)} closeLabel={t("claimLater")} maxWidth={360}>
-        <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 26, color: colors.gold, textShadow: `0 0 22px ${withAlpha(colors.gold, 0.5)}` }}>{heading}</span>
-        <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13.5, color: colors.sub }}>{body}</p>
+        <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 18, lineHeight: 1.15, color: colors.gold, textShadow: `0 0 18px ${withAlpha(colors.gold, 0.5)}` }}>{heading}</span>
+        <p style={{ margin: 0, fontFamily: font.ui, fontSize: 11.5, lineHeight: 1.35, color: colors.sub }}>{body}</p>
 
         {/* Emote packs celebrate with a row of stickers; the rest with one big
             piece of art. Titles have no artwork, so the title IS the art. */}
         {earned.kind === "emotes" && pack ? (
-          <div className="reward-art" style={{ display: "flex", gap: 4, padding: "4px 0", marginTop: -18, zIndex: 1 }}>
+          <div className="reward-art" style={{ display: "flex", gap: 4, padding: "4px 0", marginTop: -6, zIndex: 1 }}>
             {pack.emotes.slice(0, 3).map((id) => (
-              <img key={id} src={EMOTE_SRC(id)} alt="" style={{ width: 100, height: 100, objectFit: "contain", filter: "drop-shadow(0 8px 18px rgba(0,0,0,.5))" }} />
+              <img key={id} src={EMOTE_SRC(id)} alt="" style={{ width: 68, height: 68, objectFit: "contain", filter: "drop-shadow(0 8px 18px rgba(0,0,0,.5))" }} />
             ))}
           </div>
         ) : earned.art ? (
           <RewardArt src={earned.art} />
         ) : (
           <div className="reward-art" style={{ position: "relative", margin: "10px 0 4px", padding: "10px 22px", borderRadius: 999, border: `1px solid ${withAlpha(colors.gold, 0.55)}`, background: withAlpha(colors.gold, 0.12), boxShadow: `0 0 34px ${withAlpha(colors.gold, 0.25)}` }}>
-            <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 22, color: colors.gold, letterSpacing: 0.4 }}>{label}</span>
+            <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 17, color: colors.gold, letterSpacing: 0.4 }}>{label}</span>
           </div>
         )}
 
         {earned.kind !== "title" && (
-          <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 18, color: colors.ink }}>{label}</span>
+          <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15, color: colors.ink }}>{label}</span>
         )}
 
         {earned.kind === "frame" ? (

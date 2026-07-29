@@ -21,7 +21,13 @@ const VERH = 3118 / 4194;
 // De wimpel zit nu IN de plaat, onderaan, en begint op 83,5% van de hoogte
 // (gemeten aan de warme pixels in de middenkolom). De inhoud moet daar dus
 // boven blijven, anders loopt de laatste regel over VICTORY! heen.
-const WIMPEL_TOP = 0.835;
+// GEMETEN aan het bestand, op de warme (gouden) pixels in de middenkolom: het
+// sierstuk met de edelsteen loopt van 8% tot 20% en de wimpel begint op 80%.
+// Het vrije paarse veld ligt daar precies tussen. De inhoud stond op 8% en
+// botste dus tegen de edelsteen; nu begint hij eronder.
+const VELD_TOP = "21%";
+const VELD_ONDER = "22%";   // net boven de wimpel
+const VELD_ZIJ = "9%";
 
 export function VictoryKaart({
   kop,
@@ -63,8 +69,8 @@ export function VictoryKaart({
           aria-label={closeLabel}
           style={{
             position: "absolute",
-            top: "6%",
-            right: "7%",
+            top: "21.5%",
+            right: "10%",
             zIndex: 3,
             background: "transparent",
             border: "none",
@@ -87,15 +93,19 @@ export function VictoryKaart({
       <div
         style={{
           position: "absolute",
-          top: "8%",
-          bottom: kop ? `${Math.round((1 - WIMPEL_TOP) * 100) + 2}%` : "7%",
-          left: "10%",
-          right: "10%",
+          top: kop ? VELD_TOP : "10%",
+          bottom: kop ? VELD_ONDER : "8%",
+          left: VELD_ZIJ,
+          right: VELD_ZIJ,
+          // De inhoud mag NOOIT buiten het veld lopen: de plaat is art met een
+          // vaste verhouding, dus wat er niet in past hoort kleiner, niet
+          // eroverheen.
+          overflow: "hidden",
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          gap: 8,
+          gap: 6,
           textAlign: "center",
           minHeight: 0,
         }}

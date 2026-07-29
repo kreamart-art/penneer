@@ -332,19 +332,19 @@ export function DivisiePopup({ change, onSluit }: { change: DivisieChange; onSlu
           accent={op ? colors.gold : colors.red}
           blur={26}
           glow={0.85}
-          style={{ fontFamily: font.wide, fontSize: 38, lineHeight: 1, letterSpacing: 2.5, textTransform: "uppercase" }}
+          style={{ fontFamily: font.wide, fontSize: 27, lineHeight: 1, letterSpacing: 2, textTransform: "uppercase" }}
         >
           {op ? t("divisiePromotie") : t("divisieDegradatie")}
         </NeonText>
 
         {/* Het schild zelf. De sleutel wisselt mee, zodat React hem opnieuw
             opbouwt en de pop-in-animatie echt opnieuw speelt. */}
-        <div style={{ position: "relative", display: "grid", placeItems: "center", width: 152, height: 152, marginTop: -30, zIndex: 1 }}>
+        <div style={{ position: "relative", display: "grid", placeItems: "center", width: 116, height: 116, marginTop: -12, zIndex: 1 }}>
           <span
             style={{
               position: "absolute",
-              width: 138,
-              height: 138,
+              width: 104,
+              height: 104,
               borderRadius: "50%",
               background: `radial-gradient(circle, rgba(${accent},.4), transparent 68%)`,
               animation: "breath-glow 3s ease-in-out infinite",
@@ -358,8 +358,8 @@ export function DivisiePopup({ change, onSluit }: { change: DivisieChange; onSlu
               key={`slag-${fase}`}
               style={{
                 position: "absolute",
-                width: 120,
-                height: 120,
+                width: 92,
+                height: 92,
                 borderRadius: "50%",
                 border: `2px solid rgba(${accent},.9)`,
                 animation: "divisie-slag .85s cubic-bezier(.2,.7,.3,1) forwards",
@@ -367,14 +367,14 @@ export function DivisiePopup({ change, onSluit }: { change: DivisieChange; onSlu
             />
           )}
           <span key={`schild-${toon}`} className="reward-art" style={{ position: "relative" }}>
-            <Schild divisie={toon} maat={108} />
+            <Schild divisie={toon} maat={82} />
           </span>
         </div>
 
-        <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>
+        <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15, color: colors.ink }}>
           {divisieNaam(change.naar)}
         </span>
-        <p style={{ margin: 0, fontFamily: font.ui, fontSize: 11.5, lineHeight: 1.45, color: colors.sub }}>
+        <p style={{ margin: 0, fontFamily: font.ui, fontSize: 11, lineHeight: 1.35, color: colors.sub }}>
           {op
             ? t("divisiePromotieBody", { plek: change.plek ?? 1, naam: divisieNaam(change.naar) })
             : t("divisieDegradatieBody", { naam: divisieNaam(change.naar) })}

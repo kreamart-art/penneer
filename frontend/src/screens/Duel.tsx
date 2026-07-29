@@ -298,7 +298,7 @@ export function Duel({ game, onBack, onProfile, openId, onGeopend }: {
   };
 
   const header = (
-    <div style={{ position: "relative", zIndex: 1, display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", paddingTop: "calc(36px + env(safe-area-inset-top))" }}>
+    <div style={{ position: "relative", zIndex: 1, display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", paddingTop: "calc(14px + env(safe-area-inset-top))" }}>
       <button
         onClick={() => { sound.uiTap(); view === "list" ? onBack() : (setView("list"), void refresh()); }}
         aria-label={t("back")}
@@ -581,11 +581,19 @@ export function Duel({ game, onBack, onProfile, openId, onGeopend }: {
           )}
         </Card>
 
-        <Button variant="gold" full disabled={busy} onClick={() => { sound.uiTap(); setNote(""); setPickOpen(true); }}>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-            <Swords size={17} /> {t("duelNew")}
-          </span>
-        </Button>
+        {/* Niet over de volle breedte: een knop die het halve scherm beslaat
+            schreeuwt harder dan de duels eronder, terwijl die de inhoud zijn.
+            Hij blijft de enige gouden knop op dit scherm, dus hij valt genoeg
+            op zonder de rij op te eten. */}
+        <div style={{ display: "flex", justifyContent: "center" }}>
+          <div style={{ width: "68%", maxWidth: 250 }}>
+            <Button variant="gold" full disabled={busy} onClick={() => { sound.uiTap(); setNote(""); setPickOpen(true); }}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 15 }}>
+                <Swords size={15} /> {t("duelNew")}
+              </span>
+            </Button>
+          </div>
+        </div>
         {!!note && <p style={{ margin: 0, textAlign: "center", fontFamily: font.ui, fontSize: 13, color: colors.orange }}>{note}</p>}
 
         {mine.length > 0 && <Section title={t("duelYourTurn")} items={mine} onOpen={openDuel} t={t} mij={account} />}
@@ -1070,8 +1078,17 @@ const DUEL_STAKES = [0, 50, 100, 250, 500, 1000];
  * Zolang een zaal nog geen art heeft valt de tegel terug op het neon-vlak: het
  * bedrag blijft gewoon kiesbaar, er is alleen nog niets te zien. */
 const ZAAL_ART: Record<number, string> = {
-  0: "/ui/inzet/z0.webp?v=2", 50: "/ui/inzet/z50.webp?v=2", 100: "/ui/inzet/z100.webp?v=2",
-  250: "/ui/inzet/z250.webp?v=2", 500: "/ui/inzet/z500.webp?v=2", 1000: "/ui/inzet/z1000.webp?v=2",
+  0: "/ui/inzet/z0.webp?v=3", 50: "/ui/inzet/z50.webp?v=3", 100: "/ui/inzet/z100.webp?v=3",
+  250: "/ui/inzet/z250.webp?v=3", 500: "/ui/inzet/z500.webp?v=3", 1000: "/ui/inzet/z1000.webp?v=3",
+};
+/* Het cijfer draagt de kleur van zijn EIGEN zaal. GEMETEN aan de art: van elke
+ * zaal is de mediaan van de warme, verzadigde pixels genomen (het vuur, het
+ * goud, de schat) en die tint is opgetrokken tot vol licht. Zo hoort het cijfer
+ * bij de kamer waar het in staat in plaats van er als sticker op te liggen, en
+ * loopt de reeks vanzelf van vurig oranje naar warm goud naarmate de zaal
+ * rijker wordt. */
+const ZAAL_KLEUR: Record<number, string> = {
+  0: "#FFA46B", 50: "#FF9C68", 100: "#FF9961", 250: "#FF9A63", 500: "#FFBB90", 1000: "#FFC783",
 };
 
 /* De inzet-popup: dezelfde schil voor uitdagen en voor een herkansing. Twee
@@ -1112,7 +1129,26 @@ function InzetPopup({
         <button onClick={onClose} aria-label={t("back")} style={{ position: "absolute", top: 12, right: 12, background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 4 }}>
           <CloseIcon size={26} />
         </button>
-        <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 18, color: colors.gold, textAlign: "center" }}>{titel}</span>
+        {/* De kop krijgt de behandeling van een kop: smalle hoofdletters, ruim
+            gespatieerd, met echt licht erachter in plaats van een schaduw. Een
+            vette letter met text-shadow wordt alleen wolliger. */}
+        <NeonText
+          accent={colors.gold}
+          blur={20}
+          glow={0.8}
+          style={{ fontFamily: font.wide, fontWeight: 700, fontSize: 15, letterSpacing: 2.2, lineHeight: 1.2, textTransform: "uppercase", textAlign: "center" }}
+        >
+          {titel}
+        </NeonText>
+        {/* Een dunne sierlijn eronder: hij scheidt de kop van de uitleg zonder
+            een streep te trekken, en dooft naar de randen uit. */}
+        <span
+          aria-hidden
+          style={{
+            height: 1, width: "62%", alignSelf: "center", marginTop: -2,
+            background: `linear-gradient(90deg, transparent, ${withAlpha(colors.gold, 0.75)}, transparent)`,
+          }}
+        />
         <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.sub, lineHeight: 1.5, textAlign: "center" }}>{uitleg}</p>
         <InzetCarrousel waardes={waardes} index={index} onIndex={onIndex} coins={coins} bezig={bezig} onKies={onKies} />
         <p style={{ margin: 0, fontFamily: font.ui, fontSize: 11.5, color: colors.faint, textAlign: "center" }}>
@@ -1143,15 +1179,19 @@ function InzetCarrousel({
     sound.uiTap();
     onIndex((index + stap + waardes.length) % waardes.length);
   };
+  // Kale pijlen: de cirkel eromheen was een knop-vorm om iets wat al een knop
+  // is, en twee omlijningen naast de zaal maken de rij rommelig. Ze houden wel
+  // dezelfde RAAKVLAK-maat, zodat je ze even makkelijk raakt.
   const pijl: React.CSSProperties = {
-    flexShrink: 0, width: 34, height: 34, borderRadius: "50%", display: "grid", placeItems: "center",
-    background: withAlpha("#000000", 0.34), border: `1px solid ${withAlpha(colors.gold, 0.35)}`,
+    flexShrink: 0, width: 34, height: 34, display: "grid", placeItems: "center",
+    background: "transparent", border: "none", padding: 0,
     color: colors.gold, cursor: "pointer",
+    filter: `drop-shadow(0 0 8px ${withAlpha(colors.gold, 0.45)})`,
   };
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 6, width: "100%" }}>
       <button onClick={() => ga(-1)} aria-label={t("back")} className="pressable" style={pijl}>
-        <ChevronLeft size={20} />
+        <ChevronLeft size={30} strokeWidth={2.4} />
       </button>
 
       <button
@@ -1179,25 +1219,26 @@ function InzetCarrousel({
             style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block" }}
           />
         )}
-        {/* Het bedrag ligt OVER de zaal, met een donkere voet eronder: de art
-            heeft in het midden bewust een rustig vlak, maar een schaduw houdt
-            het cijfer leesbaar op elke zaal die nog komt. */}
+        {/* Het bedrag staat in het HART van de zaal: elke zaal heeft daar
+            bewust een rustig, leeg vlak, en dat is precies waar je oog heen
+            gaat. Onderaan lag het tegen de vloer aan. De donkere voet houdt het
+            leesbaar, de gloed in de zaalkleur bindt het aan de kamer. */}
         <span
           style={{
-            position: "absolute", left: 0, right: 0, bottom: "8%",
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
-            textShadow: "0 2px 10px rgba(0,0,0,.85), 0 0 26px rgba(0,0,0,.6)",
+            position: "absolute", inset: 0,
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+            textShadow: `0 2px 12px rgba(0,0,0,.9), 0 0 30px ${withAlpha(ZAAL_KLEUR[n] ?? colors.gold, 0.55)}`,
           }}
         >
-          <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 30, lineHeight: 1, color: n === 0 ? colors.ink : colors.gold }}>
+          <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 34, lineHeight: 1, letterSpacing: n === 0 ? 1.5 : 0, color: ZAAL_KLEUR[n] ?? colors.gold }}>
             {n === 0 ? t("duelStakeGeen") : n}
           </span>
-          {n > 0 && <img src="/coin.webp" alt="" width={24} height={24} style={{ display: "block" }} />}
+          {n > 0 && <img src="/coin.webp" alt="" width={26} height={26} style={{ display: "block" }} />}
         </span>
       </button>
 
       <button onClick={() => ga(1)} aria-label={t("next")} className="pressable" style={pijl}>
-        <ChevronRight size={20} />
+        <ChevronRight size={30} strokeWidth={2.4} />
       </button>
     </div>
   );

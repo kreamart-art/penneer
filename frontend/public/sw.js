@@ -17,7 +17,7 @@ const CACHE = "penneer-v85"; // v85: art-cache overleeft releases
 // waarom de app "zwaar" aanvoelde. Art die op dezelfde URL wordt overschreven
 // draagt al een ?v=-parameter, en een andere query is een andere cache-regel,
 // dus verse art komt gewoon binnen zonder de rest te lozen.
-const ART = "penneer-art-v3"; // v3: alle zes duelzalen
+const ART = "penneer-art-v4"; // v4: zalen zonder donkere rand
 const ART_PADEN = ["/ui/", "/buzzers/", "/emotes/", "/tiles/", "/vlaggen/", "/frames/", "/emblems/", "/music/", "/sfx/", "/reels/", "/shield/"];
 const artCache = (pad) => ART_PADEN.some((p) => pad.startsWith(p));
 

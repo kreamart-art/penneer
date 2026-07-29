@@ -270,7 +270,7 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
   }
 
   const header = (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", paddingTop: "calc(36px + env(safe-area-inset-top))" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", paddingTop: "calc(14px + env(safe-area-inset-top))" }}>
       <button onClick={() => (part && phase === "intro" ? setPart(null) : onBack())} aria-label={t("back")} style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 2 }}>
         <ArrowLeft size={20} />
       </button>

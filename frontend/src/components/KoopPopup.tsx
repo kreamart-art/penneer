@@ -85,7 +85,7 @@ export function KoopPopup({ game, actief }: { game: GameApi; actief: boolean }) 
           {t("koopTitel")}
         </span>
 
-        <div style={{ position: "relative", display: "grid", placeItems: "center", width: 152, height: 152, marginTop: -26, zIndex: 1 }}>
+        <div style={{ position: "relative", display: "grid", placeItems: "center", width: 116, height: 116, marginTop: -10, zIndex: 1 }}>
           <span
             style={{
               position: "absolute",
@@ -99,7 +99,7 @@ export function KoopPopup({ game, actief }: { game: GameApi; actief: boolean }) 
             className="reward-art"
             src={art ?? "/coin.webp"}
             alt=""
-            style={{ position: "relative", width: 138, height: 138, objectFit: "contain", maxWidth: "none" }}
+            style={{ position: "relative", width: 104, height: 104, objectFit: "contain", maxWidth: "none" }}
           />
         </div>
 
