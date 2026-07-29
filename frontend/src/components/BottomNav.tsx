@@ -117,9 +117,9 @@ export function BottomNav({
     // verschil tussen gekozen en niet gekozen is alleen belichting.
     const maat = Math.round(s * 1.12);
     const art: Partial<Record<NavKey, (on: boolean) => React.ReactNode>> = {
-      shop: (on) => <NavArt src={`/ui/nav/shop.webp?v=${NAV_ART}`} on={on} size={maat} />,
-      leaderboard: (on) => <NavArt src={`/ui/nav/trophy.webp?v=${NAV_ART}`} on={on} size={maat} />,
-      friends: (on) => <NavArt src={`/ui/nav/friends.webp?v=${NAV_ART}`} on={on} size={maat} />,
+      shop: (on) => <NavArt naam="shop" on={on} size={maat} />,
+      leaderboard: (on) => <NavArt naam="trophy" on={on} size={maat} />,
+      friends: (on) => <NavArt naam="friends" on={on} size={maat} />,
     };
     return (
       <nav
@@ -138,7 +138,7 @@ export function BottomNav({
       >
         <div ref={plate} style={{ position: "relative", width: "100%", maxWidth: 460, margin: "0 auto", pointerEvents: "auto" }}>
           <img
-            src="/tiles/navbar.webp"
+            src={`/tiles/navbar${active === "home" ? "" : "-uit"}.webp?v=${NAV_ART}`}
             alt=""
             style={{
               position: "relative",
@@ -287,18 +287,18 @@ export function BottomNav({
  *  zakt weg in de schaduw en de gekozen staat vol aan. Hetzelfde materiaal,
  *  andere belichting. De halo zit al in de art getekend, dus er hoeft er geen
  *  omheen; dat zou de gloed verdubbelen. */
-function NavArt({ src, on, size }: { src: string; on: boolean; size: number }) {
+function NavArt({ naam, on, size }: { naam: string; on: boolean; size: number }) {
   return (
     <img
-      src={src}
+      src={`/ui/nav/${naam}${on ? "-goud" : ""}.webp?v=${NAV_ART}`}
       alt=""
       style={{
         width: size,
         height: size,
         display: "block",
-        // Niet te ver terug: deze art heeft zelf al een warme gloed en diepe
-        // kleur, en die knijp je er zo uit. Op 55 procent werd het goud vaal.
-        filter: on ? "brightness(1.1) saturate(1.08)" : "brightness(.84) saturate(.92)",
+        // Niet te ver terug: deze art heeft zelf al een gloed en diepe kleur, en
+        // die knijp je er zo uit.
+        filter: on ? "brightness(1.1) saturate(1.08)" : "brightness(.92)",
       }}
     />
   );

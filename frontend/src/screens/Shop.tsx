@@ -47,8 +47,10 @@ const REELS_FOR_SALE = [
 ];
 // The two avatar packs (nine each), with three preview thumbnails apiece.
 const AVATAR_PACKS = [
-  { id: "avpack1", name: "shopAvPack1", preview: [19, 22, 25] },
-  { id: "avpack2", name: "shopAvPack2", preview: [28, 31, 34] },
+  // Alle negen, niet drie: een pack van negen waarvan je er drie ziet, verkoopt
+  // een derde. Het raster is 3x3, net als bij de stickers.
+  { id: "avpack1", name: "shopAvPack1", preview: [19, 20, 21, 22, 23, 24, 25, 26, 27] },
+  { id: "avpack2", name: "shopAvPack2", preview: [28, 29, 30, 31, 32, 33, 34, 35, 36] },
 ];
 
 interface Bundle { product: string; coins: number; price: string }
@@ -575,7 +577,7 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
                 {(status?.bundles ?? []).map((b, i) => (
                   <GlasVak key={b.product} index={i} veeg={i === beurt}>
                     {i === 3 && <span style={{ position: "absolute", top: 5, right: 10, fontFamily: font.ui, fontSize: 8.5, fontWeight: 800, letterSpacing: 0.4, textTransform: "uppercase", color: colors.gold }}>{t("shopBestValue")}</span>}
-                    <img src="/coins-stack.webp" alt="" style={{ width: 44, height: 44, objectFit: "contain", display: "block" }} />
+                    <img src="/coins-stack.webp" alt="" style={{ width: 62, height: 62, objectFit: "contain", display: "block" }} />
                     <Coins n={b.coins} size={16} />
                     <KnopPlaat
                       breed={92}
@@ -645,8 +647,8 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
               <Raster kolommen={2} aantal={EMOTE_PACKS_FOR_SALE.length}>
                 {EMOTE_PACKS_FOR_SALE.map((pk, i) => (
                   <CoinItem key={pk.id} title={t(pk.name)} owned={owned.has(pk.id)} price={prices[pk.id] ?? 200} coins={coins} index={i} veeg={i === beurt} onBuy={() => game.buyItemCoins(pk.id)}>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 2, width: "100%" }}>
-                      {pk.emotes.slice(0, 6).map((id) => (
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 1.5, width: "100%" }}>
+                      {pk.emotes.map((id) => (
                         <img key={id} src={EMOTE_SRC(id)} alt="" loading="lazy" style={{ width: "100%", aspectRatio: "1 / 1", objectFit: "contain", display: "block" }} />
                       ))}
                     </div>
@@ -667,9 +669,9 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
               <Raster kolommen={2} aantal={AVATAR_PACKS.length}>
                 {AVATAR_PACKS.map((pk, i) => (
                   <CoinItem key={pk.id} title={t(pk.name)} owned={owned.has(pk.id)} price={prices[pk.id] ?? packPrice} coins={coins} index={i} veeg={i === beurt} onBuy={() => game.buyItemCoins(pk.id)}>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 4, width: "100%" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 2, width: "100%" }}>
                       {pk.preview.map((n) => (
-                        <div key={n} style={{ aspectRatio: "1 / 1", borderRadius: 8, overflow: "hidden", border: `1px solid ${colors.panelBorder}` }}>
+                        <div key={n} style={{ aspectRatio: "1 / 1", borderRadius: 6, overflow: "hidden", border: `1px solid ${colors.panelBorder}` }}>
                           <img src={`/avatars/av${n}.jpg?v=${AVATAR_ART_VERSION}`} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
                         </div>
                       ))}
