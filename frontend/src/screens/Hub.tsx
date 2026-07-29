@@ -2841,6 +2841,11 @@ export function ProfileViewModal({ game, userId, onClose }: { game: GameApi; use
         gloed="verloop"
         animeer
         eindkap
+        vulling="geen"
+        // De entree zit op de LIJST en niet op de inhoud erin: schaalt de inhoud
+        // binnen een lijst met `overflow: hidden`, dan zie je tijdens die halve
+        // seconde de lijst zelf langs de randen doorschemeren.
+        className="reward-card"
         style={{ width: "100%", maxWidth: 380 }}
         binnen={{ padding: 0, overflow: "hidden" }}
       >
@@ -2859,7 +2864,7 @@ export function ProfileViewModal({ game, userId, onClose }: { game: GameApi; use
           backgroundPosition: "top, top, center top, top",
           backgroundRepeat: "no-repeat",
         } as React.CSSProperties}
-        className="reward-card zachtscroll"
+        className="zachtscroll"
       >
         {zoom && loaded && (
           <AvatarZoom name={p.name} color={p.color} userId={p.id} hasAvatar={p.has_avatar} avatarVer={p.avatar_ver} onClose={() => setZoom(false)} />

@@ -92,6 +92,8 @@ export function Tour({ onKlaar }: { onKlaar: () => void }) {
         gloed="verloop"
         animeer
         eindkap
+        vulling="geen"
+        className="reward-card"
         style={{ width: "100%", maxWidth: 360 }}
         binnen={{ padding: 0, overflow: "hidden" }}
       >

@@ -83,7 +83,7 @@ const RING_GAT_X = 0.499;
 const RING_GAT_Y = 0.441;
 const SCHILD_VERH = 972 / 821;
 
-/** De divisieladder, van laag naar hoog. De vololgorde IS de rang: het schild
+/** De divisieladder, van laag naar hoog. De volgorde IS de rang: het schild
  *  is geen smaak meer maar iets wat je elke maandag kunt winnen of verliezen.
  *  Zwart-met-goud staat bovenaan omdat het als enige niet als kleur leest maar
  *  als materiaal, en dat hoort bij de top. Deze reeks moet gelijk blijven aan
@@ -380,9 +380,14 @@ export function NeonKader({
   ademDuur,
   kernPlek,
   veeg = false,
+  className,
 }: {
   children: ReactNode;
   style?: CSSProperties;
+  /** Een klasse op de BUITENSTE doos. Voor een entree-animatie: die hoort op de
+   *  lijst en niet op de inhoud, want binnen een lijst met `overflow: hidden`
+   *  zie je tijdens het schalen de lijst zelf langs de randen doorschemeren. */
+  className?: string;
   /** Opvulling binnen de lijst. */
   binnen?: CSSProperties;
   /** De hoekronding. Een lijst OM andere lijsten krijgt er een paar bij, zodat
@@ -486,7 +491,7 @@ export function NeonKader({
   };
   const ring = (d: number): CSSProperties => ringLaag(KADER_R, d);
   return (
-    <div ref={doos} style={{ position: "relative", ...style }}>
+    <div ref={doos} className={className} style={{ position: "relative", ...style }}>
       {/* 1. zachte buitengloed. Met een afsnijding kan dit geen box-shadow zijn,
           want die volgt de rechthoek en niet de vorm; dan is het een vervaagde
           kopie van de vorm zelf. */}
