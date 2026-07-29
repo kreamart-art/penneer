@@ -12,6 +12,13 @@
 /* Bebas Neue: de smalle hoofdletter-stijl voor de tagline en de spelernaam op
    de main page. Ook op de Duel-koppen, want die willen dezelfde toon. */
 @font-face {
+  /* De gameshow-letter voor de bedragen in de duelzalen. */
+  font-family: "Gameshow";
+  src: url("/fonts/gameshow.woff2") format("woff2");
+  font-display: swap;
+}
+
+@font-face {
   font-family: "Bebas Neue";
   src: url("/fonts/bebas-neue.woff2") format("woff2"), url("/fonts/bebas-neue.ttf") format("truetype");
   font-weight: 400;
@@ -1040,3 +1047,20 @@ a:active .hex-aan {
 @media (prefers-reduced-motion: reduce) {
   .zaal-rechts, .zaal-links, .bedrag-rechts, .bedrag-links { animation: none; }
 }
+
+/* De klassieke look: de indeling van voor de art-platen. Eén klasse op <html>
+   zet alle pagina-achtergronden terug naar de kale gradient met korrel; de
+   componenten schakelen zelf al om via useTileSkin, dit vangt de CSS-lagen. */
+html.klassiek body::before,
+html.klassiek body.profiel::after,
+html.klassiek body.arena::after,
+html.klassiek body.winkel::after,
+html.klassiek body.lijst::after {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
+    linear-gradient(180deg, #100c24 0%, #14102c 30%, #0e0b20 60%, #090714 82%, #06040e 100%);
+  background-repeat: repeat, no-repeat;
+  background-position: top left, top;
+  background-size: 160px 160px, 100% 100%;
+}
+

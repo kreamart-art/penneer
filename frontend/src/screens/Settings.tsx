@@ -174,6 +174,7 @@ function Fader({
 }
 
 export function Settings({ game, onBack, onShowRules, onShowTour, onShowLegal }: { game: GameApi; onBack: () => void; onShowRules: () => void; onShowTour: () => void; onShowLegal: (tab: "privacy" | "terms") => void }) {
+  const [skinAan, setSkinAan] = useState(tileSkinOn());
   const { t, lang, setLang } = useT();
   const [musicVol, setMusicVol] = useState(sound.musicVolume());
   const [sfxVol, setSfxVol] = useState(sound.sfxVolume());
@@ -185,8 +186,6 @@ export function Settings({ game, onBack, onShowRules, onShowTour, onShowLegal }:
   const iosInApp = isIosInAppBrowser();
   const [adminCode, setAdminCode] = useState("");
   const { isAdmin, adminAi, recoveryCodes, aiCodes, avatarCodes, buzzerCodes } = game.state;
-  // De platen-skin staat lokaal, dus we houden hem hier zelf bij.
-  const [tileSkin, setTileSkinOn] = useState(tileSkinOn);
 
   useEffect(() => onInstallChange(() => setInstallable(canInstall())), []);
 
@@ -201,6 +200,17 @@ export function Settings({ game, onBack, onShowRules, onShowTour, onShowLegal }:
         </div>
 
         <Card style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+          {/* De look: de nieuwe platen of de klassieke indeling van voor de
+              art. Alles blijft hetzelfde werken; alleen het jasje wisselt. */}
+          <div>
+            <SectionLabel>{t("lookTitel")}</SectionLabel>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 8 }}>
+              <span style={{ flex: 1, fontFamily: font.ui, fontSize: 14, color: colors.ink }}>{t("lookKlassiek")}</span>
+              <Toggle on={!skinAan} onChange={(v) => { sound.uiTap(); setTileSkin(!v); setSkinAan(!v); }} />
+            </div>
+            <p style={{ margin: "6px 0 0", fontFamily: font.ui, fontSize: 12, color: colors.faint, lineHeight: 1.45 }}>{t("lookUitleg")}</p>
+          </div>
+
           <div>
             <SectionLabel>{t("language")}</SectionLabel>
             {/* Dezelfde pil als op de ranglijst en in de winkel: een ring met
@@ -389,15 +399,6 @@ export function Settings({ game, onBack, onShowRules, onShowTour, onShowLegal }:
                 <span style={{ fontFamily: font.ui, fontSize: 14, color: colors.green }}>{t("loggedInAdmin")}</span>
                 <Button variant="ghost" onClick={game.adminLogout}>{t("logout")}</Button>
               </div>
-
-              {/* Platen-skin: een PROEF voor de main page. Lokaal bewaard en
-                  alleen hier zichtbaar, dus geen speler ziet er iets van tot we
-                  besluiten dat dit de nieuwe standaard wordt. */}
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-                <span style={{ fontFamily: font.ui, fontSize: 15, color: colors.ink }}>{t("tileSkin")}</span>
-                <Toggle on={tileSkin} onChange={(v) => { setTileSkin(v); setTileSkinOn(v); }} />
-              </div>
-              <p style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint, margin: 0 }}>{t("tileSkinHint")}</p>
 
               {/* AI referee toggle */}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>

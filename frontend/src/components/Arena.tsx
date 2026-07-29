@@ -11,6 +11,7 @@
 // helderste beeldrij). Door de plaat precies die fractie omhoog te schuiven
 // landt het podium op de lijn die je kiest, op elk schermformaat. En omdat de
 // randen vervagen maakt het niet uit als dat er een paar pixels naast zit.
+import { useTileSkin } from "../theme/tileSkin";
 import { useEffect, useRef, useState } from "react";
 import { withAlpha } from "../theme/tokens";
 
@@ -49,6 +50,10 @@ export function Arena({
 }) {
   const [art, setArt] = useState(true);
   const layer = useRef<HTMLDivElement | null>(null);
+  // De arena-achtergrond hoort bij de nieuwe look; de klassieke indeling had
+  // hem niet, dus daar tekent hij niets. NA de hooks, want die moeten elke
+  // weergave in dezelfde volgorde draaien.
+  const skinAan = useTileSkin();
 
   // Het decor volgt het ZICHTBARE deel van het scherm, niet de pagina.
   //
@@ -75,6 +80,7 @@ export function Arena({
     };
   }, []);
 
+  if (!skinAan) return null;
   return (
     <div ref={layer} aria-hidden style={{ position: "fixed", inset: 0, zIndex: 0, overflow: "hidden", pointerEvents: "none" }}>
       {/* Dekkende ondergrond in het palet van de plaat: dekt de app-gradient af. */}

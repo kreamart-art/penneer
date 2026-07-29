@@ -1110,11 +1110,13 @@ const ZAAL_ART: Record<number, string> = {
  * verloop heen. */
 function ZaalTekst({ tekst, maat, gloed, spatie = 0 }: { tekst: string; maat: number; gloed: string; spatie?: number }) {
   const basis: React.CSSProperties = {
-    fontFamily: font.display,
-    fontWeight: 800,
+    // De gameshow-letter: dit IS een spelshow-moment, en de brede vormen van
+    // dit font dragen het glas en de neonlijn beter dan de systeemletter.
+    fontFamily: '"Gameshow", ' + font.display,
+    fontWeight: 400,
     fontSize: maat,
     lineHeight: 1,
-    letterSpacing: spatie + maat * 0.01,
+    letterSpacing: spatie + maat * 0.03,
     whiteSpace: "nowrap",
   };
   const laag: React.CSSProperties = { ...basis, position: "absolute", left: 0, top: 0, pointerEvents: "none" };

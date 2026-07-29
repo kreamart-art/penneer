@@ -1,10 +1,11 @@
-// De platen-skin voor de modustegels op de main page.
+// De look-schakelaar: de nieuwe platen-look (standaard) of de KLASSIEKE
+// indeling van voor de art. Elke plek die de platen tekent heeft zijn oude tak
+// bewaard (`skin ? ... : ...`), en nieuwe onderdelen zijn steeds in BEIDE
+// stijlen gebouwd, dus klassiek is geen bevroren versie maar dezelfde app in
+// het oude jasje: cash-pil, badges en alles erbij, alleen zonder platen.
 //
-// De skin staat nu voor IEDEREEN aan; hij is de nieuwe look. De schakelaar
-// blijft staan, want die is straks weer nodig als er een volgende skin komt.
-//
-// Daarom slaan we alleen het UIT-zetten op: geen sleutel betekent aan. Zo hoeft
-// er niets gemigreerd te worden en krijgt elke bestaande speler hem meteen.
+// We slaan alleen het UIT-zetten op: geen sleutel betekent nieuw. Zo hoeft er
+// niets gemigreerd te worden.
 import { useEffect, useState, type CSSProperties } from "react";
 
 const KEY = "penneer.tileSkin";
@@ -28,6 +29,18 @@ export function setTileSkin(on: boolean): void {
   // Eigen gebeurtenis, want `storage` vuurt alleen in ANDERE tabbladen en de
   // schakelaar en de main page staan in hetzelfde tabblad.
   window.dispatchEvent(new Event(EVENT));
+  zetKlassiekeKlasse();
+}
+
+/** De CSS-kant van de klassieke look: één klasse op <html> zet de
+ *  pagina-achtergrond-art uit (zie index.css). Bij het opstarten aanroepen en
+ *  bij elke omschakeling. */
+export function zetKlassiekeKlasse(): void {
+  try {
+    document.documentElement.classList.toggle("klassiek", !tileSkinOn());
+  } catch {
+    /* geen document (test) */
+  }
 }
 
 /** Volgt de vlag, zodat het scherm meteen omschakelt als je hem aanvinkt. */

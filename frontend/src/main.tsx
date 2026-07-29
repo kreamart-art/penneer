@@ -1,3 +1,4 @@
+import { zetKlassiekeKlasse } from "./theme/tileSkin";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
@@ -16,3 +17,6 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     </LangProvider>
   </React.StrictMode>
 );
+
+// De klassieke look zet een klasse op <html> voor de CSS-achtergronden.
+zetKlassiekeKlasse();
