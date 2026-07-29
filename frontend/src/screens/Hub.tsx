@@ -2092,7 +2092,7 @@ function ClubScreen({ game, onBack, embedded }: { game: GameApi; onBack?: () => 
     try {
       const blob = await makeClubCard({
         name: club.name,
-        emblemSrc: club.emblem ? `/emblems/${club.emblem}.webp` : "/logo.png",
+        emblemSrc: club.emblem ? `/emblems/${club.emblem}.webp` : "/logo-klein.webp",
         code: club.code,
         membersText: (club.member_count === 1 ? t("clubMembersOne") : t("clubMembersN", { n: club.member_count })),
         periodText: period === "month" ? t("seasonChip") : t("allTime"),
@@ -2806,15 +2806,17 @@ function Vlag({ code }: { code?: string | null }) {
   const c = (code || "").toUpperCase();
   if (!c || er) return null;
   return (
-    <div style={{ display: "flex", marginTop: 6 }}>
-      <HexArt maat={19}>
-        <img
-          src={`/vlaggen/${c}.webp`}
-          alt=""
-          onError={() => setEr(true)}
-          style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-        />
-      </HexArt>
+    // Geen zeshoek: de vlag is zelf al een vorm. Hij staat ONDER de
+    // kroontjes-zeshoek van de titelpil, op dezelfde verticale lijn: de pil
+    // heeft links 4px lucht en de zeshoek is 19 breed, dus met deze marge valt
+    // het hart van de vlag op het hart van de zeshoek erboven.
+    <div style={{ display: "flex", marginTop: 6, marginLeft: 4 }}>
+      <img
+        src={`/vlaggen/${c}.webp`}
+        alt=""
+        onError={() => setEr(true)}
+        style={{ width: 22, height: 17, objectFit: "contain", display: "block" }}
+      />
     </div>
   );
 }

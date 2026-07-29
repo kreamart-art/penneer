@@ -90,7 +90,10 @@ function ensureCtx(): AudioContext | null {
     sfxGain.gain.value = sfxMuted ? 0 : sfxVol;
     sfxGain.connect(ctx.destination);
     startKeepAlive();
-    void decodeAll();
+    // De sfx (2,5MB samen) hoeven de eerste seconden niet voor de voeten te
+    // lopen: decodeer ze pas als de boel op adem is. Tot die tijd vangt de
+    // synth-terugval elk geluid op.
+    setTimeout(() => { void decodeAll(); }, 2500);
     // Re-resume whenever the page comes back to the foreground (iOS suspends).
     document.addEventListener("visibilitychange", () => {
       if (!document.hidden && ctx && ctx.state === "suspended") ctx.resume().catch(() => {});
@@ -226,7 +229,9 @@ function ensureMusicEl(): HTMLAudioElement | null {
   if (!musicEl) {
     musicEl = new Audio("/music/daftneo.mp3");
     musicEl.loop = true;
-    musicEl.preload = "auto";
+    // "none": de 5MB-track streamt zodra hij ECHT speelt, in plaats van dat de
+    // browser hem meteen volledig binnentrekt terwijl de pagina nog laadt.
+    musicEl.preload = "none";
   }
   musicEl.volume = musicMuted ? 0 : musicVol;
   // Belt and braces: a muted channel also mutes the ELEMENT, so even a stray

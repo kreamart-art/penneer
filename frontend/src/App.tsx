@@ -1,6 +1,6 @@
 // Pen Neer — top-level flow. Pre-room: intro -> language -> landing/rules.
 // In a room: render the screen for the authoritative phase.
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, lazy, Suspense } from "react";
 import { useGame } from "./net/socket";
 import { vangWerfcode } from "./net/referral";
 import { useT } from "./i18n/i18n";
@@ -9,14 +9,15 @@ import { colors } from "./theme/tokens";
 import { useTileSkin } from "./theme/tileSkin";
 import { Intro } from "./screens/Intro";
 import { LanguagePage } from "./screens/LanguagePage";
-import { Rules } from "./screens/Rules";
-import { Settings } from "./screens/Settings";
+const Rules = lazy(() => import("./screens/Rules").then((m) => ({ default: m.Rules })));
+const Settings = lazy(() => import("./screens/Settings").then((m) => ({ default: m.Settings })));
 import { Landing } from "./screens/Landing";
-import { Hub, type HubSection } from "./screens/Hub";
-import { Shop } from "./screens/Shop";
-import { Training } from "./screens/Training";
-import { Daily } from "./screens/Daily";
-import { Duel } from "./screens/Duel";
+import { type HubSection } from "./screens/Hub";
+const Hub = lazy(() => import("./screens/Hub").then((m) => ({ default: m.Hub })));
+const Shop = lazy(() => import("./screens/Shop").then((m) => ({ default: m.Shop })));
+const Training = lazy(() => import("./screens/Training").then((m) => ({ default: m.Training })));
+const Daily = lazy(() => import("./screens/Daily").then((m) => ({ default: m.Daily })));
+const Duel = lazy(() => import("./screens/Duel").then((m) => ({ default: m.Duel })));
 import { BadgeToasts } from "./components/BadgeToasts";
 import { BottomNav, type NavKey } from "./components/BottomNav";
 import { BuzzerRewardPopup } from "./components/BuzzerRewardPopup";
@@ -25,18 +26,18 @@ import { KoopPopup } from "./components/KoopPopup";
 import { AD_WEG } from "./components/ReferralAd";
 import { MeldingBanner, useMeldingWachtrij } from "./components/Meldingen";
 import { Tour, tourGezien } from "./components/Tour";
-import { Juridisch } from "./screens/Juridisch";
+const Juridisch = lazy(() => import("./screens/Juridisch").then((m) => ({ default: m.Juridisch })));
 import { InviteBanner } from "./components/InviteBanner";
 import { DmBanner } from "./components/DmBanner";
 import { localNotify } from "./components/NotifyNudge";
 import { ensurePushSubscription } from "./pwa/push";
 import type { InboxItem } from "./net/socket";
-import { Lobby } from "./screens/Lobby";
-import { RulesGate } from "./screens/RulesGate";
-import { Reveal } from "./screens/Reveal";
-import { Fill } from "./screens/Fill";
-import { Results } from "./screens/Results";
-import { Final } from "./screens/Final";
+const Lobby = lazy(() => import("./screens/Lobby").then((m) => ({ default: m.Lobby })));
+const RulesGate = lazy(() => import("./screens/RulesGate").then((m) => ({ default: m.RulesGate })));
+const Reveal = lazy(() => import("./screens/Reveal").then((m) => ({ default: m.Reveal })));
+const Fill = lazy(() => import("./screens/Fill").then((m) => ({ default: m.Fill })));
+const Results = lazy(() => import("./screens/Results").then((m) => ({ default: m.Results })));
+const Final = lazy(() => import("./screens/Final").then((m) => ({ default: m.Final })));
 
 // Meteen bij het laden, nog voor de eerste render: `?ref=` uit de adresbalk
 // halen en vasthouden tot er echt een account gemaakt wordt.
@@ -447,7 +448,10 @@ export default function App() {
 
   return (
     <>
-      {screen}
+      {/* De lui geladen schermen komen als los brokje binnen. De terugval is
+          BEWUST leeg: de brokjes zijn klein en de app heeft al een donkere
+          achtergrond, dus een spinner van drie frames flikkert alleen maar. */}
+      <Suspense fallback={null}>{screen}</Suspense>
       {navKey !== null && <BottomNav game={game} active={navKey} onSelect={goNav} />}
       {penSplash && (
         <div

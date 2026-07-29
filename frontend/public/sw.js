@@ -10,7 +10,16 @@
 //    briefly-stale shell can still boot from cache instead of going black.
 //  - Every activation purges ALL old caches (drops any poisoned shell).
 // Never touches the WebSocket or the API.
-const CACHE = "penneer-v84"; // v84: schildring op ELKE pagina
+const CACHE = "penneer-v85"; // v85: art-cache overleeft releases
+// De art in zijn EIGEN cache die releases overleeft. We deployden vandaag negen
+// keer, en elke activatie gooide alles weg: elke update was daardoor een koude
+// her-download van ~15MB aan knoppen, emotes, vlaggen en achtergronden. Dat is
+// waarom de app "zwaar" aanvoelde. Art die op dezelfde URL wordt overschreven
+// draagt al een ?v=-parameter, en een andere query is een andere cache-regel,
+// dus verse art komt gewoon binnen zonder de rest te lozen.
+const ART = "penneer-art-v1";
+const ART_PADEN = ["/ui/", "/buzzers/", "/emotes/", "/tiles/", "/vlaggen/", "/frames/", "/emblems/", "/music/", "/sfx/", "/reels/", "/shield/"];
+const artCache = (pad) => ART_PADEN.some((p) => pad.startsWith(p));
 
 self.addEventListener("install", () => {
   self.skipWaiting();
@@ -19,18 +28,19 @@ self.addEventListener("install", () => {
 self.addEventListener("activate", (e) => {
   e.waitUntil(
     (async () => {
-      // Drop everything, including any poisoned index.html an older SW cached.
+      // Alles weg BEHALVE de art-cache: de schil (index + gehashte assets) moet
+      // vers, maar de art is met ?v= geadresseerd en blijft geldig.
       const keys = await caches.keys();
-      await Promise.all(keys.map((k) => caches.delete(k)));
+      await Promise.all(keys.filter((k) => k !== ART).map((k) => caches.delete(k)));
       await self.clients.claim();
     })()
   );
 });
 
-const cachePut = (req, res) => {
+const cachePut = (req, res, naam = CACHE) => {
   if (res && res.ok) {
     const copy = res.clone();
-    caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
+    caches.open(naam).then((c) => c.put(req, copy)).catch(() => {});
   }
   return res;
 };
@@ -61,9 +71,11 @@ self.addEventListener("fetch", (e) => {
   }
 
   // Hashed assets are content-addressed and immutable: cache-first, then fill
-  // from network. This is what stops a stale shell from ever going black.
+  // from network. This is what stops a stale shell from ever going black. Art
+  // gaat naar zijn eigen lang-levende cache, de rest naar de versie-cache.
+  const naam = artCache(url.pathname) ? ART : CACHE;
   e.respondWith(
-    caches.match(req).then((hit) => hit || fetch(req).then((res) => cachePut(req, res)))
+    caches.match(req).then((hit) => hit || fetch(req).then((res) => cachePut(req, res, naam)))
   );
 });
 

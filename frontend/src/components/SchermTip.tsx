@@ -11,14 +11,23 @@ import { sound } from "../sound/sound";
 import { colors, font, withAlpha } from "../theme/tokens";
 
 const SLEUTEL = (id: string) => `penneer.tip.${id}`;
+// Eén kruisje = KLAAR met tips, overal, ook na een herstart. Zeven schermen
+// met elk hun eigen tip voelen anders als dezelfde popup die blijft
+// terugkomen, dus wie er een wegklikt wil ze niet per scherm blijven wegwerken.
+const ALLES_WEG = "penneer.tips.weg";
 
 export function SchermTip({ id, tekst }: { id: string; tekst: string }) {
   const [weg, setWeg] = useState(() => {
-    try { return localStorage.getItem(SLEUTEL(id)) === "1"; } catch { return true; }
+    try {
+      return localStorage.getItem(ALLES_WEG) === "1" || localStorage.getItem(SLEUTEL(id)) === "1";
+    } catch { return true; }
   });
   if (weg) return null;
   const sluit = () => {
-    try { localStorage.setItem(SLEUTEL(id), "1"); } catch { /* prima */ }
+    try {
+      localStorage.setItem(SLEUTEL(id), "1");
+      localStorage.setItem(ALLES_WEG, "1");
+    } catch { /* prima */ }
     setWeg(true);
   };
   return (

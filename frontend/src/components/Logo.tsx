@@ -12,7 +12,10 @@ export function Logo({ size = 120, glow = true }: { size?: number | string; glow
     "radial-gradient(circle at 50% 50%, #000 44%, rgba(0,0,0,.85) 56%, rgba(0,0,0,.45) 68%, rgba(0,0,0,.15) 80%, transparent 94%)";
   return (
     <img
-      src="/logo.png"
+      // De kleine webp (384px, ~40KB) en niet de bron-PNG van 2MB: dit logo staat
+      // op 128px op het beginscherm en was in zijn eentje de zwaarste download
+      // van de hele eerste laadbeurt.
+      src="/logo-klein.webp"
       alt="Pen Neer"
       width={typeof size === "number" ? size : undefined}
       height={typeof size === "number" ? size : undefined}

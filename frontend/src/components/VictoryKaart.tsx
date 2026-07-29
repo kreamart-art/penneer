@@ -14,10 +14,14 @@ import type { ReactNode } from "react";
 import { colors, font } from "../theme/tokens";
 
 /** Ophogen zodra de art overschreven wordt; de bestandsnaam blijft gelijk. */
-export const VICTORY_ART = 2;
+export const VICTORY_ART = 3;
 
-/** De verhouding van het bestand: 780 op 1025. */
-const VERH = 780 / 1025;
+/** De verhouding van de nieuwe plaat: 3118 op 4194. */
+const VERH = 3118 / 4194;
+// De wimpel zit nu IN de plaat, onderaan, en begint op 83,5% van de hoogte
+// (gemeten aan de warme pixels in de middenkolom). De inhoud moet daar dus
+// boven blijven, anders loopt de laatste regel over VICTORY! heen.
+const WIMPEL_TOP = 0.835;
 
 export function VictoryKaart({
   kop,
@@ -26,8 +30,9 @@ export function VictoryKaart({
   closeLabel,
   breed = 340,
 }: {
-  /** De wimpel bovenaan. Laat weg als het moment geen overwinning is (een
-   *  degradatie hoort niet met VICTORY! aangekondigd te worden). */
+  /** Overwinning of niet. De wimpel VICTORY! is in de plaat gebakken, dus dit
+   *  kiest de PLAAT: met wimpel voor iets wat je wint of krijgt, zonder voor
+   *  een degradatie (die hoort niet met VICTORY! aangekondigd te worden). */
   kop?: boolean;
   children: ReactNode;
   onClose?: () => void;
@@ -41,8 +46,10 @@ export function VictoryKaart({
         position: "relative",
         width: "100%",
         maxWidth: breed,
-        aspectRatio: `${780} / ${1025}`,
-        backgroundImage: `url(/ui/victory-frame.webp?v=${VICTORY_ART})`,
+        // Twee platen, twee verhoudingen: de wimpel maakt de victory-plaat
+        // hoger. Eén vaste verhouding zou de andere uitrekken.
+        aspectRatio: kop ? `${3118} / ${4194}` : `${780} / ${1025}`,
+        backgroundImage: `url(/ui/${kop ? "victory-frame" : "frame-plain"}.webp?v=${VICTORY_ART})`,
         backgroundSize: "100% 100%",
         backgroundRepeat: "no-repeat",
         // Een echte schaduw ONDER de vorm kan geen drop-shadow zijn: iOS rastert
@@ -50,34 +57,6 @@ export function VictoryKaart({
         filter: "drop-shadow(0 18px 44px rgba(0,0,0,.6))",
       }}
     >
-      {/* De wimpel hangt OVER de bovenrand heen, want zo hoort een wimpel: hij
-          is ergens aan opgehangen en ligt niet in het vlak. */}
-      {kop && (
-        // Het CENTREREN zit op de wikkel en de ANIMATIE op de afbeelding, en dat
-        // moet zo. `reward-art` animeert `transform`, dus een `translateX(-50%)`
-        // op hetzelfde element wordt door de animatie overschreven: de wimpel
-        // schoot dan een halve breedte naar rechts en liep het scherm uit.
-        <span
-          aria-hidden
-          style={{
-            position: "absolute",
-            left: 0,
-            right: 0,
-            top: "-12%",
-            display: "flex",
-            justifyContent: "center",
-            pointerEvents: "none",
-          }}
-        >
-          <img
-            src={`/ui/victory-band.webp?v=${VICTORY_ART}`}
-            alt=""
-            className="reward-art"
-            style={{ width: "90%", maxWidth: "none", display: "block" }}
-          />
-        </span>
-      )}
-
       {onClose && (
         <button
           onClick={onClose}
@@ -102,13 +81,14 @@ export function VictoryKaart({
         </button>
       )}
 
-      {/* De inhoud, binnen het gemeten binnenveld. Onder de wimpel begint hij
-          lager, anders staat de eerste regel eronder verstopt. */}
+      {/* De inhoud, binnen het gemeten binnenveld. De wimpel zit onderaan IN de
+          plaat, dus de inhoud stopt daar netjes boven; zonder wimpel mag hij
+          door tot vlak boven de onderrand. */}
       <div
         style={{
           position: "absolute",
-          top: kop ? "17%" : "8%",
-          bottom: "7%",
+          top: "8%",
+          bottom: kop ? `${Math.round((1 - WIMPEL_TOP) * 100) + 2}%` : "7%",
           left: "10%",
           right: "10%",
           display: "flex",
