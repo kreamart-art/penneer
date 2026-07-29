@@ -376,10 +376,15 @@ function KnopPlaat({ label, breed = 92, uit, onClick }: { label: React.ReactNode
       }}
     >
       <img src="/ui/knop-klein.webp" alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} />
+      {/* Op het VLAK van de knop en niet op het midden van de doos: onder het
+          vlak zit nog een rand en een schaduw, en die trekken het midden
+          omlaag. Gemeten aan de art loopt het gele veld van 4 tot 125 van de
+          150, dus zijn hart ligt op 43,3 procent. */}
       <span
         style={{
-          position: "absolute", inset: 0, display: "grid", placeItems: "center",
-          fontFamily: font.display, fontWeight: 800, fontSize: Math.round(breed * 0.155), lineHeight: 1,
+          position: "absolute", left: "50.4%", top: "43.3%", transform: "translate(-50%, -50%)",
+          display: "block", whiteSpace: "nowrap",
+          fontFamily: font.display, fontWeight: 800, fontSize: Math.round(breed * 0.15), lineHeight: 1,
           color: "#3A2405", textShadow: "0 1px 0 rgba(255,240,190,.5)",
         }}
       >
@@ -548,9 +553,12 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
                 <div style={{ textAlign: "center", fontFamily: font.ui, fontSize: 12.5, color: colors.green }}>{t("shopAiActive")}</div>
               ) : !account ? null : (
                 <div style={{ display: "flex", justifyContent: "center" }}>
-                  <Button variant="gold" full compact style={{ padding: "4px 10px", fontSize: 12, width: "min(100%, 150px)" }} disabled={buying !== null || !status?.enabled} onClick={() => startPaypal("ai")}>
-                    {buying === "ai" ? t("shopOpeningPaypal") : money(status?.ai_price ?? status?.price, status?.currency ?? "EUR")}
-                  </Button>
+                  <KnopPlaat
+                    breed={112}
+                    uit={buying !== null || !status?.enabled}
+                    onClick={() => startPaypal("ai")}
+                    label={buying === "ai" ? "..." : money(status?.ai_price ?? status?.price, status?.currency ?? "EUR")}
+                  />
                 </div>
               )}
               {!aiActive && status && !status.enabled && (
