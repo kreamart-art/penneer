@@ -246,7 +246,7 @@ export function Duel({ game, onBack, onProfile }: { game: GameApi; onBack: () =>
   };
 
   const header = (
-    <div style={{ position: "relative", zIndex: 1, display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", paddingTop: "calc(14px + env(safe-area-inset-top))" }}>
+    <div style={{ position: "relative", zIndex: 1, display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", paddingTop: "calc(36px + env(safe-area-inset-top))" }}>
       <button
         onClick={() => { sound.uiTap(); view === "list" ? onBack() : (setView("list"), void refresh()); }}
         aria-label={t("back")}

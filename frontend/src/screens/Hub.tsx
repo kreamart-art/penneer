@@ -150,7 +150,7 @@ export function Hub({ game, section, onBack, onShowShop, onOpenInbox, onChalleng
   return (
     <Screen
       top={
-        <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "14px 14px 14px 18px", paddingTop: "calc(14px + env(safe-area-inset-top))" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "14px 14px 14px 18px", paddingTop: "calc(36px + env(safe-area-inset-top))" }}>
           <button onClick={onBack} aria-label={t("back")} style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 2 }}>
             <ArrowLeft size={20} />
           </button>
@@ -1883,7 +1883,7 @@ function ClubScreen({ game, onBack, embedded }: { game: GameApi; onBack?: () => 
   }, [period, club?.id]);
 
   const header = (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", paddingTop: "calc(14px + env(safe-area-inset-top))" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", paddingTop: "calc(36px + env(safe-area-inset-top))" }}>
       <button onClick={onBack} aria-label={t("back")} style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 2 }}>
         <ArrowLeft size={20} />
       </button>
@@ -2429,7 +2429,7 @@ function ProfileSettings({
   // Own Screen wrapper (safe-area + padding + scroll) because the Hub renders
   // this at the top level, not nested inside its tab Screen.
   const header = (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", paddingTop: "calc(14px + env(safe-area-inset-top))" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", paddingTop: "calc(36px + env(safe-area-inset-top))" }}>
       <button onClick={onBack} aria-label={t("back")} style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 2 }}>
         <ArrowLeft size={20} />
       </button>

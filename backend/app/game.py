@@ -45,21 +45,24 @@ def first_letter(text: str) -> str:
 def starts_with(text: str, letter: str) -> bool:
     """Case/diacritic-insensitive check that text starts with letter.
 
-    Lenient on IJ/Y: when the round letter is I, an answer starting with IJ
-    is fine (it already starts with I). When the round letter is Y, accept an
-    answer starting with IJ as well, since the schoolyard game treats them
-    loosely.
+    Een enkele soepelheid, en maar een kant op: bij de letter Y telt een woord
+    dat met IJ begint ook mee, want in het Nederlands zijn die twee historisch
+    inwisselbaar (ijs/ys) en op het schoolplein laat je dat toe.
+
+    Andersom NIET. Dat stond er wel, als "letter I, woord met Y is ook goed", en
+    dat sloeg te breed toe: bij de letter I werden zo yak, yoghurt en youtuber
+    goedgekeurd en verschenen ze ook in de lijst met woorden die je gemist had.
+    IJ begint al met een I, dus die kant heeft geen soepelheid nodig.
     """
-    if not text.strip():
+    kaal = text.strip()
+    if not kaal:
         return False
-    fl = first_letter(text)
+    fl = first_letter(kaal)
     target = strip_diacritics(letter).upper()
     if fl == target:
         return True
-    # IJ/Y leniency
-    if target == "Y" and fl == "I":
-        return True
-    if target == "I" and fl == "Y":
+    # IJ telt mee bij de Y, en alleen als het woord ECHT met "ij" begint.
+    if target == "Y" and strip_diacritics(kaal[:2]).lower() == "ij":
         return True
     return False
 

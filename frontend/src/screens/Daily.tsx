@@ -3,7 +3,7 @@
 // list categories, list-only scoring, one ranked attempt per account. Guests
 // play the identical round unranked and get a profile nudge.
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Check, ChevronRight, Globe2, HelpCircle, Share2, SpellCheck2, X } from "lucide-react";
+import { ArrowLeft, Check, ChevronRight, HelpCircle, Share2, X } from "lucide-react";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { Screen, Card } from "../components/Layout";
@@ -269,7 +269,7 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
   }
 
   const header = (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", paddingTop: "calc(14px + env(safe-area-inset-top))" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", paddingTop: "calc(36px + env(safe-area-inset-top))" }}>
       <button onClick={() => (part && phase === "intro" ? setPart(null) : onBack())} aria-label={t("back")} style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 2 }}>
         <ArrowLeft size={20} />
       </button>
@@ -313,7 +313,7 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
             </div>
           </Paneel>
           <PartTile
-            icon={<SpellCheck2 size={22} />}
+            icon={<img src="/ui/letter.webp" alt="" aria-hidden style={{ width: 30, height: 30, objectFit: "contain", display: "block" }} />}
             title={t("partWords")}
             desc={t("partWordsDesc")}
             meta={info ? t("dailyPlayers", { n: info.players }) : ""}
@@ -322,7 +322,7 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
             onClick={() => { sound.uiTap(); setPart("words"); }}
           />
           <PartTile
-            icon={<Globe2 size={22} />}
+            icon={<img src="/ui/wereld.webp" alt="" aria-hidden style={{ width: 30, height: 30, objectFit: "contain", display: "block" }} />}
             title={t("partTopo")}
             desc={t("partTopoDesc")}
             meta={info ? t("topoPlayers", { n: info.topo_players ?? 0 }) : ""}
@@ -566,16 +566,20 @@ function PartTile({
       style={{
         display: "flex", alignItems: "center", gap: 13, width: "100%", textAlign: "left",
         padding: "15px 14px", borderRadius: radius.card, cursor: "pointer",
-        background: "linear-gradient(180deg, rgba(42,28,72,.85), rgba(22,13,48,.85))",
+        // Doorzichtig van binnen, net als de secties elders: de achtergrond van
+        // de pagina hoort er doorheen te lopen. Een eigen gevuld vlak maakt er
+        // een kaart op een kaart van.
+        background: "transparent",
         border: "none",
         // Dezelfde lijst als overal, maar in het GROEN zodra je dit deel gedaan
         // hebt: het is dan geen uitnodiging meer maar een afvinkje, en dat mag je
-        // aan de rand zien zonder de tekst te lezen.
-        ...(done ? neonSkin(colors.green) : null),
+        // aan de rand zien zonder de tekst te lezen. De rondlopende animatie
+        // blijft in allebei de gevallen staan; alleen de kleuren wisselen.
+        ...neonSkin(done ? colors.green : colors.violet),
       }}
       className="pressable panel-neon"
     >
-      <span style={{ display: "grid", placeItems: "center", width: 44, height: 44, flexShrink: 0, borderRadius: 14, color: colors.gold, background: withAlpha(colors.gold, 0.12), border: `1px solid ${withAlpha(colors.gold, 0.35)}` }}>
+      <span style={{ display: "grid", placeItems: "center", width: 46, height: 46, flexShrink: 0, borderRadius: 14, color: colors.gold, background: withAlpha(done ? colors.green : colors.violet, 0.1), border: `1px solid ${withAlpha(done ? colors.green : colors.violet, 0.32)}` }}>
         {icon}
       </span>
       <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
