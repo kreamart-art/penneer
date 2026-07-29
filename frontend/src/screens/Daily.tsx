@@ -3,7 +3,7 @@
 // list categories, list-only scoring, one ranked attempt per account. Guests
 // play the identical round unranked and get a profile nudge.
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, CalendarDays, Check, ChevronRight, Globe2, HelpCircle, Share2, SpellCheck2, X } from "lucide-react";
+import { ArrowLeft, Check, ChevronRight, Globe2, HelpCircle, Share2, SpellCheck2, X } from "lucide-react";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { Screen, Card } from "../components/Layout";
@@ -12,7 +12,8 @@ import { Topo } from "./Topo";
 import type { GameApi } from "../net/socket";
 import { ArtIcoon } from "../components/ArtIcoon";
 import { GlasVeld } from "../components/GlasVeld";
-import { Paneel } from "../components/ProfileHero";
+import { GOUD, Paneel, PlekWapen } from "../components/ProfileHero";
+import { GlasRij, Lijst } from "./Hub";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { makeDailyCard, shareOrDownload } from "../util/shareCard";
@@ -272,8 +273,7 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
       <button onClick={() => (part && phase === "intro" ? setPart(null) : onBack())} aria-label={t("back")} style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 2 }}>
         <ArrowLeft size={20} />
       </button>
-      <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>
-        <CalendarDays size={18} color={colors.gold} /> {t("dailyTitle")}
+      <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>{t("dailyTitle")}
       </span>
     </div>
   );
@@ -300,10 +300,18 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {/* Geen of-of: de twee onderdelen staan los van elkaar, met elk een
               eigen ranglijst, en je mag ze allebei op dezelfde dag doen. */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-            <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint }}>{t("partPickTitle")}</span>
-            <span style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.sub, lineHeight: 1.45 }}>{t("partPickHint")}</span>
-          </div>
+          {/* De kop op de sierlijst van het profiel: dit is de voordeur van de
+              dagronde, en die mag er als een sectie uitzien in plaats van als
+              twee losse regels boven een lijst. */}
+          <Paneel>
+            <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 5, paddingInline: 14 }}>
+              <span style={{ fontFamily: font.wide, fontSize: 15, letterSpacing: 1.6, textTransform: "uppercase", color: colors.ink }}>{t("partPickTitle")}</span>
+              <span style={{ textAlign: "center", fontFamily: font.ui, fontSize: 12, color: colors.sub, lineHeight: 1.4 }}>{t("partPickHint")}</span>
+              {!!info?.streak && info.streak > 0 && (
+                <span style={{ marginTop: 2 }}>{chip(<ArtIcoon naam="vlam" size={15} />, t("dailyStreakLine", { n: info.streak }))}</span>
+              )}
+            </div>
+          </Paneel>
           <PartTile
             icon={<SpellCheck2 size={22} />}
             title={t("partWords")}
@@ -322,11 +330,6 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
             doneLabel={t("partDone")}
             onClick={() => { sound.uiTap(); setPart("topo"); }}
           />
-          {!!info?.streak && info.streak > 0 && (
-            <div style={{ display: "flex", justifyContent: "center" }}>
-              {chip(<ArtIcoon naam="vlam" size={15} />, t("dailyStreakLine", { n: info.streak }))}
-            </div>
-          )}
         </div>
       </Screen>
     );
@@ -512,21 +515,27 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
           </div>
         ) : null}
 
-        <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint }}>{t("dailyBoardTitle")}</span>
-          {r.board.length === 0 && <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13, color: colors.faint }}>{t("dailyEmptyBoard")}</p>}
-          {r.board.map((row, i) => {
-            const mine = account && row.id === account.id;
-            return (
-              <div key={row.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 10px", borderRadius: 10, background: mine ? withAlpha(colors.gold, 0.1) : withAlpha("#000000", 0.18), border: `1px solid ${mine ? withAlpha(colors.gold, 0.45) : colors.hairline}` }}>
-                <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 14, color: i === 0 ? colors.gold : colors.faint, width: 22 }}>{i + 1}</span>
-                <Avatar name={row.name} color={row.color} size={26} userId={row.id} hasAvatar={!!row.has_avatar} avatarVer={row.avatar_ver} />
-                <span style={{ flex: 1, fontFamily: font.ui, fontSize: 13.5, fontWeight: 600, color: colors.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.name}</span>
-                <span style={{ fontFamily: font.ui, fontSize: 11.5, color: colors.faint }}>{Math.max(1, Math.round(row.time_ms / 1000))}s</span>
-                <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16, color: i === 0 ? colors.gold : colors.ink, width: 30, textAlign: "right" }}>{row.score}</span>
-              </div>
-            );
-          })}
+        <Card style={{ display: "flex", flexDirection: "column", gap: 3, padding: "13px 7px 14px" }}>
+          <span style={{ paddingInline: 6, marginBottom: 4, fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint }}>{t("dailyBoardTitle")}</span>
+          {r.board.length === 0 && <p style={{ margin: 0, paddingInline: 6, fontFamily: font.ui, fontSize: 13, color: colors.faint }}>{t("dailyEmptyBoard")}</p>}
+          <Lijst n={r.board.length} gap={5} toon={5}>
+            {r.board.map((row, i) => {
+              const mine = !!account && row.id === account.id;
+              return (
+                // Dezelfde rij als op de ranglijst: het wapen hangt aan de
+                // bovenlijn op het knikpunt van de schuine hoek, en de eerste
+                // plek krijgt de gouden kappen.
+                <GlasRij key={row.id} wapen={<PlekWapen plek={i + 1} maat={26} />}>
+                  <Avatar name={row.name} color={row.color} size={30} userId={row.id} hasAvatar={!!row.has_avatar} avatarVer={row.avatar_ver} />
+                  <span style={{ flex: 1, minWidth: 0, fontFamily: font.ui, fontSize: 13.5, fontWeight: 600, color: mine ? GOUD[3] : colors.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {row.name}{mine && <span style={{ color: colors.faint, fontWeight: 500 }}> · {t("you")}</span>}
+                  </span>
+                  <span style={{ fontFamily: font.ui, fontSize: 11, color: colors.faint, flexShrink: 0 }}>{Math.max(1, Math.round(row.time_ms / 1000))}s</span>
+                  <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 16, color: i === 0 ? colors.gold : colors.ink, minWidth: 30, textAlign: "right" }}>{row.score}</span>
+                </GlasRij>
+              );
+            })}
+          </Lijst>
         </Card>
 
         <Button variant="primary" full disabled={sharing} onClick={share}>

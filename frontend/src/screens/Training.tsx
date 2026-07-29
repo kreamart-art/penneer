@@ -4,7 +4,7 @@
 // reveals the words from the list you did not name yet. Stateless: no account
 // needed, nothing stored (the progress/collection layer is a later step).
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Check, GraduationCap, HelpCircle, RotateCw, X } from "lucide-react";
+import { ArrowLeft, Check, HelpCircle, RotateCw, X } from "lucide-react";
 import { Chip } from "../components/Chip";
 import { GlasVeld } from "../components/GlasVeld";
 import { NeonText } from "../components/NeonText";
@@ -116,8 +116,7 @@ export function Training({ onBack, lenient = false }: { onBack: () => void; leni
       <button onClick={onBack} aria-label={t("back")} style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 2 }}>
         <ArrowLeft size={20} />
       </button>
-      <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>
-        <GraduationCap size={18} color={colors.gold} /> {t("trainTitle")}
+      <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>{t("trainTitle")}
       </span>
       {rounds > 0 && (
         <span style={{ marginLeft: "auto", fontFamily: font.ui, fontSize: 12, color: colors.faint }}>

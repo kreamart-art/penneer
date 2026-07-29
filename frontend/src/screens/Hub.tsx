@@ -1887,8 +1887,7 @@ function ClubScreen({ game, onBack, embedded }: { game: GameApi; onBack?: () => 
       <button onClick={onBack} aria-label={t("back")} style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 2 }}>
         <ArrowLeft size={20} />
       </button>
-      <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>
-        <Users size={18} color={colors.gold} /> {t("clubTitle")}
+      <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>{t("clubTitle")}
       </span>
     </div>
   );

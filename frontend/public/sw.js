@@ -10,7 +10,7 @@
 //    briefly-stale shell can still boot from cache instead of going black.
 //  - Every activation purges ALL old caches (drops any poisoned shell).
 // Never touches the WebSocket or the API.
-const CACHE = "penneer-v61"; // v61: arena vult het scherm, duelrijen als laatste potjes
+const CACHE = "penneer-v62"; // v62: staande arena-art, dagranglijst op glasrijen, koppen zonder pictogram
 
 self.addEventListener("install", () => {
   self.skipWaiting();

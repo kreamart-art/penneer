@@ -13,7 +13,7 @@
 // Antwoorden worden getypt. De server laat een paar letters speling toe, want
 // eigennamen zijn lastig te spellen en dit is geen dictee.
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Check, Globe2, X } from "lucide-react";
+import { ArrowLeft, Check, X } from "lucide-react";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { Screen, Card } from "../components/Layout";
@@ -227,8 +227,7 @@ export function Topo({ game, onBack, onProfile, played }: { game: GameApi; onBac
       <button onClick={onBack} aria-label={t("back")} style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 2 }}>
         <ArrowLeft size={20} />
       </button>
-      <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>
-        <Globe2 size={18} color={colors.gold} /> {t("topoTitle")}
+      <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>{t("topoTitle")}
       </span>
     </div>
   );
