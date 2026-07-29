@@ -53,9 +53,9 @@ function RewardCard({
 }
 
 /** The prize itself: a breathing glow with the artwork popping in on top. */
-function RewardArt({ src, size = 132 }: { src: string; size?: number }) {
+function RewardArt({ src, size = 160 }: { src: string; size?: number }) {
   return (
-    <div style={{ position: "relative", width: size, height: size, display: "grid", placeItems: "center" }}>
+    <div style={{ position: "relative", width: size, height: size, display: "grid", placeItems: "center", marginTop: -24, zIndex: 1 }}>
       <div style={{ position: "absolute", inset: 0, borderRadius: "50%", background: `radial-gradient(circle, ${withAlpha(colors.gold, 0.35)}, transparent 68%)`, animation: "breath-glow 3s ease-in-out infinite" }} />
       <img className="reward-art" src={src} alt="" style={{ position: "relative", width: size, height: size, objectFit: "contain", filter: "drop-shadow(0 10px 24px rgba(0,0,0,.55))" }} />
     </div>
@@ -97,7 +97,7 @@ export function BuzzerRewardPopup({ game }: { game: GameApi }) {
     };
     return (
       <RewardCard>
-        <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 21, color: colors.gold, textShadow: `0 0 22px ${withAlpha(colors.gold, 0.5)}` }}>{t("coinsRewardTitle")}</span>
+        <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 26, color: colors.gold, textShadow: `0 0 22px ${withAlpha(colors.gold, 0.5)}` }}>{t("coinsRewardTitle")}</span>
         <RewardArt src="/coin.webp" size={118} />
         <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 30, color: colors.ink }}>+{coinsPending}</span>
         <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13, color: colors.sub, lineHeight: 1.5 }}>{t("coinsRewardBody")}</p>
@@ -129,15 +129,15 @@ export function BuzzerRewardPopup({ game }: { game: GameApi }) {
 
     return (
       <RewardCard onClose={() => done(false)} closeLabel={t("claimLater")} maxWidth={360}>
-        <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 20, color: colors.gold, textShadow: `0 0 22px ${withAlpha(colors.gold, 0.5)}` }}>{heading}</span>
+        <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 26, color: colors.gold, textShadow: `0 0 22px ${withAlpha(colors.gold, 0.5)}` }}>{heading}</span>
         <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13.5, color: colors.sub }}>{body}</p>
 
         {/* Emote packs celebrate with a row of stickers; the rest with one big
             piece of art. Titles have no artwork, so the title IS the art. */}
         {earned.kind === "emotes" && pack ? (
-          <div className="reward-art" style={{ display: "flex", gap: 4, padding: "4px 0" }}>
+          <div className="reward-art" style={{ display: "flex", gap: 4, padding: "4px 0", marginTop: -18, zIndex: 1 }}>
             {pack.emotes.slice(0, 3).map((id) => (
-              <img key={id} src={EMOTE_SRC(id)} alt="" style={{ width: 84, height: 84, objectFit: "contain", filter: "drop-shadow(0 8px 18px rgba(0,0,0,.5))" }} />
+              <img key={id} src={EMOTE_SRC(id)} alt="" style={{ width: 100, height: 100, objectFit: "contain", filter: "drop-shadow(0 8px 18px rgba(0,0,0,.5))" }} />
             ))}
           </div>
         ) : earned.art ? (

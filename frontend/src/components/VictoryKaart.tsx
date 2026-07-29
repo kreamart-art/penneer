@@ -14,7 +14,7 @@ import type { ReactNode } from "react";
 import { colors, font } from "../theme/tokens";
 
 /** Ophogen zodra de art overschreven wordt; de bestandsnaam blijft gelijk. */
-export const VICTORY_ART = 1;
+export const VICTORY_ART = 2;
 
 /** De verhouding van het bestand: 780 op 1025. */
 const VERH = 780 / 1025;
@@ -53,21 +53,29 @@ export function VictoryKaart({
       {/* De wimpel hangt OVER de bovenrand heen, want zo hoort een wimpel: hij
           is ergens aan opgehangen en ligt niet in het vlak. */}
       {kop && (
-        <img
-          src={`/ui/victory-band.webp?v=${VICTORY_ART}`}
-          alt=""
+        // Het CENTREREN zit op de wikkel en de ANIMATIE op de afbeelding, en dat
+        // moet zo. `reward-art` animeert `transform`, dus een `translateX(-50%)`
+        // op hetzelfde element wordt door de animatie overschreven: de wimpel
+        // schoot dan een halve breedte naar rechts en liep het scherm uit.
+        <span
           aria-hidden
-          className="reward-art"
           style={{
             position: "absolute",
-            left: "50%",
-            top: "-7%",
-            width: "88%",
-            transform: "translateX(-50%)",
-            maxWidth: "none",
+            left: 0,
+            right: 0,
+            top: "-12%",
+            display: "flex",
+            justifyContent: "center",
             pointerEvents: "none",
           }}
-        />
+        >
+          <img
+            src={`/ui/victory-band.webp?v=${VICTORY_ART}`}
+            alt=""
+            className="reward-art"
+            style={{ width: "90%", maxWidth: "none", display: "block" }}
+          />
+        </span>
       )}
 
       {onClose && (

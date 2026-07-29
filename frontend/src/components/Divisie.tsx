@@ -330,21 +330,21 @@ export function DivisiePopup({ change, onSluit }: { change: DivisieChange; onSlu
             wolliger; een vervaagde kopie erachter geeft hem gloed. */}
         <NeonText
           accent={op ? colors.gold : colors.red}
-          blur={22}
+          blur={26}
           glow={0.85}
-          style={{ fontFamily: font.wide, fontSize: 30, lineHeight: 1, letterSpacing: 2.5, textTransform: "uppercase" }}
+          style={{ fontFamily: font.wide, fontSize: 38, lineHeight: 1, letterSpacing: 2.5, textTransform: "uppercase" }}
         >
           {op ? t("divisiePromotie") : t("divisieDegradatie")}
         </NeonText>
 
         {/* Het schild zelf. De sleutel wisselt mee, zodat React hem opnieuw
             opbouwt en de pop-in-animatie echt opnieuw speelt. */}
-        <div style={{ position: "relative", display: "grid", placeItems: "center", width: 118, height: 118 }}>
+        <div style={{ position: "relative", display: "grid", placeItems: "center", width: 152, height: 152, marginTop: -30, zIndex: 1 }}>
           <span
             style={{
               position: "absolute",
-              width: 104,
-              height: 104,
+              width: 138,
+              height: 138,
               borderRadius: "50%",
               background: `radial-gradient(circle, rgba(${accent},.4), transparent 68%)`,
               animation: "breath-glow 3s ease-in-out infinite",
@@ -358,8 +358,8 @@ export function DivisiePopup({ change, onSluit }: { change: DivisieChange; onSlu
               key={`slag-${fase}`}
               style={{
                 position: "absolute",
-                width: 90,
-                height: 90,
+                width: 120,
+                height: 120,
                 borderRadius: "50%",
                 border: `2px solid rgba(${accent},.9)`,
                 animation: "divisie-slag .85s cubic-bezier(.2,.7,.3,1) forwards",
@@ -367,7 +367,7 @@ export function DivisiePopup({ change, onSluit }: { change: DivisieChange; onSlu
             />
           )}
           <span key={`schild-${toon}`} className="reward-art" style={{ position: "relative" }}>
-            <Schild divisie={toon} maat={76} />
+            <Schild divisie={toon} maat={108} />
           </span>
         </div>
 
