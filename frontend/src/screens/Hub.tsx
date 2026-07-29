@@ -3,6 +3,7 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import { ArtIcoon } from "../components/ArtIcoon";
 import { CloseIcon } from "../components/CloseIcon";
+import { KnopPlaat } from "../components/KnopPlaat";
 import { ReferralAd } from "../components/ReferralAd";
 import { ArrowLeft, BookOpen, CalendarDays, Camera, Check, ChevronDown, Copy, Crown, Flame, Gem, Lock, LogOut, Medal, MessageCircle, MoreVertical, Pencil, Percent, Plus, Rocket, Search, Send, Settings as SettingsIcon, Share2, Shield, ShoppingCart, Smile, Sparkles, Star, Swords, Target, Trash2, Trophy, UserPlus, Users, X, Zap, ZoomIn, ZoomOut } from "lucide-react";
 import { Avatar, RANK_RING } from "../components/Avatar";
@@ -917,7 +918,7 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
             style={{ flex: 1, minWidth: 0, fontFamily: font.ui, fontSize: 15, color: colors.ink, background: withAlpha("#000000", 0.3), border: `1.5px solid ${colors.panelBorder}`, borderRadius: 12, padding: "11px 13px" }}
           />
           {text.trim() ? (
-            <Button variant="gold" onClick={sendNow}>{t("chatSend")}</Button>
+            <KnopPlaat breed={76} onClick={sendNow} label={t("chatSend")} />
           ) : (
             <MicButton upload={uploadVoice} onSent={(id, dur) => game.dmSend(partnerId, "", { id, dur })} />
           )}
@@ -2173,9 +2174,7 @@ function InviteToClub({ game, memberIds }: { game: GameApi; memberIds: Set<strin
             {sent[f.id] ? (
               <span style={{ fontFamily: font.ui, fontSize: 12, color: colors.green }}>{t("inviteSentShort")}</span>
             ) : (
-              <button onClick={() => { sound.uiTap(); game.clubInvite(f.id); setSent((s) => ({ ...s, [f.id]: true })); }} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 10px", borderRadius: 8, border: "none", background: colors.gold, color: colors.bg0, fontFamily: font.ui, fontWeight: 700, fontSize: 11.5, cursor: "pointer" }}>
-                <Send size={11} /> {t("clubInviteBtn")}
-              </button>
+              <KnopPlaat breed={88} onClick={() => { game.clubInvite(f.id); setSent((s) => ({ ...s, [f.id]: true })); }} label={t("clubInviteBtn")} />
             )}
           </GlasRij>
         ))}
@@ -2630,7 +2629,7 @@ function AvatarEditor({ file, onDone }: { file: File; onDone: (blob: Blob | null
         </div>
         <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12, color: colors.faint }}>{t("dragHint")}</p>
         <div style={{ display: "flex", gap: 8, width: V }}>
-          <Button variant="gold" full onClick={save}>{t("save")}</Button>
+          <KnopPlaat breed={104} onClick={save} label={t("save")} />
           <Button variant="ghost" onClick={() => onDone(null)}>{t("cancelCorrection")}</Button>
         </div>
       </div>
@@ -2737,7 +2736,7 @@ function FriendsTab({ game, onChallenge }: { game: GameApi; onChallenge: (userId
               <div key={f.id} style={{ display: "flex", flexDirection: "column" }}>
                 {row(f, (
                   <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                    {smallBtn(<><Swords size={13} /> {t("challengeBtn")}</>, () => onChallenge(f.id), "gold")}
+                    <KnopPlaat breed={86} onClick={() => onChallenge(f.id)} label={t("challengeBtn")} />
                     <button
                       onClick={() => setMenuFor(menuFor === f.id ? null : f.id)}
                       aria-label={t("friendOptions")}
@@ -2775,7 +2774,7 @@ function FriendsTab({ game, onChallenge }: { game: GameApi; onChallenge: (userId
               {results.map((u) =>
                 row(u, sent[u.id]
                   ? <span style={{ fontFamily: font.ui, fontSize: 12, color: colors.green }}>{t("pendingOut")}</span>
-                  : smallBtn(<><UserPlus size={13} /> {t("addFriendBtn")}</>, () => { game.friendRequest(u.id); setSent((s) => ({ ...s, [u.id]: true })); }, "gold"))
+                  : <KnopPlaat breed={86} onClick={() => { game.friendRequest(u.id); setSent((s) => ({ ...s, [u.id]: true })); }} label={t("addFriendBtn")} />)
               )}
             </Lijst>
           </>

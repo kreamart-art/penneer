@@ -5,9 +5,8 @@
 // Coins are also earned by levelling (1/level + 5 per 10 levels). A code the
 // owner handed out still unlocks the AI. A profile is required to own anything.
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { ArrowLeft, Check, ChevronLeft, ChevronRight, ListChecks, ShoppingCart, Ticket } from "lucide-react";
+import { ArrowLeft, Check, ChevronLeft, ChevronRight, ListChecks, ShoppingCart } from "lucide-react";
 import { Screen, Card } from "../components/Layout";
-import { Button } from "../components/Button";
 import { MusicToggle } from "../components/MusicToggle";
 import { sound } from "../sound/sound";
 import type { GameApi } from "../net/socket";
@@ -17,6 +16,7 @@ import { reelClip, reelEdge, reelFace, reelTheme } from "../theme/reelSkins";
 import { colors, font, withAlpha } from "../theme/tokens";
 import { useTileSkin } from "../theme/tileSkin";
 import { KADER_LIJN_GROEN, NeonKader, Paneel } from "../components/ProfileHero";
+import { KnopPlaat } from "../components/KnopPlaat";
 import { CoinPlate } from "../components/CoinPlate";
 
 const AVATAR_ART_VERSION = 9;
@@ -356,44 +356,6 @@ function Raster({ kolommen, aantal, children }: { kolommen: number; aantal: numb
   );
 }
 
-/** De kleine gouden knopplaat uit de UI-map, met een opschrift erop.
- *
- *  De gewone Button vulde het hele vakje: die is gemaakt voor een regel over de
- *  volle breedte, niet voor een prijskaartje in een raster. Deze is art, dus hij
- *  houdt zijn eigen verhouding en groeit niet mee met de doos. */
-const KNOP_VERH = 150 / 384;
-
-function KnopPlaat({ label, breed = 92, uit, onClick }: { label: React.ReactNode; breed?: number; uit?: boolean; onClick: () => void }) {
-  return (
-    <button
-      onClick={() => { if (!uit) { sound.uiTap(); onClick(); } }}
-      disabled={uit}
-      className={uit ? undefined : "pressable"}
-      style={{
-        position: "relative", width: breed, height: Math.round(breed * KNOP_VERH),
-        border: "none", background: "transparent", padding: 0, cursor: uit ? "default" : "pointer",
-        opacity: uit ? 0.55 : 1, flexShrink: 0, display: "block",
-      }}
-    >
-      <img src="/ui/knop-klein.webp" alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} />
-      {/* Op het VLAK van de knop en niet op het midden van de doos: onder het
-          vlak zit nog een rand en een schaduw, en die trekken het midden
-          omlaag. Gemeten aan de art loopt het gele veld van 4 tot 125 van de
-          150, dus zijn hart ligt op 43,3 procent. */}
-      <span
-        style={{
-          position: "absolute", left: "50.4%", top: "43.3%", transform: "translate(-50%, -50%)",
-          display: "block", whiteSpace: "nowrap",
-          fontFamily: font.display, fontWeight: 800, fontSize: Math.round(breed * 0.15), lineHeight: 1,
-          color: "#3A2405", textShadow: "0 1px 0 rgba(255,240,190,.5)",
-        }}
-      >
-        {label}
-      </span>
-    </button>
-  );
-}
-
 export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
   const { t } = useT();
   // De winkel hoort bij de main page: dezelfde achtergrond, zodat het voelt als
@@ -562,7 +524,7 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
                 </div>
               )}
               {!aiActive && status && !status.enabled && (
-                <p style={{ margin: "4px 0 0", textAlign: "center", fontFamily: font.ui, fontSize: 10.5, color: colors.faint, lineHeight: 1.15 }}>{t("shopPaypalSoonShort")}</p>
+                <p style={{ margin: "-9px 0 0", textAlign: "center", fontFamily: font.ui, fontSize: 10.5, color: colors.faint, lineHeight: 1.15 }}>{t("shopPaypalSoonShort")}</p>
               )}
             </div>
           </Paneel>
@@ -729,17 +691,31 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
         {!!account && (
           <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontFamily: font.ui, fontSize: 13, fontWeight: 600, letterSpacing: 0.4, textTransform: "uppercase", color: colors.faint }}>
-              <Ticket size={15} /> {t("shopHaveCode")}
+              <img src="/ui/ticket.webp" alt="" aria-hidden style={{ width: 22, height: 22, objectFit: "contain", display: "block" }} /> {t("shopHaveCode")}
             </span>
-            <div style={{ display: "flex", gap: 8 }}>
-              <input
-                value={code}
-                onChange={(e) => { setCode(e.target.value.toUpperCase()); if (shopResult) game.clearShopResult(); }}
-                placeholder={t("shopCodePlaceholder")}
-                onKeyDown={(e) => { if (e.key === "Enter" && code.trim()) redeem(); }}
-                style={{ flex: 1, minWidth: 0, fontFamily: font.display, letterSpacing: 1.5, fontSize: 14, color: colors.ink, background: withAlpha("#000000", 0.25), border: `1.5px solid ${colors.panelBorder}`, borderRadius: 10, padding: "11px 12px", textTransform: "uppercase" }}
-              />
-              <Button variant="primary" disabled={!code.trim()} onClick={redeem}>{t("shopRedeem")}</Button>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              {/* Het veld in dezelfde glasrand als een rij in de lijsten, met
+                  de afgeschuinde hoek en de lijn op een derde sterkte. Een kale
+                  rechthoek naast de rest van de winkel leest als een formulier
+                  dat er per ongeluk in staat. */}
+              <NeonKader
+                hoek={10}
+                dik={0.3}
+                sterkte={0.35}
+                vulling="geen"
+                eindkap="kort"
+                style={{ flex: 1, minWidth: 0 }}
+                binnen={{ display: "flex", alignItems: "center", padding: "2px 4px" }}
+              >
+                <input
+                  value={code}
+                  onChange={(e) => { setCode(e.target.value.toUpperCase()); if (shopResult) game.clearShopResult(); }}
+                  placeholder={t("shopCodePlaceholder")}
+                  onKeyDown={(e) => { if (e.key === "Enter" && code.trim()) redeem(); }}
+                  style={{ flex: 1, minWidth: 0, fontFamily: font.display, letterSpacing: 1.5, fontSize: 14, color: colors.ink, background: "transparent", border: "none", outline: "none", padding: "9px 10px", textTransform: "uppercase" }}
+                />
+              </NeonKader>
+              <KnopPlaat breed={104} uit={!code.trim()} onClick={redeem} label={t("shopRedeem")} />
             </div>
             {resultMsg && <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13, color: shopResult?.ok ? colors.green : colors.red }}>{resultMsg}</p>}
           </Card>

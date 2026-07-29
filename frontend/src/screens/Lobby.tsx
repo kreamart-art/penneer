@@ -2,7 +2,7 @@
 // no-timer, rounds, categories + deelcode, hard letters, max players, spectators),
 // testbots, and per-device language + sound toggles.
 import { useEffect, useRef, useState } from "react";
-import { Check, Copy, History, Minus, Plus, Send, Share2, UserPlus, X } from "lucide-react";
+import { Check, Copy, History, Minus, Plus, Share2, UserPlus, X } from "lucide-react";
 import { Avatar } from "../components/Avatar";
 import { NeonText } from "../components/NeonText";
 import { Button } from "../components/Button";
@@ -13,6 +13,7 @@ import { Toggle } from "../components/Toggle";
 import { Screen, Card } from "../components/Layout";
 import { TopBar } from "../components/TopBar";
 import { GlasRij, Lijst, ProfileViewModal, ZoekKnop } from "./Hub";
+import { KnopPlaat } from "../components/KnopPlaat";
 import type { GameApi, PublicUser } from "../net/socket";
 import { ALL_CATEGORY_KEYS, subLabelKey, useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
@@ -61,13 +62,7 @@ function Rij({
       {sent ? (
         <span style={{ fontFamily: font.ui, fontSize: 12, color: colors.green }}>{t("inviteSentShort")}</span>
       ) : (
-        <button
-          onClick={onInvite}
-          className="pressable"
-          style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 10px", borderRadius: 8, border: "none", background: colors.gold, color: colors.bg0, fontFamily: font.ui, fontWeight: 700, fontSize: 11.5, cursor: "pointer" }}
-        >
-          <Send size={11} /> {t("inviteToRoom")}
-        </button>
+        <KnopPlaat breed={88} onClick={onInvite} label={t("inviteToRoom")} />
       )}
     </GlasRij>
   );

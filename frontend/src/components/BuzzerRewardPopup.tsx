@@ -7,6 +7,7 @@
 // level 10 the spin button comes before the coins), then the other earned
 // rewards, then the coins.
 import { useEffect, useRef, useState } from "react";
+import { KnopPlaat } from "./KnopPlaat";
 import { CloseIcon } from "./CloseIcon";
 import {  } from "lucide-react";
 import { Button } from "./Button";
@@ -146,7 +147,7 @@ export function BuzzerRewardPopup({ game }: { game: GameApi }) {
         <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 30, color: colors.ink }}>+{coinsPending}</span>
         <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13, color: colors.sub, lineHeight: 1.5 }}>{t("coinsRewardBody")}</p>
         <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: colors.gold }}>{t("coinsBalance", { n: account!.coins })}</span>
-        <Button variant="gold" full onClick={ackCoins}>{t("coinsOk")}</Button>
+        <KnopPlaat breed={104} onClick={ackCoins} label={t("coinsOk")} />
       </RewardCard>
     );
   }
@@ -204,7 +205,7 @@ export function BuzzerRewardPopup({ game }: { game: GameApi }) {
             </button>
           </>
         ) : (
-          <Button variant="gold" full onClick={() => done(false)}>{t("coinsOk")}</Button>
+          <KnopPlaat breed={104} onClick={() => done(false)} label={t("coinsOk")} />
         )}
       </RewardCard>
     );
