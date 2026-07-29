@@ -548,13 +548,13 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
               </div>
               {/* De opsomming van drie punten is weg: die zegt hetzelfde als de
                   regel eronder, en het paneel heeft een vaste hoogte. */}
-              <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12, color: colors.sub, lineHeight: 1.4 }}>{t("shopAiBody")}</p>
+              <p style={{ margin: 0, fontFamily: font.ui, fontSize: 11.5, color: colors.sub, lineHeight: 1.35 }}>{t("shopAiBody")}</p>
               {aiActive ? (
                 <div style={{ textAlign: "center", fontFamily: font.ui, fontSize: 12.5, color: colors.green }}>{t("shopAiActive")}</div>
               ) : !account ? null : (
                 <div style={{ display: "flex", justifyContent: "center" }}>
                   <KnopPlaat
-                    breed={112}
+                    breed={100}
                     uit={buying !== null || !status?.enabled}
                     onClick={() => startPaypal("ai")}
                     label={buying === "ai" ? "..." : money(status?.ai_price ?? status?.price, status?.currency ?? "EUR")}
@@ -562,7 +562,7 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
                 </div>
               )}
               {!aiActive && status && !status.enabled && (
-                <p style={{ margin: "9px 0 0", textAlign: "center", fontFamily: font.ui, fontSize: 10.5, color: colors.faint, lineHeight: 1.2 }}>{t("shopPaypalSoonShort")}</p>
+                <p style={{ margin: "4px 0 0", textAlign: "center", fontFamily: font.ui, fontSize: 10.5, color: colors.faint, lineHeight: 1.15 }}>{t("shopPaypalSoonShort")}</p>
               )}
             </div>
           </Paneel>
