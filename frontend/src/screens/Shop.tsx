@@ -5,7 +5,7 @@
 // Coins are also earned by levelling (1/level + 5 per 10 levels). A code the
 // owner handed out still unlocks the AI. A profile is required to own anything.
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { ArrowLeft, Check, ChevronLeft, ChevronRight, ListChecks, ShoppingCart } from "lucide-react";
+import { ArrowLeft, Check, ChevronLeft, ChevronRight, ListChecks } from "lucide-react";
 import { Screen, Card } from "../components/Layout";
 import { MusicToggle } from "../components/MusicToggle";
 import { sound } from "../sound/sound";
@@ -460,9 +460,7 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
           <button onClick={onBack} aria-label={t("back")} style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 2 }}>
             <ArrowLeft size={20} />
           </button>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>
-            <ShoppingCart size={17} color={colors.gold} /> {t("shopTitle")}
-          </span>
+          <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>{t("shopTitle")}</span>
           {account &&
             (skin ? (
               <span style={{ marginLeft: "auto" }}>
@@ -474,7 +472,7 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
                 <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15, color: colors.gold }}>{coins}</span>
               </span>
             ))}
-          <div style={{ marginLeft: account ? 6 : "auto" }}><MusicToggle /></div>
+          <div style={{ marginLeft: account ? 6 : "auto" }}><MusicToggle plate plateSize={34} size={15} padding={0} /></div>
         </div>
       }
     >
@@ -715,7 +713,7 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
                   style={{ flex: 1, minWidth: 0, fontFamily: font.display, letterSpacing: 1.5, fontSize: 14, color: colors.ink, background: "transparent", border: "none", outline: "none", padding: "9px 10px", textTransform: "uppercase" }}
                 />
               </NeonKader>
-              <KnopPlaat breed={104} uit={!code.trim()} onClick={redeem} label={t("shopRedeem")} />
+              <KnopPlaat breed={104} kleur="paars" uit={!code.trim()} onClick={redeem} label={t("shopRedeem")} />
             </div>
             {resultMsg && <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13, color: shopResult?.ok ? colors.green : colors.red }}>{resultMsg}</p>}
           </Card>

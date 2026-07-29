@@ -12,20 +12,29 @@ import type { ReactNode } from "react";
 import { sound } from "../sound/sound";
 import { font } from "../theme/tokens";
 
-/** Hoogte gedeeld door breedte van de art. */
-const VERH = 150 / 384;
+/** Per kleur: het bestand, de verhouding en waar het VLAK van de knop zit.
+ *  Het opschrift hoort op dat vlak en niet op het midden van de doos: onder het
+ *  vlak zit nog een rand en een schaduw, en die trekken het midden omlaag. Beide
+ *  cijfers zijn aan de art gemeten. */
+const PLAAT = {
+  goud: { src: "/ui/knop-klein.webp", verh: 150 / 384, hart: "43.3%", tekst: "#3A2405", glans: "rgba(255,240,190,.5)" },
+  paars: { src: "/ui/knop-klein-paars.webp", verh: 145 / 384, hart: "42.4%", tekst: "#FFFFFF", glans: "rgba(60,20,110,.55)" },
+} as const;
 
 export function KnopPlaat({
   label,
   breed = 92,
+  kleur = "goud",
   uit,
   onClick,
 }: {
   label: ReactNode;
   breed?: number;
+  kleur?: keyof typeof PLAAT;
   uit?: boolean;
   onClick: () => void;
 }) {
+  const p = PLAAT[kleur];
   return (
     <button
       onClick={() => { if (!uit) { sound.uiTap(); onClick(); } }}
@@ -34,7 +43,7 @@ export function KnopPlaat({
       style={{
         position: "relative",
         width: breed,
-        height: Math.round(breed * VERH),
+        height: Math.round(breed * p.verh),
         border: "none",
         background: "transparent",
         padding: 0,
@@ -44,16 +53,12 @@ export function KnopPlaat({
         display: "block",
       }}
     >
-      <img src="/ui/knop-klein.webp" alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} />
-      {/* Op het VLAK van de knop en niet op het midden van de doos: onder het
-          vlak zit nog een rand en een schaduw, en die trekken het midden
-          omlaag. Gemeten aan de art loopt het gele veld van 4 tot 125 van de
-          150, dus zijn hart ligt op 43,3 procent. */}
+      <img src={p.src} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} />
       <span
         style={{
           position: "absolute",
           left: "50.4%",
-          top: "43.3%",
+          top: p.hart,
           transform: "translate(-50%, -50%)",
           display: "block",
           whiteSpace: "nowrap",
@@ -61,8 +66,8 @@ export function KnopPlaat({
           fontWeight: 800,
           fontSize: Math.round(breed * 0.15),
           lineHeight: 1,
-          color: "#3A2405",
-          textShadow: "0 1px 0 rgba(255,240,190,.5)",
+          color: p.tekst,
+          textShadow: `0 1px 0 ${p.glans}`,
         }}
       >
         {label}
