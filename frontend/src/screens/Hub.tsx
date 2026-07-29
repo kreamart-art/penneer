@@ -2992,7 +2992,7 @@ export function GlasRij({ wapen, dun, children, binnen }: { wapen?: React.ReactN
       // Lucht tot de wand van de sectie eromheen. Twee lijsten die elkaar bijna
       // raken lezen als een fout: je ziet dan twee randen met een kier ertussen
       // in plaats van een rij BINNEN een sectie.
-      style={{ marginInline: dun ? 2 : 7 }}
+      style={{ marginInline: dun ? 6 : 7 }}
       binnen={{
         display: "flex",
         alignItems: "center",

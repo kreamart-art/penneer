@@ -266,6 +266,14 @@ export const KADER_LIJN_XP =
  *  anders zie je elke ronde een sprong. */
 /** En in groen, voor wat je al bezit. Zelfde opbouw, zelfde begin- en
  *  eindtint, zodat de ronde naadloos doorloopt. */
+/** En in violet, voor wat nog loopt. Zelfde opbouw, zelfde begin- en eindtint. */
+export const KADER_LIJN_PAARS =
+  "linear-gradient(115deg, #D8B4FF 0%, #A868F5 14%, #6A2DD8 32%, #C48BFF 50%, #8B45E8 68%, #4E1C9E 84%, #D8B4FF 100%)";
+
+/** En in goud, voor wat je gewonnen hebt. */
+export const KADER_LIJN_GOUD =
+  "linear-gradient(115deg, #FFEBB8 0%, #FFCF4A 14%, #C58F1C 32%, #FFE08A 50%, #E2A33C 68%, #9C6B1F 84%, #FFEBB8 100%)";
+
 export const KADER_LIJN_GROEN =
   "linear-gradient(115deg, #B8F5A8 0%, #57D96A 14%, #1E9A43 32%, #7BEA8C 50%, #35C255 68%, #147C36 84%, #B8F5A8 100%)";
 

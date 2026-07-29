@@ -20,7 +20,7 @@ import { Screen, Card } from "../components/Layout";
 import type { GameApi } from "../net/socket";
 import { ArtIcoon } from "../components/ArtIcoon";
 import { GlasVeld } from "../components/GlasVeld";
-import { Paneel } from "../components/ProfileHero";
+import { GOUD, KADER_LIJN_GOUD, KADER_LIJN_PAARS, KADER_LIJN_ROOD, NeonKader, Paneel, PlekWapen } from "../components/ProfileHero";
 import { GlasRij } from "./Hub";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
@@ -111,6 +111,13 @@ export function Duel({ game, onBack, onProfile }: { game: GameApi; onBack: () =>
     } catch {
       /* offline: houd wat we hadden */
     }
+  }, []);
+
+  // Hetzelfde decor als de lobby, de dagronde en het oefenen: de arena met de
+  // gouden hoekstukken en de horizon die oplicht.
+  useEffect(() => {
+    document.body.classList.add("arena");
+    return () => document.body.classList.remove("arena");
   }, []);
 
   useEffect(() => { void refresh(); }, [refresh]);
@@ -247,9 +254,8 @@ export function Duel({ game, onBack, onProfile }: { game: GameApi; onBack: () =>
       >
         <ArrowLeft size={20} />
       </button>
-      <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>
-        <Swords size={18} color={colors.gold} /> {t("duelTitle")}
-      </span>
+      {/* Geen zwaardje naast de titel: die zegt het al. */}
+      <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>{t("duelTitle")}</span>
     </div>
   );
 
@@ -414,9 +420,9 @@ export function Duel({ game, onBack, onProfile }: { game: GameApi; onBack: () =>
         </Button>
         {!!note && <p style={{ margin: 0, textAlign: "center", fontFamily: font.ui, fontSize: 13, color: colors.orange }}>{note}</p>}
 
-        {mine.length > 0 && <Section title={t("duelYourTurn")} items={mine} onOpen={openDuel} t={t} />}
-        {waiting.length > 0 && <Section title={t("duelWaitingTitle")} items={waiting} onOpen={openDuel} t={t} />}
-        {past.length > 0 && <Section title={t("duelPastTitle")} items={past} onOpen={openDuel} t={t} />}
+        {mine.length > 0 && <Section title={t("duelYourTurn")} items={mine} onOpen={openDuel} t={t} mij={account} />}
+        {waiting.length > 0 && <Section title={t("duelWaitingTitle")} items={waiting} onOpen={openDuel} t={t} mij={account} />}
+        {past.length > 0 && <Section title={t("duelPastTitle")} items={past} onOpen={openDuel} t={t} mij={account} />}
         {duels.length === 0 && list && (
           <p style={{ margin: 0, textAlign: "center", fontFamily: font.ui, fontSize: 13.5, color: colors.faint }}>{t("duelEmpty")}</p>
         )}
@@ -757,41 +763,136 @@ function Chip({ icon, label }: { icon: React.ReactNode; label: string }) {
   );
 }
 
-function Section({ title, items, onOpen, t }: { title: string; items: DuelState[]; onOpen: (d: DuelState) => void; t: (k: string, v?: Record<string, string | number>) => string }) {
+/** Een duel in de lijst, opgebouwd als een rij bij "laatste potjes": de lijn
+ *  met de afgeschuinde hoek, een wapen dat aan de bovenlijn hangt, jouw portret
+ *  links, de VS in het midden, de tegenstander rechts, en achter een groef wat
+ *  het potje was.
+ *
+ *  Wat anders is: de KLEUR van de lijn zegt hoe het afliep. Violet zolang het
+ *  loopt, goud als je won, rood als je verloor. Bij de laatste potjes hoefde
+ *  dat niet, want daar staat een plaatsnummer op het wapen; hier is er maar één
+ *  tegenstander en dus maar één uitkomst. */
+function DuelRij({ d, i, eerste, onOpen, t, mij }: {
+  d: DuelState;
+  i: number;
+  eerste: boolean;
+  onOpen: (d: DuelState) => void;
+  t: (k: string, v?: Record<string, string | number>) => string;
+  mij: Person;
+}) {
+  const klaar = d.status !== "open";
+  const mijnBeurt = !klaar && d.my_done < d.rounds;
+  const gewonnen = klaar && d.winner === "me";
+  const verloren = klaar && d.winner === "them";
+
+  const groef = (
+    <span
+      aria-hidden
+      style={{
+        alignSelf: "stretch",
+        flexShrink: 0,
+        width: 2,
+        marginBlock: 3,
+        backgroundImage: "linear-gradient(90deg, rgba(8,3,20,.7) 0, rgba(8,3,20,.7) 1px, rgba(255,255,255,.13) 1px, rgba(255,255,255,.13) 2px)",
+        WebkitMaskImage: "linear-gradient(180deg, transparent 0%, #000 26%, #000 74%, transparent 100%)",
+        maskImage: "linear-gradient(180deg, transparent 0%, #000 26%, #000 74%, transparent 100%)",
+      }}
+    />
+  );
+  const naam = (n: string) => (
+    <span style={{ fontFamily: font.ui, fontWeight: 600, fontSize: 11, color: colors.sub, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>
+      {n}
+    </span>
+  );
+  const score = (n: number | null, kroon: boolean) => (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontFamily: font.display, fontWeight: 800, fontSize: 15, lineHeight: 1.1, color: colors.ink }}>
+      {n === null ? "?" : n}
+      {kroon && <ArtIcoon naam="kroon" size={14} />}
+    </span>
+  );
+
+  return (
+    <NeonKader
+      hoek={11}
+      dik={0.3}
+      vulling="geen"
+      sterkte={klaar ? 0.42 : 0.3}
+      eindkap
+      lijn={gewonnen ? KADER_LIJN_GOUD : verloren ? KADER_LIJN_ROOD : KADER_LIJN_PAARS}
+      gloed={`0 0 11px ${withAlpha(gewonnen ? colors.gold : verloren ? colors.red : colors.violet, klaar ? 0.3 : 0.22)}`}
+      adem={((i * 0.618034) % 1) * 4.2}
+      veeg={eerste}
+      binnen={{ display: "flex", alignItems: "center", gap: 5, minHeight: 46, padding: "5px 17px 5px 45px" }}
+    >
+      {/* Het wapen hangt aan de bovenlijn en begint op het knikpunt van de
+          schuine hoek, net als bij de laatste potjes. Gewonnen is de eerste
+          plek, verloren de tweede; zolang het loopt is er nog geen plek en
+          staat er dus geen wapen. */}
+      {klaar && (
+        <span style={{ position: "absolute", left: 11, top: 0, display: "flex" }}>
+          <PlekWapen plek={gewonnen ? 1 : verloren ? 2 : 3} maat={28} />
+        </span>
+      )}
+      <button
+        onClick={() => onOpen(d)}
+        className="pressable"
+        style={{ display: "flex", alignItems: "center", gap: 5, flex: 1, minWidth: 0, background: "transparent", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }}
+      >
+        {groef}
+        <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 6 }}>
+          <Avatar name={mij.name} color={mij.color} size={34} userId={mij.id} hasAvatar={!!mij.has_avatar} avatarVer={mij.avatar_ver} />
+          <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 1 }}>
+            {naam(mij.name)}
+            {score(d.my_score, gewonnen)}
+          </div>
+        </div>
+        <span
+          style={{
+            fontFamily: font.wide,
+            fontSize: 17,
+            letterSpacing: 1.2,
+            color: "#F0E9FF",
+            textShadow: "0 0 9px rgba(200,139,255,.55)",
+            flexShrink: 0,
+          }}
+        >
+          VS
+        </span>
+        <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6 }}>
+          <div style={{ minWidth: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 1 }}>
+            {naam(d.opponent.name)}
+            {/* De score van de ander blijft verborgen tot het duel klaar is:
+                dat is de hele spanning van om beurten spelen. */}
+            {score(klaar ? d.their_score ?? 0 : null, verloren)}
+          </div>
+          <Avatar name={d.opponent.name} color={d.opponent.color} size={34} userId={d.opponent.id} hasAvatar={!!d.opponent.has_avatar} avatarVer={d.opponent.avatar_ver} />
+        </div>
+        {groef}
+        {/* Waar de laatste potjes hun opbrengst tonen, staat hier de stand van
+            het duel: hoe ver je bent, of wat het werd. */}
+        <div style={{ flexShrink: 0, marginRight: -6, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 1 }}>
+          <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 12, lineHeight: 1.15, color: gewonnen ? GOUD[3] : verloren ? colors.redHi : colors.ink }}>
+            {klaar
+              ? gewonnen ? t("duelWon") : verloren ? t("duelLost") : t("duelDraw")
+              : `${d.my_done}/${d.rounds}`}
+          </span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontFamily: font.ui, fontSize: 10, lineHeight: 1.15, color: colors.faint }}>
+            {klaar ? <Check size={10} /> : mijnBeurt ? <Swords size={10} /> : <ClockIcon size={10} />}
+            {klaar ? t("duelRondes", { n: d.rounds }) : mijnBeurt ? t("duelJouwBeurt") : t("duelHunBeurt")}
+          </span>
+        </div>
+      </button>
+    </NeonKader>
+  );
+}
+
+function Section({ title, items, onOpen, t, mij }: { title: string; items: DuelState[]; onOpen: (d: DuelState) => void; t: (k: string, v?: Record<string, string | number>) => string; mij: Person }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       <span style={{ fontFamily: font.ui, fontSize: 11.5, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint, marginLeft: 4 }}>{title}</span>
-      {items.map((d) => {
-        const done = d.status !== "open";
-        const yourTurn = !done && d.my_done < d.rounds;
-        const accent = done ? (d.winner === "me" ? colors.gold : d.winner === "them" ? colors.red : colors.violet) : yourTurn ? colors.gold : colors.violet;
-        return (
-          <button
-            key={d.id}
-            onClick={() => onOpen(d)}
-            className="pressable"
-            style={{ display: "flex", alignItems: "center", gap: 11, padding: "11px 13px", borderRadius: radius.card, cursor: "pointer", textAlign: "left", background: withAlpha("#000000", 0.2), border: `1px solid ${withAlpha(accent, 0.4)}` }}
-          >
-            <Avatar name={d.opponent.name} color={d.opponent.color} size={38} userId={d.opponent.id} hasAvatar={!!d.opponent.has_avatar} avatarVer={d.opponent.avatar_ver} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontFamily: font.ui, fontSize: 14.5, fontWeight: 700, color: colors.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.opponent.name}</div>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 5, fontFamily: font.ui, fontSize: 12, color: accent }}>
-                {done ? <Check size={12} /> : yourTurn ? <Swords size={12} /> : <ClockIcon size={12} />}
-                {done
-                  ? d.winner === "me" ? t("duelWon") : d.winner === "them" ? t("duelLost") : t("duelDraw")
-                  : yourTurn
-                    ? t("duelRoundOf", { n: d.my_done + 1, total: d.rounds })
-                    : t("duelWaiting", { name: d.opponent.name })}
-              </div>
-            </div>
-            {done && (
-              <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15, color: colors.ink, flexShrink: 0 }}>
-                {d.my_score}-{d.their_score ?? 0}
-              </span>
-            )}
-          </button>
-        );
-      })}
+      {items.map((d, i) => (
+        <DuelRij key={d.id} d={d} i={i} eerste={i === 0} onOpen={onOpen} t={t} mij={mij} />
+      ))}
     </div>
   );
 }
