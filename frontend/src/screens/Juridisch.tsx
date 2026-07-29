@@ -23,7 +23,7 @@ const PRIVACY_NL: Blok[] = [
     kop: "Kort gezegd",
     tekst: [
       "Pen Neer is een spel van Artnomad. Je kunt het spelen zonder account: dan slaan we niets over je op behalve wat er tijdens dat potje op de server staat, en dat verdwijnt als de kamer sluit.",
-      "Maak je wel een profiel aan, dan bewaren we precies genoeg om je spel te laten werken. Niet meer. We verkopen niets door en er zitten geen advertentietrackers in.",
+      "Maak je wel een profiel aan, dan bewaren we precies genoeg om je spel te laten werken. Niet meer. We verkopen niets door.",
     ],
   },
   {
@@ -39,7 +39,7 @@ const PRIVACY_NL: Blok[] = [
   {
     kop: "Wat we niet doen",
     tekst: [
-      "Geen advertenties, geen profielopbouw voor derden, geen doorverkoop van gegevens.",
+      "Geen profielopbouw voor derden en geen doorverkoop van gegevens. Advertenties in de app kunnen voorkomen; ook dan verkopen we je gegevens niet door.",
       "We lezen je berichten niet mee. Ze staan versleuteld over de lijn (https) maar leesbaar in de database, dus stuur er niets in wat je niemand zou toevertrouwen.",
     ],
   },
@@ -140,7 +140,7 @@ const PRIVACY_EN: Blok[] = [
     kop: "In short",
     tekst: [
       "Pen Neer is a game by Artnomad. You can play without an account: then nothing about you is stored beyond what lives on the server during that game, and that goes when the room closes.",
-      "If you do create a profile, we keep exactly enough to make your game work. No more. We do not sell anything on and there are no advertising trackers.",
+      "If you do create a profile, we keep exactly enough to make your game work. No more. We do not sell anything on.",
     ],
   },
   {
@@ -156,7 +156,7 @@ const PRIVACY_EN: Blok[] = [
   {
     kop: "What we do not do",
     tekst: [
-      "No advertising, no profiling for third parties, no reselling of data.",
+      "No profiling for third parties and no reselling of data. The app may show ads; even then your data is never sold on.",
       "We do not read along with your messages. They travel encrypted (https) but sit readable in the database, so do not send anything you would not trust anyone with.",
     ],
   },

@@ -822,7 +822,11 @@ class Database:
         with self._lock:
             rows = self._q(
                 "SELECT id, name, email, color, avatar_ver, avatar IS NOT NULL AS has_avatar, "
-                "avatar_preset, ai_unlocked, premium_avatars, buzzer_skins, buzzer_skin, avatar_frame, reel_skin, shield, title, lenient_spelling, coins, coins_level, coins_seen_level, cash, cash_level, land, rewards_seeded, created_at "
+                # `divisie` MOET hier tussen staan: het account-payload rekent het schild
+                # uit met user.get("divisie"), en een kolom die niet in de SELECT zit
+                # is geen 0 maar None -> trede 0 -> iedereen zag zijn EIGEN schild
+                # altijd als amethist, terwijl de publieke queries wel klopten.
+                "avatar_preset, ai_unlocked, premium_avatars, buzzer_skins, buzzer_skin, avatar_frame, reel_skin, shield, divisie, title, lenient_spelling, coins, coins_level, coins_seen_level, cash, cash_level, land, rewards_seeded, created_at "
                 "FROM users WHERE id=?",
                 (user_id,),
             )
