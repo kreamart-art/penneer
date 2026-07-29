@@ -11,6 +11,8 @@ import { NeonText } from "../components/NeonText";
 import { Topo } from "./Topo";
 import type { GameApi } from "../net/socket";
 import { ArtIcoon } from "../components/ArtIcoon";
+import { GlasVeld } from "../components/GlasVeld";
+import { Paneel } from "../components/ProfileHero";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { makeDailyCard, shareOrDownload } from "../util/shareCard";
@@ -61,17 +63,6 @@ const authHeaders = (): Record<string, string> => {
   return tok ? { Authorization: `Bearer ${tok}` } : {};
 };
 
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  boxSizing: "border-box",
-  fontFamily: font.ui,
-  fontSize: 16,
-  color: colors.ink,
-  background: withAlpha("#000000", 0.25),
-  border: `1.5px solid ${colors.panelBorder}`,
-  borderRadius: radius.button,
-  padding: "12px 14px",
-};
 
 function fmtCountdown(total: number): string {
   const h = Math.floor(total / 3600);
@@ -387,18 +378,21 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
             {Math.ceil(remaining)}s
           </div>
 
-          <Card style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, padding: 14 }}>
-            <span style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.sub }}>{t("letterIs")}</span>
-            {/* Zelfde behandeling als de letter op de rol, in goud. */}
-            <NeonText accent={colors.gold} blur={16} glow={0.7} style={{ fontFamily: font.display, fontWeight: 700, fontSize: 46, lineHeight: 1 }}>{letter}</NeonText>
-          </Card>
+          <Paneel>
+            <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 1 }}>
+              <span style={{ fontFamily: font.ui, fontSize: 11.5, letterSpacing: 0.6, color: colors.sub }}>{t("letterIs")}</span>
+              {/* Zelfde behandeling als de letter op de rol, in goud. */}
+              <NeonText accent={colors.gold} blur={18} glow={0.72} style={{ fontFamily: font.display, fontWeight: 700, fontSize: "clamp(52px, 17vw, 74px)", lineHeight: 1 }}>{letter}</NeonText>
+            </div>
+          </Paneel>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {cats.map((cat, i) => (
               <div key={cat}>
                 <label style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: colors.faint, marginLeft: 4 }}>{tCat(cat)}</label>
-                <input
+                <GlasVeld
                   ref={(el) => { inputs.current[i] = el; }}
+                  gevuld={!!answers[cat]}
                   value={answers[cat] ?? ""}
                   onChange={(e) => setAnswers((a) => ({ ...a, [cat]: e.target.value }))}
                   onKeyDown={(e) => {
@@ -408,7 +402,7 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
                   }}
                   autoComplete="off" autoCorrect="off" spellCheck={false}
                   placeholder={t("fillPlaceholder", { cat: tCat(cat), letter })}
-                  style={{ ...inputStyle, marginTop: 4, border: `1.5px solid ${answers[cat] ? withAlpha(colors.gold, 0.5) : colors.panelBorder}` }}
+                  kaderStyle={{ marginTop: 4 }}
                 />
               </div>
             ))}

@@ -19,6 +19,9 @@ import { Arena, ArenaPlate, ARENA } from "../components/Arena";
 import { Screen, Card } from "../components/Layout";
 import type { GameApi } from "../net/socket";
 import { ArtIcoon } from "../components/ArtIcoon";
+import { GlasVeld } from "../components/GlasVeld";
+import { Paneel } from "../components/ProfileHero";
+import { GlasRij } from "./Hub";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { rampFrom } from "../theme/neon";
@@ -326,7 +329,11 @@ export function Duel({ game, onBack, onProfile }: { game: GameApi; onBack: () =>
     return (
       <Screen top={header}>
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <Card style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+          {/* De uitslag is waar het duel om draait, dus die krijgt de sierlijst
+              van het profiel. De art heeft een vaste verhouding: de inhoud
+              voegt zich ernaar. */}
+          <Paneel>
+            <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, paddingInline: 6 }}>
             {done ? (
               <>
                 <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 22, color: duel.winner === "me" ? colors.gold : duel.winner === "them" ? colors.sub : colors.violet }}>
@@ -349,20 +356,22 @@ export function Duel({ game, onBack, onProfile }: { game: GameApi; onBack: () =>
                 </span>
               </>
             )}
-          </Card>
+            </div>
+          </Paneel>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {/* De rondes als glasrijen, net als de lijsten elders in de app. */}
+          <Card style={{ display: "flex", flexDirection: "column", gap: 3, padding: "13px 7px 14px" }}>
             {duel.detail.map((row) => (
-              <Card key={row.idx} style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 13px" }}>
-                <span style={{ width: 34, flexShrink: 0, fontFamily: font.display, fontWeight: 700, fontSize: 21, color: colors.gold, textAlign: "center" }}>{row.letter}</span>
+              <GlasRij key={row.idx}>
+                <span style={{ width: 30, flexShrink: 0, fontFamily: font.display, fontWeight: 700, fontSize: 20, color: colors.gold, textAlign: "center" }}>{row.letter}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontFamily: font.ui, fontSize: 10.5, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase", color: colors.faint }}>{tCat(row.category)}</div>
                   <WordLine slot={row.mine} mine />
                   {done && <WordLine slot={row.theirs} mine={false} />}
                 </div>
-              </Card>
+              </GlasRij>
             ))}
-          </div>
+          </Card>
 
           {done && (
             <Button variant="gold" full disabled={busy} onClick={() => void rematch()}>
@@ -371,7 +380,9 @@ export function Duel({ game, onBack, onProfile }: { game: GameApi; onBack: () =>
               </span>
             </Button>
           )}
-          <Button variant="ghost" full onClick={() => { sound.uiTap(); setView("list"); void refresh(); }}>{t("back")}</Button>
+          <div style={{ display: "flex", justifyContent: "center" }}>
+            <Button variant="ghost" onClick={() => { sound.uiTap(); setView("list"); void refresh(); }}>{t("back")}</Button>
+          </div>
         </div>
       </Screen>
     );
@@ -811,27 +822,29 @@ function FriendPicker({ friends, onPick, onClose, busy }: { friends: Person[]; o
           <>
             {friends.length > 5 && (
               <div style={{ position: "relative" }}>
-                <Search size={15} color={colors.faint} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)" }} />
-                <input
+                <Search size={15} color={colors.faint} style={{ position: "absolute", left: 16, top: "50%", transform: "translateY(-50%)", zIndex: 1, pointerEvents: "none" }} />
+                <GlasVeld
+                  gevuld={!!q}
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
                   placeholder={t("searchName")}
-                  style={{ ...inputStyle, fontSize: 14, padding: "10px 12px 10px 34px" }}
+                  style={{ fontSize: 14, padding: "9px 11px 9px 32px" }}
                 />
               </div>
             )}
             {shown.map((f) => (
-              <button
-                key={f.id}
-                disabled={busy}
-                onClick={() => onPick(f)}
-                className="pressable"
-                style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 11px", borderRadius: 14, cursor: "pointer", textAlign: "left", background: withAlpha("#000000", 0.25), border: `1px solid ${colors.hairline}` }}
-              >
-                <Avatar name={f.name} color={f.color} size={32} userId={f.id} hasAvatar={!!f.has_avatar} avatarVer={f.avatar_ver} />
-                <span style={{ flex: 1, fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: colors.ink }}>{f.name}</span>
-                <Swords size={15} color={colors.gold} />
-              </button>
+              <GlasRij key={f.id} dun>
+                <button
+                  disabled={busy}
+                  onClick={() => onPick(f)}
+                  className="pressable"
+                  style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0, padding: 0, background: "transparent", border: "none", cursor: "pointer", textAlign: "left" }}
+                >
+                  <Avatar name={f.name} color={f.color} size={30} userId={f.id} hasAvatar={!!f.has_avatar} avatarVer={f.avatar_ver} />
+                  <span style={{ flex: 1, minWidth: 0, fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: colors.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
+                  <Swords size={15} color={colors.gold} />
+                </button>
+              </GlasRij>
             ))}
           </>
         )}

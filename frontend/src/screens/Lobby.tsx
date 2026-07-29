@@ -12,7 +12,8 @@ import { MusicToggle } from "../components/MusicToggle";
 import { Toggle } from "../components/Toggle";
 import { Screen, Card } from "../components/Layout";
 import { TopBar } from "../components/TopBar";
-import { GlasRij, Lijst, ProfileViewModal, ZoekKnop } from "./Hub";
+import { GlasRij, Lijst, PilKeuze, ProfileViewModal, ZoekKnop } from "./Hub";
+import { KADER_LIJN_ROOD, NeonKader, Paneel } from "../components/ProfileHero";
 import { KnopPlaat } from "../components/KnopPlaat";
 import type { GameApi, PublicUser } from "../net/socket";
 import { ALL_CATEGORY_KEYS, subLabelKey, useT } from "../i18n/i18n";
@@ -237,51 +238,42 @@ export function Lobby({ game }: { game: GameApi }) {
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         {/* language + sound (per device) */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ display: "flex", gap: 6 }}>
-            {(["nl", "en"] as const).map((l) => (
-              <button
-                key={l}
-                onClick={() => setLang(l)}
-                style={{
-                  fontFamily: font.ui,
-                  fontSize: 12,
-                  fontWeight: 700,
-                  letterSpacing: 0.5,
-                  padding: "5px 11px",
-                  borderRadius: 999,
-                  cursor: "pointer",
-                  color: lang === l ? colors.bg0 : colors.sub,
-                  background: lang === l ? colors.gold : "transparent",
-                  border: `1px solid ${lang === l ? "transparent" : colors.panelBorder}`,
-                }}
-              >
-                {l.toUpperCase()}
-              </button>
-            ))}
-          </div>
-          <MusicToggle />
+          <PilKeuze
+            actief={lang ?? "nl"}
+            onKies={setLang}
+            opties={[
+              { key: "nl" as const, label: "NL" },
+              { key: "en" as const, label: "EN" },
+            ]}
+          />
+          <MusicToggle plate plateSize={34} size={15} padding={0} />
         </div>
 
-        {/* Room code */}
-        <Card style={{ textAlign: "center" }}>
-          <SectionLabel>{t("roomcode")}</SectionLabel>
-          <button onClick={shareCode} aria-label={t("shareCode")} style={{ display: "inline-flex", gap: 8, alignItems: "center", background: "transparent", border: "none", cursor: "pointer" }}>
-            {/* De code die je doorgeeft, met dezelfde behandeling als de letter
-                op de rol: een gouden verloop over de letters met de gloed als
-                vervaagde kopie erachter. Op dit formaat leest dat als metaal;
-                klein zou hetzelfde verloop de letters juist dof maken. */}
-            <NeonText
-              accent={colors.gold}
-              blur={20}
-              glow={0.7}
-              style={{ fontFamily: font.display, fontWeight: 700, fontSize: 56, letterSpacing: 10, lineHeight: 1 }}
-            >
-              {room.code}
-            </NeonText>
-            <span style={{ color: copied ? colors.green : colors.faint }}>{copied ? <Check size={22} /> : <Share2 size={21} />}</span>
-          </button>
-          <p style={{ margin: "6px 0 0", fontFamily: font.ui, fontSize: 13, color: colors.sub }}>{t("codeHint")}</p>
-        </Card>
+        {/* De roomcode is het enige op dit scherm dat je aan een ander geeft,
+            dus die krijgt de sierlijst van het profiel: een lijst om iets dat
+            je laat zien. De art heeft een VASTE verhouding, dus de inhoud voegt
+            zich ernaar en niet andersom. */}
+        <Paneel>
+          <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, padding: "0 12px" }}>
+            <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: 1.2, textTransform: "uppercase", color: colors.faint }}>{t("roomcode")}</span>
+            <button onClick={shareCode} aria-label={t("shareCode")} style={{ display: "inline-flex", gap: 8, alignItems: "center", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}>
+              {/* Dezelfde behandeling als de letter op de rol: een gouden
+                  verloop over de letters met de gloed als vervaagde kopie
+                  erachter. Op dit formaat leest dat als metaal; klein zou
+                  hetzelfde verloop de letters juist dof maken. */}
+              <NeonText
+                accent={colors.gold}
+                blur={18}
+                glow={0.7}
+                style={{ fontFamily: font.display, fontWeight: 700, fontSize: "clamp(38px, 12.5vw, 52px)", letterSpacing: 9, lineHeight: 1 }}
+              >
+                {room.code}
+              </NeonText>
+              <span style={{ color: copied ? colors.green : colors.faint }}>{copied ? <Check size={20} /> : <Share2 size={19} />}</span>
+            </button>
+            <p style={{ margin: 0, textAlign: "center", fontFamily: font.ui, fontSize: 11.5, lineHeight: 1.35, color: colors.sub }}>{t("codeHint")}</p>
+          </div>
+        </Paneel>
 
         {/* Players */}
         <Card>
@@ -289,21 +281,21 @@ export function Lobby({ game }: { game: GameApi }) {
             {t("inRoom")} · {players.length}
             {spectators.length > 0 ? ` (+${spectators.length})` : ""}
           </SectionLabel>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 3, marginInline: -11 }}>
             {[...players, ...spectators].map((p) => {
               // Tik op een medespeler en je ziet zijn korte profiel: level,
               // statistieken, onderling resultaat, prestaties. Alleen voor wie
               // een account heeft; een gast of een bot heeft niets te tonen.
               const opent = !!p.user_id && !p.is_bot;
               return (
-              <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <GlasRij key={p.id}>
                 <button
                   onClick={() => { if (!opent) return; sound.uiTap(); game.viewProfile(p.user_id!); setViewing(p.user_id!); }}
                   disabled={!opent}
                   aria-label={p.name}
                   style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 0, background: "transparent", border: "none", padding: 0, textAlign: "left", cursor: opent ? "pointer" : "default" }}
                 >
-                <Avatar name={p.name} color={p.color} size={38} crown={p.is_host} dim={!p.connected || p.is_spectator} userId={p.user_id} hasAvatar={p.has_avatar} avatarVer={p.avatar_ver} frame={p.frame} />
+                <Avatar name={p.name} color={p.color} size={34} crown={p.is_host} dim={!p.connected || p.is_spectator} userId={p.user_id} hasAvatar={p.has_avatar} avatarVer={p.avatar_ver} frame={p.frame} />
                 <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
                   <span style={{ fontFamily: font.ui, fontWeight: 600, fontSize: 15, color: colors.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {p.name}
@@ -329,7 +321,7 @@ export function Lobby({ game }: { game: GameApi }) {
                     </button>
                   )}
                 </div>
-              </div>
+              </GlasRij>
               );
             })}
           </div>
@@ -396,15 +388,23 @@ export function Lobby({ game }: { game: GameApi }) {
             <SectionLabel>{t("customCats")}</SectionLabel>
             {isHost && (
               <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-                <input
-                  value={deelInput}
-                  onChange={(e) => setDeelInput(e.target.value)}
-                  placeholder={t("pasteCode")}
-                  style={{ flex: 1, minWidth: 0, fontFamily: font.ui, fontSize: 13, color: colors.ink, background: withAlpha("#000000", 0.25), border: `1.5px solid ${colors.panelBorder}`, borderRadius: 10, padding: "9px 12px" }}
-                />
-                <Button variant="ghost" onClick={loadDeelcode}>
-                  {t("load")}
-                </Button>
+                <NeonKader
+                  hoek={10}
+                  dik={0.3}
+                  sterkte={0.35}
+                  vulling="geen"
+                  eindkap="kort"
+                  style={{ flex: 1, minWidth: 0 }}
+                  binnen={{ display: "flex", alignItems: "center", padding: "2px 4px" }}
+                >
+                  <input
+                    value={deelInput}
+                    onChange={(e) => setDeelInput(e.target.value)}
+                    placeholder={t("pasteCode")}
+                    style={{ flex: 1, minWidth: 0, fontFamily: font.ui, fontSize: 13, color: colors.ink, background: "transparent", border: "none", outline: "none", padding: "8px 10px" }}
+                  />
+                </NeonKader>
+                <KnopPlaat breed={86} kleur="paars" onClick={loadDeelcode} label={t("load")} />
               </div>
             )}
             {deelErr && <p style={{ color: colors.red, fontFamily: font.ui, fontSize: 12, margin: "0 0 8px" }}>{deelErr}</p>}
@@ -449,9 +449,19 @@ export function Lobby({ game }: { game: GameApi }) {
         ) : (
           <p style={{ textAlign: "center", fontFamily: font.ui, fontSize: 14, color: colors.sub }}>{game.isSpectator ? t("spectatorNote") : t("waitHost")}</p>
         )}
-        <Button variant="ghost" full onClick={game.leaveRoom}>
-          {t("leaveRoom")}
-        </Button>
+        {/* Zo breed als zijn eigen tekst: een knop die iets ongedaan maakt hoort
+            niet net zo groot te zijn als de knop waarmee je begint. */}
+        <div style={{ display: "flex", justifyContent: "center" }}>
+          <NeonKader radius={999} dik={0.5} vulling="geen" animeer lijn={KADER_LIJN_ROOD} gloed={`0 0 12px ${withAlpha(colors.red, 0.35)}`} binnen={{ padding: 0 }}>
+            <button
+              onClick={game.leaveRoom}
+              className="pressable"
+              style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, background: "transparent", border: "none", cursor: "pointer", color: colors.redHi, fontFamily: font.ui, fontSize: 13, fontWeight: 600, padding: "7px 18px" }}
+            >
+              {t("leaveRoom")}
+            </button>
+          </NeonKader>
+        </div>
       </div>
       {viewing && <ProfileViewModal game={game} userId={viewing} onClose={() => setViewing(null)} />}
     </Screen>

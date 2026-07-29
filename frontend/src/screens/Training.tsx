@@ -5,11 +5,15 @@
 // needed, nothing stored (the progress/collection layer is a later step).
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Check, GraduationCap, HelpCircle, RotateCw, X } from "lucide-react";
+import { Chip } from "../components/Chip";
+import { GlasVeld } from "../components/GlasVeld";
+import { NeonText } from "../components/NeonText";
+import { Paneel } from "../components/ProfileHero";
 import { Button } from "../components/Button";
 import { Screen, Card } from "../components/Layout";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
-import { colors, font, radius, withAlpha } from "../theme/tokens";
+import { colors, font, withAlpha } from "../theme/tokens";
 
 // The trainable categories (server: game.TRAINABLE_CATEGORIES). Land/Stad/Vrucht
 // are pre-selected (what the request centered on); Dier/Beroep are opt-in.
@@ -31,17 +35,6 @@ interface CheckResult {
   learned: number;
 }
 
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  boxSizing: "border-box",
-  fontFamily: font.ui,
-  fontSize: 16,
-  color: colors.ink,
-  background: withAlpha("#000000", 0.25),
-  border: `1.5px solid ${colors.panelBorder}`,
-  borderRadius: radius.button,
-  padding: "12px 14px",
-};
 
 export function Training({ onBack, lenient = false }: { onBack: () => void; lenient?: boolean }) {
   const { t, tCat } = useT();
@@ -142,18 +135,7 @@ export function Training({ onBack, lenient = false }: { onBack: () => void; leni
               {TRAIN_CATS.map((c) => {
                 const on = selected.has(c);
                 return (
-                  <button
-                    key={c}
-                    onClick={() => toggle(c)}
-                    style={{
-                      fontFamily: font.ui, fontSize: 14, fontWeight: 600, padding: "9px 16px", borderRadius: 999, cursor: "pointer",
-                      color: on ? colors.bg0 : colors.sub,
-                      background: on ? colors.gold : "transparent",
-                      border: `1.5px solid ${on ? "transparent" : colors.panelBorder}`,
-                    }}
-                  >
-                    {tCat(c)}
-                  </button>
+                  <Chip key={c} active={on} onClick={() => toggle(c)}>{tCat(c)}</Chip>
                 );
               })}
             </div>
@@ -176,17 +158,23 @@ export function Training({ onBack, lenient = false }: { onBack: () => void; leni
     return (
       <Screen top={header}>
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <Card style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-            <span style={{ fontFamily: font.ui, fontSize: 13, color: colors.sub }}>{t("letterIs")}</span>
-            <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 52, color: colors.gold, textShadow: `0 0 24px ${withAlpha(colors.gold, 0.5)}` }}>{letter}</span>
-          </Card>
+          <Paneel>
+            <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 1 }}>
+              <span style={{ fontFamily: font.ui, fontSize: 11.5, letterSpacing: 0.6, color: colors.sub }}>{t("letterIs")}</span>
+              {/* Zelfde behandeling als de letter op de rol: een gouden verloop
+                  met de gloed als vervaagde kopie erachter, niet een gekleurde
+                  letter met een schaduw eromheen. */}
+              <NeonText accent={colors.gold} blur={18} glow={0.72} style={{ fontFamily: font.display, fontWeight: 700, fontSize: "clamp(52px, 17vw, 74px)", lineHeight: 1 }}>{letter}</NeonText>
+            </div>
+          </Paneel>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {cats.map((cat, i) => (
               <div key={cat}>
                 <label style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: colors.faint, marginLeft: 4 }}>{tCat(cat)}</label>
-                <input
+                <GlasVeld
                   ref={(el) => { inputs.current[i] = el; }}
+                  gevuld={!!answers[cat]}
                   value={answers[cat] ?? ""}
                   onChange={(e) => setAnswers((a) => ({ ...a, [cat]: e.target.value }))}
                   onKeyDown={(e) => {
@@ -196,7 +184,7 @@ export function Training({ onBack, lenient = false }: { onBack: () => void; leni
                   }}
                   autoComplete="off" autoCorrect="off" spellCheck={false}
                   placeholder={t("fillPlaceholder", { cat: tCat(cat), letter })}
-                  style={{ ...inputStyle, marginTop: 4, border: `1.5px solid ${answers[cat] ? withAlpha(colors.gold, 0.5) : colors.panelBorder}` }}
+                  kaderStyle={{ marginTop: 4 }}
                 />
               </div>
             ))}
@@ -259,7 +247,9 @@ export function Training({ onBack, lenient = false }: { onBack: () => void; leni
             <RotateCw size={16} /> {t("trainNext")}
           </span>
         </Button>
-        <Button variant="ghost" full onClick={() => setPhase("setup")}>{t("trainStop")}</Button>
+        <div style={{ display: "flex", justifyContent: "center" }}>
+          <Button variant="ghost" onClick={() => setPhase("setup")}>{t("trainStop")}</Button>
+        </div>
       </div>
     </Screen>
   );
