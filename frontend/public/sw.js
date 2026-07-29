@@ -18,6 +18,13 @@ const CACHE = "penneer-v85"; // v85: art-cache overleeft releases
 // draagt al een ?v=-parameter, en een andere query is een andere cache-regel,
 // dus verse art komt gewoon binnen zonder de rest te lozen.
 const ART = "penneer-art-v4"; // v4: zalen zonder donkere rand
+// Gehashte brokken onder /assets/. Ze zijn inhoud-geadresseerd en daarmee
+// onveranderlijk, dus ze mogen een release overleven: een scherm dat al
+// opgehaald was blijft werken als er intussen gedeployd is. De schil
+// (index.html) blijft network-first, dus een oude schil kan nooit blijven
+// hangen. Zonder dit gooide elke activatie precies de brokken weg die een
+// lopende sessie nog nodig had.
+const BROK = "penneer-brok-v1";
 const ART_PADEN = ["/ui/", "/buzzers/", "/emotes/", "/tiles/", "/vlaggen/", "/frames/", "/emblems/", "/music/", "/sfx/", "/reels/", "/shield/"];
 const artCache = (pad) => ART_PADEN.some((p) => pad.startsWith(p));
 
@@ -31,7 +38,7 @@ self.addEventListener("activate", (e) => {
       // Alles weg BEHALVE de art-cache: de schil (index + gehashte assets) moet
       // vers, maar de art is met ?v= geadresseerd en blijft geldig.
       const keys = await caches.keys();
-      await Promise.all(keys.filter((k) => k !== ART).map((k) => caches.delete(k)));
+      await Promise.all(keys.filter((k) => k !== ART && k !== BROK).map((k) => caches.delete(k)));
       await self.clients.claim();
     })()
   );
@@ -73,7 +80,7 @@ self.addEventListener("fetch", (e) => {
   // Hashed assets are content-addressed and immutable: cache-first, then fill
   // from network. This is what stops a stale shell from ever going black. Art
   // gaat naar zijn eigen lang-levende cache, de rest naar de versie-cache.
-  const naam = artCache(url.pathname) ? ART : CACHE;
+  const naam = artCache(url.pathname) ? ART : url.pathname.startsWith("/assets/") ? BROK : CACHE;
   e.respondWith(
     caches.match(req).then((hit) => hit || fetch(req).then((res) => cachePut(req, res, naam)))
   );

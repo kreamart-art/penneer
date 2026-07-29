@@ -26,6 +26,7 @@ import { KoopPopup } from "./components/KoopPopup";
 import { AD_WEG } from "./components/ReferralAd";
 import { MeldingBanner, useMeldingWachtrij } from "./components/Meldingen";
 import { Tour, tourGezien } from "./components/Tour";
+import { ChunkGrens, chunkHerlaadWissen } from "./components/ChunkGrens";
 const Juridisch = lazy(() => import("./screens/Juridisch").then((m) => ({ default: m.Juridisch })));
 import { InviteBanner } from "./components/InviteBanner";
 import { DmBanner } from "./components/DmBanner";
@@ -63,6 +64,35 @@ export default function App() {
   const [showTour, setShowTour] = useState(false);
   /** Het duel dat een melding wil openen; leeg = gewoon de lijst. */
   const [duelOpen, setDuelOpen] = useState<string | null>(null);
+
+  // De app staat: een eerdere brok-fout is dus opgelost. De vlag mag weg, zodat
+  // de volgende deploy opnieuw één herlaadpoging mag doen.
+  useEffect(() => { chunkHerlaadWissen(); }, []);
+
+  // De losse schermen alvast ophalen zodra de app rust heeft. Twee winsten: de
+  // eerste tik op een scherm is direct, en ze staan al in de cache VOORDAT er
+  // gedeployd wordt, dus een deploy midden in je sessie breekt ze niet meer.
+  // Bewust NA de eerste weergave en met een adempauze, anders vechten ze om de
+  // bandbreedte met wat je nu op je scherm wilt.
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      void import("./screens/Hub");
+      void import("./screens/Shop");
+      void import("./screens/Duel");
+      void import("./screens/Daily");
+      void import("./screens/Training");
+      void import("./screens/Lobby");
+      void import("./screens/Fill");
+      void import("./screens/Results");
+      void import("./screens/Reveal");
+      void import("./screens/Final");
+      void import("./screens/RulesGate");
+      void import("./screens/Rules");
+      void import("./screens/Settings");
+      void import("./screens/Juridisch");
+    }, 3500);
+    return () => window.clearTimeout(id);
+  }, []);
   const [tourAf, setTourAf] = useState(tourGezien);
   const [showLegal, setShowLegal] = useState<"privacy" | "terms" | null>(null);
   const [bannerInvite, setBannerInvite] = useState<InboxItem | null>(null);
@@ -458,8 +488,12 @@ export default function App() {
     <>
       {/* De lui geladen schermen komen als los brokje binnen. De terugval is
           BEWUST leeg: de brokjes zijn klein en de app heeft al een donkere
-          achtergrond, dus een spinner van drie frames flikkert alleen maar. */}
-      <Suspense fallback={null}>{screen}</Suspense>
+          achtergrond, dus een spinner van drie frames flikkert alleen maar.
+          De grens eromheen vangt een brok dat na een deploy niet meer bestaat;
+          zonder die grens breekt React de hele boom af en zie je wit. */}
+      <ChunkGrens melding={t("herlaadMelding")} knop={t("herlaadKnop")}>
+        <Suspense fallback={null}>{screen}</Suspense>
+      </ChunkGrens>
       {navKey !== null && <BottomNav game={game} active={navKey} onSelect={goNav} />}
       {penSplash && (
         <div
