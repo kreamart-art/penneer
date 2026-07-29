@@ -10,7 +10,7 @@ import { Avatar, SCHILD_RAND } from "../components/Avatar";
 import { Plek } from "../components/ProfileShowcase";
 import { HexArt } from "../components/HexArt";
 import { SchermTip } from "../components/SchermTip";
-import { schuin, DIVISIE_ACCENT, GOUD, KADER_LIJN_GOUD, KADER_LIJN_LOOP, KADER_LIJN_PAARS, KADER_LIJN_ROOD, KADER_LIJN_XP, NeonKader, Paneel, PlekWapen, Prestatie, RingFoto, RingPortret, SCHILD_KLEUREN, SectieKop, SierKop, StatKaart, divisieKleur, type SchildKleur } from "../components/ProfileHero";
+import { DIVISIE_ACCENT, GOUD, KADER_LIJN_GOUD, KADER_LIJN_LOOP, KADER_LIJN_PAARS, KADER_LIJN_ROOD, KADER_LIJN_XP, NeonKader, Paneel, PlekWapen, Prestatie, RingFoto, RingPortret, SCHILD_KLEUREN, SectieKop, SierKop, StatKaart, divisieKleur, type SchildKleur } from "../components/ProfileHero";
 import { DivisieLadder, Schild, divisieNaam } from "../components/Divisie";
 import { MeldingRij } from "../components/Meldingen";
 import { WALLPAPERS, wallpaperKlasse, wallpaperStijl, wallpaperVan, wallpaperZet, type WallpaperId } from "../components/Wallpaper";
@@ -883,29 +883,44 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
         </div>
 
         {behangOpen && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, padding: "10px 14px 4px" }}>
-            {WALLPAPERS.map((w) => (
-              <button
-                key={w.id}
-                onClick={() => { sound.uiTap(); setBehang(w.id); wallpaperZet(w.id); }}
-                aria-label={w.naam}
-                className="pressable"
-                style={{
-                  height: 54,
-                  clipPath: schuin(8),
-                  border: "none",
-                  cursor: "pointer",
-                  boxShadow: `inset 0 0 0 ${behang === w.id ? 2 : 1}px ${withAlpha(behang === w.id ? GOUD[2] : "#C8A0FF", behang === w.id ? 0.9 : 0.22)}`,
-                  ...wallpaperStijl(w.id),
-                  backgroundAttachment: "scroll",
-                  display: "grid",
-                  placeItems: "end center",
-                  paddingBottom: 4,
-                }}
-              >
-                <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 700, color: behang === w.id ? GOUD[2] : colors.sub, textShadow: "0 1px 3px rgba(6,3,18,.9)" }}>{w.naam}</span>
-              </button>
-            ))}
+          // Een KLEURENBALK, zoals de stiftkleuren in de foto-editor: één rij
+          // ronde staaltjes die opzij schuift, met een ring om degene die aan
+          // staat. Het raster van zes benoemde tegels duwde de hele chat naar
+          // beneden en klapte bij het openen over de berichten heen; deze balk
+          // is één regel hoog en blijft binnen zijn eigen strook.
+          <div
+            style={{
+              display: "flex", alignItems: "center", gap: 10,
+              padding: "10px 14px", overflowX: "auto", overflowY: "hidden",
+              WebkitOverflowScrolling: "touch", scrollbarWidth: "none",
+              flexShrink: 0,
+            }}
+          >
+            {WALLPAPERS.map((w) => {
+              const aan = behang === w.id;
+              return (
+                <button
+                  key={w.id}
+                  onClick={() => { sound.uiTap(); setBehang(w.id); wallpaperZet(w.id); }}
+                  aria-label={w.naam}
+                  title={w.naam}
+                  aria-pressed={aan}
+                  className="pressable"
+                  style={{
+                    flexShrink: 0, width: 34, height: 34, borderRadius: 11,
+                    border: "none", padding: 0, cursor: "pointer",
+                    // De witte ring van de kleurenbalk, hier in goud: hij ligt
+                    // OM het staaltje heen en niet erop, dus de wallpaper zelf
+                    // blijft helemaal zichtbaar.
+                    boxShadow: aan
+                      ? `0 0 0 2px #160D30, 0 0 0 4px ${GOUD[2]}, 0 0 14px ${withAlpha(GOUD[2], 0.5)}`
+                      : `0 0 0 1.5px ${withAlpha("#C8A0FF", 0.28)}`,
+                    ...wallpaperStijl(w.id),
+                    backgroundAttachment: "scroll",
+                  }}
+                />
+              );
+            })}
           </div>
         )}
 

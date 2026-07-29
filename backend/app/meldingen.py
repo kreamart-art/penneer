@@ -72,10 +72,24 @@ SOORTEN: dict[str, dict] = {
     },
     "uitdaging": {
         "titel": "Uitdaging",
-        "body": "{naam} daagt je uit.",
+        # De inzet staat in de melding: je beslist of je hem opent op basis van
+        # wat er op het spel staat, dus dat hoor je te zien voor je tikt.
+        "body": "{naam} daagt je uit{inzet}.",
         "tag": "invite",
         "icoon": "vlam",
-        "naar": "inbox",
+        # Naar het DUEL en niet naar de inbox: een uitdaging aannemen doe je in
+        # het duel, en een tik die je een scherm eerder afzet is een halve tik.
+        "naar": "duel",
+        "push": True,
+    },
+    "duel_inzet": {
+        "titel": "Inzet vastgelegd",
+        # Ook als hij VERLAAGD is: dan hoor je meteen te weten waar je nu echt
+        # om speelt, zonder het duel te hoeven openen.
+        "body": "{naam} speelt met je mee{inzet}.",
+        "tag": "duel",
+        "icoon": "vlam",
+        "naar": "duel",
         "push": True,
     },
     "duel_beurt": {

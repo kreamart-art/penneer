@@ -61,6 +61,8 @@ export default function App() {
   const [showDaily, setShowDaily] = useState(false);
   const [showDuel, setShowDuel] = useState(false);
   const [showTour, setShowTour] = useState(false);
+  /** Het duel dat een melding wil openen; leeg = gewoon de lijst. */
+  const [duelOpen, setDuelOpen] = useState<string | null>(null);
   const [tourAf, setTourAf] = useState(tourGezien);
   const [showLegal, setShowLegal] = useState<"privacy" | "terms" | null>(null);
   const [bannerInvite, setBannerInvite] = useState<InboxItem | null>(null);
@@ -197,6 +199,10 @@ export default function App() {
     setShowSettings(false);
     if (naar === "duel") {
       setShowHub(null);
+      // Niet alleen NAAR het duelscherm maar naar DIT duel: een melding over
+      // een uitdaging die je in een lijst afzet, laat je het werk nog een keer
+      // doen. Het duel-id reist mee in de data van de melding.
+      setDuelOpen(d.duel_id || null);
       setShowDuel(true);
     } else if (naar === "dagronde") {
       setShowHub(null);
@@ -368,7 +374,9 @@ export default function App() {
     screen = (
       <Duel
         game={game}
-        onBack={() => setShowDuel(false)}
+        openId={duelOpen}
+        onGeopend={() => setDuelOpen(null)}
+        onBack={() => { setDuelOpen(null); setShowDuel(false); }}
         onProfile={() => {
           setShowDuel(false);
           setShowHub("profile");

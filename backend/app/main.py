@@ -1016,7 +1016,8 @@ async def duel_start(request: Request) -> JSONResponse:
         return JSONResponse({"error": "coins"}, status_code=402)
     db.duel_pair_set(uid, other, new_used, new_combos)
     name = (db.get_user(uid) or {}).get("name") or "?"
-    await accounts.stuur(other, "uitdaging", data={"duel_id": did}, naam=name)
+    await accounts.stuur(other, "uitdaging", data={"duel_id": did}, naam=name,
+                         inzet=f" om {stake} coins" if stake else "")
     await accounts.push_account(uid)
     d = db.duel_get(did)
     return JSONResponse(_duel_payload(db, uid, d))
@@ -1088,6 +1089,13 @@ async def duel_stake(duel_id: str, request: Request) -> JSONResponse:
     await accounts.push_account(uid)
     await accounts.push_account(d["a"])
     d = db.duel_get(duel_id)
+    # De UITDAGER hoort te horen waar er nu echt om gespeeld wordt: hij zette
+    # iets in en de ander mocht dat verlagen, dus zonder deze melding zou hij
+    # dat pas merken als het duel al klaar is.
+    naam = (db.get_user(uid) or {}).get("name") or "?"
+    n = int(d.get("stake") or 0)
+    await accounts.stuur(d["a"], "duel_inzet", data={"duel_id": duel_id}, naam=naam,
+                         inzet=f" om {n} coins" if n else " zonder inzet")
     return JSONResponse(_duel_payload(db, uid, d))
 
 
@@ -1170,12 +1178,22 @@ async def duel_rematch(duel_id: str, request: Request) -> JSONResponse:
     live = db.duel_open_with(uid, other)
     if live:
         return JSONResponse({"error": "already_open", "id": live}, status_code=409)
+    # Een herkansing is een NIEUWE uitdaging en kiest dus opnieuw een inzet: hem
+    # stilzwijgend op nul zetten zou het duel van zijn inzet ontdoen zonder dat
+    # iemand daarvoor koos.
+    body = await request.json()
+    stake = int((body or {}).get("stake") or 0)
+    if stake not in db.DUEL_STAKES:
+        return JSONResponse({"error": "stake"}, status_code=400)
     used, combos = db.duel_pair_state(uid, other)
     rounds, new_used, new_combos = duel.pick_rounds(used, combos)
-    did = db.duel_create(uid, other, rounds, time.time() + duel.EXPIRY_H * 3600)
+    did = db.duel_create(uid, other, rounds, time.time() + duel.EXPIRY_H * 3600, stake=stake)
+    if did is None:
+        return JSONResponse({"error": "coins"}, status_code=402)
     db.duel_pair_set(uid, other, new_used, new_combos)
     name = (db.get_user(uid) or {}).get("name") or "?"
     await accounts.stuur(other, "duel_herkansing", data={"duel_id": did}, naam=name)
+    await accounts.push_account(uid)
     return JSONResponse(_duel_payload(db, uid, db.duel_get(did)))
 
 

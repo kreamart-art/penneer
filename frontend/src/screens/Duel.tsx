@@ -20,7 +20,7 @@ import { Screen, Card } from "../components/Layout";
 import type { GameApi } from "../net/socket";
 import { ArtIcoon } from "../components/ArtIcoon";
 import { GlasVeld } from "../components/GlasVeld";
-import { GOUD, KADER_LIJN_GOUD, KADER_LIJN_PAARS, KADER_LIJN_ROOD, NeonKader, Paneel, PlekWapen } from "../components/ProfileHero";
+import { GOUD, KADER_LIJN_GOUD, KADER_LIJN_PAARS, KADER_LIJN_ROOD, NeonKader, Paneel, PlekWapen, SCHILD_KLEUREN, type SchildKleur } from "../components/ProfileHero";
 import { GlasRij } from "./Hub";
 import { SchermTip } from "../components/SchermTip";
 import { useT } from "../i18n/i18n";
@@ -90,7 +90,14 @@ const inputStyle: React.CSSProperties = {
   padding: "14px 15px",
 };
 
-export function Duel({ game, onBack, onProfile }: { game: GameApi; onBack: () => void; onProfile: () => void }) {
+export function Duel({ game, onBack, onProfile, openId, onGeopend }: {
+  game: GameApi;
+  onBack: () => void;
+  onProfile: () => void;
+  /** Een duel dat meteen open moet, omdat een melding erheen wees. */
+  openId?: string | null;
+  onGeopend?: () => void;
+}) {
   const { t, tCat } = useT();
   const account = game.state.account;
   const [view, setView] = useState<"list" | "stake" | "play" | "result">("list");
@@ -105,6 +112,9 @@ export function Duel({ game, onBack, onProfile }: { game: GameApi; onBack: () =>
   // Welke inzet de UITGEDAAGDE nu bekijkt in de carrousel. Begint op de hoogste
   // die hij mag kiezen, want dat is wat de uitdager voorstelde.
   const [aanneemIdx, setAanneemIdx] = useState(0);
+  const [herkansOpen, setHerkansOpen] = useState(false);
+  const [herkansIdx, setHerkansIdx] = useState(0);
+  const mijnDivisie = account ? Math.max(0, SCHILD_KLEUREN.indexOf((account.shield as SchildKleur) || "paars")) : undefined;
   const [note, setNote] = useState("");
   const deadline = useRef(0);
   const wordRef = useRef("");
@@ -218,6 +228,16 @@ export function Duel({ game, onBack, onProfile }: { game: GameApi; onBack: () =>
 
   useEffect(() => { if (view === "play" && round) input.current?.focus(); }, [view, round]);
 
+  // Een melding wees naar EEN duel: zodra de lijst binnen is dat duel openen en
+  // de wens meteen wissen, anders springt hij er bij elke verversing weer heen.
+  useEffect(() => {
+    if (!openId || !list) return;
+    const d = list.duels.find((x) => x.id === openId);
+    onGeopend?.();
+    if (d) void openDuel(d);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openId, list]);
+
   // ---- uitdagen -----------------------------------------------------------
 
   const challenge = async (friend: Person, stake: number) => {
@@ -246,14 +266,26 @@ export function Duel({ game, onBack, onProfile }: { game: GameApi; onBack: () =>
     }
   };
 
-  const rematch = async () => {
+  // Een herkansing is een NIEUW duel, dus je kiest er opnieuw een inzet bij.
+  // Meteen starten zou stilzwijgend zonder inzet spelen, terwijl je net om
+  // coins speelde: dan is de herkansing een andere wedstrijd dan de vorige.
+  const rematch = () => { sound.uiTap(); setNote(""); setHerkansIdx(0); setHerkansOpen(true); };
+
+  const rematchStart = async (stake: number) => {
     if (!duel) return;
     setBusy(true);
     try {
-      const r = await fetch(`/api/duel/${duel.id}/rematch`, { method: "POST", headers: authHeaders() });
+      const r = await fetch(`/api/duel/${duel.id}/rematch`, {
+        method: "POST", headers: jsonHeaders(), body: JSON.stringify({ stake }),
+      });
       const d = await r.json();
+      setHerkansOpen(false);
       if (!r.ok) {
-        setNote(d.error === "already_open" ? t("duelAlreadyOpen", { name: duel.opponent.name }) : t("duelStartFailed"));
+        setNote(
+          d.error === "already_open" ? t("duelAlreadyOpen", { name: duel.opponent.name })
+          : d.error === "coins" ? t("duelStakeTekort")
+          : t("duelStartFailed"),
+        );
         setView("list");
         await refresh();
         return;
@@ -313,14 +345,8 @@ export function Duel({ game, onBack, onProfile }: { game: GameApi; onBack: () =>
             index={aanneemIdx}
             onIndex={setAanneemIdx}
             coins={account?.coins ?? 0}
-          />
-          <Button
-            variant="gold"
-            full
-            disabled={busy || (keuzes[aanneemIdx] ?? 0) > (account?.coins ?? 0)}
-            onClick={async () => {
-              const n = keuzes[aanneemIdx] ?? 0;
-              sound.uiTap();
+            bezig={busy}
+            onKies={async (n) => {
               setBusy(true);
               try {
                 const r = await fetch(`/api/duel/${duel.id}/stake`, {
@@ -341,9 +367,7 @@ export function Duel({ game, onBack, onProfile }: { game: GameApi; onBack: () =>
                 setBusy(false);
               }
             }}
-          >
-            {(keuzes[aanneemIdx] ?? 0) > 0 ? t("duelStakeStartMet", { n: keuzes[aanneemIdx] }) : t("duelStakeStartZonder")}
-          </Button>
+          />
           <p style={{ margin: 0, fontFamily: font.ui, fontSize: 11.5, color: colors.faint, textAlign: "center" }}>
             {t("duelStakeSaldo", { n: account?.coins ?? 0 })}
           </p>
@@ -428,21 +452,49 @@ export function Duel({ game, onBack, onProfile }: { game: GameApi; onBack: () =>
               van het profiel. De art heeft een vaste verhouding: de inhoud
               voegt zich ernaar. */}
           <Paneel>
-            <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, paddingInline: 6 }}>
+            <div style={{ position: "relative", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, paddingInline: 6 }}>
             {done ? (
+              // De portretten hangen in de BUITENSTE hoeken van het paneel en de
+              // uitslag staat in het midden: dat wint de breedte die twee
+              // blokken naast elkaar opaten, en het leest als twee kanten die
+              // tegenover elkaar staan in plaats van als een rijtje. Ze blijven
+              // van de sierlijst af (die loopt schuin door de hoek) met een
+              // marge op beide assen.
               <>
-                <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 22, color: duel.winner === "me" ? colors.gold : duel.winner === "them" ? colors.sub : colors.violet }}>
+                <span
+                  aria-hidden
+                  style={{ position: "absolute", left: "7%", top: "50%", transform: "translateY(-50%)", display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}
+                >
+                  <Avatar name={account.name} color={account.color} size={54} userId={account.id} hasAvatar={account.has_avatar} avatarVer={account.avatar_ver} divisie={mijnDivisie} glow />
+                  <span style={{ fontFamily: font.ui, fontSize: 10.5, fontWeight: 600, letterSpacing: 0.3, color: colors.sub, maxWidth: 64, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{account.name}</span>
+                </span>
+                <span
+                  aria-hidden
+                  style={{ position: "absolute", right: "7%", top: "50%", transform: "translateY(-50%)", display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}
+                >
+                  <Avatar name={opp.name} color={opp.color} size={54} userId={opp.id} hasAvatar={!!opp.has_avatar} avatarVer={opp.avatar_ver} divisie={opp.divisie} glow />
+                  <span style={{ fontFamily: font.ui, fontSize: 10.5, fontWeight: 600, letterSpacing: 0.3, color: colors.sub, maxWidth: 64, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{opp.name}</span>
+                </span>
+
+                {/* De kop in de smalle hoofdletters van de advertentie, ruim
+                    gespatieerd: premium leest als LETTERRUIMTE, niet als groter. */}
+                <span style={{ fontFamily: font.wide, fontWeight: 700, fontSize: 17, letterSpacing: 2.6, textTransform: "uppercase", lineHeight: 1, color: duel.winner === "me" ? colors.gold : duel.winner === "them" ? colors.sub : colors.violet, textShadow: `0 0 22px ${withAlpha(duel.winner === "me" ? colors.gold : colors.violet, 0.45)}` }}>
                   {duel.winner === "me" ? t("duelWon") : duel.winner === "them" ? t("duelLost") : t("duelDraw")}
                 </span>
-                <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                  <ScoreSide name={account.name} color={account.color} id={account.id} hasAvatar={account.has_avatar} ver={account.avatar_ver} score={duel.my_score} win={duel.winner === "me"} />
-                  <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15, color: colors.faint }}>—</span>
-                  <ScoreSide name={opp.name} color={opp.color} id={opp.id} hasAvatar={!!opp.has_avatar} ver={opp.avatar_ver} score={duel.their_score ?? 0} win={duel.winner === "them"} />
-                </div>
+                {/* De stand als EEN regel: 60 - 60. Twee losse blokken met naam
+                    en cijfer eronder namen de hele breedte; zo blijft er ruimte
+                    voor de portretten in de hoeken. */}
+                <span style={{ display: "flex", alignItems: "baseline", gap: 10, marginTop: 2 }}>
+                  <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 40, lineHeight: 1, color: duel.winner === "me" ? colors.gold : colors.ink }}>{duel.my_score}</span>
+                  <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 22, lineHeight: 1, color: colors.faint }}>-</span>
+                  <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 40, lineHeight: 1, color: duel.winner === "them" ? colors.gold : colors.ink }}>{duel.their_score ?? 0}</span>
+                </span>
                 {duel.stake > 0 && duel.stake_accepted && (
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 12px", borderRadius: 999, background: withAlpha(colors.gold, 0.14), border: `1px solid ${withAlpha(colors.gold, 0.4)}` }}>
+                  // Los van de onderrand: hij zat er tegenaan en dan lijkt hij
+                  // eruit te vallen in plaats van in de kaart te liggen.
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 4, marginBottom: "6%", padding: "4px 12px", borderRadius: 999, background: withAlpha(colors.gold, 0.14), border: `1px solid ${withAlpha(colors.gold, 0.4)}` }}>
                     <img src="/coin.webp" alt="" width={15} height={15} style={{ display: "block" }} />
-                    <span style={{ fontFamily: font.ui, fontSize: 12.5, fontWeight: 700, color: colors.gold }}>
+                    <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 700, color: colors.gold }}>
                       {duel.winner === "draw"
                         ? t("duelPotTerug", { n: duel.stake })
                         : duel.winner === "me"
@@ -481,7 +533,7 @@ export function Duel({ game, onBack, onProfile }: { game: GameApi; onBack: () =>
           </Card>
 
           {done && (
-            <Button variant="gold" full disabled={busy} onClick={() => void rematch()}>
+            <Button variant="gold" full disabled={busy} onClick={rematch}>
               <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
                 <RotateCcw size={16} /> {t("duelRematch")}
               </span>
@@ -490,6 +542,20 @@ export function Duel({ game, onBack, onProfile }: { game: GameApi; onBack: () =>
           <div style={{ display: "flex", justifyContent: "center" }}>
             <Button variant="ghost" onClick={() => { sound.uiTap(); setView("list"); void refresh(); }}>{t("back")}</Button>
           </div>
+
+          {herkansOpen && (
+            <InzetPopup
+              titel={t("duelStakeKop")}
+              uitleg={t("duelStakeUitleg", { name: duel.opponent.name })}
+              waardes={DUEL_STAKES}
+              index={herkansIdx}
+              onIndex={setHerkansIdx}
+              coins={account?.coins ?? 0}
+              bezig={busy}
+              onKies={(n) => void rematchStart(n)}
+              onClose={() => setHerkansOpen(false)}
+            />
+          )}
         </div>
       </Screen>
     );
@@ -848,16 +914,6 @@ function WordLine({ slot, mine }: { slot: Slot | null; mine: boolean }) {
   );
 }
 
-function ScoreSide({ name, color, id, hasAvatar, ver, score, win }: { name: string; color: string; id: string; hasAvatar: boolean; ver: number; score: number; win: boolean }) {
-  return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5, minWidth: 78 }}>
-      <Avatar name={name} color={color} size={40} userId={id} hasAvatar={hasAvatar} avatarVer={ver} />
-      <span style={{ fontFamily: font.ui, fontSize: 12, color: colors.sub, maxWidth: 84, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</span>
-      <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 26, color: win ? colors.gold : colors.ink }}>{score}</span>
-    </div>
-  );
-}
-
 function Chip({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontFamily: font.ui, fontSize: 12.5, fontWeight: 600, color: colors.sub, background: withAlpha("#000000", 0.22), border: `1px solid ${colors.hairline}`, padding: "6px 11px", borderRadius: 999 }}>
@@ -1013,22 +1069,76 @@ const DUEL_STAKES = [0, 50, 100, 250, 500, 1000];
  *
  * Zolang een zaal nog geen art heeft valt de tegel terug op het neon-vlak: het
  * bedrag blijft gewoon kiesbaar, er is alleen nog niets te zien. */
-const ZAAL_ART: Record<number, string> = { 50: "/ui/inzet/z50.webp?v=1" };
+const ZAAL_ART: Record<number, string> = {
+  0: "/ui/inzet/z0.webp?v=2", 50: "/ui/inzet/z50.webp?v=2", 100: "/ui/inzet/z100.webp?v=2",
+  250: "/ui/inzet/z250.webp?v=2", 500: "/ui/inzet/z500.webp?v=2", 1000: "/ui/inzet/z1000.webp?v=2",
+};
+
+/* De inzet-popup: dezelfde schil voor uitdagen en voor een herkansing. Twee
+ * eigen vensters voor dezelfde vraag lopen na twee wijzigingen uit elkaar. */
+function InzetPopup({
+  titel, uitleg, waardes, index, onIndex, coins, bezig, onKies, onClose,
+}: {
+  titel: string; uitleg: string; waardes: number[]; index: number;
+  onIndex: (i: number) => void; coins: number; bezig?: boolean;
+  onKies: (n: number) => void; onClose: () => void;
+}) {
+  const { t } = useT();
+  return (
+    <div
+      onClick={onClose}
+      style={{ position: "fixed", inset: 0, zIndex: 95, background: "rgba(6,3,18,.8)", backdropFilter: "blur(5px)", WebkitBackdropFilter: "blur(5px)", display: "grid", placeItems: "center", padding: 22 }}
+    >
+      <div
+        className="pop-in"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          position: "relative", width: "100%", maxWidth: 340,
+          display: "flex", flexDirection: "column", gap: 10, padding: "22px 18px 18px", borderRadius: 24,
+          backgroundColor: "#160D30",
+          backgroundImage: [
+            `radial-gradient(120% 90% at 8% 0%, ${withAlpha(colors.gold, 0.16)}, transparent 58%)`,
+            `radial-gradient(110% 80% at 100% 100%, ${withAlpha(colors.violet, 0.22)}, transparent 62%)`,
+            "linear-gradient(180deg, #2a1c48, #160D30)",
+          ].join(", "),
+          boxShadow: [
+            `inset 0 0 0 1.4px ${withAlpha(colors.gold, 0.42)}`,
+            `inset 0 1px 0 ${withAlpha("#FFEBB8", 0.28)}`,
+            `0 0 26px ${withAlpha(colors.gold, 0.14)}`,
+            "0 24px 80px rgba(0,0,0,.6)",
+          ].join(", "),
+        }}
+      >
+        <button onClick={onClose} aria-label={t("back")} style={{ position: "absolute", top: 12, right: 12, background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 4 }}>
+          <CloseIcon size={26} />
+        </button>
+        <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 18, color: colors.gold, textAlign: "center" }}>{titel}</span>
+        <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.sub, lineHeight: 1.5, textAlign: "center" }}>{uitleg}</p>
+        <InzetCarrousel waardes={waardes} index={index} onIndex={onIndex} coins={coins} bezig={bezig} onKies={onKies} />
+        <p style={{ margin: 0, fontFamily: font.ui, fontSize: 11.5, color: colors.faint, textAlign: "center" }}>
+          {t("duelStakeSaldo", { n: coins })}
+        </p>
+      </div>
+    </div>
+  );
+}
 
 function InzetCarrousel({
-  waardes, index, onIndex, coins, betaalbaar = true,
+  waardes, index, onIndex, coins, onKies, bezig,
 }: {
   waardes: number[];
   index: number;
   onIndex: (i: number) => void;
   coins: number;
-  /** Of een te dure inzet gedempt getoond wordt (bij het uitdagen wel). */
-  betaalbaar?: boolean;
+  /** De ZAAL is de knop: erop tikken kiest deze inzet. Een aparte knop eronder
+   *  is een tweede plek voor dezelfde daad, en dan weet je niet welke telt. */
+  onKies: (n: number) => void;
+  bezig?: boolean;
 }) {
   const { t } = useT();
   const n = waardes[index] ?? 0;
   const art = ZAAL_ART[n];
-  const kan = !betaalbaar || n <= coins;
+  const kan = n <= coins;
   const ga = (stap: number) => {
     sound.uiTap();
     onIndex((index + stap + waardes.length) % waardes.length);
@@ -1044,10 +1154,15 @@ function InzetCarrousel({
         <ChevronLeft size={20} />
       </button>
 
-      <div
+      <button
+        onClick={() => { if (kan && !bezig) { sound.uiTap(); onKies(n); } }}
+        disabled={!kan || bezig}
+        aria-label={n === 0 ? t("duelStakeStartZonder") : t("duelStakeStartMet", { n })}
+        className={kan && !bezig ? "pressable" : undefined}
         style={{
           flex: 1, minWidth: 0, position: "relative", borderRadius: 16, overflow: "hidden",
-          aspectRatio: `${720} / ${606}`,
+          padding: 0, border: "none", cursor: kan && !bezig ? "pointer" : "default",
+          aspectRatio: `${4} / ${3}`,
           // Zonder art een leeg neon-vlak, zodat de tegel dezelfde maat en vorm
           // houdt en er niets verspringt zodra de zaal er wel is.
           background: art ? "transparent" : `linear-gradient(180deg, ${withAlpha(colors.violet, 0.18)}, ${withAlpha("#000000", 0.35)})`,
@@ -1079,7 +1194,7 @@ function InzetCarrousel({
           </span>
           {n > 0 && <img src="/coin.webp" alt="" width={24} height={24} style={{ display: "block" }} />}
         </span>
-      </div>
+      </button>
 
       <button onClick={() => ga(1)} aria-label={t("next")} className="pressable" style={pijl}>
         <ChevronRight size={20} />
@@ -1096,7 +1211,6 @@ function FriendPicker({ friends, onPick, onClose, busy, coins }: { friends: Pers
   // gokautomaat. 0 is een echte keuze: vriendschappelijk blijft gewoon kunnen.
   const [gekozen, setGekozen] = useState<Person | null>(null);
   const [inzetIdx, setInzetIdx] = useState(0);
-  const inzet = DUEL_STAKES[inzetIdx] ?? 0;
   const shown = friends.filter((f) => f.name.toLowerCase().includes(q.trim().toLowerCase()));
   return (
     <div
@@ -1106,7 +1220,28 @@ function FriendPicker({ friends, onPick, onClose, busy, coins }: { friends: Pers
       <div
         className="pop-in"
         onClick={(e) => e.stopPropagation()}
-        style={{ position: "relative", width: "100%", maxWidth: 340, maxHeight: "70vh", overflowY: "auto", display: "flex", flexDirection: "column", gap: 10, padding: "22px 18px 18px", borderRadius: 24, background: "linear-gradient(180deg, #2a1c48, #160D30)", border: `1px solid ${withAlpha(colors.gold, 0.45)}`, boxShadow: "0 24px 80px rgba(0,0,0,.6)" }}
+        style={{
+          position: "relative", width: "100%", maxWidth: 340, maxHeight: "78vh", overflowY: "auto",
+          display: "flex", flexDirection: "column", gap: 10, padding: "22px 18px 18px", borderRadius: 24,
+          // Een echt decor in plaats van een vlakke kaart: warm licht dat
+          // linksboven binnenvalt over een diepe paarse bodem, met een tweede
+          // koele bron rechtsonder. Zo staat de zaal in een ruimte in plaats
+          // van op een blad.
+          backgroundColor: "#160D30",
+          backgroundImage: [
+            `radial-gradient(120% 90% at 8% 0%, ${withAlpha(colors.gold, 0.16)}, transparent 58%)`,
+            `radial-gradient(110% 80% at 100% 100%, ${withAlpha(colors.violet, 0.22)}, transparent 62%)`,
+            "linear-gradient(180deg, #2a1c48, #160D30)",
+          ].join(", "),
+          // De neonlijn om de sectie: donker aan de uiteinden, oplichtend in het
+          // midden, met een glansje erop. Een vlakke border kan dat niet.
+          boxShadow: [
+            `inset 0 0 0 1.4px ${withAlpha(colors.gold, 0.42)}`,
+            `inset 0 1px 0 ${withAlpha("#FFEBB8", 0.28)}`,
+            `0 0 26px ${withAlpha(colors.gold, 0.14)}`,
+            "0 24px 80px rgba(0,0,0,.6)",
+          ].join(", "),
+        }}
       >
         <button onClick={onClose} aria-label={t("back")} style={{ position: "absolute", top: 12, right: 12, background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 4 }}>
           <CloseIcon size={26} />
@@ -1119,13 +1254,17 @@ function FriendPicker({ friends, onPick, onClose, busy, coins }: { friends: Pers
             <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.sub, lineHeight: 1.5, textAlign: "center" }}>
               {t("duelStakeUitleg", { name: gekozen.name })}
             </p>
-            <InzetCarrousel waardes={DUEL_STAKES} index={inzetIdx} onIndex={setInzetIdx} coins={coins} />
+            <InzetCarrousel
+              waardes={DUEL_STAKES}
+              index={inzetIdx}
+              onIndex={setInzetIdx}
+              coins={coins}
+              bezig={busy}
+              onKies={(n) => onPick(gekozen, n)}
+            />
             <p style={{ margin: 0, fontFamily: font.ui, fontSize: 11.5, color: colors.faint, textAlign: "center" }}>
               {t("duelStakeSaldo", { n: coins })}
             </p>
-            <Button variant="gold" full disabled={busy || inzet > coins} onClick={() => onPick(gekozen, inzet)}>
-              {inzet > 0 ? t("duelStakeStartMet", { n: inzet }) : t("duelStakeStartZonder")}
-            </Button>
           </>
         ) : friends.length === 0 ? (
           <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13.5, color: colors.sub, lineHeight: 1.55, textAlign: "center" }}>{t("duelNoFriends")}</p>

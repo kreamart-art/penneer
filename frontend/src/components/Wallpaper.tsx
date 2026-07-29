@@ -63,9 +63,33 @@ const RASTER = motief(`<svg xmlns='http://www.w3.org/2000/svg' width='34' height
   <path d='M0 .5H34M.5 0V34' stroke='rgba(88,196,236,.16)' stroke-width='1'/>
 </svg>`);
 
-const PENNEN = motief(`<svg xmlns='http://www.w3.org/2000/svg' width='58' height='58'>
-  <g fill='none' stroke='rgba(255,207,74,.14)' stroke-width='1.2' stroke-linejoin='round'>
-    <path d='M29 16 L34 34 q0 5 -5 5 q-5 0 -5 -5 Z'/><path d='M29 22 v10'/>
+/* Het monogram van Pen Neer, in de opzet van een modehuis-canvas.
+ *
+ * Hoe zo'n patroon werkt (Gucci, Louis Vuitton, Goyard): het merkteken staat op
+ * de KNOOPPUNTEN van een ruitraster, de ruiten zelf worden met dunne diagonalen
+ * getekend, en alles staat toon-op-toon, dus goud op donker goud in plaats van
+ * goud op zwart. Het mag NIET opvallen; het is textuur waar je overheen leest.
+ *
+ * Vandaar de tegel: de pen in het midden en op alle vier de hoeken, en de
+ * diagonalen die van hoek naar hoek door het midden lopen. Omdat de hoekpennen
+ * op de naad staan, sluiten ze bij het herhalen aan tot één pen op elk
+ * kruispunt, precies zoals je het tekende: pennen boven, de lijnen die naar
+ * elkaar toelopen, een pen in het hart, en weer uit elkaar naar de pennen
+ * eronder.
+ *
+ * De pen zit op 0,45 dekking gecentreerd getekend en op de hoeken vier keer op
+ * een kwart, zodat de tegel naadloos rondloopt. */
+const PEN_PAD = "M0 -9 L4.6 8 q0 4.6 -4.6 4.6 q-4.6 0 -4.6 -4.6 Z";
+const PEN_STEEL = "M0 -3.4 v9";
+const pen = (x: number, y: number, schaal = 1) =>
+  `<g transform='translate(${x} ${y}) scale(${schaal})'><path d='${PEN_PAD}'/><path d='${PEN_STEEL}'/></g>`;
+const PENNEN = motief(`<svg xmlns='http://www.w3.org/2000/svg' width='84' height='84'>
+  <g fill='none' stroke='rgba(255,207,74,.10)' stroke-width='1' stroke-linejoin='round' stroke-linecap='round'>
+    <path d='M0 0 L42 42 L84 0 M0 84 L42 42 L84 84'/>
+  </g>
+  <g fill='none' stroke='rgba(255,207,74,.17)' stroke-width='1.25' stroke-linejoin='round' stroke-linecap='round'>
+    ${pen(42, 42)}
+    ${pen(0, 0)}${pen(84, 0)}${pen(0, 84)}${pen(84, 84)}
   </g>
 </svg>`);
 
