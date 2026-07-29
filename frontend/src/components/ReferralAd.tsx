@@ -625,10 +625,14 @@ function Pil({
               top: "50%",
               transform: "translateY(-50%)",
               fontFamily: font.wide,
-              fontSize: 17,
+              fontSize: 16,
               letterSpacing: 0.2,
               lineHeight: 1,
               whiteSpace: "nowrap",
+              // Harde grens: wat er tegen alle verwachting toch niet in past
+              // wordt afgekapt in plaats van over de rand te lopen.
+              overflow: "hidden",
+              textOverflow: "ellipsis",
               color: "#FFEBB8",
               textShadow: "0 2px 4px rgba(0,0,0,.6)",
               textAlign: "center",
@@ -639,7 +643,11 @@ function Pil({
               transition: uitgeklapt ? "opacity .2s .18s" : "opacity .12s",
             }}
           >
-            {teHalen > 0 ? "BELONING KLAAR" : "NODIG UIT"}
+            {/* De plaat is 120px breed en de tekst heeft daar zo'n 82px van;
+                "BELONING KLAAR" is veertien tekens en liep er dus altijd uit.
+                Op deze maat hoort het label KORT te zijn, en "OPHALEN" zegt
+                precies wat je moet doen. Het cijfer ernaast zegt al hoeveel. */}
+            {teHalen > 0 ? "OPHALEN" : "NODIG UIT"}
           </span>
           {teHalen > 0 && (
             <span

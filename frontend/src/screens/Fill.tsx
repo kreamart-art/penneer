@@ -12,7 +12,7 @@ import { TopBar } from "../components/TopBar";
 import type { GameApi } from "../net/socket";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
-import { schuin } from "../components/ProfileHero";
+import { KADER_LIJN_LOOP, NeonKader } from "../components/ProfileHero";
 import { colors, font, withAlpha } from "../theme/tokens";
 
 export function Fill({ game }: { game: GameApi }) {
@@ -70,8 +70,19 @@ export function Fill({ game }: { game: GameApi }) {
   return (
     <Screen top={<TopBar code={room.code} roundNo={room.round_no} totalRounds={room.settings.rounds} connected={game.state.status === "open"} onLeave={game.leaveRoom} game={game} />}>
       <div style={{ display: "flex", flexDirection: "column", gap: 16, paddingBottom: showFloatingReady || showFloatingStop ? 104 : 0 }}>
-        {/* Letter + timer (or no-timer note) */}
-        <Card style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+        {/* Letter + timer. Met de sierlijst van het profiel eromheen: dit is de
+            kop van de ronde, en elders in de app draagt de kop die lijst al.
+            Een gewone Card las hier als een willekeurig vlak. */}
+        <NeonKader
+          radius={18}
+          dik={0.4}
+          vulling="geen"
+          lijn={KADER_LIJN_LOOP}
+          gloed="none"
+          animeer
+          sterkte={0.34}
+          binnen={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "14px 14px 15px" }}
+        >
           <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
             <span style={{ fontFamily: font.ui, fontSize: 13, color: colors.sub }}>{t("letterIs")}</span>
             {/* Zelfde behandeling als de letter op de rol: een verloop over het
@@ -89,7 +100,7 @@ export function Fill({ game }: { game: GameApi }) {
             // Timed mode: the countdown speaks for itself, nobody keeps time.
             <Timer endsAt={room.timer.ends_at} duration={room.timer.duration} onTick={onTick} />
           )}
-        </Card>
+        </NeonKader>
 
         {/* other players + ready state */}
         {others.length > 0 && (
@@ -150,12 +161,14 @@ export function Fill({ game }: { game: GameApi }) {
                     color: colors.ink,
                     background: withAlpha("#000000", 0.28),
                     border: "none",
-                    // De afgeschuinde glasvorm van de rest van de app. De lijn
-                    // licht op zodra er iets in staat: dat is het enige verschil
-                    // tussen een leeg en een gevuld veld, en het is genoeg.
-                    clipPath: schuin(11),
+                    // Een PIL, geen afgeschuinde plaat. Een invoerveld is waar je
+                    // in TYPT, en dat is de vorm van een tekstregel; de
+                    // afgeschuinde hoek is de vorm van een lijstrij en las hier
+                    // als een knop. De lijn licht op zodra er iets in staat: dat
+                    // is het enige verschil tussen leeg en gevuld, en genoeg.
+                    borderRadius: 999,
                     boxShadow: `inset 0 0 0 1.5px ${answers[cat] ? withAlpha(colors.gold, 0.55) : withAlpha("#C8A0FF", 0.22)}`,
-                    padding: "12px 14px",
+                    padding: "12px 18px",
                     transition: "box-shadow .12s ease",
                   }}
                 />

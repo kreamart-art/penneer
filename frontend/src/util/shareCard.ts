@@ -17,7 +17,7 @@ interface CardOpts {
   pointsText: string; // "120 punten"
   /** De winnaars, met portret. Bij gedeelde koppositie staan er meer naast
    *  elkaar; boven de drie worden het alleen namen, want dan past er niets. */
-  winners?: { name: string; color: string; avatarUrl: string | null }[];
+  winners?: { name: string; color: string; avatarUrl: string | null; level: number; divisie: number }[];
   rows: Row[];
   footer: string;
 }
@@ -177,6 +177,69 @@ function glasRij(ctx: CanvasRenderingContext2D, x: number, y: number, w: number,
   ctx.restore();
 }
 
+/** Het portret in de GOUDEN RING uit de UI-map, met het levelschild eronder.
+ *  Dezelfde vorm als op je profiel, dus dezelfde maten: het gat is 68,8% van de
+ *  ringbreedte en het hart daarvan ligt op 49,9% / 44,1%, want de lauwertak
+ *  onderaan hoort bij de ring en niet bij het gat. Twee kaarten gebruiken dit,
+ *  dus het staat een keer geschreven.
+ *
+ *  Geeft de HOOGTE terug die het geheel innam (ring plus het uitstekende
+ *  schild), zodat de aanroeper weet waar hij verder mag. */
+async function ringPortret(
+  ctx: CanvasRenderingContext2D,
+  midX: number,
+  boven: number,
+  R: number,
+  naam: string,
+  kleur: string,
+  avatarUrl: string | null,
+  level: number,
+  divisie: number,
+): Promise<number> {
+  const ring = await loadImage("/ui/ring.webp");
+  const rx = midX - R / 2;
+  const ringH = R * (708 / 720);
+  const gat = R * 0.688;
+  const gx = rx + R * 0.499;
+  const gy = boven + ringH * 0.441;
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(gx, gy, gat / 2, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.fillStyle = "#140B26";
+  ctx.fillRect(gx - gat / 2, gy - gat / 2, gat, gat);
+  const photo = avatarUrl ? await loadImage(avatarUrl) : null;
+  if (photo) {
+    ctx.drawImage(photo, gx - gat / 2, gy - gat / 2, gat, gat);
+  } else {
+    ctx.textAlign = "center";
+    ctx.font = `700 ${Math.round(R * 0.45)}px 'Space Grotesk'`;
+    ctx.fillStyle = kleur;
+    ctx.fillText((naam.trim()[0] || "?").toUpperCase(), gx, gy + R * 0.16);
+  }
+  ctx.restore();
+  if (ring) ctx.drawImage(ring, rx, boven, R, ringH);
+
+  const schild = await loadImage(`/ui/shield/${SCHILD_KLEUREN[Math.max(0, Math.min(SCHILD_KLEUREN.length - 1, divisie))]}.webp`);
+  let onder = boven + ringH;
+  if (schild) {
+    const sb = R * 0.24;
+    const sh = sb * (972 / 821);
+    const sx = midX - sb / 2;
+    const sy = gy + gat / 2 - sh * 0.22;
+    ctx.drawImage(schild, sx, sy, sb, sh);
+    // Het cijfer op het ZWAARTEPUNT van het schild (0,497 / 0,464), niet op het
+    // midden: onderin loopt het schild in een punt.
+    const cijfer = Math.round(R * 0.133);
+    ctx.textAlign = "center";
+    ctx.font = `700 ${cijfer}px 'Space Grotesk'`;
+    ctx.fillStyle = "#FFFFFF";
+    ctx.fillText(String(level), sx + sb * 0.497, sy + sh * 0.464 + cijfer * 0.35);
+    onder = Math.max(onder, sy + sh);
+  }
+  return onder - boven;
+}
+
 export async function makeShareCard(opts: CardOpts): Promise<Blob | null> {
   const W = 1080;
   const H = 1350;
@@ -236,8 +299,11 @@ export async function makeShareCard(opts: CardOpts): Promise<Blob | null> {
   // krijgt een lijst en de rest niet.
   const kx = 110;
   const kw = W - 220;
-  const ky = 410;
-  const kh = 230;
+  const ky = 400;
+  // GEMETEN op de inhoud in plaats van gegokt: label (56) + ring (280 plus het
+  // uitstekende schild) + naam (72) + punten-pil (54) plus lucht. Op 230 liepen
+  // de naam en de pil de lijst in, en dat is precies wat er misging.
+  const kh = 470;
   ctx.save();
   schuinPad(ctx, kx, ky, kw, kh, 22);
   ctx.fillStyle = "rgba(10,4,26,.4)";
@@ -253,15 +319,21 @@ export async function makeShareCard(opts: CardOpts): Promise<Blob | null> {
   // met gezichten is het een uitslag van MENSEN. Boven de drie past het niet
   // meer, dan blijven alleen de namen over.
   const wns = (opts.winners ?? []).slice(0, 3);
-  let naamY = ky + 142;
+  let naamY = ky + 150;
   if (wns.length > 0) {
-    const R = wns.length > 1 ? 46 : 58;
-    const stap = R * 2 + 20;
+    // De ECHTE ring met het schild, dezelfde als op je profiel: een kale
+    // rangring om een rond portret zegt niets over wie je bent geworden.
+    const R = wns.length > 1 ? 200 : 280;
+    const stap = R * 0.82;
     const startX = W / 2 - ((wns.length - 1) * stap) / 2;
+    let hoogte = 0;
     for (let i = 0; i < wns.length; i++) {
-      await portret(ctx, startX + i * stap, ky + 88 + R, R, wns[i].name, wns[i].color, wns[i].avatarUrl);
+      hoogte = await ringPortret(
+        ctx, startX + i * stap, ky + 84, R,
+        wns[i].name, wns[i].color, wns[i].avatarUrl, wns[i].level, wns[i].divisie,
+      );
     }
-    naamY = ky + 88 + R * 2 + 52;
+    naamY = ky + 84 + hoogte + 62;
   }
 
   ctx.textAlign = "center";

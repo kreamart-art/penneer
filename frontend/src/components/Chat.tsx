@@ -19,11 +19,17 @@ export function ChatButton({ game }: { game: GameApi }) {
   const chat = game.state.chat;
   const open = game.state.chatOpen;
   const unread = open ? 0 : Math.max(0, chat.length - game.state.chatSeen);
+  // Op de ROL-pagina gaat de chat op slot. Hij viel al dicht zodra de rol begon
+  // te draaien, maar je kon hem daarna meteen weer openen en dan zat je achter
+  // een paneel te wachten terwijl de letter viel. Chatten hoort voor en na het
+  // rollen, niet tijdens.
+  const opSlot = game.state.room?.phase === "reveal";
 
   return (
     <>
       <button
-        onClick={() => game.openChat()}
+        onClick={() => { if (!opSlot) game.openChat(); }}
+        disabled={opSlot}
         aria-label={t("chat")}
         title={t("chat")}
         className="pressable"
@@ -31,7 +37,8 @@ export function ChatButton({ game }: { game: GameApi }) {
           position: "relative",
           background: "transparent",
           border: "none",
-          cursor: "pointer",
+          cursor: opSlot ? "default" : "pointer",
+          opacity: opSlot ? 0.35 : 1,
           padding: 0,
           lineHeight: 0,
           display: "flex",

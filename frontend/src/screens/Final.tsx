@@ -45,6 +45,11 @@ export function Final({ game }: { game: GameApi }) {
           name: w.name,
           color: w.color,
           avatarUrl: w.has_avatar && w.user_id ? `/api/avatar/${w.user_id}?v=${w.avatar_ver ?? 0}` : null,
+          // Level en divisie horen bij de ring: het schild eronder draagt je
+          // level en de kleur is je divisie. Gasten hebben geen van beide, dus
+          // die vallen terug op 0 (de eerste trede).
+          level: w.level ?? 0,
+          divisie: w.divisie ?? 0,
         })),
         rows: ranked.map((p) => ({
           name: p.name,

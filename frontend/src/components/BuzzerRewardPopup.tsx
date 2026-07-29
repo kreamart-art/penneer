@@ -55,7 +55,7 @@ function RewardCard({
 /** The prize itself: a breathing glow with the artwork popping in on top. */
 function RewardArt({ src, size = 116 }: { src: string; size?: number }) {
   return (
-    <div style={{ position: "relative", width: size, height: size, display: "grid", placeItems: "center", marginTop: -10, zIndex: 1 }}>
+    <div style={{ position: "relative", width: size, height: size, display: "grid", placeItems: "center", marginTop: 2, zIndex: 1 }}>
       <div style={{ position: "absolute", inset: 0, borderRadius: "50%", background: `radial-gradient(circle, ${withAlpha(colors.gold, 0.35)}, transparent 68%)`, animation: "breath-glow 3s ease-in-out infinite" }} />
       <img className="reward-art" src={src} alt="" style={{ position: "relative", width: size, height: size, objectFit: "contain", filter: "drop-shadow(0 10px 24px rgba(0,0,0,.55))" }} />
     </div>
@@ -97,11 +97,15 @@ export function BuzzerRewardPopup({ game }: { game: GameApi }) {
     };
     return (
       <RewardCard>
-        <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 18, lineHeight: 1.15, color: colors.gold, textShadow: `0 0 18px ${withAlpha(colors.gold, 0.5)}` }}>{t("coinsRewardTitle")}</span>
-        <RewardArt src="/coin.webp" size={118} />
-        <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 26, color: colors.ink }}>+{coinsPending}</span>
-        <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13, color: colors.sub, lineHeight: 1.5 }}>{t("coinsRewardBody")}</p>
-        <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: colors.gold }}>{t("coinsBalance", { n: account!.coins })}</span>
+        {/* Deze kaart heeft ZES regels en dat is een regel meer dan de andere,
+            dus alles is een maat kleiner: anders liep de kop tegen de bovenrand
+            van het vrije veld en werd hij afgesneden. De munt staat met een
+            kleine marge lager, zodat de kop lucht boven zich houdt. */}
+        <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, lineHeight: 1.15, color: colors.gold, textShadow: `0 0 18px ${withAlpha(colors.gold, 0.5)}` }}>{t("coinsRewardTitle")}</span>
+        <RewardArt src="/coin.webp" size={96} />
+        <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 30, lineHeight: 1, color: colors.ink }}>+{coinsPending}</span>
+        <p style={{ margin: 0, fontFamily: font.ui, fontSize: 11, color: colors.sub, lineHeight: 1.4 }}>{t("coinsRewardBody")}</p>
+        <span style={{ fontFamily: font.ui, fontSize: 11.5, fontWeight: 600, color: colors.gold }}>{t("coinsBalance", { n: account!.coins })}</span>
         <KnopPlaat breed={104} onClick={ackCoins} label={t("coinsOk")} />
       </RewardCard>
     );
