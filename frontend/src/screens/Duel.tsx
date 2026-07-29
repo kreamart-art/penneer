@@ -1214,7 +1214,7 @@ function InzetPopup({
         binnen={INZET_BINNEN}
       >
        <div className="pop-in" onClick={(e) => e.stopPropagation()} style={{ position: "relative", display: "flex", flexDirection: "column", gap: 10 }}>
-        <button onClick={onClose} aria-label={t("back")} style={{ position: "absolute", top: 12, right: 12, background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 4 }}>
+        <button onClick={onClose} aria-label={t("back")} style={{ position: "absolute", top: -10, right: -6, zIndex: 2, background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 4 }}>
           <CloseIcon size={26} />
         </button>
         {/* De kop krijgt de behandeling van een kop: smalle hoofdletters, ruim
@@ -1371,7 +1371,7 @@ function FriendPicker({ friends, onPick, onClose, busy, coins }: { friends: Pers
         binnen={{ ...INZET_BINNEN, maxHeight: "78vh", overflowY: "auto" }}
       >
        <div className="pop-in" onClick={(e) => e.stopPropagation()} style={{ position: "relative", display: "flex", flexDirection: "column", gap: 10 }}>
-        <button onClick={onClose} aria-label={t("back")} style={{ position: "absolute", top: 12, right: 12, background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 4 }}>
+        <button onClick={onClose} aria-label={t("back")} style={{ position: "absolute", top: -10, right: -6, zIndex: 2, background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 4 }}>
           <CloseIcon size={26} />
         </button>
         <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 18, color: colors.gold, textAlign: "center" }}>
