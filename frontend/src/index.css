@@ -634,7 +634,11 @@ a:active .hex-aan {
   to { background-position: 96px 96px, center, center; }
 }
 .wp-nacht { animation: wp-schuif-diag 38s linear infinite; }
+/* De veeg hoort bij alles wat LIJNEN heeft: een lichtstreep over een raster
+   leest als een spot die erlangs strijkt, en dat is precies wat een raster
+   nodig heeft om geen behangpapier te zijn. */
 .wp-nacht::after,
+.wp-raster::after,
 .wp-goud::after {
   content: "";
   position: absolute;
@@ -667,7 +671,15 @@ a:active .hex-aan {
 }
 .wp-raster { animation: wp-raster 22s linear infinite; }
 
-/* De sterren fonkelen: het motief staat stil, de dekking ademt. */
+/* De sterren. Drie dingen tegelijk, en dat is met opzet: een sterrenhemel waar
+   niets gebeurt is een stipjespatroon.
+
+   1. Het hele veld ademt traag, zodat het niet stilstaat.
+   2. Een paar sterren SCHIJNEN echt: losse lichtpunten met een eigen puls en
+      een eigen tempo, want twee sterren die samen knipperen is een lampje.
+   3. Om de zoveel tijd valt er een. Kort, schuin, en met een lange pauze
+      ertussen: een vallende ster die elke vijf seconden komt is geen wonder
+      meer maar een metronoom. */
 @keyframes wp-sterren {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.72; }
@@ -677,8 +689,44 @@ a:active .hex-aan {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: radial-gradient(closest-side, rgba(var(--wp), 0.1), transparent 70%);
-  animation: wp-sterren 14s ease-in-out infinite;
+  background:
+    radial-gradient(closest-side, rgba(var(--wp), 0.1), transparent 70%),
+    /* de vier die echt schijnen, elk op een eigen plek */
+    radial-gradient(2.4px 2.4px at 22% 18%, rgba(255,255,255,.95), transparent 100%),
+    radial-gradient(2px 2px at 71% 34%, rgba(200,220,255,.9), transparent 100%),
+    radial-gradient(2.6px 2.6px at 39% 66%, rgba(255,240,200,.9), transparent 100%),
+    radial-gradient(1.8px 1.8px at 84% 79%, rgba(255,255,255,.85), transparent 100%);
+  animation: wp-sterren 14s ease-in-out infinite, wp-fonkel 6.3s ease-in-out infinite;
+}
+@keyframes wp-fonkel {
+  0%, 100% { filter: brightness(1) drop-shadow(0 0 3px rgba(255,255,255,.5)); }
+  40% { filter: brightness(1.7) drop-shadow(0 0 7px rgba(255,255,255,.9)); }
+  70% { filter: brightness(1.1) drop-shadow(0 0 4px rgba(255,255,255,.6)); }
+}
+
+/* De vallende ster: een streepje dat schuin door het beeld trekt en meteen weer
+   weg is. Zeventien seconden ertussen, waarvan hij er nog geen anderhalf te
+   zien is. */
+.wp-sterren::after {
+  content: "";
+  position: absolute;
+  top: -6%;
+  left: -14%;
+  width: 120px;
+  height: 2px;
+  pointer-events: none;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.9), rgba(200,220,255,.2), transparent);
+  transform: rotate(28deg);
+  opacity: 0;
+  animation: wp-valster 17s ease-in infinite;
+}
+@keyframes wp-valster {
+  0%, 88% { transform: translate(0, 0) rotate(28deg); opacity: 0; }
+  90% { opacity: 0; }
+  92% { opacity: 1; }
+  99% { transform: translate(150%, 420%) rotate(28deg); opacity: 0; }
+  100% { transform: translate(0, 0) rotate(28deg); opacity: 0; }
 }
 
 /* De pennen drijven traag omhoog. */
@@ -697,9 +745,11 @@ a:active .hex-aan {
 
 @media (prefers-reduced-motion: reduce) {
   .wp-nacht, .wp-nevel, .wp-raster, .wp-goud, .wp-inkt,
-  .wp-nacht::after, .wp-goud::after, .wp-sterren::before {
+  .wp-nacht::after, .wp-raster::after, .wp-goud::after,
+  .wp-sterren::before, .wp-sterren::after {
     animation: none;
   }
+  .wp-sterren::after { opacity: 0; }
 }
 
 /* De lichtslag op het moment dat je schild van kleur wisselt: één ring die

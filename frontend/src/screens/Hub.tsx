@@ -912,12 +912,26 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
                     punt aan de kant waar hij vandaan komt. Een gewone bubbel
                     met een randje hoort bij een chat-app; deze app is van glas
                     en goud. */}
+                {/* Een PIL. De afgeschuinde glastegel is de vorm van een rij in
+                    een lijst, en een bericht is geen rij: het is een blaadje dat
+                    iemand je toeschuift. Rond dus, met een kortere hoek aan de
+                    kant waar hij vandaan komt, en met een lijn die je ziet:
+                    tegen behang verdwijnt een fluistering. */}
                 <div style={{
-                  padding: m.emote ? 4 : m.voice_id ? "7px 10px" : "9px 12px",
-                  clipPath: m.emote ? undefined : schuin(9),
-                  borderRadius: m.emote ? 12 : undefined,
-                  background: m.emote ? "transparent" : mine ? withAlpha(colors.gold, 0.16) : withAlpha("#000000", 0.32),
-                  boxShadow: m.emote ? undefined : `inset 0 0 0 1px ${mine ? withAlpha(colors.gold, 0.42) : withAlpha("#C8A0FF", 0.2)}`,
+                  padding: m.emote ? 4 : m.voice_id ? "8px 12px" : "10px 15px",
+                  borderRadius: m.emote ? 14 : 20,
+                  borderBottomRightRadius: m.emote ? 14 : mine ? 6 : 20,
+                  borderBottomLeftRadius: m.emote ? 14 : mine ? 20 : 6,
+                  background: m.emote
+                    ? "transparent"
+                    : mine
+                      ? `linear-gradient(180deg, ${withAlpha(colors.gold, 0.22)}, ${withAlpha(colors.gold, 0.12)})`
+                      : "linear-gradient(180deg, rgba(24,12,50,.88), rgba(14,7,34,.88))",
+                  boxShadow: m.emote
+                    ? undefined
+                    : mine
+                      ? `inset 0 0 0 1.4px ${withAlpha(GOUD[2], 0.75)}, 0 0 12px ${withAlpha(GOUD[2], 0.24)}`
+                      : `inset 0 0 0 1.4px ${withAlpha("#A868F5", 0.65)}, 0 0 12px ${withAlpha("#8B45E8", 0.22)}`,
                   fontFamily: font.ui, fontSize: 14, color: colors.ink, lineHeight: 1.45, wordBreak: "break-word",
                 }}>
                   {m.emote ? (

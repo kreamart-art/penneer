@@ -10,7 +10,6 @@ import { MicButton } from "./MicButton";
 import { VoiceNote } from "./VoiceNote";
 import { EmotePicker } from "./EmotePicker";
 import { EMOTE_SRC, FREE_EMOTE_PACKS } from "./emotes";
-import { schuin } from "./ProfileHero";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { colors, font, withAlpha } from "../theme/tokens";
@@ -240,13 +239,22 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
                   <div
                     style={{
                       maxWidth: "82%",
-                      padding: m.emote ? 4 : m.voice_id ? "7px 10px" : "8px 11px",
-                      // Dezelfde afgeschuinde glasvorm als in de privéberichten,
-                      // zodat een bericht er overal in de app hetzelfde uitziet.
-                      clipPath: m.emote ? undefined : schuin(9),
-                      borderRadius: m.emote ? 12 : undefined,
-                      background: m.emote ? "transparent" : mine ? withAlpha(colors.gold, 0.16) : withAlpha("#000000", 0.32),
-                      boxShadow: m.emote ? undefined : `inset 0 0 0 1px ${mine ? withAlpha(colors.gold, 0.4) : withAlpha("#C8A0FF", 0.2)}`,
+                      padding: m.emote ? 4 : m.voice_id ? "8px 12px" : "9px 14px",
+                      // Dezelfde pil als in de privéberichten, zodat een bericht
+                      // er overal in de app hetzelfde uitziet.
+                      borderRadius: m.emote ? 14 : 20,
+                      borderTopRightRadius: m.emote ? 14 : mine ? 6 : 20,
+                      borderTopLeftRadius: m.emote ? 14 : mine ? 20 : 6,
+                      background: m.emote
+                        ? "transparent"
+                        : mine
+                          ? `linear-gradient(180deg, ${withAlpha(colors.gold, 0.22)}, ${withAlpha(colors.gold, 0.12)})`
+                          : "linear-gradient(180deg, rgba(24,12,50,.88), rgba(14,7,34,.88))",
+                      boxShadow: m.emote
+                        ? undefined
+                        : mine
+                          ? `inset 0 0 0 1.4px ${withAlpha("#FFC23D", 0.75)}, 0 0 12px ${withAlpha("#FFC23D", 0.22)}`
+                          : `inset 0 0 0 1.4px ${withAlpha("#A868F5", 0.65)}, 0 0 12px ${withAlpha("#8B45E8", 0.22)}`,
                       color: colors.ink,
                       fontFamily: font.ui,
                       fontSize: 14.5,

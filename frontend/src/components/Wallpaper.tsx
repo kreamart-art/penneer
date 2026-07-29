@@ -83,74 +83,88 @@ const GOLF = motief(`<svg xmlns='http://www.w3.org/2000/svg' width='72' height='
 
 /** Per behang: de laagopbouw, de eigen accentkleur en hoe het beweegt.
  *
- *  Alle zes leven, en alle zes anders. Een gesprek is de enige plek in de app
- *  waar je lang naar hetzelfde vlak kijkt, en stilstaand glas is dood glas.
- *  Maar het moet TRAAG: alles hier duurt tussen de veertien en veertig seconden,
- *  want een achtergrond die je ziet bewegen leidt af van wat erop staat.
+ *  De BODEM is nooit één kleur. Elk behang heeft een set verlopen die elkaar
+ *  aanvullen: een kleur die van boven komt, een tweede die van onderen opkomt,
+ *  en een of twee flares op verschillende plekken. Zo krijgt het vlak diepte
+ *  zonder dat er iets te zien is; één egale kleur leest als karton.
+ *
+ *  Daarboven ligt de TEXTUUR: het raster, de sterren, de pennen. Die beweegt op
+ *  zijn eigen manier.
+ *
+ *  Alle zes leven, en alle zes anders. Maar het moet TRAAG: alles hier duurt
+ *  tussen de veertien en veertig seconden, want een achtergrond die je ziet
+ *  bewegen leidt af van wat erop staat.
  *
  *  De klasse `wp-<id>` hangt de animatie eraan; de keyframes staan in index.css
  *  onder "behang". */
 type Behang = { lagen: string; accent: string; klasse: string };
 
 const WALL: Record<WallpaperId, Behang> = {
-  // Het dambord, met een lichtveeg die er schuin overheen trekt: alsof er een
-  // spot langs het raster strijkt.
+  // Dambord van lijnen op een violette bodem met een warme flare linksboven en
+  // een koele rechtsonder: twee kanten van hetzelfde paars.
   nacht: {
     lagen: [
       DAMBORD,
-      "radial-gradient(120% 55% at 50% 0%, rgba(122,103,255,.18), transparent 62%)",
-      "linear-gradient(180deg, #241740 0%, #1A1035 55%, #120A28 100%)",
+      "radial-gradient(46% 30% at 14% 10%, rgba(255,180,90,.13), transparent 70%)",
+      "radial-gradient(52% 34% at 86% 88%, rgba(122,103,255,.22), transparent 72%)",
+      "radial-gradient(120% 55% at 50% 0%, rgba(168,104,245,.2), transparent 62%)",
+      "linear-gradient(168deg, #2A1A4C 0%, #1E1238 46%, #150C2B 74%, #0F0722 100%)",
     ].join(", "),
     accent: "168,104,245",
     klasse: "wp-nacht",
   },
-  // Twee gekleurde nevels die langs elkaar schuiven; ze staan nooit twee keer
-  // hetzelfde omdat hun perioden niet op elkaar delen.
+  // Twee nevels die langs elkaar schuiven op een bodem die van magenta naar
+  // indigo kantelt.
   nevel: {
     lagen: [
-      "radial-gradient(60% 34% at 20% 24%, rgba(200,139,255,.26), transparent 70%)",
-      "radial-gradient(66% 38% at 80% 72%, rgba(255,111,188,.2), transparent 72%)",
-      "linear-gradient(180deg, #2A1748 0%, #1B1038 55%, #100826 100%)",
+      "radial-gradient(58% 32% at 20% 24%, rgba(200,139,255,.3), transparent 70%)",
+      "radial-gradient(64% 36% at 80% 72%, rgba(255,111,188,.24), transparent 72%)",
+      "radial-gradient(40% 24% at 62% 12%, rgba(255,214,110,.1), transparent 74%)",
+      "linear-gradient(200deg, #331A50 0%, #241344 44%, #180D33 72%, #100823 100%)",
     ].join(", "),
     accent: "200,139,255",
     klasse: "wp-nevel",
   },
-  // Het raster schuift langzaam omhoog, als een vloer die onder je door loopt.
+  // Een vloer die onder je door loopt, met licht dat van de horizon opkomt.
   raster: {
     lagen: [
       RASTER,
-      "radial-gradient(100% 50% at 50% 100%, rgba(88,196,236,.22), transparent 66%)",
-      "linear-gradient(180deg, #0E1A2E 0%, #0C1526 60%, #070E1A 100%)",
+      "radial-gradient(90% 42% at 50% 104%, rgba(88,196,236,.3), transparent 68%)",
+      "radial-gradient(44% 26% at 12% 8%, rgba(122,103,255,.16), transparent 72%)",
+      "linear-gradient(184deg, #101B33 0%, #0D1628 46%, #0A1120 74%, #060B18 100%)",
     ].join(", "),
     accent: "88,196,236",
     klasse: "wp-raster",
   },
-  // De sterren fonkelen: het motief zelf staat stil, de dekking ademt.
+  // Diepe nachthemel: donker naar de randen, één zachte melkweg diagonaal.
   sterren: {
     lagen: [
       STERREN,
-      "radial-gradient(110% 50% at 50% 8%, rgba(90,70,200,.28), transparent 68%)",
-      "linear-gradient(180deg, #150E30 0%, #100A26 55%, #08041A 100%)",
+      "radial-gradient(70% 30% at 30% 22%, rgba(120,96,235,.24), transparent 72%)",
+      "radial-gradient(56% 26% at 76% 68%, rgba(88,196,236,.14), transparent 74%)",
+      "linear-gradient(160deg, #1A1138 0%, #130C2B 42%, #0C0720 72%, #06030F 100%)",
     ].join(", "),
     accent: "231,216,255",
     klasse: "wp-sterren",
   },
-  // De pennen drijven traag naar boven, en er glijdt een gouden glans overheen.
+  // Warm en donker, met goud dat van boven invalt en brons uit de bodem.
   goud: {
     lagen: [
       PENNEN,
-      "radial-gradient(110% 50% at 50% 0%, rgba(255,194,61,.16), transparent 60%)",
-      "linear-gradient(180deg, #2A1E2C 0%, #1E1424 55%, #140C1A 100%)",
+      "radial-gradient(80% 34% at 50% -4%, rgba(255,194,61,.2), transparent 64%)",
+      "radial-gradient(50% 28% at 84% 92%, rgba(196,110,40,.16), transparent 72%)",
+      "linear-gradient(176deg, #2E2033 0%, #241729 46%, #1A1020 74%, #120A17 100%)",
     ].join(", "),
     accent: "255,207,74",
     klasse: "wp-goud",
   },
-  // Golven die van links naar rechts lopen, op het donkerste vlak van allemaal.
+  // Het donkerste vlak, met golven en een enkele koele flare.
   inkt: {
     lagen: [
       GOLF,
-      "radial-gradient(85% 40% at 50% 12%, rgba(54,2,135,.38), transparent 70%)",
-      "linear-gradient(180deg, #0E0726 0%, #0A0520 60%, #06030F 100%)",
+      "radial-gradient(70% 32% at 50% 10%, rgba(54,2,135,.44), transparent 70%)",
+      "radial-gradient(46% 24% at 18% 86%, rgba(255,111,188,.12), transparent 74%)",
+      "linear-gradient(190deg, #150B33 0%, #0E0726 44%, #090419 74%, #05030E 100%)",
     ].join(", "),
     accent: "255,111,188",
     klasse: "wp-inkt",
@@ -162,7 +176,7 @@ export function wallpaperStijl(id: WallpaperId): React.CSSProperties {
   const w = WALL[id] ?? WALL.nacht;
   return {
     backgroundImage: w.lagen,
-    backgroundRepeat: "repeat, no-repeat, no-repeat, no-repeat",
+    backgroundRepeat: "repeat, no-repeat, no-repeat, no-repeat, no-repeat",
     backgroundAttachment: "local",
     ["--wp" as string]: w.accent,
   };
