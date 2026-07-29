@@ -1,9 +1,10 @@
-// Een invulveld in dezelfde glasrand als een rij in de lijsten.
+// Een invulveld in de NEONKADER-stijl: een ronde lijst met een verlopende
+// haarlijn, geen glasrij.
 //
-// Waarom: een kale rechthoek met een randje naast de rest van de app leest als
-// een formulier dat er per ongeluk in staat. Dit veld draagt de afgeschuinde
-// hoek, de lijn op een derde sterkte en de gouden kappen in de hoeken, precies
-// zoals de rijen op de ranglijst en de vakjes in de winkel.
+// Het verschil is opzettelijk. De glasrij met zijn afgeschuinde hoek en gouden
+// kappen is de vorm van een RIJ IN EEN LIJST: iets waar je op tikt om ergens
+// heen te gaan. Een invulveld is geen rij, dus het hoort er ook niet als een
+// te lezen; anders tik je erop in de verwachting dat er iets opengaat.
 //
 // De lijn licht op zodra er iets in staat: dat is het enige verschil tussen een
 // leeg en een gevuld veld, en het is genoeg. Een gevulde achtergrond erbij zou
@@ -26,13 +27,12 @@ export const GlasVeld = forwardRef<HTMLInputElement, Props>(function GlasVeld(
 ) {
   return (
     <NeonKader
-      hoek={10}
-      dik={0.3}
-      sterkte={gevuld ? 0.6 : 0.32}
+      radius={13}
+      dik={gevuld ? 0.6 : 0.42}
+      sterkte={gevuld ? 0.85 : 0.5}
       vulling="geen"
-      eindkap="kort"
       style={{ width: "100%", ...kaderStyle }}
-      binnen={{ display: "flex", alignItems: "center", padding: "2px 4px" }}
+      binnen={{ display: "flex", alignItems: "center", padding: 0 }}
     >
       <input
         ref={ref}
@@ -43,7 +43,7 @@ export const GlasVeld = forwardRef<HTMLInputElement, Props>(function GlasVeld(
           background: "transparent",
           border: "none",
           outline: "none",
-          padding: "10px 11px",
+          padding: "11px 13px",
           fontFamily: font.ui,
           fontSize: 15,
           color: colors.ink,

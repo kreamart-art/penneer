@@ -72,6 +72,13 @@ export function Training({ onBack, lenient = false }: { onBack: () => void; leni
     }
   };
 
+  // Hetzelfde decor als de lobby: de arena met de gouden hoekstukken en de
+  // horizon die oplicht. Het hoort bij de schermen waar je een potje begint.
+  useEffect(() => {
+    document.body.classList.add("arena");
+    return () => document.body.classList.remove("arena");
+  }, []);
+
   useEffect(() => {
     if (phase === "round") inputs.current[0]?.focus();
   }, [phase, letter]);

@@ -431,9 +431,16 @@ export function NeonKader({
   useEffect(() => {
     const el = doos.current;
     if (!hoek || !el) return;
+    // `offsetWidth` en niet `getBoundingClientRect`: die laatste rekent CSS-
+    // transforms mee. In een popup die inschaalt meet de waarnemer dan de
+    // GESCHAALDE maat, en omdat de doos daarna niet meer van layoutmaat
+    // verandert vuurt hij ook niet opnieuw. Gevolg: de gouden kappen bleven op
+    // de plek staan waar de rand stond toen het venster nog klein was, en die
+    // hingen dus midden in de rij. Layoutmaten hebben daar geen last van.
     const ro = new ResizeObserver(() => {
-      const r = el.getBoundingClientRect();
-      if (r.width && r.height) setMaat({ w: r.width, h: r.height });
+      const w = el.offsetWidth;
+      const h = el.offsetHeight;
+      if (w && h) setMaat({ w, h });
     });
     ro.observe(el);
     return () => ro.disconnect();

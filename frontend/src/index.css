@@ -168,6 +168,39 @@ body.profiel::after {
   background-size: 160px 160px, 100% 100%, cover, 100% 100%;
 }
 
+/* De lobby, de dagronde en het oefenen delen een eigen decor: een brede arena
+   met gouden hoekstukken en een horizon die oplicht. Die art is LIGGEND (ruim
+   twee keer zo breed als hoog), dus `cover` zou op een telefoon alleen het
+   midden laten zien en precies de hoekstukken wegsnijden die je herkent.
+   Vandaar DRIE lagen van hetzelfde plaatje. Onderop een `cover` die het scherm
+   echt vult (daar zie je alleen het midden van, maar dat is de nevel en de
+   horizon). Daarbovenop twee keer dezelfde art op volle breedte, een tegen de
+   bovenkant en een tegen de onderkant: die brengen de gouden hoekstukken terug
+   die `cover` wegsnijdt. Samen leest het als een arena met een lijst eromheen
+   in plaats van als een uitgerekt plaatje. */
+body.arena::after {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: calc(100vh + 200px);
+  height: calc(100lvh + 200px);
+  z-index: -1;
+  pointer-events: none;
+  background-color: #06040e;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
+    radial-gradient(118% 62% at 50% 34%, rgba(3, 1, 10, 0) 0%, rgba(3, 1, 10, 0.16) 46%, rgba(3, 1, 10, 0.5) 72%, rgba(3, 1, 10, 0.74) 100%),
+    url("/ui/lobby-bg.webp"),
+    url("/ui/lobby-bg.webp"),
+    url("/ui/lobby-bg.webp"),
+    linear-gradient(180deg, #150e2e 0%, #100a24 50%, #06040e 100%);
+  background-repeat: repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat;
+  background-position: top left, top, center top, center bottom, center center;
+  background-size: 160px 160px, 100% 100%, 100% auto, 100% auto, cover, 100% 100%;
+}
+
 /* De winkel draagt de achtergrond van de main page: hij hoort daarbij, dus hij
    hoort er ook zo uit te zien. Zelfde truc als hierboven met ::after, plus een
    extra donkere laag zodat de gouden productvakjes niet concurreren met de art

@@ -104,6 +104,13 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
       .then(setInfo)
       .catch(() => {});
 
+  // Hetzelfde decor als de lobby: de arena met de gouden hoekstukken en de
+  // horizon die oplicht. Het hoort bij de schermen waar je een potje begint.
+  useEffect(() => {
+    document.body.classList.add("arena");
+    return () => document.body.classList.remove("arena");
+  }, []);
+
   useEffect(() => {
     void refreshInfo();
     // eslint-disable-next-line react-hooks/exhaustive-deps

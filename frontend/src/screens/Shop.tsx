@@ -15,7 +15,8 @@ import { EMOTE_PACKS_FOR_SALE, EMOTE_SRC } from "../components/emotes";
 import { reelClip, reelEdge, reelFace, reelTheme } from "../theme/reelSkins";
 import { colors, font, withAlpha } from "../theme/tokens";
 import { useTileSkin } from "../theme/tileSkin";
-import { KADER_LIJN_GROEN, NeonKader, Paneel } from "../components/ProfileHero";
+import { NeonKader, Paneel } from "../components/ProfileHero";
+import { GlasVeld } from "../components/GlasVeld";
 import { KnopPlaat } from "../components/KnopPlaat";
 import { CoinPlate } from "../components/CoinPlate";
 
@@ -86,7 +87,7 @@ function CoinItem({ title, owned, price, coins, index, veeg, onBuy, children }: 
   const { t } = useT();
   const affordable = coins >= price;
   return (
-    <GlasVak groen={owned} index={index} veeg={veeg}>
+    <GlasVak index={index} veeg={veeg}>
       <div style={{ width: "100%", aspectRatio: "1 / 1", display: "grid", placeItems: "center", overflow: "hidden" }}>{children}</div>
       <span style={{ fontFamily: font.ui, fontSize: 11.5, fontWeight: 600, color: colors.ink, textAlign: "center", lineHeight: 1.15 }}>{title}</span>
       {owned ? (
@@ -118,12 +119,12 @@ function CoinItem({ title, owned, price, coins, index, veeg, onBuy, children }: 
  *  derde sterkte en de gouden kappen op de schuine kanten. De neonlijn hoort om
  *  de SECTIE en niet ook nog om elk vakje erin, want dan zie je een raster van
  *  kaders in plaats van een sectie met inhoud. */
-function GlasVak({ groen, index = 0, veeg, children }: { groen?: boolean; index?: number; veeg?: boolean; children: React.ReactNode }) {
+function GlasVak({ index = 0, veeg, children }: { index?: number; veeg?: boolean; children: React.ReactNode }) {
   return (
     <NeonKader
       hoek={11}
       dik={0.3}
-      sterkte={groen ? 0.6 : 0.3}
+      sterkte={0.3}
       vulling="geen"
       eindkap="kort"
       // Ademen doet elk vakje, maar elk met een EIGEN fase, een eigen tempo en
@@ -137,8 +138,6 @@ function GlasVak({ groen, index = 0, veeg, children }: { groen?: boolean; index?
       ademDuur={3.3 + ((index * 0.381966) % 1) * 2.2}
       kernPlek={30 + ((index * 0.7548777) % 1) * 40}
       veeg={veeg}
-      lijn={groen ? KADER_LIJN_GROEN : undefined}
-      gloed={groen ? `0 0 10px ${withAlpha(colors.green, 0.25)}` : undefined}
       // Lucht tot de wand van de sectie: een vakje dat tegen de rand aan zit
       // leest als een vlak dat tegen een lijn botst in plaats van als iets dat
       // erin ligt.
@@ -696,23 +695,15 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
                   de afgeschuinde hoek en de lijn op een derde sterkte. Een kale
                   rechthoek naast de rest van de winkel leest als een formulier
                   dat er per ongeluk in staat. */}
-              <NeonKader
-                hoek={10}
-                dik={0.3}
-                sterkte={0.35}
-                vulling="geen"
-                eindkap="kort"
-                style={{ flex: 1, minWidth: 0 }}
-                binnen={{ display: "flex", alignItems: "center", padding: "2px 4px" }}
-              >
-                <input
-                  value={code}
-                  onChange={(e) => { setCode(e.target.value.toUpperCase()); if (shopResult) game.clearShopResult(); }}
-                  placeholder={t("shopCodePlaceholder")}
-                  onKeyDown={(e) => { if (e.key === "Enter" && code.trim()) redeem(); }}
-                  style={{ flex: 1, minWidth: 0, fontFamily: font.display, letterSpacing: 1.5, fontSize: 14, color: colors.ink, background: "transparent", border: "none", outline: "none", padding: "9px 10px", textTransform: "uppercase" }}
-                />
-              </NeonKader>
+              <GlasVeld
+                gevuld={!!code.trim()}
+                value={code}
+                onChange={(e) => { setCode(e.target.value.toUpperCase()); if (shopResult) game.clearShopResult(); }}
+                placeholder={t("shopCodePlaceholder")}
+                onKeyDown={(e) => { if (e.key === "Enter" && code.trim()) redeem(); }}
+                kaderStyle={{ flex: 1, minWidth: 0 }}
+                style={{ fontFamily: font.display, letterSpacing: 1.5, fontSize: 14, textTransform: "uppercase" }}
+              />
               <KnopPlaat breed={104} kleur="paars" uit={!code.trim()} onClick={redeem} label={t("shopRedeem")} />
             </div>
             {resultMsg && <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13, color: shopResult?.ok ? colors.green : colors.red }}>{resultMsg}</p>}

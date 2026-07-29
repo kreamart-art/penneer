@@ -14,6 +14,7 @@ import { Screen, Card } from "../components/Layout";
 import { TopBar } from "../components/TopBar";
 import { GlasRij, Lijst, PilKeuze, ProfileViewModal, ZoekKnop } from "./Hub";
 import { KADER_LIJN_ROOD, NeonKader, Paneel } from "../components/ProfileHero";
+import { GlasVeld } from "../components/GlasVeld";
 import { KnopPlaat } from "../components/KnopPlaat";
 import type { GameApi, PublicUser } from "../net/socket";
 import { ALL_CATEGORY_KEYS, subLabelKey, useT } from "../i18n/i18n";
@@ -230,6 +231,13 @@ export function Lobby({ game }: { game: GameApi }) {
   const ownedExtra = myCats.filter((c) => !ALL_CATEGORY_KEYS.includes(c) && !customCats.includes(c));
   const chipKeys = [...ALL_CATEGORY_KEYS, ...customCats, ...(isHost ? ownedExtra : [])];
 
+  // De lobby, de dagronde en het oefenen delen hetzelfde decor: de arena met de
+  // gouden hoekstukken en de horizon die oplicht.
+  useEffect(() => {
+    document.body.classList.add("arena");
+    return () => document.body.classList.remove("arena");
+  }, []);
+
   const canStart = isHost && players.length >= 1;
   const isCustomRounds = !ROUNDS.includes(settings.rounds);
 
@@ -388,22 +396,14 @@ export function Lobby({ game }: { game: GameApi }) {
             <SectionLabel>{t("customCats")}</SectionLabel>
             {isHost && (
               <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-                <NeonKader
-                  hoek={10}
-                  dik={0.3}
-                  sterkte={0.35}
-                  vulling="geen"
-                  eindkap="kort"
-                  style={{ flex: 1, minWidth: 0 }}
-                  binnen={{ display: "flex", alignItems: "center", padding: "2px 4px" }}
-                >
-                  <input
-                    value={deelInput}
-                    onChange={(e) => setDeelInput(e.target.value)}
-                    placeholder={t("pasteCode")}
-                    style={{ flex: 1, minWidth: 0, fontFamily: font.ui, fontSize: 13, color: colors.ink, background: "transparent", border: "none", outline: "none", padding: "8px 10px" }}
-                  />
-                </NeonKader>
+                <GlasVeld
+                  gevuld={!!deelInput.trim()}
+                  value={deelInput}
+                  onChange={(e) => setDeelInput(e.target.value)}
+                  placeholder={t("pasteCode")}
+                  kaderStyle={{ flex: 1, minWidth: 0 }}
+                  style={{ fontSize: 13, padding: "9px 11px" }}
+                />
                 <KnopPlaat breed={86} kleur="paars" onClick={loadDeelcode} label={t("load")} />
               </div>
             )}
