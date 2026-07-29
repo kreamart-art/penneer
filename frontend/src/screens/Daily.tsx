@@ -14,6 +14,7 @@ import { ArtIcoon } from "../components/ArtIcoon";
 import { GlasVeld } from "../components/GlasVeld";
 import { GOUD, Paneel, PlekWapen } from "../components/ProfileHero";
 import { GlasRij, Lijst } from "./Hub";
+import { SchermTip } from "../components/SchermTip";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { makeDailyCard, shareOrDownload } from "../util/shareCard";
@@ -298,6 +299,7 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
     return (
       <Screen top={header}>
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <SchermTip id="dagronde" tekst={t("tipDagronde")} />
           {/* Geen of-of: de twee onderdelen staan los van elkaar, met elk een
               eigen ranglijst, en je mag ze allebei op dezelfde dag doen. */}
           {/* De kop op de sierlijst van het profiel: dit is de voordeur van de

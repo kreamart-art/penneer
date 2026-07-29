@@ -789,6 +789,12 @@ def _duel_payload(db, uid: str, d: dict) -> dict:
         "winner": winner,
         "created_at": d["created_at"],
         "expires_at": d["expires_at"],
+        # De inzet per persoon en of hij al vastligt. Zolang hij niet vastligt
+        # moet de TEGENSTANDER hem eerst aannemen (of verlagen) voor die kan
+        # spelen; de uitdager wacht gewoon.
+        "stake": int(d.get("stake") or 0),
+        "stake_accepted": bool(d.get("stake_accepted")),
+        "stakes": list(db.DUEL_STAKES),
     }
 
 
@@ -806,7 +812,11 @@ async def _duel_settle(db, d: dict) -> None:
     score_b = sum(int(r["points"]) for r in ans_b)
     res = duel.outcome(score_a, score_b)
     winner = a if res == "a" else b if res == "b" else None
-    db.duel_finish(d["id"], winner)
+    # duel_finish zegt of WIJ hem dichtzetten. Zo niet, dan was de sweep of het
+    # andere antwoord ons voor en is de pot daar al uitgekeerd.
+    if not db.duel_finish(d["id"], winner):
+        return
+    db.duel_stake_payout(d, winner)
 
     for rows in (ans_a, ans_b):
         for r in rows:
@@ -848,8 +858,10 @@ async def _duel_sweep(db) -> None:
             # exist (nobody played -> a 0-0 draw, which we just record as done).
             await _duel_settle(db, d)
         else:
-            db.duel_finish(d["id"], d["a"] if played_a else d["b"])
             uid = d["a"] if played_a else d["b"]
+            if not db.duel_finish(d["id"], uid):
+                continue
+            db.duel_stake_payout(d, uid)
             since = now - 24 * 3600
             if db.duel_finished_today_count(uid, since) <= duel.XP_DUELS_PER_DAY:
                 db.add_bonus_xp(uid, duel.xp_for("win"))
@@ -979,12 +991,21 @@ async def duel_start(request: Request) -> JSONResponse:
     live = db.duel_open_with(uid, other)
     if live:
         return JSONResponse({"error": "already_open", "id": live}, status_code=409)
+    # De inzet. 0 is een geldige keuze: wedden is een optie, geen plicht. De
+    # coins van de uitdager gaan METEEN in de pot, binnen duel_create zelf,
+    # zodat je je inzet niet kunt uitgeven terwijl het duel loopt.
+    stake = int((body or {}).get("stake") or 0)
+    if stake not in db.DUEL_STAKES:
+        return JSONResponse({"error": "stake"}, status_code=400)
     used, combos = db.duel_pair_state(uid, other)
     rounds, new_used, new_combos = duel.pick_rounds(used, combos)
-    did = db.duel_create(uid, other, rounds, time.time() + duel.EXPIRY_H * 3600)
+    did = db.duel_create(uid, other, rounds, time.time() + duel.EXPIRY_H * 3600, stake=stake)
+    if did is None:
+        return JSONResponse({"error": "coins"}, status_code=402)
     db.duel_pair_set(uid, other, new_used, new_combos)
     name = (db.get_user(uid) or {}).get("name") or "?"
     await accounts.stuur(other, "uitdaging", data={"duel_id": did}, naam=name)
+    await accounts.push_account(uid)
     d = db.duel_get(did)
     return JSONResponse(_duel_payload(db, uid, d))
 
@@ -1015,6 +1036,10 @@ async def duel_serve(duel_id: str, request: Request) -> JSONResponse:
         return JSONResponse({"error": "not_found"}, status_code=404)
     if d["status"] != "open":
         return JSONResponse({"error": "closed"}, status_code=409)
+    # De tegenstander speelt pas als de inzet vastligt (aannemen of verlagen).
+    # De uitdager mag alvast: zijn helft van de pot staat er al in.
+    if not d.get("stake_accepted") and uid == d["b"]:
+        return JSONResponse({"error": "stake_open"}, status_code=409)
     rows = db.duel_answers_of(duel_id, uid)
     idx = sum(1 for r in rows if r["answered_at"] is not None)
     if idx >= len(d["rounds"]):
@@ -1030,6 +1055,28 @@ async def duel_serve(duel_id: str, request: Request) -> JSONResponse:
         "seconds_left": round(left, 1),
         "total": len(d["rounds"]),
     })
+
+
+@app.post("/api/duel/{duel_id}/stake")
+async def duel_stake(duel_id: str, request: Request) -> JSONResponse:
+    """De tegenstander neemt de inzet aan of zet hem lager; het verschil gaat
+    meteen terug naar de uitdager. Verhogen kan niet: dan wed je met andermans
+    geld. Beide spelers krijgen daarna hun verse saldo gepusht."""
+    db = get_db()
+    uid = db.auth(_bearer(request))
+    if not uid:
+        return JSONResponse({"error": "auth"}, status_code=401)
+    d = db.duel_get(duel_id)
+    if not d or uid != d["b"]:
+        return JSONResponse({"error": "not_found"}, status_code=404)
+    body = await request.json()
+    result = db.duel_stake_accept(duel_id, uid, int((body or {}).get("stake") or 0))
+    if result != "ok":
+        return JSONResponse({"error": result}, status_code=402 if result == "insufficient" else 400)
+    await accounts.push_account(uid)
+    await accounts.push_account(d["a"])
+    d = db.duel_get(duel_id)
+    return JSONResponse(_duel_payload(db, uid, d))
 
 
 @app.post("/api/duel/{duel_id}/answer")

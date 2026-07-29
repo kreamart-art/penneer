@@ -175,7 +175,18 @@ export function MeldingRij({ melding, onOpen, onWeg }: { melding: Melding; onOpe
   };
 
   return (
-    <div style={{ position: "relative", marginInline: 6 }}>
+    // De veeg zit op de WIKKEL en niet op een laag over de rij heen. Zo'n laag
+    // was er eerst, met inset 0, en die ving elke tik af: een gepositioneerd
+    // element tekent boven de (ongepositioneerde) knop, wat de DOM-volgorde ook
+    // is. Pointer-events bubbelen toch wel, dus de laag was ook nog eens
+    // overbodig. De knop-click checkt zelf of er net geveegd is.
+    <div
+      onPointerDown={raakStart}
+      onPointerMove={raakBeweeg}
+      onPointerUp={raakEind}
+      onPointerCancel={raakEind}
+      style={{ position: "relative", marginInline: 6 }}
+    >
       {/* De prullenbak ligt ONDER de rij en komt eronder vandaan. Hij staat er
           altijd; je ziet hem pas als de rij opzij gaat. */}
       {onWeg && (
@@ -226,15 +237,12 @@ export function MeldingRij({ melding, onOpen, onWeg }: { melding: Melding; onOpe
         background: "linear-gradient(180deg, #241740, #1A1035)",
       }}
     >
-      <span
-        onPointerDown={raakStart}
-        onPointerMove={raakBeweeg}
-        onPointerUp={raakEind}
-        onPointerCancel={raakEind}
-        style={{ position: "absolute", inset: 0 }}
-      />
       <button
-        onClick={() => { sound.uiTap(); setOpen((v) => !v); }}
+        onClick={() => {
+          if (vergrendeld.current === "veeg") { vergrendeld.current = "geen"; return; }
+          if (x !== 0) { setX(0); return; }
+          sound.uiTap(); setOpen((v) => !v);
+        }}
         aria-expanded={open}
         style={{ width: "100%", minWidth: 0, display: "flex", alignItems: "center", gap: 9, background: "transparent", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }}
       >

@@ -22,6 +22,7 @@ import { ArtIcoon } from "../components/ArtIcoon";
 import { GlasVeld } from "../components/GlasVeld";
 import { GOUD, KADER_LIJN_GOUD, KADER_LIJN_PAARS, KADER_LIJN_ROOD, NeonKader, Paneel, PlekWapen } from "../components/ProfileHero";
 import { GlasRij } from "./Hub";
+import { SchermTip } from "../components/SchermTip";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { rampFrom } from "../theme/neon";
@@ -47,6 +48,9 @@ interface DuelState {
   winner: "me" | "them" | "draw" | null;
   created_at: number;
   expires_at: number;
+  stake: number;           // inzet per persoon in coins, 0 = vriendschappelijk
+  stake_accepted: boolean; // pas dan mag de tegenstander spelen
+  stakes: number[];        // de ladder die de server accepteert
 }
 interface ListPayload {
   duels: DuelState[];
@@ -89,7 +93,7 @@ const inputStyle: React.CSSProperties = {
 export function Duel({ game, onBack, onProfile }: { game: GameApi; onBack: () => void; onProfile: () => void }) {
   const { t, tCat } = useT();
   const account = game.state.account;
-  const [view, setView] = useState<"list" | "play" | "result">("list");
+  const [view, setView] = useState<"list" | "stake" | "play" | "result">("list");
   const [list, setList] = useState<ListPayload | null>(null);
   const [duel, setDuel] = useState<DuelState | null>(null);
   const [round, setRound] = useState<CurrentRound | null>(null);
@@ -145,6 +149,13 @@ export function Duel({ game, onBack, onProfile }: { game: GameApi; onBack: () =>
       setFlash(null);
       if (fresh.status !== "open" || !fresh.current) {
         setView("result");
+        return;
+      }
+      // Er staat een inzet open en IK ben de uitgedaagde: eerst aannemen of
+      // verlagen, dan pas spelen. De server weigert serveren toch, maar de
+      // popup legt uit WAAROM in plaats van een kale fout.
+      if (!fresh.stake_accepted && !fresh.i_challenged) {
+        setView("stake");
         return;
       }
       setView("play");
@@ -204,18 +215,22 @@ export function Duel({ game, onBack, onProfile }: { game: GameApi; onBack: () =>
 
   // ---- uitdagen -----------------------------------------------------------
 
-  const challenge = async (friend: Person) => {
+  const challenge = async (friend: Person, stake: number) => {
     sound.uiTap();
     setBusy(true);
     setNote("");
     try {
       const r = await fetch("/api/duel/start", {
-        method: "POST", headers: jsonHeaders(), body: JSON.stringify({ opponent: friend.id }),
+        method: "POST", headers: jsonHeaders(), body: JSON.stringify({ opponent: friend.id, stake }),
       });
       const d = await r.json();
       setPickOpen(false);
       if (!r.ok) {
-        setNote(d.error === "already_open" ? t("duelAlreadyOpen", { name: friend.name }) : t("duelStartFailed"));
+        setNote(
+          d.error === "already_open" ? t("duelAlreadyOpen", { name: friend.name })
+          : d.error === "coins" ? t("duelStakeTekort")
+          : t("duelStartFailed"),
+        );
         await refresh();
         return;
       }
@@ -271,6 +286,73 @@ export function Duel({ game, onBack, onProfile }: { game: GameApi; onBack: () =>
     );
   }
 
+  // ---- inzet aannemen ------------------------------------------------------
+  // De uitgedaagde bepaalt waar ECHT om gespeeld wordt: aannemen mag, verlagen
+  // mag (ook naar 0), verhogen niet. Het verschil gaat meteen terug naar de
+  // uitdager, en pas hierna gaat de eerste ronde open.
+  if (view === "stake" && duel) {
+    const kan = (n: number) => n <= (account?.coins ?? 0) && n <= duel.stake;
+    return (
+      <Screen top={header}>
+        <Card style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "center" }}>
+          <Avatar name={duel.opponent.name} color={duel.opponent.color} size={52} userId={duel.opponent.id} hasAvatar={!!duel.opponent.has_avatar} avatarVer={duel.opponent.avatar_ver} />
+          <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink, textAlign: "center" }}>
+            {t("duelStakeVoorstel", { name: duel.opponent.name, n: duel.stake })}
+          </span>
+          <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.sub, lineHeight: 1.5, textAlign: "center" }}>
+            {t("duelStakeRecht")}
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, width: "100%" }}>
+            {(duel.stakes ?? DUEL_STAKES).filter((n) => n <= duel.stake).map((n) => (
+              <button
+                key={n}
+                disabled={busy || !kan(n)}
+                onClick={async () => {
+                  sound.uiTap();
+                  setBusy(true);
+                  try {
+                    const r = await fetch(`/api/duel/${duel.id}/stake`, {
+                      method: "POST", headers: jsonHeaders(), body: JSON.stringify({ stake: n }),
+                    });
+                    if (r.ok) {
+                      const fresh: DuelState = await r.json();
+                      setDuel(fresh);
+                      setView("play");
+                      await serve(fresh.id);
+                    } else {
+                      const e = await r.json();
+                      setNote(e.error === "insufficient" ? t("duelStakeTekort") : t("duelStartFailed"));
+                      setView("list");
+                      await refresh();
+                    }
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+                className={kan(n) ? "pressable" : undefined}
+                style={{
+                  display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
+                  padding: "12px 4px", borderRadius: 14, cursor: kan(n) ? "pointer" : "default",
+                  background: n === duel.stake ? withAlpha(colors.gold, 0.2) : withAlpha("#000000", 0.28),
+                  border: `1.4px solid ${n === duel.stake ? colors.gold : kan(n) ? withAlpha(colors.gold, 0.25) : "rgba(255,255,255,.08)"}`,
+                  opacity: kan(n) ? 1 : 0.4,
+                }}
+              >
+                <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 15, color: n === duel.stake ? colors.gold : colors.ink }}>
+                  {n === 0 ? t("duelStakeGeen") : n}
+                </span>
+                {n > 0 && <img src="/coin.webp" alt="" width={15} height={15} style={{ display: "block" }} />}
+              </button>
+            ))}
+          </div>
+          <p style={{ margin: 0, fontFamily: font.ui, fontSize: 11.5, color: colors.faint, textAlign: "center" }}>
+            {t("duelStakeSaldo", { n: account?.coins ?? 0 })}
+          </p>
+        </Card>
+      </Screen>
+    );
+  }
+
   // ---- spelen -------------------------------------------------------------
   if (view === "play" && duel) {
     const total = duel.rounds;
@@ -282,6 +364,14 @@ export function Duel({ game, onBack, onProfile }: { game: GameApi; onBack: () =>
         <Arena src="/duel-bg.webp" podium={PODIUM_Y} at="46%" width="205%" plate={false} />
         <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", gap: 16 }}>
           <RoundDots total={total} idx={idx} />
+          {duel.stake > 0 && duel.stake_accepted && (
+            <div style={{ display: "flex", justifyContent: "center", marginTop: -8 }}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "3px 11px", borderRadius: 999, background: withAlpha(colors.gold, 0.14), border: `1px solid ${withAlpha(colors.gold, 0.4)}` }}>
+                <img src="/coin.webp" alt="" width={13} height={13} style={{ display: "block" }} />
+                <span style={{ fontFamily: font.ui, fontSize: 11.5, fontWeight: 700, color: colors.gold }}>{t("duelPot", { n: duel.stake * 2 })}</span>
+              </span>
+            </div>
+          )}
 
           {flash ? (
             <TierFlash slot={flash} />
@@ -350,6 +440,18 @@ export function Duel({ game, onBack, onProfile }: { game: GameApi; onBack: () =>
                   <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15, color: colors.faint }}>—</span>
                   <ScoreSide name={opp.name} color={opp.color} id={opp.id} hasAvatar={!!opp.has_avatar} ver={opp.avatar_ver} score={duel.their_score ?? 0} win={duel.winner === "them"} />
                 </div>
+                {duel.stake > 0 && duel.stake_accepted && (
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 12px", borderRadius: 999, background: withAlpha(colors.gold, 0.14), border: `1px solid ${withAlpha(colors.gold, 0.4)}` }}>
+                    <img src="/coin.webp" alt="" width={15} height={15} style={{ display: "block" }} />
+                    <span style={{ fontFamily: font.ui, fontSize: 12.5, fontWeight: 700, color: colors.gold }}>
+                      {duel.winner === "draw"
+                        ? t("duelPotTerug", { n: duel.stake })
+                        : duel.winner === "me"
+                          ? t("duelPotGewonnen", { n: duel.stake * 2 })
+                          : t("duelPotVerloren", { n: duel.stake })}
+                    </span>
+                  </span>
+                )}
               </>
             ) : (
               <>
@@ -404,6 +506,7 @@ export function Duel({ game, onBack, onProfile }: { game: GameApi; onBack: () =>
   return (
     <Screen top={header}>
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <SchermTip id="duel" tekst={t("tipDuel")} />
         <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13.5, color: colors.sub, lineHeight: 1.55 }}>{t("duelIntro")}</p>
           {!!rec && rec.played > 0 && (
@@ -431,9 +534,10 @@ export function Duel({ game, onBack, onProfile }: { game: GameApi; onBack: () =>
       {pickOpen && (
         <FriendPicker
           friends={(list?.friends ?? []).filter((f) => f.status === "accepted")}
-          onPick={(f) => void challenge(f)}
+          onPick={(f, stake) => void challenge(f, stake)}
           onClose={() => setPickOpen(false)}
           busy={busy}
+          coins={game.state.account?.coins ?? 0}
         />
       )}
     </Screen>
@@ -899,9 +1003,16 @@ function Section({ title, items, onOpen, t, mij }: { title: string; items: DuelS
 
 // Tegenstander kiezen: alleen vrienden. Blinde matchups (een willekeurige
 // tegenstander uit de wachtrij) komen hier later bij.
-function FriendPicker({ friends, onPick, onClose, busy }: { friends: Person[]; onPick: (f: Person) => void; onClose: () => void; busy: boolean }) {
+const DUEL_STAKES = [0, 50, 100, 250, 500, 1000];
+
+function FriendPicker({ friends, onPick, onClose, busy, coins }: { friends: Person[]; onPick: (f: Person, stake: number) => void; onClose: () => void; busy: boolean; coins: number }) {
   const { t } = useT();
   const [q, setQ] = useState("");
+  // Eerst je vriend, dan de inzet. De inzet is de TWEEDE stap en niet een
+  // rijtje naast elke naam, want zes knopjes per rij maakt van de lijst een
+  // gokautomaat. 0 is een echte keuze: vriendschappelijk blijft gewoon kunnen.
+  const [gekozen, setGekozen] = useState<Person | null>(null);
+  const [inzet, setInzet] = useState(0);
   const shown = friends.filter((f) => f.name.toLowerCase().includes(q.trim().toLowerCase()));
   return (
     <div
@@ -916,8 +1027,49 @@ function FriendPicker({ friends, onPick, onClose, busy }: { friends: Person[]; o
         <button onClick={onClose} aria-label={t("back")} style={{ position: "absolute", top: 12, right: 12, background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 4 }}>
           <CloseIcon size={26} />
         </button>
-        <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 18, color: colors.gold, textAlign: "center" }}>{t("duelPickFriend")}</span>
-        {friends.length === 0 ? (
+        <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 18, color: colors.gold, textAlign: "center" }}>
+          {gekozen ? t("duelStakeKop") : t("duelPickFriend")}
+        </span>
+        {gekozen ? (
+          <>
+            <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.sub, lineHeight: 1.5, textAlign: "center" }}>
+              {t("duelStakeUitleg", { name: gekozen.name })}
+            </p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+              {DUEL_STAKES.map((n) => {
+                const kan = n <= coins;
+                const aan = inzet === n;
+                return (
+                  <button
+                    key={n}
+                    disabled={!kan}
+                    onClick={() => { sound.uiTap(); setInzet(n); }}
+                    className={kan ? "pressable" : undefined}
+                    style={{
+                      display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
+                      padding: "10px 4px", borderRadius: 14, cursor: kan ? "pointer" : "default",
+                      background: aan ? withAlpha(colors.gold, 0.2) : withAlpha("#000000", 0.28),
+                      border: `1.4px solid ${aan ? colors.gold : kan ? withAlpha(colors.gold, 0.25) : "rgba(255,255,255,.08)"}`,
+                      boxShadow: aan ? `0 0 18px ${withAlpha(colors.gold, 0.3)}` : "none",
+                      opacity: kan ? 1 : 0.4,
+                    }}
+                  >
+                    <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 15, color: aan ? colors.gold : colors.ink }}>
+                      {n === 0 ? t("duelStakeGeen") : n}
+                    </span>
+                    {n > 0 && <img src="/coin.webp" alt="" width={15} height={15} style={{ display: "block" }} />}
+                  </button>
+                );
+              })}
+            </div>
+            <p style={{ margin: 0, fontFamily: font.ui, fontSize: 11.5, color: colors.faint, textAlign: "center" }}>
+              {t("duelStakeSaldo", { n: coins })}
+            </p>
+            <Button variant="gold" full disabled={busy} onClick={() => onPick(gekozen, inzet)}>
+              {inzet > 0 ? t("duelStakeStartMet", { n: inzet }) : t("duelStakeStartZonder")}
+            </Button>
+          </>
+        ) : friends.length === 0 ? (
           <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13.5, color: colors.sub, lineHeight: 1.55, textAlign: "center" }}>{t("duelNoFriends")}</p>
         ) : (
           <>
@@ -937,7 +1089,7 @@ function FriendPicker({ friends, onPick, onClose, busy }: { friends: Person[]; o
               <GlasRij key={f.id} dun>
                 <button
                   disabled={busy}
-                  onClick={() => onPick(f)}
+                  onClick={() => { sound.uiTap(); setGekozen(f); }}
                   className="pressable"
                   style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0, padding: 0, background: "transparent", border: "none", cursor: "pointer", textAlign: "left" }}
                 >

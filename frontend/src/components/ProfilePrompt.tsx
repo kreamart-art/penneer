@@ -11,7 +11,7 @@ import { neonSkin } from "../theme/neon";
 
 const SEEN_KEY = "penneer.profilePromptSeen";
 
-export function ProfilePrompt({ game, onClose }: { game: GameApi; onClose: () => void }) {
+export function ProfilePrompt({ game, onClose }: { game: GameApi; onClose: (aangemaakt?: boolean) => void }) {
   const { t } = useT();
   const [name, setName] = useState("");
   const [mode, setMode] = useState<"create" | "login">("create");
@@ -19,8 +19,10 @@ export function ProfilePrompt({ game, onClose }: { game: GameApi; onClose: () =>
   const [pw, setPw] = useState("");
 
   // Close automatically once an account exists (created here or logged in).
+  // "aangemaakt" alleen bij een VERS profiel: wie inlogt heeft zijn profiel al
+  // en hoeft niet door de afmaak-gids.
   useEffect(() => {
-    if (game.state.account) onClose();
+    if (game.state.account) onClose(mode === "create");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [game.state.account]);
 
@@ -30,7 +32,7 @@ export function ProfilePrompt({ game, onClose }: { game: GameApi; onClose: () =>
     } catch {
       /* ignore */
     }
-    onClose();
+    onClose(false);
   };
 
   const field: CSSProperties = {

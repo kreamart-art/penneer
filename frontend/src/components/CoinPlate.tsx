@@ -7,7 +7,7 @@
 //
 // Alles rekent met `height`, zodat hetzelfde vak op de main page en in de
 // winkel op hun eigen maat kunnen staan zonder dat de verhoudingen verschuiven.
-import { colors, font, GROEN } from "../theme/tokens";
+import { font } from "../theme/tokens";
 
 const SIZES = [
   { max: 3, src: "/tiles/coinbar-xs.webp", ratio: 753 / 300 },
@@ -45,8 +45,11 @@ export function CoinPlate({ coins, height = 33, munt = "coin" }: { coins: number
             fontWeight: 700,
             fontSize: Math.round(height * 0.5),
             lineHeight: 1,
-            color: munt === "cash" ? GROEN[3] : colors.goldHi,
-            textShadow: "0 1px 2px rgba(0,0,0,.65)",
+            // De felste tint van de reeks, niet de gewone: het cijfer staat op
+            // donkere art en moet daar bovenop LIGGEN. De donkere rand eronder
+            // is wat hem scherp houdt; een gloed zou hem juist wazig maken.
+            color: munt === "cash" ? "#D9F0BE" : "#FFF3CE",
+            textShadow: "0 1px 0 rgba(0,0,0,.85), 0 0 10px rgba(0,0,0,.4)",
           }}
         >
           {label}

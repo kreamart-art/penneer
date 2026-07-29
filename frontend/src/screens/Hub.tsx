@@ -9,6 +9,7 @@ import { ArrowLeft, BookOpen, CalendarDays, Camera, Check, ChevronDown, Copy, Cr
 import { Avatar, RANK_RING } from "../components/Avatar";
 import { Plek } from "../components/ProfileShowcase";
 import { HexArt } from "../components/HexArt";
+import { SchermTip } from "../components/SchermTip";
 import { schuin, DIVISIE_ACCENT, GOUD, KADER_LIJN_GOUD, KADER_LIJN_LOOP, KADER_LIJN_PAARS, KADER_LIJN_ROOD, KADER_LIJN_XP, NeonKader, Paneel, PlekWapen, Prestatie, RingFoto, RingPortret, SCHILD_KLEUREN, SectieKop, SierKop, StatKaart, divisieKleur, type SchildKleur } from "../components/ProfileHero";
 import { DivisieLadder, Schild, divisieNaam } from "../components/Divisie";
 import { MeldingRij } from "../components/Meldingen";
@@ -1317,7 +1318,7 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
               className="pressable"
               style={{ position: "relative", background: "transparent", border: "none", padding: 0, cursor: "pointer", flexShrink: 0 }}
             >
-              <Avatar name={account.name} color={account.color} size={64} userId={account.id} hasAvatar={account.has_avatar} avatarVer={account.avatar_ver} frame={account.avatar_frame} glow />
+              <Avatar name={account.name} color={account.color} size={64} userId={account.id} hasAvatar={account.has_avatar} avatarVer={account.avatar_ver} frame={account.avatar_frame} divisie={Math.max(0, SCHILD_KLEUREN.indexOf((account.shield as SchildKleur) || "paars"))} glow />
               <span style={{ position: "absolute", right: -3, bottom: -3, width: 22, height: 22, borderRadius: 8, display: "grid", placeItems: "center", background: colors.gold, color: colors.bg0, boxShadow: "0 2px 8px rgba(0,0,0,.4)" }}>
                 <Pencil size={12} />
               </span>
@@ -2388,7 +2389,7 @@ function InviteToClub({ game, memberIds }: { game: GameApi; memberIds: Set<strin
       <Lijst n={shown.length} rij={38} toon={3}>
         {shown.map((f) => (
           <GlasRij key={f.id} dun>
-            <Avatar name={f.name} color={f.color} size={28} userId={f.id} hasAvatar={f.has_avatar} avatarVer={f.avatar_ver} />
+            <Avatar name={f.name} color={f.color} size={28} userId={f.id} hasAvatar={f.has_avatar} avatarVer={f.avatar_ver} divisie={f.divisie} />
             <span style={{ flex: 1, fontFamily: font.ui, fontWeight: 600, fontSize: 13.5, color: colors.ink, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
             {sent[f.id] ? (
               <span style={{ fontFamily: font.ui, fontSize: 12, color: colors.green }}>{t("inviteSentShort")}</span>
@@ -3000,7 +3001,7 @@ function ProfileSettings({
         ) : (
           game.state.blocked.map((u) => (
             <div key={u.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <Avatar name={u.name} color={u.color} size={32} userId={u.id} hasAvatar={u.has_avatar} avatarVer={u.avatar_ver} />
+              <Avatar name={u.name} color={u.color} size={32} userId={u.id} hasAvatar={u.has_avatar} avatarVer={u.avatar_ver} divisie={u.divisie} />
               <span style={{ flex: 1, fontFamily: font.ui, fontWeight: 600, fontSize: 14, color: colors.ink, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.name}</span>
               <button
                 onClick={() => game.friendBlock(u.id, true)}
@@ -3175,7 +3176,7 @@ function FriendsTab({ game, onChallenge }: { game: GameApi; onChallenge: (userId
         style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0, background: "transparent", border: "none", padding: 0, cursor: clickable ? "pointer" : "default", textAlign: "left" }}
       >
         <div style={{ position: "relative", flexShrink: 0 }}>
-          <Avatar name={u.name} color={u.color} size={32} userId={u.id} hasAvatar={u.has_avatar} avatarVer={u.avatar_ver} />
+          <Avatar name={u.name} color={u.color} size={32} userId={u.id} hasAvatar={u.has_avatar} avatarVer={u.avatar_ver} divisie={u.divisie} />
           <span style={{ position: "absolute", bottom: -2, right: -2, width: 10, height: 10, borderRadius: "50%", background: u.online ? colors.green : colors.faint, border: `2px solid ${colors.bg1}` }} />
         </div>
         <span style={{ flex: 1, fontFamily: font.ui, fontWeight: 600, fontSize: 14.5, color: colors.ink, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.name}</span>
@@ -3201,6 +3202,7 @@ function FriendsTab({ game, onChallenge }: { game: GameApi; onChallenge: (userId
 
   return (
     <>
+      <SchermTip id="vrienden" tekst={t("tipVrienden")} />
       {pendingIn.length > 0 && (
         <Card style={{ display: "flex", flexDirection: "column", gap: 3, padding: "13px 7px 14px" }}>
           <Lijst n={pendingIn.length} toon={10}>
@@ -3447,12 +3449,15 @@ export function ProfileViewModal({ game, userId, onClose }: { game: GameApi; use
  *  en pillen heeft. De plaat is dezelfde als in de bovenbalk, alleen klein
  *  genoeg om in een knop te passen. */
 function TelHex({ n }: { n: number }) {
+  // De ZWARTE zeshoek met de gouden rand (HexArt), niet de paarse knopplaat:
+  // dit is een teller, geen knop, en een knopplaat op iets waar je niet apart
+  // op kunt drukken belooft een tik die er niet is.
   return (
-    <HexPlate on size={20}>
-      <span style={{ fontFamily: font.ui, fontSize: 10.5, fontWeight: 800, lineHeight: 1, color: GOUD[3] }}>
+    <HexArt maat={19}>
+      <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 800, lineHeight: 1, color: GOUD[3] }}>
         {n > 9 ? "9+" : n}
       </span>
-    </HexPlate>
+    </HexArt>
   );
 }
 
@@ -3499,6 +3504,7 @@ function InboxTab({ game, onGaNaar }: { game: GameApi; onGaNaar: (naar: string) 
 
   return (
     <>
+    <SchermTip id="inbox" tekst={t("tipInbox")} />
     {/* Dezelfde pil als bij vrienden en club: twee kanten van hetzelfde scherm,
         met per kant het getal dat er nu op wacht. */}
     <PilKeuze
@@ -3542,7 +3548,7 @@ function InboxTab({ game, onGaNaar }: { game: GameApi; onGaNaar: (naar: string) 
             onClick={() => game.dmOpen(th.partner)}
             style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 4px", background: "transparent", border: "none", cursor: "pointer", textAlign: "left", width: "100%" }}
           >
-            <Avatar name={th.user.name} color={th.user.color} size={36} userId={th.user.id} hasAvatar={th.user.has_avatar} avatarVer={th.user.avatar_ver} />
+            <Avatar name={th.user.name} color={th.user.color} size={36} userId={th.user.id} hasAvatar={th.user.has_avatar} avatarVer={th.user.avatar_ver} divisie={th.user.divisie} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontFamily: font.ui, fontWeight: 600, fontSize: 14, color: colors.ink }}>{th.user.name}</div>
               <div style={{ fontFamily: font.ui, fontSize: 12.5, color: th.unread > 0 ? colors.ink : colors.faint, fontWeight: th.unread > 0 ? 600 : 400, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -3795,6 +3801,7 @@ function LeaderboardTab({ game }: { game: GameApi }) {
   const tweede = rows[1] ?? null;
   return (
     <>
+      <SchermTip id="ranglijst" tekst={t("tipRanglijst")} />
       <PeriodeKnoppen
         actief={period}
         onKies={(p) => game.loadLeaderboard(p)}

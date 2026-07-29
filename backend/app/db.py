@@ -711,6 +711,36 @@ class Database:
             self._conn.execute("ALTER TABLE game_players ADD COLUMN coins INTEGER NOT NULL DEFAULT 0")
             self._conn.commit()
 
+        # De coin-economie maal tien. Coins zijn nu speelfiches (je zet ze in bij
+        # een duel) en niet meer de echte valuta, dus zowel het verdienen als de
+        # prijzen gingen maal tien. Bestaande saldi moeten mee, anders is iemand
+        # die gespaard heeft ineens tien keer armer dan iemand die vandaag begint.
+        #
+        # Dit mag maar EEN keer draaien, vandaar de vlag. `coins_level` blijft
+        # staan: coins_owed() rekent nu met de nieuwe reeks, dus een saldo maal
+        # tien klopt weer precies met wat je verdiend hebt min wat je uitgaf.
+        #
+        # Cash heeft hier niets nodig. `cash_level` staat op 0 voor iedereen, dus
+        # credit_level_cash() betaalt bij de eerstvolgende login vanzelf de hele
+        # geschiedenis uit. Dat pad is al idempotent.
+        # Wedden bij duels: de inzet per persoon, en of de tegenstander hem al
+        # heeft aangenomen. De coins staan vanaf dat moment in de pot (van beide
+        # saldi af), zodat niemand zijn inzet kan uitgeven terwijl het duel loopt.
+        dl = {r["name"] for r in self._conn.execute("PRAGMA table_info(duels)").fetchall()}
+        if "stake" not in dl:
+            self._conn.execute("ALTER TABLE duels ADD COLUMN stake INTEGER NOT NULL DEFAULT 0")
+            self._conn.execute("ALTER TABLE duels ADD COLUMN stake_accepted INTEGER NOT NULL DEFAULT 0")
+            self._conn.commit()
+
+        # De vlag gaat via `self._conn` en NIET via meta_get/meta_set: die pakken
+        # `self._lock`, en dat slot is niet-herintreedbaar. De migratie draait al
+        # binnen datzelfde slot, dus meta_get() zou hier blijven hangen.
+        gedaan = self._conn.execute("SELECT value FROM meta WHERE key='coins_x10'").fetchone()
+        if not gedaan:
+            self._conn.execute("UPDATE users SET coins = coins * 10")
+            self._conn.execute("INSERT OR REPLACE INTO meta (key, value) VALUES ('coins_x10','1')")
+            self._conn.commit()
+
         # Bestaande potjes alsnog hun XP geven. Die is exact terug te rekenen,
         # want de formule leest alleen dingen die in de rij zelf staan: XP is
         # punten plus 40 als je won plus 15 voor het spelen. Elk potje levert dus
@@ -1573,7 +1603,7 @@ class Database:
             rows = self._q("SELECT score, time_ms, words, created_at, lenient FROM daily_scores WHERE day=? AND user_id=?", (day, user_id))
         return dict(rows[0]) if rows else None
 
-    DAILY_RETRY_COINS = 50  # cost of the one paid daily-round retry
+    DAILY_RETRY_COINS = 500  # cost of the one paid daily-round retry
 
     def daily_retried(self, user_id: str, day: str) -> bool:
         if not user_id:
@@ -1768,13 +1798,62 @@ class Database:
             (a, b, "".join(used_letters), json.dumps(last_combos)),
         )
 
-    def duel_create(self, challenger: str, opponent: str, rounds: list[dict], expires_at: float) -> str:
+    # De inzetladder. 0 staat er met opzet in: wedden is een keuze, geen plicht.
+    DUEL_STAKES = (0, 50, 100, 250, 500, 1000)
+
+    def duel_create(self, challenger: str, opponent: str, rounds: list[dict], expires_at: float,
+                    stake: int = 0) -> Optional[str]:
+        """Maakt het duel en zet de inzet van de uitdager METEEN in de pot, in
+        dezelfde transactie. Geeft None als de uitdager de inzet niet heeft."""
         did = _new_id()
-        self._exec(
-            "INSERT INTO duels (id, a, b, rounds, created_at, expires_at) VALUES (?,?,?,?,?,?)",
-            (did, challenger, opponent, json.dumps(rounds), time.time(), expires_at),
-        )
+        stake = int(stake)
+        if stake not in self.DUEL_STAKES:
+            return None
+        with self._lock:
+            if stake:
+                rows = self._q("SELECT coins FROM users WHERE id=?", (challenger,))
+                if not rows or rows[0]["coins"] < stake:
+                    return None
+                self._exec("UPDATE users SET coins=coins-? WHERE id=?", (stake, challenger))
+            self._exec(
+                "INSERT INTO duels (id, a, b, rounds, created_at, expires_at, stake, stake_accepted) "
+                "VALUES (?,?,?,?,?,?,?,?)",
+                # Zonder inzet valt er niets aan te nemen, dus dan staat hij
+                # meteen op aangenomen en speelt de tegenstander direct.
+                (did, challenger, opponent, json.dumps(rounds), time.time(), expires_at, stake, 0 if stake else 1),
+            )
         return did
+
+    def duel_stake_accept(self, duel_id: str, user_id: str, stake: int) -> str:
+        """De tegenstander neemt de inzet aan, of zet hem LAGER (dat is zijn
+        recht; hoger niet, want dan wed je met andermans geld). Het verschil
+        gaat meteen terug naar de uitdager. 'ok' | 'insufficient' | 'invalid'."""
+        stake = int(stake)
+        if stake not in self.DUEL_STAKES:
+            return "invalid"
+        with self._lock:
+            rows = self._q("SELECT a, b, stake, stake_accepted, status FROM duels WHERE id=?", (duel_id,))
+            if not rows or rows[0]["status"] != "open" or rows[0]["stake_accepted"]:
+                return "invalid"
+            d = rows[0]
+            if user_id != d["b"] or stake > d["stake"]:
+                return "invalid"
+            if stake:
+                saldo = self._q("SELECT coins FROM users WHERE id=?", (user_id,))
+                if not saldo or saldo[0]["coins"] < stake:
+                    return "insufficient"
+                self._exec("UPDATE users SET coins=coins-? WHERE id=?", (stake, user_id))
+            teveel = d["stake"] - stake
+            if teveel:
+                self._exec("UPDATE users SET coins=coins+? WHERE id=?", (teveel, d["a"]))
+            self._exec("UPDATE duels SET stake=?, stake_accepted=1 WHERE id=?", (stake, duel_id))
+        return "ok"
+
+    def grant_coins(self, user_id: str, amount: int) -> None:
+        """Coins erbij zonder level: potwinst, teruggave."""
+        if amount > 0:
+            with self._lock:
+                self._exec("UPDATE users SET coins=coins+? WHERE id=?", (int(amount), user_id))
 
     def duel_get(self, duel_id: str) -> Optional[dict]:
         with self._lock:
@@ -1875,11 +1954,33 @@ class Database:
             )
         return True
 
-    def duel_finish(self, duel_id: str, winner: Optional[str], status: str = "done") -> None:
-        self._exec(
+    def duel_finish(self, duel_id: str, winner: Optional[str], status: str = "done") -> bool:
+        """Sluit het duel af. Geeft True als DEZE aanroep hem dichtzette: de pot
+        en de XP mogen maar één keer worden uitgekeerd, en de sweep en het
+        laatste antwoord kunnen elkaar kruisen."""
+        cur = self._exec(
             "UPDATE duels SET status=?, winner=?, finished_at=? WHERE id=? AND status='open'",
             (status, winner, time.time(), duel_id),
         )
+        return cur.rowcount > 0
+
+    def duel_stake_payout(self, d: dict, winner: Optional[str]) -> int:
+        """Keert de pot uit na duel_finish. Geeft terug wat de winnaar kreeg.
+        Aangenomen inzet: winnaar pakt de hele pot, gelijkspel geeft ieder het
+        zijne terug. Nooit aangenomen (tegenstander speelde niet): de uitdager
+        krijgt zijn escrow terug, er was geen pot."""
+        stake = int(d.get("stake") or 0)
+        if not stake:
+            return 0
+        if d.get("stake_accepted"):
+            if winner:
+                self.grant_coins(winner, stake * 2)
+                return stake * 2
+            self.grant_coins(d["a"], stake)
+            self.grant_coins(d["b"], stake)
+            return 0
+        self.grant_coins(d["a"], stake)
+        return 0
 
     def duel_expired(self, now: float) -> list[dict]:
         """Open duels past their deadline (the caller decides the outcome)."""
@@ -2602,8 +2703,12 @@ class Database:
 
     # ---- coins currency ----------------------------------------------------
 
-    COINS_PER_LEVEL = 10       # earned for every level reached
-    COINS_PER_TIER = 50        # milestone BONUS on top, each LEVELS_PER_TIER levels
+    # Coins zijn sinds de komst van cash de SPEELFICHES, niet meer de echte
+    # valuta: je zet ze in bij een duel en je koopt er spulletjes mee. Daarom
+    # ging de hele reeks maal tien. Een inzet van 1000 moet een echte gok zijn
+    # tegenover ongeveer 6500 op level 45, geen alles-of-niets.
+    COINS_PER_LEVEL = 100      # earned for every level reached
+    COINS_PER_TIER = 500       # milestone BONUS on top, each LEVELS_PER_TIER levels
     LEVELS_PER_TIER = 10       # milestone every 10 levels, like the draaiknoppen
     BUZZER_PACK_COINS = 25     # legacy (the old all-in-one country pack)
     COINS_PER_PACK = 100       # legacy single coin bundle
@@ -2611,12 +2716,12 @@ class Database:
     # Coin PRICES of shop items (buy_item_coins): each country buzzer sells on its
     # own (cheap, reachable early); the premium avatars sell as two packs (pricier).
     COIN_PRICES = {
-        "bz01": 80, "bz02": 80, "bz03": 80, "bz04": 80, "bz05": 80, "bz13": 80, "bz14": 80,
-        "bz15": 80, "bz16": 80, "bz17": 80,
-        "rs01": 100, "rs02": 100, "rs03": 100, "rs04": 100, "rs05": 100,
-        "rs06": 100, "rs07": 100, "rs08": 100, "rs09": 100,
-        "empack4": 200, "empack5": 200,
-        "avpack1": 400, "avpack2": 400,
+        "bz01": 800, "bz02": 800, "bz03": 800, "bz04": 800, "bz05": 800, "bz13": 800, "bz14": 800,
+        "bz15": 800, "bz16": 800, "bz17": 800,
+        "rs01": 1000, "rs02": 1000, "rs03": 1000, "rs04": 1000, "rs05": 1000,
+        "rs06": 1000, "rs07": 1000, "rs08": 1000, "rs09": 1000,
+        "empack4": 2000, "empack5": 2000,
+        "avpack1": 4000, "avpack2": 4000,
     }
     # PayPal coin BUNDLES: product id -> coins granted (price via env, see paypal.py).
     COIN_BUNDLES = {"coins%d" % n: n for n in (100, 300, 500, 1000, 1800, 3000, 5000, 8000, 12000)}

@@ -12,6 +12,7 @@ import { Paneel } from "../components/ProfileHero";
 import { Button } from "../components/Button";
 import { Screen, Card } from "../components/Layout";
 import { SierKop } from "../components/ProfileHero";
+import { SchermTip } from "../components/SchermTip";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { colors, font, withAlpha } from "../theme/tokens";
@@ -207,6 +208,7 @@ export function Training({ onBack, lenient = false }: { onBack: () => void; leni
   return (
     <Screen top={header}>
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <SchermTip id="oefenen" tekst={t("tipOefenen")} />
         <div style={{ textAlign: "center", fontFamily: font.ui, fontSize: 13, color: colors.sub }}>
           {t("trainLetterWas")} <span style={{ fontFamily: font.display, fontWeight: 700, color: colors.gold, fontSize: 16 }}>{letter}</span>
         </div>

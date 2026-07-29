@@ -418,7 +418,7 @@ export default function App() {
       />
     );
   } else {
-    screen = <Landing game={game} onShowRules={() => setShowRules(true)} onShowSettings={() => setShowSettings(true)} onShowShop={() => setShowShop(true)} onShowTraining={() => setShowTraining(true)} onShowDaily={() => setShowDaily(true)} onShowDuel={() => setShowDuel(true)} />;
+    screen = <Landing game={game} onShowRules={() => setShowRules(true)} onShowSettings={() => setShowSettings(true)} onShowShop={() => setShowShop(true)} onShowTraining={() => setShowTraining(true)} onShowDaily={() => setShowDaily(true)} onShowDuel={() => setShowDuel(true)} onShowProfile={() => setShowHub("profile")} />;
   }
 
   // Which bar item is lit. Sub-flows that are not bar destinations (rules,

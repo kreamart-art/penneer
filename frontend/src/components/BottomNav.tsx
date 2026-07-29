@@ -8,12 +8,16 @@
 import { useEffect, useRef, useState } from "react";
 import { Home, ShoppingCart, Trophy, UserRound, Users } from "lucide-react";
 import { Avatar } from "./Avatar";
+import { HexArt } from "./HexArt";
 import type { GameApi } from "../net/socket";
 import { NeonLine } from "./NeonLine";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { useTileSkin } from "../theme/tileSkin";
 import { colors, font, withAlpha } from "../theme/tokens";
+
+// De felle goudtint van de cijfers, dezelfde als in de profiel-zeshoeken.
+const GOUD_HI = "#FFEBB8";
 
 export type NavKey = "shop" | "leaderboard" | "home" | "friends" | "profile";
 
@@ -38,6 +42,9 @@ const SLOTS = [11.6, 31.0, 50, 69.1, 88.4];
 const GROEVEN = [(SLOTS[0] + SLOTS[1]) / 2, (SLOTS[3] + SLOTS[4]) / 2];
 const WELL_Y = 50.3; // verticale hartlijn van de vakken
 const PLATE_RATIO = "3955 / 578";
+// De "nieuw in de winkel"-teller: hoog dit op bij elke echte drop. De balk
+// toont dan een 1 op de winkelwagen tot je de winkel opent.
+export const SHOP_DROP = 1; // 1: cash-bundels
 const GAP = 8; // hoe hoog de plaat boven de onderrand zweeft
 
 export function BottomNav({
@@ -52,6 +59,28 @@ export function BottomNav({
   const { t } = useT();
   const account = game.state.account;
   const skin = useTileSkin();
+
+  // Wat er per bestemming op je wacht. Elke teller komt uit iets wat de app al
+  // bijhoudt; de balk verzint niets zelf.
+  //  - vrienden: uitnodigingen/verzoeken in de inbox plus ongelezen DM's
+  //  - profiel (je avatar): ongelezen meldingen
+  //  - winkel: een nieuwe drop die je nog niet gezien hebt (lokaal vinkje)
+  //  - ranglijst: een divisie-uitslag die je nog niet hebt bekeken
+  //  - home: verdiende beloningen waar hun victory-popup nog van wacht
+  const vriendenTeller = account ? (game.state.inbox.length || account.inbox_count || 0) + (account.dm_unread || 0) : 0;
+  const meldTeller = account ? game.state.meldingenOngelezen : 0;
+  const shopTeller = account && Number(localStorage.getItem("penneer.shopDrop") || 0) < SHOP_DROP ? 1 : 0;
+  const rangTeller = account?.divisie_change ? 1 : 0;
+  const homeTeller = account
+    ? (account.pending_rewards?.length ?? 0) + (account.buzzer_rewards ?? []).filter((r) => r.unlocked && !r.claimed).length
+    : 0;
+  const badges: Partial<Record<NavKey, number>> = {
+    friends: vriendenTeller,
+    profile: meldTeller,
+    shop: shopTeller,
+    leaderboard: rangTeller,
+    home: homeTeller,
+  };
 
   // De plaat is art met een vaste verhouding, dus zijn hoogte hangt van de
   // schermbreedte af. Hij meet zichzelf: de pictogrammen schalen mee en de
@@ -88,14 +117,15 @@ export function BottomNav({
   // van het scherm en zet de avatar bewust groter dan de pictogrammen: een
   // gezichtje moet je kunnen herkennen, een winkelwagentje alleen herkennen.
   const items = (s: number, av = Math.round(s * 1.1)): { key: NavKey; label: string; icon: React.ReactNode; badge?: number }[] => [
-    { key: "shop", label: t("shopTitle"), icon: <ShoppingCart size={s} strokeWidth={2.1} /> },
-    { key: "leaderboard", label: t("leaderboardTab"), icon: <Trophy size={s} strokeWidth={2.1} /> },
-    { key: "home", label: t("navHome"), icon: <Home size={Math.round(s * 1.1)} strokeWidth={2.2} /> },
-    { key: "friends", label: t("friendsTab"), icon: <Users size={s} strokeWidth={2.1} /> },
+    { key: "shop", label: t("shopTitle"), icon: <ShoppingCart size={s} strokeWidth={2.1} />, badge: badges.shop },
+    { key: "leaderboard", label: t("leaderboardTab"), icon: <Trophy size={s} strokeWidth={2.1} />, badge: badges.leaderboard },
+    { key: "home", label: t("navHome"), icon: <Home size={Math.round(s * 1.1)} strokeWidth={2.2} />, badge: badges.home },
+    { key: "friends", label: t("friendsTab"), icon: <Users size={s} strokeWidth={2.1} />, badge: badges.friends },
     // Profile's icon IS the player's avatar, so the bar shows who you are.
     {
       key: "profile",
       label: t("profile"),
+      badge: badges.profile,
       icon: account ? (
         <Avatar name={account.name} color={account.color} size={av} userId={account.id} hasAvatar={account.has_avatar} avatarVer={account.avatar_ver} />
       ) : (
@@ -202,8 +232,12 @@ export function BottomNav({
                 >
                   {!home && (art[key] ? art[key]!(on) : icon)}
                   {!!badge && (
-                    <span style={{ position: "absolute", top: 0, right: 0, minWidth: 15, height: 15, padding: "0 4px", borderRadius: 999, background: colors.gold, color: colors.bg0, fontFamily: font.ui, fontSize: 9, fontWeight: 800, lineHeight: "15px", textAlign: "center" }}>
-                      {badge > 9 ? "9+" : badge}
+                    // De ZWARTE zeshoek met gouden rand, dezelfde als bij de
+                    // inbox-pil: één taal voor "hier wacht iets".
+                    <span style={{ position: "absolute", top: -3, right: -3, pointerEvents: "none" }}>
+                      <HexArt maat={17}>
+                        <span style={{ fontFamily: font.ui, fontSize: 9, fontWeight: 800, lineHeight: 1, color: GOUD_HI }}>{badge > 9 ? "9+" : badge}</span>
+                      </HexArt>
                     </span>
                   )}
                 </button>
@@ -270,8 +304,10 @@ export function BottomNav({
           >
             {icon}
             {!!badge && (
-              <span style={{ position: "absolute", top: 2, right: "50%", marginRight: -18, minWidth: 16, height: 16, padding: "0 4px", borderRadius: 999, background: colors.gold, color: colors.bg0, fontFamily: font.ui, fontSize: 10, fontWeight: 800, lineHeight: "16px", textAlign: "center" }}>
-                {badge > 9 ? "9+" : badge}
+              <span style={{ position: "absolute", top: 1, right: "50%", marginRight: -20, pointerEvents: "none" }}>
+                <HexArt maat={17}>
+                  <span style={{ fontFamily: font.ui, fontSize: 9, fontWeight: 800, lineHeight: 1, color: GOUD_HI }}>{badge > 9 ? "9+" : badge}</span>
+                </HexArt>
               </span>
             )}
           </button>

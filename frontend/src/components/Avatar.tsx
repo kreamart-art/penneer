@@ -34,6 +34,11 @@ export const NEON_FRAMES: Record<string, string> = {
 interface Props {
   name: string;
   color: string;
+  /** De trede op de divisieladder. Als hij bekend is, kleurt de RAND van de
+   *  avatar naar het schild in plaats van naar de gekozen spelerkleur: de ring
+   *  is een rang, geen smaak. De spelerkleur blijft de vulling en de letter
+   *  doen, want die is van de speler zelf. */
+  divisie?: number;
   size?: number;
   crown?: boolean;
   dim?: boolean; // disconnected
@@ -47,8 +52,15 @@ interface Props {
   glow?: boolean;
 }
 
-export function Avatar({ name, color, size = 40, crown, dim, userId, hasAvatar, avatarVer, frame, glow = false }: Props) {
+// Dezelfde tinten als DIVISIE_ACCENT in ProfileHero, hier als hex omdat de
+// neon-rand hex verwacht. Volgorde = de ladder: paars, blauw, lichtblauw,
+// groen, rood, zilver, zwart(goud).
+const SCHILD_RAND = ["#AC7BE9", "#567CF0", "#58C4EC", "#54CE7C", "#E74C5A", "#C4CCDC", "#E8A817"] as const;
+
+export function Avatar({ name, color, size = 40, crown, dim, userId, hasAvatar, avatarVer, frame, divisie, glow = false }: Props) {
   const initial = (name.trim()[0] || "?").toUpperCase();
+  // De randkleur: het schild als we de divisie kennen, anders de spelerkleur.
+  const rand = divisie == null ? color : SCHILD_RAND[Math.max(0, Math.min(SCHILD_RAND.length - 1, divisie))];
   const photo = !!(userId && hasAvatar);
   const neonColor = frame ? NEON_FRAMES[frame] : undefined;
   const artFramed = !!frame && !neonColor;
@@ -77,7 +89,7 @@ export function Avatar({ name, color, size = 40, crown, dim, userId, hasAvatar, 
           // een box-shadow kan geen verloop dragen.
           boxShadow: !glow || dim || artFramed
             ? "none"
-            : `0 0 14px ${withAlpha(ringColor ?? color, 0.45)}`,
+            : `0 0 14px ${withAlpha(ringColor ?? rand, 0.45)}`,
           opacity: dim ? 0.4 : 1,
           fontFamily: font.display,
           fontWeight: 700,
@@ -106,7 +118,7 @@ export function Avatar({ name, color, size = 40, crown, dim, userId, hasAvatar, 
             position: "absolute",
             inset: 0,
             borderRadius: "inherit",
-            ...neonSkin(color),
+            ...neonSkin(rand),
             ["--ng-w" as string]: "2px",
             opacity: dim ? 0.5 : 1,
             pointerEvents: "none",

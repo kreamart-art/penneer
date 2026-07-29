@@ -10,33 +10,33 @@ from __future__ import annotations
 
 import random
 
-# key -> (target, reward XP, reward COINS). Small missions pay 10 coins, medium
+# key -> (target, reward XP, reward COINS). Small missions pay 100 coins, medium
 # 15, the hard ones 20. Copy for names lives in the frontend i18n (mission_<key>).
 # Keys are stored in mission_progress, so never rename one; only add.
 POOL: dict[str, tuple[int, int, int]] = {
     # --- potjes ---------------------------------------------------------
-    "play_game": (1, 30, 10),      # speel een potje
-    "play2": (2, 40, 15),          # speel 2 potjes
-    "win_game": (1, 50, 20),       # win een potje
-    "unique5": (5, 40, 15),        # 5 unieke woorden
-    "unique10": (10, 50, 20),      # 10 unieke woorden
-    "dubbel3": (3, 30, 15),        # 3 dubbele woorden
-    "dubbel5": (5, 40, 15),        # 5 dubbele woorden
-    "multi3": (1, 40, 15),         # potje met 3+ spelers
-    "multi4": (1, 50, 20),         # potje met 4+ spelers
-    "perfect_round": (1, 50, 20),  # een ronde met alleen unieke woorden
-    "comeback_win": (1, 50, 20),   # laatste halverwege, toch winnen
-    "hard_game": (1, 30, 10),      # potje met moeilijke letters
-    "score80": (1, 40, 15),        # 80+ punten in een potje
+    "play_game": (1, 30, 100),      # speel een potje
+    "play2": (2, 40, 150),          # speel 2 potjes
+    "win_game": (1, 50, 200),       # win een potje
+    "unique5": (5, 40, 150),        # 5 unieke woorden
+    "unique10": (10, 50, 200),      # 10 unieke woorden
+    "dubbel3": (3, 30, 150),        # 3 dubbele woorden
+    "dubbel5": (5, 40, 150),        # 5 dubbele woorden
+    "multi3": (1, 40, 150),         # potje met 3+ spelers
+    "multi4": (1, 50, 200),         # potje met 4+ spelers
+    "perfect_round": (1, 50, 200),  # een ronde met alleen unieke woorden
+    "comeback_win": (1, 50, 200),   # laatste halverwege, toch winnen
+    "hard_game": (1, 30, 100),      # potje met moeilijke letters
+    "score80": (1, 40, 150),        # 80+ punten in een potje
     # --- dagronde -------------------------------------------------------
-    "daily_play": (1, 40, 10),     # speel de dagronde
-    "daily_full": (1, 40, 15),     # vul elke categorie in
-    "daily30": (1, 50, 20),        # scoor 30+
-    "daily_perfect": (1, 50, 20),  # alles goed (50 punten)
+    "daily_play": (1, 40, 100),     # speel de dagronde
+    "daily_full": (1, 40, 150),     # vul elke categorie in
+    "daily30": (1, 50, 200),        # scoor 30+
+    "daily_perfect": (1, 50, 200),  # alles goed (50 punten)
     # --- sociaal --------------------------------------------------------
-    "chat_msg": (1, 30, 10),       # stuur een bericht in de chat
-    "chat_emote": (1, 30, 10),     # stuur een emote in de chat
-    "duel_play": (1, 40, 15),      # speel een duel uit
+    "chat_msg": (1, 30, 100),       # stuur een bericht in de chat
+    "chat_emote": (1, 30, 100),     # stuur een emote in de chat
+    "duel_play": (1, 40, 150),      # speel een duel uit
 }
 
 # Which bucket a mission belongs to, and how many of a bucket may land on one

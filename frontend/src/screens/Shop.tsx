@@ -10,6 +10,7 @@ import { Screen, Card } from "../components/Layout";
 import { MusicToggle } from "../components/MusicToggle";
 import { sound } from "../sound/sound";
 import type { GameApi } from "../net/socket";
+import { SchermTip } from "../components/SchermTip";
 import { useT } from "../i18n/i18n";
 import { EMOTE_PACKS_FOR_SALE, EMOTE_SRC } from "../components/emotes";
 import { reelClip, reelEdge, reelFace, reelTheme } from "../theme/reelSkins";
@@ -19,6 +20,7 @@ import { NeonKader, Paneel } from "../components/ProfileHero";
 import { GlasVeld } from "../components/GlasVeld";
 import { KnopPlaat } from "../components/KnopPlaat";
 import { CashPlate, CoinPlate } from "../components/CoinPlate";
+import { SHOP_DROP } from "../components/BottomNav";
 
 const AVATAR_ART_VERSION = 9;
 // The five single Draai-knoppen for sale, with their country-name i18n keys.
@@ -378,6 +380,9 @@ function Raster({ kolommen, aantal, children }: { kolommen: number; aantal: numb
 }
 
 export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
+  // De winkel openen = de drop gezien: het hexagon-cijfer op de winkelwagen in
+  // de onderbalk gaat uit tot de volgende echte drop (SHOP_DROP in BottomNav).
+  useEffect(() => { localStorage.setItem("penneer.shopDrop", String(SHOP_DROP)); }, []);
   const { t } = useT();
   // De winkel hoort bij de main page: dezelfde achtergrond, zodat het voelt als
   // een lade die daar opengaat en niet als een andere app.
@@ -522,6 +527,7 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
       }
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
+        <SchermTip id="shop" tekst={t("tipShop")} />
         {!account && (
           <Card><p style={{ margin: 0, textAlign: "center", fontFamily: font.ui, fontSize: 13.5, color: colors.faint, lineHeight: 1.5 }}>{t("shopNeedProfile")}</p></Card>
         )}

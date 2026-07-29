@@ -62,6 +62,7 @@ export function Landing({
   onShowTraining,
   onShowDaily,
   onShowDuel,
+  onShowProfile,
 }: {
   game: GameApi;
   onShowRules: () => void;
@@ -69,6 +70,7 @@ export function Landing({
   onShowShop: () => void;
   onShowTraining: () => void;
   onShowDaily: () => void;
+  onShowProfile: () => void;
   onShowDuel: () => void;
 }) {
   const { t } = useT();
@@ -99,6 +101,7 @@ export function Landing({
 
   // First-visit guests (no account, no stored token) get a prominent prompt to
   // make a profile. Returning users with a token skip it (avoids a flash).
+  const [toonGids, setToonGids] = useState(false);
   const [showPrompt, setShowPrompt] = useState(() => {
     try {
       return !localStorage.getItem("penneer.accountToken") && !profilePromptSeen();
@@ -228,7 +231,10 @@ export function Landing({
           and would otherwise push the whole hero down by ~80px, which is the
           difference between fitting on a small phone and not. It is a narrow
           strip at the edge, so it never collides with the centred logo. */}
-      <div style={{ position: "relative", display: "flex", justifyContent: "space-between", alignItems: "flex-start", paddingTop: 4 }}>
+      {/* zIndex 6: de voorste stralen van het logo staan op 5 en zijn een
+          laag met inset 0, dus zonder eigen hoogte zakken de pillen daaronder
+          weg en worden ze wazig overstraald. */}
+      <div style={{ position: "relative", zIndex: 6, display: "flex", justifyContent: "space-between", alignItems: "flex-start", paddingTop: 4 }}>
         {/* Coins sit where the profile chip used to: the profile moved to the
             avatar on the right, and the shop is in the bottom bar now. */}
         {/* Twee munten, twee pillen naast elkaar. Cash is de zeldzame, dus hij
@@ -608,7 +614,8 @@ export function Landing({
           onClose={() => setShowFriends(false)}
         />
       )}
-      {showPrompt && !account && <ProfilePrompt game={game} onClose={() => setShowPrompt(false)} />}
+      {showPrompt && !account && <ProfilePrompt game={game} onClose={(aangemaakt) => { setShowPrompt(false); if (aangemaakt) setToonGids(true); }} />}
+      {toonGids && account && <ProfielGids account={account} onNaarProfiel={() => { setToonGids(false); onShowProfile(); }} onLater={() => setToonGids(false)} />}
       {installVariant && !showPrompt && <InstallPrompt variant={installVariant} onClose={() => setInstallVariant(null)} />}
       {showMissions && (
         <MissionsSheet
@@ -1170,6 +1177,53 @@ function LandingFX() {
           {l.c}
         </span>
       ))}
+    </div>
+  );
+}
+
+/* De gids meteen na het aanmaken van je profiel: één kaart, drie stappen, alles
+ * overslaanbaar. Hij duwt je nergens doorheen; hij laat zien wat er nog open
+ * staat en brengt je met één tik naar de plek waar je het regelt. De vinkjes
+ * zijn echt: een foto die er al is, staat aangevinkt. */
+function ProfielGids({ account, onNaarProfiel, onLater }: {
+  account: NonNullable<GameApi["state"]["account"]>;
+  onNaarProfiel: () => void;
+  onLater: () => void;
+}) {
+  const { t } = useT();
+  const stappen: { key: string; label: string; af: boolean }[] = [
+    { key: "foto", label: t("gidsFoto"), af: !!account.has_avatar || !!account.avatar_preset },
+    { key: "kleur", label: t("gidsKleur"), af: false },
+    { key: "land", label: t("gidsLand"), af: false },
+  ];
+  const klaar = stappen.filter((st) => st.af).length;
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 90, background: "rgba(6,3,18,.78)", backdropFilter: "blur(5px)", WebkitBackdropFilter: "blur(5px)", display: "grid", placeItems: "center", padding: 22 }}>
+      <div
+        className="pop-in"
+        style={{ width: "100%", maxWidth: 330, display: "flex", flexDirection: "column", gap: 12, padding: "22px 18px 16px", borderRadius: 24, background: "linear-gradient(180deg, #2a1c48, #160D30)", border: `1px solid ${withAlpha(colors.gold, 0.45)}`, boxShadow: "0 24px 80px rgba(0,0,0,.6)" }}
+      >
+        <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 19, color: colors.gold, textAlign: "center" }}>{t("gidsKop", { name: account.name })}</span>
+        <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.sub, lineHeight: 1.5, textAlign: "center" }}>{t("gidsSub")}</p>
+        {/* De voortgang: een dunne balk, gevuld naar hoeveel er al staat. */}
+        <div style={{ height: 5, borderRadius: 999, background: withAlpha("#000000", 0.4), overflow: "hidden" }}>
+          <div style={{ width: `${Math.max(8, (klaar / stappen.length) * 100)}%`, height: "100%", borderRadius: 999, background: `linear-gradient(90deg, ${withAlpha(colors.gold, 0.7)}, ${colors.gold})`, transition: "width .3s ease" }} />
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+          {stappen.map((st) => (
+            <div key={st.key} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 12, background: withAlpha("#000000", 0.24), border: `1px solid ${st.af ? withAlpha(colors.green, 0.45) : "rgba(255,255,255,.09)"}` }}>
+              <span style={{ width: 18, height: 18, borderRadius: "50%", display: "grid", placeItems: "center", background: st.af ? withAlpha(colors.green, 0.2) : withAlpha("#FFFFFF", 0.06), border: `1px solid ${st.af ? colors.green : "rgba(255,255,255,.18)"}`, color: colors.green }}>
+                {st.af && <Check size={11} />}
+              </span>
+              <span style={{ flex: 1, fontFamily: font.ui, fontSize: 13.5, fontWeight: 600, color: st.af ? colors.sub : colors.ink }}>{st.label}</span>
+            </div>
+          ))}
+        </div>
+        <Button variant="gold" full onClick={() => { sound.uiTap(); onNaarProfiel(); }}>{t("gidsNaarProfiel")}</Button>
+        <button onClick={() => { sound.uiTap(); onLater(); }} style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, fontFamily: font.ui, fontSize: 13, padding: 2 }}>
+          {t("gidsLater")}
+        </button>
+      </div>
     </div>
   );
 }
