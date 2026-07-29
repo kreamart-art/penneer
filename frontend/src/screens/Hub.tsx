@@ -2786,10 +2786,20 @@ function DivisieKaart({ game }: { game: GameApi }) {
  * Hij tekent zichzelf alleen als `/vlaggen/<code>.webp` echt bestaat. Faalt het
  * laden, dan haalt hij zichzelf weg. Zo staat er niets op je profiel zolang de
  * art er niet is, en verschijnt de vlag vanzelf zodra hij wordt toegevoegd. */
+/** De landcode als vlag-emoji: twee regionale-indicatortekens. Het systeem
+ *  tekent hem zelf, dus dit werkt voor ELK land, ook de paar die niet in het
+ *  vlaggenvel zitten (Aruba, Curaçao). Op deze maat zie je het verschil met de
+ *  art niet, en dat is precies waarom dit een prima terugval is. */
+function vlagEmoji(code: string): string {
+  const c = code.toUpperCase();
+  if (!/^[A-Z]{2}$/.test(c)) return "";
+  return String.fromCodePoint(...[...c].map((l) => 0x1f1e6 + l.charCodeAt(0) - 65));
+}
+
 function VlagIcoon({ code, maat = 18 }: { code: string; maat?: number }) {
   const [er, setEr] = useState(false);
   if (er) {
-    return <span style={{ fontFamily: font.ui, fontWeight: 700, fontSize: Math.round(maat * 0.55), letterSpacing: 1, color: withAlpha(colors.gold, 0.75) }}>{code}</span>;
+    return <span style={{ fontSize: Math.round(maat * 0.95), lineHeight: 1, display: "block" }}>{vlagEmoji(code)}</span>;
   }
   return (
     <img
@@ -2802,21 +2812,18 @@ function VlagIcoon({ code, maat = 18 }: { code: string; maat?: number }) {
 }
 
 function Vlag({ code }: { code?: string | null }) {
-  const [er, setEr] = useState(false);
+  // Geen eigen foutstaat meer: VlagIcoon valt zelf terug op het vlag-emoji, dus
+  // hier hoeft alleen bepaald te worden OF er een land is.
   const c = (code || "").toUpperCase();
-  if (!c || er) return null;
+  if (!c) return null;
   return (
-    // Geen zeshoek: de vlag is zelf al een vorm. Hij staat ONDER de
-    // kroontjes-zeshoek van de titelpil, op dezelfde verticale lijn: de pil
-    // heeft links 4px lucht en de zeshoek is 19 breed, dus met deze marge valt
-    // het hart van de vlag op het hart van de zeshoek erboven.
-    <div style={{ display: "flex", marginTop: 6, marginLeft: 4 }}>
-      <img
-        src={`/vlaggen/${c}.webp`}
-        alt=""
-        onError={() => setEr(true)}
-        style={{ width: 22, height: 17, objectFit: "contain", display: "block" }}
-      />
+    // Geen zeshoek: de vlag is zelf al een vorm. Hij ligt TEGEN de titelpil aan,
+    // op dezelfde verticale lijn als de kroontjes-zeshoek erboven: de pil heeft
+    // links 4px lucht en de zeshoek is 19 breed, dus met deze marge valt het
+    // hart van de vlag op het hart van de zeshoek. Geen ruimte ertussen, anders
+    // zweeft hij los onder de balk in plaats van eraan te hangen.
+    <div style={{ display: "flex", marginTop: 1, marginLeft: 4 }}>
+      <VlagIcoon code={c} maat={22} />
     </div>
   );
 }

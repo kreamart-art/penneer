@@ -10,7 +10,7 @@
 // pas begint zijn 15 seconden, dus de app herladen koopt geen denktijd.
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { CloseIcon } from "../components/CloseIcon";
-import { ArrowLeft, Check, Clock as ClockIcon, Hourglass, RotateCcw, Search, Swords } from "lucide-react";
+import { ArrowLeft, Check, ChevronLeft, ChevronRight, Clock as ClockIcon, Hourglass, RotateCcw, Search, Swords } from "lucide-react";
 import { Avatar } from "../components/Avatar";
 import { NeonText } from "../components/NeonText";
 import { Button } from "../components/Button";
@@ -102,6 +102,9 @@ export function Duel({ game, onBack, onProfile }: { game: GameApi; onBack: () =>
   const [left, setLeft] = useState(0);
   const [busy, setBusy] = useState(false);
   const [pickOpen, setPickOpen] = useState(false);
+  // Welke inzet de UITGEDAAGDE nu bekijkt in de carrousel. Begint op de hoogste
+  // die hij mag kiezen, want dat is wat de uitdager voorstelde.
+  const [aanneemIdx, setAanneemIdx] = useState(0);
   const [note, setNote] = useState("");
   const deadline = useRef(0);
   const wordRef = useRef("");
@@ -155,6 +158,8 @@ export function Duel({ game, onBack, onProfile }: { game: GameApi; onBack: () =>
       // verlagen, dan pas spelen. De server weigert serveren toch, maar de
       // popup legt uit WAAROM in plaats van een kale fout.
       if (!fresh.stake_accepted && !fresh.i_challenged) {
+        const opties = (fresh.stakes ?? DUEL_STAKES).filter((n) => n <= fresh.stake);
+        setAanneemIdx(Math.max(0, opties.length - 1)); // het voorstel zelf
         setView("stake");
         return;
       }
@@ -291,7 +296,8 @@ export function Duel({ game, onBack, onProfile }: { game: GameApi; onBack: () =>
   // mag (ook naar 0), verhogen niet. Het verschil gaat meteen terug naar de
   // uitdager, en pas hierna gaat de eerste ronde open.
   if (view === "stake" && duel) {
-    const kan = (n: number) => n <= (account?.coins ?? 0) && n <= duel.stake;
+    // Alleen aannemen of VERLAGEN: hoger zou wedden met andermans geld zijn.
+    const keuzes = (duel.stakes ?? DUEL_STAKES).filter((n) => n <= duel.stake);
     return (
       <Screen top={header}>
         <Card style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "center" }}>
@@ -302,49 +308,42 @@ export function Duel({ game, onBack, onProfile }: { game: GameApi; onBack: () =>
           <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.sub, lineHeight: 1.5, textAlign: "center" }}>
             {t("duelStakeRecht")}
           </p>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, width: "100%" }}>
-            {(duel.stakes ?? DUEL_STAKES).filter((n) => n <= duel.stake).map((n) => (
-              <button
-                key={n}
-                disabled={busy || !kan(n)}
-                onClick={async () => {
-                  sound.uiTap();
-                  setBusy(true);
-                  try {
-                    const r = await fetch(`/api/duel/${duel.id}/stake`, {
-                      method: "POST", headers: jsonHeaders(), body: JSON.stringify({ stake: n }),
-                    });
-                    if (r.ok) {
-                      const fresh: DuelState = await r.json();
-                      setDuel(fresh);
-                      setView("play");
-                      await serve(fresh.id);
-                    } else {
-                      const e = await r.json();
-                      setNote(e.error === "insufficient" ? t("duelStakeTekort") : t("duelStartFailed"));
-                      setView("list");
-                      await refresh();
-                    }
-                  } finally {
-                    setBusy(false);
-                  }
-                }}
-                className={kan(n) ? "pressable" : undefined}
-                style={{
-                  display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
-                  padding: "12px 4px", borderRadius: 14, cursor: kan(n) ? "pointer" : "default",
-                  background: n === duel.stake ? withAlpha(colors.gold, 0.2) : withAlpha("#000000", 0.28),
-                  border: `1.4px solid ${n === duel.stake ? colors.gold : kan(n) ? withAlpha(colors.gold, 0.25) : "rgba(255,255,255,.08)"}`,
-                  opacity: kan(n) ? 1 : 0.4,
-                }}
-              >
-                <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 15, color: n === duel.stake ? colors.gold : colors.ink }}>
-                  {n === 0 ? t("duelStakeGeen") : n}
-                </span>
-                {n > 0 && <img src="/coin.webp" alt="" width={15} height={15} style={{ display: "block" }} />}
-              </button>
-            ))}
-          </div>
+          <InzetCarrousel
+            waardes={keuzes}
+            index={aanneemIdx}
+            onIndex={setAanneemIdx}
+            coins={account?.coins ?? 0}
+          />
+          <Button
+            variant="gold"
+            full
+            disabled={busy || (keuzes[aanneemIdx] ?? 0) > (account?.coins ?? 0)}
+            onClick={async () => {
+              const n = keuzes[aanneemIdx] ?? 0;
+              sound.uiTap();
+              setBusy(true);
+              try {
+                const r = await fetch(`/api/duel/${duel.id}/stake`, {
+                  method: "POST", headers: jsonHeaders(), body: JSON.stringify({ stake: n }),
+                });
+                if (r.ok) {
+                  const fresh: DuelState = await r.json();
+                  setDuel(fresh);
+                  setView("play");
+                  await serve(fresh.id);
+                } else {
+                  const e = await r.json();
+                  setNote(e.error === "insufficient" ? t("duelStakeTekort") : t("duelStartFailed"));
+                  setView("list");
+                  await refresh();
+                }
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            {(keuzes[aanneemIdx] ?? 0) > 0 ? t("duelStakeStartMet", { n: keuzes[aanneemIdx] }) : t("duelStakeStartZonder")}
+          </Button>
           <p style={{ margin: 0, fontFamily: font.ui, fontSize: 11.5, color: colors.faint, textAlign: "center" }}>
             {t("duelStakeSaldo", { n: account?.coins ?? 0 })}
           </p>
@@ -1005,6 +1004,90 @@ function Section({ title, items, onOpen, t, mij }: { title: string; items: DuelS
 // tegenstander uit de wachtrij) komen hier later bij.
 const DUEL_STAKES = [0, 50, 100, 250, 500, 1000];
 
+/* De inzetkiezer als CARROUSEL: één zaal tegelijk, met een pijl aan elke kant.
+ *
+ * Zes knopjes naast elkaar maakten van de keuze een rijtje cijfers; nu is elke
+ * inzet een plek waar je om speelt, en dat is waar de art voor is. De zalen
+ * lopen op in weelde met het bedrag, dus je ZIET waar je aan begint zonder het
+ * getal te lezen.
+ *
+ * Zolang een zaal nog geen art heeft valt de tegel terug op het neon-vlak: het
+ * bedrag blijft gewoon kiesbaar, er is alleen nog niets te zien. */
+const ZAAL_ART: Record<number, string> = { 50: "/ui/inzet/z50.webp?v=1" };
+
+function InzetCarrousel({
+  waardes, index, onIndex, coins, betaalbaar = true,
+}: {
+  waardes: number[];
+  index: number;
+  onIndex: (i: number) => void;
+  coins: number;
+  /** Of een te dure inzet gedempt getoond wordt (bij het uitdagen wel). */
+  betaalbaar?: boolean;
+}) {
+  const { t } = useT();
+  const n = waardes[index] ?? 0;
+  const art = ZAAL_ART[n];
+  const kan = !betaalbaar || n <= coins;
+  const ga = (stap: number) => {
+    sound.uiTap();
+    onIndex((index + stap + waardes.length) % waardes.length);
+  };
+  const pijl: React.CSSProperties = {
+    flexShrink: 0, width: 34, height: 34, borderRadius: "50%", display: "grid", placeItems: "center",
+    background: withAlpha("#000000", 0.34), border: `1px solid ${withAlpha(colors.gold, 0.35)}`,
+    color: colors.gold, cursor: "pointer",
+  };
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 6, width: "100%" }}>
+      <button onClick={() => ga(-1)} aria-label={t("back")} className="pressable" style={pijl}>
+        <ChevronLeft size={20} />
+      </button>
+
+      <div
+        style={{
+          flex: 1, minWidth: 0, position: "relative", borderRadius: 16, overflow: "hidden",
+          aspectRatio: `${720} / ${606}`,
+          // Zonder art een leeg neon-vlak, zodat de tegel dezelfde maat en vorm
+          // houdt en er niets verspringt zodra de zaal er wel is.
+          background: art ? "transparent" : `linear-gradient(180deg, ${withAlpha(colors.violet, 0.18)}, ${withAlpha("#000000", 0.35)})`,
+          boxShadow: art ? "none" : `inset 0 0 0 1.4px ${withAlpha(colors.gold, 0.3)}`,
+          opacity: kan ? 1 : 0.45,
+        }}
+      >
+        {art && (
+          <img
+            key={n}
+            src={art}
+            alt=""
+            className="reward-art"
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+          />
+        )}
+        {/* Het bedrag ligt OVER de zaal, met een donkere voet eronder: de art
+            heeft in het midden bewust een rustig vlak, maar een schaduw houdt
+            het cijfer leesbaar op elke zaal die nog komt. */}
+        <span
+          style={{
+            position: "absolute", left: 0, right: 0, bottom: "8%",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
+            textShadow: "0 2px 10px rgba(0,0,0,.85), 0 0 26px rgba(0,0,0,.6)",
+          }}
+        >
+          <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 30, lineHeight: 1, color: n === 0 ? colors.ink : colors.gold }}>
+            {n === 0 ? t("duelStakeGeen") : n}
+          </span>
+          {n > 0 && <img src="/coin.webp" alt="" width={24} height={24} style={{ display: "block" }} />}
+        </span>
+      </div>
+
+      <button onClick={() => ga(1)} aria-label={t("next")} className="pressable" style={pijl}>
+        <ChevronRight size={20} />
+      </button>
+    </div>
+  );
+}
+
 function FriendPicker({ friends, onPick, onClose, busy, coins }: { friends: Person[]; onPick: (f: Person, stake: number) => void; onClose: () => void; busy: boolean; coins: number }) {
   const { t } = useT();
   const [q, setQ] = useState("");
@@ -1012,7 +1095,8 @@ function FriendPicker({ friends, onPick, onClose, busy, coins }: { friends: Pers
   // rijtje naast elke naam, want zes knopjes per rij maakt van de lijst een
   // gokautomaat. 0 is een echte keuze: vriendschappelijk blijft gewoon kunnen.
   const [gekozen, setGekozen] = useState<Person | null>(null);
-  const [inzet, setInzet] = useState(0);
+  const [inzetIdx, setInzetIdx] = useState(0);
+  const inzet = DUEL_STAKES[inzetIdx] ?? 0;
   const shown = friends.filter((f) => f.name.toLowerCase().includes(q.trim().toLowerCase()));
   return (
     <div
@@ -1035,37 +1119,11 @@ function FriendPicker({ friends, onPick, onClose, busy, coins }: { friends: Pers
             <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.sub, lineHeight: 1.5, textAlign: "center" }}>
               {t("duelStakeUitleg", { name: gekozen.name })}
             </p>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-              {DUEL_STAKES.map((n) => {
-                const kan = n <= coins;
-                const aan = inzet === n;
-                return (
-                  <button
-                    key={n}
-                    disabled={!kan}
-                    onClick={() => { sound.uiTap(); setInzet(n); }}
-                    className={kan ? "pressable" : undefined}
-                    style={{
-                      display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
-                      padding: "10px 4px", borderRadius: 14, cursor: kan ? "pointer" : "default",
-                      background: aan ? withAlpha(colors.gold, 0.2) : withAlpha("#000000", 0.28),
-                      border: `1.4px solid ${aan ? colors.gold : kan ? withAlpha(colors.gold, 0.25) : "rgba(255,255,255,.08)"}`,
-                      boxShadow: aan ? `0 0 18px ${withAlpha(colors.gold, 0.3)}` : "none",
-                      opacity: kan ? 1 : 0.4,
-                    }}
-                  >
-                    <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 15, color: aan ? colors.gold : colors.ink }}>
-                      {n === 0 ? t("duelStakeGeen") : n}
-                    </span>
-                    {n > 0 && <img src="/coin.webp" alt="" width={15} height={15} style={{ display: "block" }} />}
-                  </button>
-                );
-              })}
-            </div>
+            <InzetCarrousel waardes={DUEL_STAKES} index={inzetIdx} onIndex={setInzetIdx} coins={coins} />
             <p style={{ margin: 0, fontFamily: font.ui, fontSize: 11.5, color: colors.faint, textAlign: "center" }}>
               {t("duelStakeSaldo", { n: coins })}
             </p>
-            <Button variant="gold" full disabled={busy} onClick={() => onPick(gekozen, inzet)}>
+            <Button variant="gold" full disabled={busy || inzet > coins} onClick={() => onPick(gekozen, inzet)}>
               {inzet > 0 ? t("duelStakeStartMet", { n: inzet }) : t("duelStakeStartZonder")}
             </Button>
           </>
