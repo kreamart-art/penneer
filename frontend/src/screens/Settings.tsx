@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { ArrowLeft, Compass, Download, Globe, HelpCircle, Mail, Music, Share, Trash2, Volume2 } from "lucide-react";
 import { Logo } from "../components/Logo";
+import { Paneel, SierKop } from "../components/ProfileHero";
+import { PilKeuze } from "./Hub";
 import { Button } from "../components/Button";
 import { Toggle } from "../components/Toggle";
 import { Screen, Card } from "../components/Layout";
@@ -15,10 +17,16 @@ import { APP_VERSION } from "../version";
 import { setTileSkin, tileSkinOn } from "../theme/tileSkin";
 import { colors, font, withAlpha } from "../theme/tokens";
 
+/** De kop boven een blok instellingen.
+ *
+ *  Was een grijs regeltje in kapitalen, en dat is precies hoe een instelling er
+ *  niet uit hoort te zien in een spel dat verderop overal gouden sierkoppen
+ *  heeft. Dezelfde `SierKop` als op het profiel, dus dit scherm hoort er weer
+ *  bij in plaats van eronder te hangen. */
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint, marginBottom: 10 }}>
-      {children}
+    <div style={{ marginBottom: 10 }}>
+      <SierKop label={typeof children === "string" ? children : String(children)} />
     </div>
   );
 }
@@ -195,27 +203,17 @@ export function Settings({ game, onBack, onShowRules, onShowTour, onShowLegal }:
         <Card style={{ display: "flex", flexDirection: "column", gap: 18 }}>
           <div>
             <SectionLabel>{t("language")}</SectionLabel>
-            <div style={{ display: "flex", gap: 8 }}>
-              {(["nl", "en"] as const).map((l) => (
-                <button
-                  key={l}
-                  onClick={() => setLang(l)}
-                  style={{
-                    fontFamily: font.ui,
-                    fontSize: 14,
-                    fontWeight: 700,
-                    padding: "9px 18px",
-                    borderRadius: 999,
-                    cursor: "pointer",
-                    color: lang === l ? colors.bg0 : colors.sub,
-                    background: lang === l ? colors.gold : "transparent",
-                    border: `1.5px solid ${lang === l ? "transparent" : colors.panelBorder}`,
-                  }}
-                >
-                  {l === "nl" ? "Nederlands" : "English"}
-                </button>
-              ))}
-            </div>
+            {/* Dezelfde pil als op de ranglijst en in de winkel: een ring met
+                twee knoppen erin. Twee losse pillen naast elkaar lezen als twee
+                onafhankelijke schakelaars, en dat zijn ze niet. */}
+            <PilKeuze
+              actief={lang ?? "nl"}
+              onKies={setLang}
+              opties={[
+                { key: "nl" as const, label: "Nederlands" },
+                { key: "en" as const, label: "English" },
+              ]}
+            />
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -529,17 +527,21 @@ export function Settings({ game, onBack, onShowRules, onShowTour, onShowLegal }:
           )}
         </Card>
 
-        {/* About */}
-        <Card style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, paddingTop: 22 }}>
-          <SectionLabel>{t("about")}</SectionLabel>
-          <Logo size={84} />
-          <span style={{ fontFamily: "'Cybergame', 'Space Grotesk', sans-serif", fontWeight: 400, fontSize: 30, letterSpacing: 2.5, color: colors.ink }}>PEN NEER</span>
-          <span style={{ fontFamily: font.ui, fontSize: 13, color: colors.sub }}>
-            {t("versionLabel")} {APP_VERSION}
-          </span>
-          <span style={{ fontFamily: font.ui, fontSize: 13, color: colors.faint }}>{t("madeBy")}</span>
-          <span style={{ fontFamily: font.ui, fontSize: 12.5, color: withAlpha(colors.gold, 0.85) }}>penneer.artnomad.nl</span>
-        </Card>
+        {/* Over. In de sierlijst van het profiel: dit is het naamplaatje van de
+            app, en dat verdient dezelfde lijst als het naamplaatje van een
+            speler. De inhoud voegt zich naar de art (vaste verhouding), dus
+            logo en regels staan dicht op elkaar. */}
+        <Paneel>
+          <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, paddingInline: 10 }}>
+            <Logo size={56} />
+            <span style={{ fontFamily: "'Cybergame', 'Space Grotesk', sans-serif", fontWeight: 400, fontSize: 26, letterSpacing: 2.5, color: colors.ink, lineHeight: 1.1 }}>PEN NEER</span>
+            <span style={{ fontFamily: font.ui, fontSize: 12, color: colors.sub }}>
+              {t("versionLabel")} {APP_VERSION}
+            </span>
+            <span style={{ fontFamily: font.ui, fontSize: 12, color: colors.faint }}>{t("madeBy")}</span>
+            <span style={{ fontFamily: font.ui, fontSize: 11.5, color: withAlpha(colors.gold, 0.85) }}>penneer.artnomad.nl</span>
+          </div>
+        </Paneel>
       </div>
     </Screen>
   );

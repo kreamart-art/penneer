@@ -26,7 +26,7 @@ import { Screen, Card } from "../components/Layout";
 import type { AccountStats, Friend, GameApi, InboxItem, LeaderboardRow, LevelInfo } from "../net/socket";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
-import { makeProfileCard, shareOrDownload } from "../util/shareCard";
+import { makeClubCard, makeProfileCard, shareOrDownload } from "../util/shareCard";
 import { ClubEmblem, CLUB_EMBLEM_IDS } from "../components/ClubEmblem";
 import { neonSkin, rampFrom } from "../theme/neon";
 import { reelClip, reelEdge, reelFace, reelTheme } from "../theme/reelSkins";
@@ -73,46 +73,11 @@ export function Hub({ game, section, onBack, onShowShop, onOpenInbox, onChalleng
   // dus hun state hangt op Hub-niveau i.p.v. in de ProfileTab.
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [email, setEmail] = useState("");
-  const [sharing, setSharing] = useState(false);
   // Vrienden en clubs stonden onder elkaar, dus je scrollde altijd langs het
   // ene om bij het andere te komen. Als twee knopjes in EEN pil zie je meteen
   // dat het twee kanten van hetzelfde scherm zijn.
   const [sociaal, setSociaal] = useState<"friends" | "club">("friends");
 
-  const shareCard = async () => {
-    if (!account || sharing) return;
-    setSharing(true);
-    try {
-      const lvl = account.level;
-      const winPct = account.stats.games > 0 ? `${Math.round((account.stats.wins / account.stats.games) * 100)}%` : "0%";
-      const blob = await makeProfileCard({
-        name: account.name,
-        color: account.color,
-        avatarUrl: account.has_avatar ? `/api/avatar/${account.id}?v=${account.avatar_ver}` : null,
-        ringColor: RANK_RING[lvl.rank] ?? null,
-        rankTitle: t(`rank_${lvl.rank}`),
-        levelText: t("profileCardLevel", { n: lvl.level }),
-        level: lvl.level,
-        shield: account.shield || "paars",
-        divisieNaam: divisieNaam(SCHILD_KLEUREN.indexOf((account.shield as SchildKleur) || "paars")),
-        divisieAccent: DIVISIE_ACCENT[Math.max(0, SCHILD_KLEUREN.indexOf((account.shield as SchildKleur) || "paars"))],
-        xpNow: Math.max(0, lvl.xp - lvl.level_start),
-        xpSpan: Math.max(1, lvl.next_level - lvl.level_start),
-        xpLabel: `${Math.max(0, lvl.xp - lvl.level_start)} / ${Math.max(1, lvl.next_level - lvl.level_start)} XP`,
-        stats: [
-          [t("statGames"), String(account.stats.games)],
-          [t("statWins"), String(account.stats.wins)],
-          [t("statWinPct"), winPct],
-          [t("statPoints"), String(account.stats.points)],
-        ],
-        badgesLine: t("profileCardBadges", { n: account.badges.length }),
-        footer: t("footer"),
-      });
-      if (blob) await shareOrDownload(blob, "penneer-profiel.png");
-    } finally {
-      setSharing(false);
-    }
-  };
 
   useEffect(() => {
     if (settingsOpen && account) game.refreshBlocked();
@@ -176,11 +141,6 @@ export function Hub({ game, section, onBack, onShowShop, onOpenInbox, onChalleng
                   )}
                 </button>
               )}
-              <button onClick={shareCard} disabled={sharing} aria-label={t("shareProfile")} title={t("shareProfile")} className="pressable" style={{ ...topIconBtn, opacity: sharing ? 0.5 : 1 }}>
-                <HexPlate on size={HEX}>
-                  <Share2 size={16} />
-                </HexPlate>
-              </button>
               <button onClick={() => { sound.uiTap(); setSettingsOpen(true); }} aria-label={t("profileSettings")} title={t("profileSettings")} className="pressable" style={topIconBtn}>
                 <HexPlate on size={HEX}>
                   <SettingsIcon size={16} />
@@ -940,6 +900,7 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
 function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => void }) {
   const { t } = useT();
   const account = game.state.account;
+  const [sharing, setSharing] = useState(false);
   const [name, setName] = useState(account?.name ?? "");
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPass, setLoginPass] = useState("");
@@ -958,6 +919,46 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
   // De oude weergave staat er nog onder (de `vitrine`-vertakkingen), zodat
   // terugvallen een wijziging van deze ene regel is en geen herbouw.
   const vitrine = true;
+
+
+  // De deelkaart van je profiel. Stond in de bovenbalk op een zeshoekige plaat;
+  // hij hoort bij de SECTIE die hij deelt, dus hij staat nu in de hoek van de
+  // profielkaart zelf.
+  const shareCard = async () => {
+    if (!account || sharing) return;
+    setSharing(true);
+    try {
+      const lvl = account.level;
+      const winPct = account.stats.games > 0 ? `${Math.round((account.stats.wins / account.stats.games) * 100)}%` : "0%";
+      const divisie = Math.max(0, SCHILD_KLEUREN.indexOf((account.shield as SchildKleur) || "paars"));
+      const blob = await makeProfileCard({
+        name: account.name,
+        color: account.color,
+        avatarUrl: account.has_avatar ? `/api/avatar/${account.id}?v=${account.avatar_ver}` : null,
+        ringColor: RANK_RING[lvl.rank] ?? null,
+        rankTitle: t(`rank_${lvl.rank}`),
+        levelText: t("profileCardLevel", { n: lvl.level }),
+        level: lvl.level,
+        shield: account.shield || "paars",
+        divisieNaam: divisieNaam(divisie),
+        divisieAccent: DIVISIE_ACCENT[divisie],
+        xpNow: Math.max(0, lvl.xp - lvl.level_start),
+        xpSpan: Math.max(1, lvl.next_level - lvl.level_start),
+        xpLabel: `${Math.max(0, lvl.xp - lvl.level_start)} / ${Math.max(1, lvl.next_level - lvl.level_start)} XP`,
+        stats: [
+          [t("statGames"), String(account.stats.games)],
+          [t("statWins"), String(account.stats.wins)],
+          [t("statWinPct"), winPct],
+          [t("statPoints"), String(account.stats.points)],
+        ],
+        badgesLine: t("profileCardBadges", { n: account.badges.length }),
+        footer: t("footer"),
+      });
+      if (blob) await shareOrDownload(blob, "penneer-profiel.png");
+    } finally {
+      setSharing(false);
+    }
+  };
 
   useEffect(() => setName(account?.name ?? ""), [account?.name]);
 
@@ -1252,6 +1253,15 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
           de ingang naar het foto-menu. */}
       <div style={{ position: "relative", paddingTop: 14 }}>
         <Paneel>
+          {/* Delen zit in de HOEK van de sectie die hij deelt. In de bovenbalk
+              stond hij op een zeshoekige plaat, ver van waar hij over gaat en
+              met een tweede kader eromheen. */}
+          <DeelKnop
+            label={t("shareProfile")}
+            bezig={sharing}
+            onClick={() => { sound.uiTap(); shareCard(); }}
+            style={{ position: "absolute", right: 2, top: -2, zIndex: 2 }}
+          />
           {/* Een breed vlak vraagt om een brede indeling: bovenin het portret
               links met rechts alles wat je over jezelf leest, en onderin de
               voortgangsbalk over de VOLLE breedte. Onder elkaar zou het niet
@@ -1883,6 +1893,7 @@ function ClubScreen({ game, onBack, embedded }: { game: GameApi; onBack?: () => 
   const [emblemOpen, setEmblemOpen] = useState(false);
   const [naamOpen, setNaamOpen] = useState(false);
   const [nieuweNaam, setNieuweNaam] = useState("");
+  const [sharing, setSharing] = useState(false);
 
   useEffect(() => {
     game.loadClub(period);
@@ -1943,6 +1954,37 @@ function ClubScreen({ game, onBack, embedded }: { game: GameApi; onBack?: () => 
 
   // ---- in a club: header + ranked members + leave ----
   const members = board?.members ?? [];
+
+  // De deelkaart van de club. Waar de deelcode-pil de code naar je klembord
+  // kopieert, maakt dit er een PLAATJE van: embleem, naam, code en de stand.
+  // Dat is wat je in een groepsapp plakt, en dan hoeft niemand een losse regel
+  // tekst te ontcijferen.
+  const shareClub = async () => {
+    if (!club || sharing) return;
+    setSharing(true);
+    try {
+      const blob = await makeClubCard({
+        name: club.name,
+        emblemSrc: club.emblem ? `/emblems/${club.emblem}.webp` : "/logo.png",
+        code: club.code,
+        membersText: (club.member_count === 1 ? t("clubMembersOne") : t("clubMembersN", { n: club.member_count })),
+        periodText: period === "month" ? t("seasonChip") : t("allTime"),
+        joinText: t("clubShareJoin"),
+        rows: members.slice(0, 5).map((m) => ({
+          name: m.name,
+          points: m.points,
+          games: m.games,
+          color: m.color,
+          avatarUrl: m.has_avatar ? `/api/avatar/${m.id}?v=${m.avatar_ver}` : null,
+        })),
+        footer: t("footer"),
+      });
+      if (blob) await shareOrDownload(blob, "penneer-club.png");
+    } finally {
+      setSharing(false);
+    }
+  };
+
   const shareCode = () => {
     try { navigator.clipboard?.writeText(club.code); } catch { /* ignore */ }
     setCopied(true);
@@ -1951,6 +1993,14 @@ function ClubScreen({ game, onBack, embedded }: { game: GameApi; onBack?: () => 
   return wrap(
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <Paneel>
+          {/* Delen zit in de hoek van de sectie die hij deelt, net als op je
+              profiel. Kaal, want de sierlijst is hier de omlijsting. */}
+          <DeelKnop
+            label={t("clubShare")}
+            bezig={sharing}
+            onClick={() => { sound.uiTap(); shareClub(); }}
+            style={{ position: "absolute", right: 2, top: -2, zIndex: 2 }}
+          />
           <div style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", gap: 6, paddingInline: 4 }}>
           <div style={{ position: "relative", display: "inline-flex" }}>
             <ClubEmblem id={club.emblem} size={58} />
@@ -2001,7 +2051,7 @@ function ClubScreen({ game, onBack, embedded }: { game: GameApi; onBack?: () => 
               </button>
             </NeonKader>
           ) : (
-            <span style={{ fontFamily: font.ui, fontSize: 11.5, color: colors.sub }}>{t("clubMembersN", { n: club.member_count })}</span>
+            <span style={{ fontFamily: font.ui, fontSize: 11.5, color: colors.sub }}>{(club.member_count === 1 ? t("clubMembersOne") : t("clubMembersN", { n: club.member_count }))}</span>
           )}
           {/* De deelcode in dezelfde pil als de prestatieteller op je profiel:
               helemaal rond, geen glas, alleen de neonlijn. */}
@@ -2127,6 +2177,53 @@ function ClubScreen({ game, onBack, embedded }: { game: GameApi; onBack?: () => 
 /** Het potloodje dat naast iets staat wat je mag aanpassen. Klein: even hoog
  *  als de regel ernaast, want een knop die boven en onder de tekst uitsteekt
  *  maakt van die tekst een bijschrift bij de knop, en het is andersom. */
+/** Het deel-icoon, kaal. Geen zeshoekige plaat eronder.
+ *
+ *  Waarom kaal: dit knopje staat IN een sectie, boven op de sierlijst, en die
+ *  lijst is zelf al de omlijsting. Een plaat erbij is een tweede kader om
+ *  hetzelfde ding. De platen blijven voor de bovenbalk, waar niets omheen zit.
+ *
+ *  Wel een halo eronder, want een goudkleurig lijnicoon op donker paars valt
+ *  weg: alle vorm zit in de lijn, en die is daar bijna even donker. */
+function DeelKnop({ label, bezig, onClick, style }: { label: string; bezig?: boolean; onClick: () => void; style?: React.CSSProperties }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={bezig}
+      aria-label={label}
+      title={label}
+      className={bezig ? undefined : "pressable"}
+      style={{
+        position: "relative",
+        width: 30,
+        height: 30,
+        flexShrink: 0,
+        display: "grid",
+        placeItems: "center",
+        border: "none",
+        background: "transparent",
+        color: GOUD[2],
+        cursor: bezig ? "default" : "pointer",
+        opacity: bezig ? 0.45 : 1,
+        padding: 0,
+        ...style,
+      }}
+    >
+      <span
+        aria-hidden
+        style={{
+          position: "absolute",
+          inset: 3,
+          borderRadius: "50%",
+          background: `radial-gradient(closest-side, ${withAlpha(GOUD[2], 0.34)}, transparent 72%)`,
+          filter: "blur(5px)",
+        }}
+      />
+      <Share2 size={16} style={{ position: "relative" }} />
+    </button>
+  );
+}
+
 function PotloodKnop({ aan, label, onClick, style }: { aan?: boolean; label: string; onClick: () => void; style?: React.CSSProperties }) {
   return (
     <button

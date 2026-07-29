@@ -563,49 +563,40 @@ export async function makeDailyCard(opts: DailyCardOpts): Promise<Blob | null> {
   ctx.fillStyle = colors.faint;
   ctx.fillText(opts.dayLabel.toUpperCase(), W / 2, 360);
 
-  // the day's letter, huge, in a glowing tile
-  const T = 340;
+  // De letter van de dag, groot, in dezelfde neonlijst als elke sectie in de
+  // app. Vroeger stond hier een gouden randje met een gloed eromheen; dat was
+  // de enige plek in het spel die zo'n rand nog had.
+  const T = 330;
   const tx = W / 2 - T / 2;
-  const ty = 420;
-  ctx.fillStyle = "rgba(10,4,26,.42)";
-  roundRect(ctx, tx, ty, T, T, 56);
+  const ty = 414;
+  ctx.fillStyle = "rgba(10,4,26,.5)";
+  roundRect(ctx, tx, ty, T, T, 52);
   ctx.fill();
-  ctx.strokeStyle = colors.gold;
-  ctx.lineWidth = 8;
-  ctx.shadowColor = colors.gold;
-  ctx.shadowBlur = 44;
-  roundRect(ctx, tx, ty, T, T, 56);
-  ctx.stroke();
-  ctx.shadowBlur = 0;
-  ctx.font = "700 230px 'Space Grotesk'";
+  kaderLijn(ctx, tx, ty, T, T, 52, 2.6);
+  ctx.font = "700 224px 'Space Grotesk'";
   ctx.fillStyle = colors.gold;
   ctx.shadowColor = colors.gold;
   ctx.shadowBlur = 40;
-  ctx.fillText(opts.letter.toUpperCase(), W / 2, ty + T / 2 + 82);
+  ctx.fillText(opts.letter.toUpperCase(), W / 2, ty + T / 2 + 80);
   ctx.shadowBlur = 0;
 
-  // score pill
-  ctx.font = "700 46px 'Space Grotesk'";
-  const pw = ctx.measureText(opts.scoreText).width + 90;
-  ctx.fillStyle = colors.gold;
-  roundRect(ctx, W / 2 - pw / 2, 830, pw, 84, 42);
-  ctx.fill();
-  ctx.fillStyle = "#2A1B05";
-  ctx.fillText(opts.scoreText, W / 2, 887);
-
-  // rank + streak
-  let y = 990;
-  if (opts.rankText) {
-    ctx.font = "700 46px 'Space Grotesk'";
-    ctx.fillStyle = colors.ink;
-    ctx.fillText(opts.rankText, W / 2, y);
-    y += 70;
-  }
-  if (opts.streakText) {
-    ctx.font = "600 36px Inter";
-    ctx.fillStyle = colors.orange;
-    ctx.fillText(opts.streakText, W / 2, y);
-  }
+  // Score, plek en reeks als glasrijen, precies zoals de ranglijst eronder op
+  // de dagronde zelf. Drie losse regels tekst zouden hier zweven; als rij
+  // hebben ze een vorm en horen ze bij elkaar.
+  const rijX = 150;
+  const rijW = W - 300;
+  const rijH = 96;
+  let y = ty + T + 60;
+  const regels: [string, string, "goud" | "paars"][] = [[opts.scoreText, "", "goud"]];
+  if (opts.rankText) regels.push([opts.rankText, "", "paars"]);
+  if (opts.streakText) regels.push([opts.streakText, "", "paars"]);
+  regels.forEach(([tekst, , accent], i) => {
+    glasRij(ctx, rijX, y, rijW, rijH, accent, 0.3 + ((i * 0.618034) % 1) * 0.4);
+    ctx.font = i === 0 ? "700 46px 'Space Grotesk'" : "600 34px Inter";
+    ctx.fillStyle = i === 0 ? colors.gold : i === 2 ? colors.orange : colors.ink;
+    ctx.fillText(tekst, W / 2, y + rijH / 2 + (i === 0 ? 16 : 12));
+    y += rijH + 16;
+  });
 
   ctx.font = "500 26px Inter";
   ctx.fillStyle = colors.faint;
@@ -622,6 +613,202 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   ctx.arcTo(x, y + h, x, y, r);
   ctx.arcTo(x, y, x + w, y, r);
   ctx.closePath();
+}
+
+interface ClubCardOpts {
+  name: string;           // clubnaam
+  emblemSrc: string;      // pad naar het embleem
+  code: string;           // deelcode
+  membersText: string;    // "7 leden"
+  periodText: string;     // "Deze maand" / "Aller tijden"
+  rows: { name: string; points: number; games: number; avatarUrl: string | null; color: string }[];
+  joinText: string;       // "Doe mee met deze code"
+  footer: string;
+}
+
+/** De deelkaart van een club: het embleem, de naam, de code en de stand.
+ *
+ *  Dezelfde taal als de uitslagkaart, want het IS een uitslag: een lijst met
+ *  namen en punten. Alleen is het decor hier het profieldecor en niet de arena,
+ *  omdat een club bij je profiel hoort en niet bij een potje.
+ *
+ *  De CODE is het punt van de hele kaart. Iemand deelt dit om anderen erbij te
+ *  krijgen, dus de code staat groot en apart, met de uitnodiging eronder. */
+export async function makeClubCard(opts: ClubCardOpts): Promise<Blob | null> {
+  const W = 1080;
+  const H = 1350;
+  const canvas = document.createElement("canvas");
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+
+  try {
+    await Promise.all([
+      document.fonts.load("700 120px 'Space Grotesk'"),
+      document.fonts.load("600 36px Inter"),
+    ]);
+  } catch {
+    /* fall back to default fonts */
+  }
+
+  const grad = ctx.createRadialGradient(W / 2, -H * 0.08, 100, W / 2, H * 0.5, H);
+  grad.addColorStop(0, colors.glow);
+  grad.addColorStop(0.42, colors.bg1);
+  grad.addColorStop(1, colors.bg0);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+  const decor = await loadImage("/ui/profile-bg.webp");
+  if (decor) {
+    const sc = Math.max(W / decor.width, H / decor.height);
+    ctx.drawImage(decor, (W - decor.width * sc) / 2, (H - decor.height * sc) / 2, decor.width * sc, decor.height * sc);
+    const vig = ctx.createRadialGradient(W / 2, H * 0.3, H * 0.1, W / 2, H * 0.5, H * 0.78);
+    vig.addColorStop(0, "rgba(6,4,14,.12)");
+    vig.addColorStop(1, "rgba(4,2,10,.86)");
+    ctx.fillStyle = vig;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  ctx.textAlign = "center";
+
+  // merk
+  const logo = await loadImage("/logo.png");
+  if (logo) {
+    const S = 150;
+    ctx.drawImage(logo, W / 2 - S / 2, 120 - S / 2, S, S);
+  } else {
+    drawEmblem(ctx, W / 2, 120, 56);
+  }
+  ctx.font = "700 50px 'Space Grotesk'";
+  ctx.fillStyle = colors.ink;
+  ctx.shadowColor = colors.violet;
+  ctx.shadowBlur = 26;
+  ctx.fillText("PEN NEER", W / 2, 232);
+  ctx.shadowBlur = 0;
+
+  // Alles onder het merk zakt naar het midden als de stand kort is. Een club
+  // van twee zou anders de bovenste helft vullen en de rest leeg laten, en dan
+  // ziet de kaart eruit alsof er iets niet geladen is.
+  const rijH = 92;
+  const rijGap = 14;
+  const top = opts.rows.slice(0, 5);
+  // Niet de helft maar iets minder: boven het embleem staat al de merkregel
+  // met zijn eigen lucht, dus een eerlijke halvering laat het gat bovenin
+  // groter lijken dan dat onderin.
+  const dy = Math.max(0, (5 - top.length) * (rijH + rijGap) * 0.4);
+
+  // het embleem van de club, met licht erachter zodat het goud niet wegvalt
+  const em = await loadImage(opts.emblemSrc);
+  const E = 240;
+  const ey = 280 + dy;
+  if (em) {
+    const halo = ctx.createRadialGradient(W / 2, ey + E / 2, 20, W / 2, ey + E / 2, E * 0.72);
+    halo.addColorStop(0, "rgba(255,205,90,.34)");
+    halo.addColorStop(1, "rgba(255,205,90,0)");
+    ctx.fillStyle = halo;
+    ctx.fillRect(W / 2 - E, ey - E * 0.3, E * 2, E * 1.6);
+    ctx.drawImage(em, W / 2 - E / 2, ey, E, E);
+  }
+
+  // naam + aantal leden
+  ctx.font = "700 62px 'Space Grotesk'";
+  ctx.fillStyle = colors.ink;
+  const naam = opts.name.length > 16 ? opts.name.slice(0, 15) + "\u2026" : opts.name;
+  ctx.fillText(naam, W / 2, ey + E + 74);
+  ctx.font = "600 30px Inter";
+  ctx.fillStyle = colors.faint;
+  ctx.fillText(opts.membersText.toUpperCase(), W / 2, ey + E + 118);
+
+  // de deelcode, in een neonlijst: dit is waar de kaart om draait
+  const cw = 420;
+  const ch = 104;
+  const cx = W / 2 - cw / 2;
+  const cy = ey + E + 152;
+  ctx.fillStyle = "rgba(10,4,26,.5)";
+  roundRect(ctx, cx, cy, cw, ch, 26);
+  ctx.fill();
+  kaderLijn(ctx, cx, cy, cw, ch, 26, 2.4);
+  ctx.font = "700 62px 'Space Grotesk'";
+  ctx.fillStyle = colors.gold;
+  ctx.shadowColor = colors.gold;
+  ctx.shadowBlur = 30;
+  // Letterafstand met de hand, want `letterSpacing` op canvas kent Safari niet:
+  // de code is zes tekens, dus dat is te overzien.
+  const sp = 14;
+  const letters = opts.code.toUpperCase().split("");
+  const breed = letters.reduce((a, l) => a + ctx.measureText(l).width, 0) + sp * (letters.length - 1);
+  let lx = W / 2 - breed / 2;
+  ctx.textAlign = "left";
+  for (const l of letters) {
+    ctx.fillText(l, lx, cy + ch / 2 + 22);
+    lx += ctx.measureText(l).width + sp;
+  }
+  ctx.textAlign = "center";
+  ctx.shadowBlur = 0;
+
+  ctx.font = "600 28px Inter";
+  ctx.fillStyle = colors.sub;
+  ctx.fillText(opts.joinText, W / 2, cy + ch + 46);
+
+  // de stand, als glasrijen
+  ctx.font = "600 26px Inter";
+  ctx.fillStyle = colors.faint;
+  ctx.fillText(opts.periodText.toUpperCase(), W / 2, cy + ch + 104);
+
+  const rijX = 100;
+  const rijW = W - 200;
+  let ry = cy + ch + 134;
+  for (let i = 0; i < top.length; i++) {
+    const r = top[i];
+    // De piek van de lichtstreep verspringt per rij volgens de gulden snede;
+    // op vijftig procent staat overal hetzelfde puntje en leest het als raster.
+    glasRij(ctx, rijX, ry, rijW, rijH, i === 0 ? "goud" : "paars", 0.3 + ((i * 0.618034) % 1) * 0.4);
+
+    ctx.textAlign = "center";
+    ctx.font = "700 34px 'Space Grotesk'";
+    ctx.fillStyle = i === 0 ? colors.gold : colors.faint;
+    ctx.fillText(String(i + 1), rijX + 42, ry + rijH / 2 + 12);
+
+    // portret
+    const av = r.avatarUrl ? await loadImage(r.avatarUrl) : null;
+    const D = 56;
+    const ax = rijX + 76;
+    const ay = ry + rijH / 2 - D / 2;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(ax + D / 2, ay + D / 2, D / 2, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.fillStyle = av ? "#140B26" : r.color;
+    ctx.fillRect(ax, ay, D, D);
+    if (av) {
+      ctx.drawImage(av, ax, ay, D, D);
+    } else {
+      ctx.fillStyle = "#1A0B33";
+      ctx.font = "700 30px 'Space Grotesk'";
+      ctx.fillText((r.name.trim()[0] || "?").toUpperCase(), ax + D / 2, ay + D / 2 + 11);
+    }
+    ctx.restore();
+
+    ctx.textAlign = "left";
+    ctx.font = "600 32px Inter";
+    ctx.fillStyle = colors.ink;
+    const kort = r.name.length > 13 ? r.name.slice(0, 12) + "\u2026" : r.name;
+    ctx.fillText(kort, ax + D + 18, ry + rijH / 2 + 11);
+
+    ctx.textAlign = "right";
+    ctx.font = "700 38px 'Space Grotesk'";
+    ctx.fillStyle = i === 0 ? colors.gold : colors.ink;
+    ctx.fillText(String(r.points), rijX + rijW - 30, ry + rijH / 2 + 13);
+
+    ry += rijH + rijGap;
+  }
+
+  ctx.textAlign = "center";
+  ctx.font = "500 26px Inter";
+  ctx.fillStyle = colors.faint;
+  ctx.fillText(opts.footer, W / 2, H - 46);
+
+  return new Promise((resolve) => canvas.toBlob((b) => resolve(b), "image/png"));
 }
 
 export async function shareOrDownload(blob: Blob, filename: string): Promise<boolean> {
