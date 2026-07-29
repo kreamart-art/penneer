@@ -1172,6 +1172,24 @@ const ZAAL_KLEUR: Record<number, string> = {
 
 /* De inzet-popup: dezelfde schil voor uitdagen en voor een herkansing. Twee
  * eigen vensters voor dezelfde vraag lopen na twee wijzigingen uit elkaar. */
+/* Het decor van de inzet-popups: de duel-arena als achtergrond met een donkere
+ * sluier erover (de popup heeft een EIGEN dichte bodem nodig, anders lees je de
+ * lijst door de pagina heen), en de neon-lijn met de rondlopende animatie als
+ * rand, dezelfde als om de secties op het profiel. */
+const INZET_BINNEN: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 10,
+  padding: "22px 18px 18px",
+  backgroundColor: "#160D30",
+  backgroundImage: [
+    "linear-gradient(180deg, rgba(16,9,34,.88) 0%, rgba(16,9,34,.72) 40%, rgba(12,6,26,.9) 100%)",
+    "url(/duel-bg.webp)",
+  ].join(", "),
+  backgroundSize: "auto, cover",
+  backgroundPosition: "center, center 30%",
+};
+
 function InzetPopup({
   titel, uitleg, waardes, index, onIndex, coins, bezig, onKies, onClose,
 }: {
@@ -1185,26 +1203,17 @@ function InzetPopup({
       onClick={onClose}
       style={{ position: "fixed", inset: 0, zIndex: 95, background: "rgba(6,3,18,.8)", backdropFilter: "blur(5px)", WebkitBackdropFilter: "blur(5px)", display: "grid", placeItems: "center", padding: 22 }}
     >
-      <div
-        className="pop-in"
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          position: "relative", width: "100%", maxWidth: 340,
-          display: "flex", flexDirection: "column", gap: 10, padding: "22px 18px 18px", borderRadius: 24,
-          backgroundColor: "#160D30",
-          backgroundImage: [
-            `radial-gradient(120% 90% at 8% 0%, ${withAlpha(colors.gold, 0.16)}, transparent 58%)`,
-            `radial-gradient(110% 80% at 100% 100%, ${withAlpha(colors.violet, 0.22)}, transparent 62%)`,
-            "linear-gradient(180deg, #2a1c48, #160D30)",
-          ].join(", "),
-          boxShadow: [
-            `inset 0 0 0 1.4px ${withAlpha(colors.gold, 0.42)}`,
-            `inset 0 1px 0 ${withAlpha("#FFEBB8", 0.28)}`,
-            `0 0 26px ${withAlpha(colors.gold, 0.14)}`,
-            "0 24px 80px rgba(0,0,0,.6)",
-          ].join(", "),
-        }}
+      <NeonKader
+        radius={24}
+        dik={0.5}
+        vulling="geen"
+        animeer
+        eindkap
+        sterkte={0.6}
+        style={{ width: "100%", maxWidth: 340, boxShadow: "0 24px 80px rgba(0,0,0,.6)" }}
+        binnen={INZET_BINNEN}
       >
+       <div className="pop-in" onClick={(e) => e.stopPropagation()} style={{ position: "relative", display: "flex", flexDirection: "column", gap: 10 }}>
         <button onClick={onClose} aria-label={t("back")} style={{ position: "absolute", top: 12, right: 12, background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 4 }}>
           <CloseIcon size={26} />
         </button>
@@ -1233,7 +1242,8 @@ function InzetPopup({
         <p style={{ margin: 0, fontFamily: font.ui, fontSize: 11.5, color: colors.faint, textAlign: "center" }}>
           {t("duelStakeSaldo", { n: coins })}
         </p>
-      </div>
+       </div>
+      </NeonKader>
     </div>
   );
 }
@@ -1350,32 +1360,17 @@ function FriendPicker({ friends, onPick, onClose, busy, coins }: { friends: Pers
       onClick={onClose}
       style={{ position: "fixed", inset: 0, zIndex: 95, background: "rgba(6,3,18,.8)", backdropFilter: "blur(5px)", WebkitBackdropFilter: "blur(5px)", display: "grid", placeItems: "center", padding: 22 }}
     >
-      <div
-        className="pop-in"
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          position: "relative", width: "100%", maxWidth: 340, maxHeight: "78vh", overflowY: "auto",
-          display: "flex", flexDirection: "column", gap: 10, padding: "22px 18px 18px", borderRadius: 24,
-          // Een echt decor in plaats van een vlakke kaart: warm licht dat
-          // linksboven binnenvalt over een diepe paarse bodem, met een tweede
-          // koele bron rechtsonder. Zo staat de zaal in een ruimte in plaats
-          // van op een blad.
-          backgroundColor: "#160D30",
-          backgroundImage: [
-            `radial-gradient(120% 90% at 8% 0%, ${withAlpha(colors.gold, 0.16)}, transparent 58%)`,
-            `radial-gradient(110% 80% at 100% 100%, ${withAlpha(colors.violet, 0.22)}, transparent 62%)`,
-            "linear-gradient(180deg, #2a1c48, #160D30)",
-          ].join(", "),
-          // De neonlijn om de sectie: donker aan de uiteinden, oplichtend in het
-          // midden, met een glansje erop. Een vlakke border kan dat niet.
-          boxShadow: [
-            `inset 0 0 0 1.4px ${withAlpha(colors.gold, 0.42)}`,
-            `inset 0 1px 0 ${withAlpha("#FFEBB8", 0.28)}`,
-            `0 0 26px ${withAlpha(colors.gold, 0.14)}`,
-            "0 24px 80px rgba(0,0,0,.6)",
-          ].join(", "),
-        }}
+      <NeonKader
+        radius={24}
+        dik={0.5}
+        vulling="geen"
+        animeer
+        eindkap
+        sterkte={0.6}
+        style={{ width: "100%", maxWidth: 340, boxShadow: "0 24px 80px rgba(0,0,0,.6)" }}
+        binnen={{ ...INZET_BINNEN, maxHeight: "78vh", overflowY: "auto" }}
       >
+       <div className="pop-in" onClick={(e) => e.stopPropagation()} style={{ position: "relative", display: "flex", flexDirection: "column", gap: 10 }}>
         <button onClick={onClose} aria-label={t("back")} style={{ position: "absolute", top: 12, right: 12, background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 4 }}>
           <CloseIcon size={26} />
         </button>
@@ -1431,7 +1426,8 @@ function FriendPicker({ friends, onPick, onClose, busy, coins }: { friends: Pers
             ))}
           </>
         )}
-      </div>
+       </div>
+      </NeonKader>
     </div>
   );
 }
