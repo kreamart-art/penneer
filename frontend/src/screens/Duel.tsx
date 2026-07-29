@@ -1119,9 +1119,9 @@ function ZaalTekst({ tekst, maat, gloed, spatie = 0 }: { tekst: string; maat: nu
   };
   const laag: React.CSSProperties = { ...basis, position: "absolute", left: 0, top: 0, pointerEvents: "none" };
   const knip: React.CSSProperties = { WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" };
-  // Even dun als de neon-kaders elders (1,4px), NIET meeschalend met de maat:
-  // de lijn is een lijn, geen rand die dikker wordt als de letter groeit.
-  const lijn = 1.4;
+  // Haarfijn: de lijn moet je bijna niet ZIEN, alleen voelen. De vorm komt van
+  // het glas en de gloed; de lijn tekent hem alleen scherp af.
+  const lijn = 0.7;
   return (
     <span style={{ position: "relative", display: "inline-block", ...basis }}>
       {/* 1. het licht van de zaal, ruim vervaagd, achter alles */}
