@@ -119,6 +119,9 @@ export interface Account {
   emote_packs: string[]; // emote packs unlocked (free + earned + bought)
   coins: number; // currency balance
   coins_pending: number; // new coins since the last coin popup was seen
+  cash: number; // de zeldzame munt: alleen op mijlpalen, koopt de scheidsrechter
+  cash_pending: number; // nieuwe cash sinds de laatste popup (rolt mee met coins)
+  land: string; // tweeletterige landcode uit je gegevens, standaard "NL"
   coins_pack_price: number; // legacy (old all-in-one country pack cost)
   owned_items: string[]; // coin-bought items owned: buzzer ids (bz01..05) + avatar packs (avpack1/2)
   stats: AccountStats;
@@ -913,6 +916,8 @@ export interface GameApi {
   claimBuzzerReward: (skin: string, equip: boolean) => void;
   claimReward: (id: string, equip?: boolean) => void;
   buyItemCoins: (item: string) => void;
+  buyItemCash: (item: string) => void;
+  setLand: (land: string) => void;
   ackCoinReward: (level: number) => void;
   rematch: () => void;
   clearJoin: () => void;
@@ -1163,6 +1168,8 @@ export function useGame(): GameApi {
     claimBuzzerReward: (skin, equip) => send({ type: "claim_buzzer_reward", skin, equip }),
     claimReward: (id, equip) => send({ type: "claim_reward", id, equip: !!equip }),
     buyItemCoins: (item) => send({ type: "buy_item_coins", item }),
+    buyItemCash: (item) => send({ type: "buy_item_cash", item }),
+    setLand: (land) => send({ type: "set_land", land }),
     ackCoinReward: (level) => send({ type: "ack_coin_reward", level }),
     rematch: () => send({ type: "rematch" }),
     clearJoin: () => dispatch({ type: "clearJoin" }),

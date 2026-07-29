@@ -5,7 +5,7 @@
 // Coins are also earned by levelling (1/level + 5 per 10 levels). A code the
 // owner handed out still unlocks the AI. A profile is required to own anything.
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { ArrowLeft, Check, ChevronLeft, ChevronRight, ListChecks } from "lucide-react";
+import { ArrowLeft, Check, ChevronLeft, ChevronRight, ListChecks, Lock } from "lucide-react";
 import { Screen, Card } from "../components/Layout";
 import { MusicToggle } from "../components/MusicToggle";
 import { sound } from "../sound/sound";
@@ -13,7 +13,7 @@ import type { GameApi } from "../net/socket";
 import { useT } from "../i18n/i18n";
 import { EMOTE_PACKS_FOR_SALE, EMOTE_SRC } from "../components/emotes";
 import { reelClip, reelEdge, reelFace, reelTheme } from "../theme/reelSkins";
-import { colors, font, withAlpha } from "../theme/tokens";
+import { colors, font, withAlpha, GROEN } from "../theme/tokens";
 import { useTileSkin } from "../theme/tileSkin";
 import { NeonKader, Paneel } from "../components/ProfileHero";
 import { GlasVeld } from "../components/GlasVeld";
@@ -55,13 +55,20 @@ const AVATAR_PACKS = [
 ];
 
 interface Bundle { product: string; coins: number; price: string }
+/* De negen producten: vier coin-bundels, vier cash-bundels en het startpakket
+ * dat allebei geeft. Elk product weet zelf hoeveel van welke munt het uitkeert,
+ * zodat de tegel de juiste zak kan tonen zonder de naam te hoeven raden. */
+interface Product { product: string; coins: number; cash: number; price: string }
 interface ShopStatus {
   enabled: boolean;
   currency: string;
   ai_price?: string;
   price?: string; // legacy (= ai_price)
   bundles?: Bundle[];
+  producten?: Product[];
   coin_prices?: Record<string, number>;
+  cash_prices?: Record<string, number>;
+  land_buzzers?: Record<string, string>;
 }
 
 function money(value: string | undefined, currency: string): string {
@@ -81,11 +88,17 @@ function Coins({ n, color = colors.gold, size = 16 }: { n: number; color?: strin
 
 // One coin-bought item (a buzzer or an avatar pack): art, title, and a price
 // pill you tap to buy (dimmed when you can't afford it; green when owned).
-function CoinItem({ title, owned, price, coins, index, veeg, onBuy, children }: {
-  title: string; owned: boolean; price: number; coins: number; index?: number; veeg?: boolean; onBuy: () => void; children: React.ReactNode;
+function CoinItem({ title, owned, price, coins, cashPrice, cash, slot, index, veeg, onBuy, onBuyCash, children }: {
+  title: string; owned: boolean; price: number; coins: number;
+  cashPrice?: number; cash?: number;
+  // `slot` = wel te zien, maar niet met COINS te koop: de landenknoppen van
+  // andere landen. Die koop je met cash, of je zet je land om.
+  slot?: boolean;
+  index?: number; veeg?: boolean; onBuy: () => void; onBuyCash?: () => void; children: React.ReactNode;
 }) {
   const { t } = useT();
-  const affordable = coins >= price;
+  const affordable = !slot && coins >= price;
+  const cashAf = cashPrice != null && (cash ?? 0) >= cashPrice;
   return (
     <GlasVak index={index} veeg={veeg}>
       <div style={{ width: "100%", aspectRatio: "1 / 1", display: "grid", placeItems: "center", overflow: "hidden" }}>{children}</div>
@@ -95,20 +108,45 @@ function CoinItem({ title, owned, price, coins, index, veeg, onBuy, children }: 
           <Check size={13} /> {t("shopItemOwned")}
         </span>
       ) : (
-        <button
-          onClick={() => { if (affordable) { sound.uiTap(); onBuy(); } }}
-          disabled={!affordable}
-          aria-label={`${t("shopItemBuy")} ${title}`}
-          className={affordable ? "pressable" : undefined}
-          style={{
-            display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 11px", borderRadius: 999,
-            background: affordable ? withAlpha(colors.gold, 0.16) : withAlpha("#000000", 0.3),
-            border: `1px solid ${affordable ? withAlpha(colors.gold, 0.5) : colors.panelBorder}`,
-            cursor: affordable ? "pointer" : "default",
-          }}
-        >
-          <Coins n={price} color={affordable ? colors.gold : colors.faint} size={14} />
-        </button>
+        // Twee prijzen naast elkaar: coins links, cash rechts. Bijna alles is
+        // met allebei te betalen. Wat NIET met coins kan (een landenknop van
+        // een ander land) laat zijn coin-prijs zien met een slotje, zodat je
+        // ziet dat hij bestaat en hoe je hem opent.
+        <div style={{ display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap", justifyContent: "center" }}>
+          <button
+            onClick={() => { if (affordable) { sound.uiTap(); onBuy(); } }}
+            disabled={!affordable}
+            aria-label={`${t("shopItemBuy")} ${title}`}
+            className={affordable ? "pressable" : undefined}
+            title={slot ? t("landBuzzerSlot") : undefined}
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 4, padding: "4px 9px", borderRadius: 999,
+              background: affordable ? withAlpha(colors.gold, 0.16) : withAlpha("#000000", 0.3),
+              border: `1px solid ${affordable ? withAlpha(colors.gold, 0.5) : colors.panelBorder}`,
+              cursor: affordable ? "pointer" : "default",
+            }}
+          >
+            {slot && <Lock size={10} color={colors.faint} />}
+            <Coins n={price} color={affordable ? colors.gold : colors.faint} size={13} />
+          </button>
+          {cashPrice != null && onBuyCash && (
+            <button
+              onClick={() => { if (cashAf) { sound.uiTap(); onBuyCash(); } }}
+              disabled={!cashAf}
+              aria-label={`${t("shopItemBuy")} ${title}`}
+              className={cashAf ? "pressable" : undefined}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 4, padding: "4px 9px", borderRadius: 999,
+                background: cashAf ? withAlpha(GROEN[2], 0.16) : withAlpha("#000000", 0.3),
+                border: `1px solid ${cashAf ? withAlpha(GROEN[2], 0.5) : colors.panelBorder}`,
+                cursor: cashAf ? "pointer" : "default",
+              }}
+            >
+              <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 12.5, color: cashAf ? GROEN[3] : colors.faint }}>{cashPrice}</span>
+              <img src="/ui/valuta/cash.webp?v=1" alt="" width={13} height={13} style={{ display: "block", opacity: cashAf ? 1 : 0.45 }} />
+            </button>
+          )}
+        </div>
       )}
     </GlasVak>
   );
@@ -354,6 +392,14 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
   const [buying, setBuying] = useState<string | null>(null);
   const shopResult = game.state.shopResult;
   const prices = status?.coin_prices ?? {};
+  const cashPrices = status?.cash_prices ?? {};
+  const cash = account?.cash ?? 0;
+  // De draaiknop die voor JOU met coins te koop is: die van je eigen land.
+  const eigenBuzzer = (status?.land_buzzers ?? {})[(account?.land || "NL").toUpperCase()] ?? null;
+  // Oudere servers sturen alleen `bundles`; dan tonen we die, zodat de winkel
+  // niet leeg is terwijl de backend nog aan het uitrollen is.
+  const producten: Product[] =
+    status?.producten ?? (status?.bundles ?? []).map((b) => ({ ...b, cash: 0 }));
   // Welk vak van de winkel je open hebt. De AI staat erbuiten, want die staat
   // altijd bovenaan.
   const [vak, setVak] = useState(0);
@@ -423,7 +469,7 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
     ...(catsForSale.length > 0 ? [t("shopTabCats")] : []),
   ];
   const tellingen = [
-    (status?.bundles ?? []).length,
+    producten.length,
     BUZZERS_FOR_SALE.length,
     REELS_FOR_SALE.length,
     EMOTE_PACKS_FOR_SALE.length,
@@ -496,13 +542,32 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
               {aiActive ? (
                 <div style={{ textAlign: "center", fontFamily: font.ui, fontSize: 12.5, color: colors.green }}>{t("shopAiActive")}</div>
               ) : !account ? null : (
-                <div style={{ display: "flex", justifyContent: "center" }}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 7 }}>
                   <KnopPlaat
                     breed={100}
                     uit={buying !== null || !status?.enabled}
                     onClick={() => startPaypal("ai")}
                     label={buying === "ai" ? "..." : money(status?.ai_price ?? status?.price, status?.currency ?? "EUR")}
                   />
+                  {/* Of je speelt hem bij elkaar. 250 cash is precies wat je op
+                      level 45 verdiend hebt, dus dit is een echt alternatief en
+                      geen fopprijs. */}
+                  {cashPrices.referee != null && (
+                    <button
+                      onClick={() => { if (cash >= cashPrices.referee) { sound.uiTap(); game.buyItemCash("referee"); } }}
+                      disabled={cash < cashPrices.referee}
+                      className={cash >= cashPrices.referee ? "pressable" : undefined}
+                      style={{
+                        display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 14px", borderRadius: 999,
+                        background: cash >= cashPrices.referee ? withAlpha(GROEN[2], 0.16) : withAlpha("#000000", 0.3),
+                        border: `1px solid ${cash >= cashPrices.referee ? withAlpha(GROEN[2], 0.5) : colors.panelBorder}`,
+                        cursor: cash >= cashPrices.referee ? "pointer" : "default",
+                      }}
+                    >
+                      <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 14, color: cash >= cashPrices.referee ? GROEN[3] : colors.faint }}>{cashPrices.referee}</span>
+                      <img src="/ui/valuta/cash.webp?v=1" alt="" width={15} height={15} style={{ display: "block", opacity: cash >= cashPrices.referee ? 1 : 0.45 }} />
+                    </button>
+                  )}
                 </div>
               )}
               {!aiActive && status && !status.enabled && (
@@ -525,14 +590,38 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
               <div style={{ fontFamily: font.ui, fontSize: 12, lineHeight: 1.3, color: colors.faint }}>{t("shopCoinsLead")}</div>
             </div>
             <Card style={{ padding: "9px 8px 10px" }}>
-              <Raster kolommen={2} aantal={(status?.bundles ?? []).length}>
-                {(status?.bundles ?? []).map((b, i) => (
+              {/* Drie kolommen, want het zijn er negen: dan staat er een net
+                  vierkant van 3x3 in plaats van vier rijen met een wees. */}
+              <Raster kolommen={3} aantal={producten.length}>
+                {producten.map((b, i) => (
                   <GlasVak key={b.product} index={i} veeg={i === beurt}>
-                    {i === 3 && <span style={{ position: "absolute", top: 5, right: 10, fontFamily: font.ui, fontSize: 8.5, fontWeight: 800, letterSpacing: 0.4, textTransform: "uppercase", color: colors.gold }}>{t("shopBestValue")}</span>}
-                    <img src="/coins-stack.webp" alt="" style={{ width: 62, height: 62, objectFit: "contain", display: "block" }} />
-                    <Coins n={b.coins} size={16} />
+                    {b.product === "starter" && <span style={{ position: "absolute", top: 5, right: 8, fontFamily: font.ui, fontSize: 8, fontWeight: 800, letterSpacing: 0.4, textTransform: "uppercase", color: colors.gold }}>{t("shopBestValue")}</span>}
+                    {/* De zak hoort bij de munt die eruit komt. Het startpakket
+                        geeft allebei, dus daar staan ze naast elkaar, iets
+                        kleiner zodat de tegel niet uit zijn voegen groeit. */}
+                    {b.coins > 0 && b.cash > 0 ? (
+                      <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 54 }}>
+                        <img src="/ui/valuta/coinbag.webp?v=1" alt="" style={{ width: 36, height: 36, objectFit: "contain", display: "block" }} />
+                        <img src="/ui/valuta/cashbag.webp?v=1" alt="" style={{ width: 36, height: 36, objectFit: "contain", display: "block" }} />
+                      </div>
+                    ) : (
+                      <img
+                        src={b.cash > 0 ? "/ui/valuta/cashbag.webp?v=1" : "/ui/valuta/coinbag.webp?v=1"}
+                        alt=""
+                        style={{ width: 54, height: 54, objectFit: "contain", display: "block" }}
+                      />
+                    )}
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
+                      {b.coins > 0 && <Coins n={b.coins} size={14} />}
+                      {b.cash > 0 && (
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                          <img src="/ui/valuta/cash.webp?v=1" alt="" width={14} height={14} style={{ display: "block" }} />
+                          <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 14, color: GROEN[3] }}>{b.cash}</span>
+                        </span>
+                      )}
+                    </div>
                     <KnopPlaat
-                      breed={92}
+                      breed={80}
                       uit={!account || buying !== null || !status?.enabled}
                       onClick={() => startPaypal(b.product)}
                       label={buying === b.product ? "..." : money(b.price, status?.currency ?? "EUR")}
@@ -562,7 +651,7 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
             <Card style={{ padding: "9px 8px 10px" }}>
               <Raster kolommen={3} aantal={BUZZERS_FOR_SALE.length}>
                 {BUZZERS_FOR_SALE.map((bz, i) => (
-                  <CoinItem key={bz.id} title={t(bz.name)} owned={owned.has(bz.id)} price={prices[bz.id] ?? buzzPrice} coins={coins} index={i} veeg={i === beurt} onBuy={() => game.buyItemCoins(bz.id)}>
+                  <CoinItem key={bz.id} title={t(bz.name)} owned={owned.has(bz.id)} price={prices[bz.id] ?? buzzPrice} coins={coins} cashPrice={cashPrices[bz.id]} cash={cash} slot={eigenBuzzer !== bz.id} index={i} veeg={i === beurt} onBuy={() => game.buyItemCoins(bz.id)} onBuyCash={() => game.buyItemCash(bz.id)}>
                     <img src={`/buzzers/${bz.id}.webp`} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
                   </CoinItem>
                 ))}
@@ -580,7 +669,7 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
             <Card style={{ padding: "9px 8px 10px" }}>
               <Raster kolommen={3} aantal={REELS_FOR_SALE.length}>
                 {REELS_FOR_SALE.map((rs, i) => (
-                  <CoinItem key={rs.id} title={t(rs.name)} owned={owned.has(rs.id)} price={prices[rs.id] ?? 100} coins={coins} index={i} veeg={i === beurt} onBuy={() => game.buyItemCoins(rs.id)}>
+                  <CoinItem key={rs.id} title={t(rs.name)} owned={owned.has(rs.id)} price={prices[rs.id] ?? 100} coins={coins} cashPrice={cashPrices[rs.id]} cash={cash} index={i} veeg={i === beurt} onBuy={() => game.buyItemCoins(rs.id)} onBuyCash={() => game.buyItemCash(rs.id)}>
                     <ReelSwatch id={rs.id} />
                   </CoinItem>
                 ))}
@@ -598,7 +687,7 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
             <Card style={{ padding: "9px 8px 10px" }}>
               <Raster kolommen={2} aantal={EMOTE_PACKS_FOR_SALE.length}>
                 {EMOTE_PACKS_FOR_SALE.map((pk, i) => (
-                  <CoinItem key={pk.id} title={t(pk.name)} owned={owned.has(pk.id)} price={prices[pk.id] ?? 200} coins={coins} index={i} veeg={i === beurt} onBuy={() => game.buyItemCoins(pk.id)}>
+                  <CoinItem key={pk.id} title={t(pk.name)} owned={owned.has(pk.id)} price={prices[pk.id] ?? 200} coins={coins} cashPrice={cashPrices[pk.id]} cash={cash} index={i} veeg={i === beurt} onBuy={() => game.buyItemCoins(pk.id)} onBuyCash={() => game.buyItemCash(pk.id)}>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 1.5, width: "100%" }}>
                       {pk.emotes.map((id) => (
                         <img key={id} src={EMOTE_SRC(id)} alt="" loading="lazy" style={{ width: "100%", aspectRatio: "1 / 1", objectFit: "contain", display: "block" }} />
@@ -620,7 +709,7 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
             <Card style={{ padding: "9px 8px 10px" }}>
               <Raster kolommen={2} aantal={AVATAR_PACKS.length}>
                 {AVATAR_PACKS.map((pk, i) => (
-                  <CoinItem key={pk.id} title={t(pk.name)} owned={owned.has(pk.id)} price={prices[pk.id] ?? packPrice} coins={coins} index={i} veeg={i === beurt} onBuy={() => game.buyItemCoins(pk.id)}>
+                  <CoinItem key={pk.id} title={t(pk.name)} owned={owned.has(pk.id)} price={prices[pk.id] ?? packPrice} coins={coins} cashPrice={cashPrices[pk.id]} cash={cash} index={i} veeg={i === beurt} onBuy={() => game.buyItemCoins(pk.id)} onBuyCash={() => game.buyItemCash(pk.id)}>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 2, width: "100%" }}>
                       {pk.preview.map((n) => (
                         <div key={n} style={{ aspectRatio: "1 / 1", borderRadius: 6, overflow: "hidden", border: `1px solid ${colors.panelBorder}` }}>

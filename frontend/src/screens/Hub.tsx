@@ -25,6 +25,7 @@ import { MusicToggle } from "../components/MusicToggle";
 import { Toggle } from "../components/Toggle";
 import { Screen, Card } from "../components/Layout";
 import type { AccountStats, Friend, GameApi, InboxItem, LeaderboardRow, LevelInfo } from "../net/socket";
+import { LANDEN, landNaam } from "../util/landen";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { makeClubCard, makeProfileCard, shareOrDownload } from "../util/shareCard";
@@ -1475,6 +1476,13 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
             </NeonKader>
           </div>
 
+          {/* De vlag hoort hieronder, in dezelfde zeshoek als het kroontje. Hij
+              verschijnt PAS als de art er is: zolang er geen bestand voor je
+              land bestaat blijft dit leeg, want er hoeft niets van je gegevens
+              op je profiel te staan. De <img> verbergt zichzelf bij een 404,
+              dus er is geen lijst te onderhouden. */}
+          <Vlag code={account.land} />
+
           </div>
           </div>
 
@@ -2762,6 +2770,127 @@ function DivisieKaart({ game }: { game: GameApi }) {
   );
 }
 
+/* De vlag van je land, in dezelfde zeshoek als het kroontje erboven.
+ *
+ * Hij tekent zichzelf alleen als `/vlaggen/<code>.webp` echt bestaat. Faalt het
+ * laden, dan haalt hij zichzelf weg. Zo staat er niets op je profiel zolang de
+ * art er niet is, en verschijnt de vlag vanzelf zodra hij wordt toegevoegd. */
+function Vlag({ code }: { code?: string | null }) {
+  const [er, setEr] = useState(false);
+  const c = (code || "").toUpperCase();
+  if (!c || er) return null;
+  return (
+    <div style={{ display: "flex", marginTop: 6 }}>
+      <HexArt maat={19}>
+        <img
+          src={`/vlaggen/${c}.webp`}
+          alt=""
+          onError={() => setEr(true)}
+          style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+        />
+      </HexArt>
+    </div>
+  );
+}
+
+/* De landknop. Hij staat standaard op Nederland, want daar begon de app en een
+ * leeg vakje is geen keuze. Tikken opent een lijst met alle landen, met een
+ * zoekveld erboven omdat honderdzestig rijen scrollen geen menu is.
+ *
+ * Wat je kiest gaat naar de server, en die doet er twee dingen mee: de
+ * advertenties worden persoonlijker, en de draaiknop van JOUW land gaat open om
+ * met coins te kopen in plaats van met cash. */
+function LandKnop({ game }: { game: GameApi }) {
+  const { t } = useT();
+  const account = game.state.account!;
+  const [open, setOpen] = useState(false);
+  const [zoek, setZoek] = useState("");
+  const huidig = (account.land || "NL").toUpperCase();
+
+  const lijst = zoek.trim()
+    ? LANDEN.filter((l) => l.naam.toLowerCase().includes(zoek.trim().toLowerCase()))
+    : LANDEN;
+
+  return (
+    <Card style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <span style={{ flex: 1, fontFamily: font.ui, fontWeight: 600, fontSize: 14, color: colors.ink }}>{t("landTitel")}</span>
+        <button
+          onClick={() => { sound.uiTap(); setZoek(""); setOpen(true); }}
+          className="pressable"
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 7,
+            background: withAlpha(colors.gold, 0.12),
+            border: `1px solid ${withAlpha(colors.gold, 0.42)}`,
+            borderRadius: 999, cursor: "pointer", padding: "6px 12px",
+            fontFamily: font.display, fontWeight: 700, fontSize: 13.5, color: colors.gold,
+          }}
+        >
+          {/* De vlagplaatjes komen later; tot die tijd draagt de code het merk. */}
+          <span style={{ fontFamily: font.ui, fontWeight: 700, fontSize: 11, letterSpacing: 1, color: withAlpha(colors.gold, 0.7) }}>{huidig}</span>
+          {landNaam(huidig)}
+        </button>
+      </div>
+      <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.faint, lineHeight: 1.5 }}>{t("landUitleg")}</p>
+
+      {open && (
+        <div
+          onClick={() => setOpen(false)}
+          style={{ position: "fixed", inset: 0, zIndex: 85, background: "rgba(6,3,18,.72)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)", display: "grid", placeItems: "center", padding: 18 }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "100%", maxWidth: 360, maxHeight: "78vh", display: "flex", flexDirection: "column",
+              // Een popup heeft zijn EIGEN dichte bodem nodig: de sectie-stijl is
+              // doorzichtig, en dan lees je de lijst door de pagina heen.
+              background: "linear-gradient(180deg, #1B1230 0%, #120B22 100%)",
+              border: `1px solid ${withAlpha(colors.gold, 0.32)}`,
+              boxShadow: `0 24px 60px rgba(0,0,0,.6), inset 0 1px 0 ${withAlpha(colors.gold, 0.18)}`,
+              borderRadius: 20, padding: 16,
+            }}
+          >
+            <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink, marginBottom: 10 }}>{t("landTitel")}</span>
+          <input
+            value={zoek}
+            onChange={(e) => setZoek(e.target.value)}
+            placeholder={t("landZoek")}
+            style={{
+              width: "100%", boxSizing: "border-box", marginBottom: 10,
+              background: withAlpha(colors.ink, 0.06),
+              border: `1px solid ${withAlpha(colors.gold, 0.3)}`,
+              borderRadius: 999, padding: "10px 14px",
+              fontFamily: font.ui, fontSize: 14, color: colors.ink, outline: "none",
+            }}
+          />
+          <div style={{ display: "flex", flexDirection: "column", gap: 2, maxHeight: "58vh", overflowY: "auto" }}>
+            {lijst.map((l) => {
+              const gekozen = l.code === huidig;
+              return (
+                <button
+                  key={l.code}
+                  onClick={() => { sound.uiTap(); game.setLand(l.code); setOpen(false); }}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 10, width: "100%",
+                    background: gekozen ? withAlpha(colors.gold, 0.14) : "transparent",
+                    border: `1px solid ${gekozen ? withAlpha(colors.gold, 0.4) : "transparent"}`,
+                    borderRadius: 12, padding: "10px 12px", cursor: "pointer", textAlign: "left",
+                  }}
+                >
+                  <span style={{ fontFamily: font.ui, fontWeight: 700, fontSize: 11, letterSpacing: 1, color: withAlpha(colors.gold, 0.75), minWidth: 24 }}>{l.code}</span>
+                  <span style={{ flex: 1, fontFamily: font.ui, fontSize: 14, color: gekozen ? colors.gold : colors.ink }}>{l.naam}</span>
+                  {gekozen && <Check size={16} color={colors.gold} />}
+                </button>
+              );
+            })}
+          </div>
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
+
 function ProfileSettings({
   game,
   email,
@@ -2791,6 +2920,10 @@ function ProfileSettings({
   return (
     <Screen top={header}>
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      {/* Waar je vandaan speelt. Het staat NERGENS op je profiel: het is een
+          instelling, geen persoonsgegeven dat je aan anderen laat zien. */}
+      <LandKnop game={game} />
+
       {/* soepele spelling (dyslexie-hulp) voor Oefenen + Dagronde */}
       <Card style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>

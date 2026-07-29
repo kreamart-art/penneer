@@ -21,7 +21,7 @@ import { HexPlate } from "../components/HexPlate";
 import { HexArt } from "../components/HexArt";
 import { EmblemLight, EmblemLightFront } from "../components/EmblemLight";
 import { ReferralAd } from "../components/ReferralAd";
-import { colors, font, radius, withAlpha } from "../theme/tokens";
+import { colors, font, radius, withAlpha, GROEN } from "../theme/tokens";
 
 // De lijst-art van de skin, in de drie maten uit `section main page.svg`:
 // dezelfde tekening, op drie hoogtes gezet. Er wordt niets geknipt, alleen
@@ -231,25 +231,47 @@ export function Landing({
       <div style={{ position: "relative", display: "flex", justifyContent: "space-between", alignItems: "flex-start", paddingTop: 4 }}>
         {/* Coins sit where the profile chip used to: the profile moved to the
             avatar on the right, and the shop is in the bottom bar now. */}
-        <button
-          onClick={() => { sound.uiTap(); onShowShop(); }}
-          aria-label={t("coinsTitle")}
-          className="pressable"
-          style={
-            skin
-              ? { position: "relative", border: "none", background: "transparent", padding: 0, cursor: "pointer", display: "block", lineHeight: 0 }
-              : { display: "inline-flex", alignItems: "center", gap: 6, background: withAlpha(colors.gold, 0.12), border: `1px solid ${withAlpha(colors.gold, 0.4)}`, borderRadius: 999, cursor: "pointer", padding: "4px 12px 4px 5px" }
-          }
-        >
-          {skin ? (
-            <CoinPlate coins={account?.coins ?? 0} height={34} />
-          ) : (
-            <>
-              <img src="/coin.webp" alt="" width={24} height={24} style={{ display: "block" }} />
-              <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15, color: colors.gold }}>{account?.coins ?? 0}</span>
-            </>
+        {/* Twee munten, twee pillen naast elkaar. Cash is de zeldzame, dus hij
+            staat rechts van coins en is smaller: je hebt er altijd minder van,
+            en dat mag je aan de pil zien. Allebei brengen ze je naar de winkel. */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <button
+            onClick={() => { sound.uiTap(); onShowShop(); }}
+            aria-label={t("coinsTitle")}
+            className="pressable"
+            style={
+              skin
+                ? { position: "relative", border: "none", background: "transparent", padding: 0, cursor: "pointer", display: "block", lineHeight: 0 }
+                : { display: "inline-flex", alignItems: "center", gap: 6, background: withAlpha(colors.gold, 0.12), border: `1px solid ${withAlpha(colors.gold, 0.4)}`, borderRadius: 999, cursor: "pointer", padding: "4px 12px 4px 5px" }
+            }
+          >
+            {skin ? (
+              <CoinPlate coins={account?.coins ?? 0} height={34} />
+            ) : (
+              <>
+                <img src="/coin.webp" alt="" width={24} height={24} style={{ display: "block" }} />
+                <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15, color: colors.gold }}>{account?.coins ?? 0}</span>
+              </>
+            )}
+          </button>
+          {account && (
+            <button
+              onClick={() => { sound.uiTap(); onShowShop(); }}
+              aria-label={t("cashTitle")}
+              className="pressable"
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 5,
+                background: withAlpha(GROEN[1], 0.14),
+                border: `1px solid ${withAlpha(GROEN[2], 0.45)}`,
+                boxShadow: `0 0 14px ${withAlpha(GROEN[2], 0.2)}, inset 0 1px 0 ${withAlpha(GROEN[3], 0.3)}`,
+                borderRadius: 999, cursor: "pointer", padding: "4px 11px 4px 4px",
+              }}
+            >
+              <img src="/ui/valuta/cash.webp?v=1" alt="" width={22} height={22} style={{ display: "block" }} />
+              <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15, color: GROEN[3] }}>{account.cash ?? 0}</span>
+            </button>
           )}
-        </button>
+        </div>
         {/* right cluster is a column so the music mute note sits UNDER the gear */}
         <div style={{ position: "absolute", top: 4, right: 0, zIndex: 2, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 3 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>

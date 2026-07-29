@@ -56,9 +56,21 @@ PRODUCTS = {
     "coins300": {"env": "PENNEER_COINS300_PRICE", "default": "2.49", "desc": "Pen Neer 300 coins"},
     "coins500": {"env": "PENNEER_COINS500_PRICE", "default": "3.99", "desc": "Pen Neer 500 coins"},
     "coins1000": {"env": "PENNEER_COINS1000_PRICE", "default": "6.99", "desc": "Pen Neer 1000 coins"},
+    "cash100": {"env": "PENNEER_CASH100_PRICE", "default": "1.99", "desc": "Pen Neer 100 cash"},
+    "cash250": {"env": "PENNEER_CASH250_PRICE", "default": "3.99", "desc": "Pen Neer 250 cash"},
+    "cash600": {"env": "PENNEER_CASH600_PRICE", "default": "7.99", "desc": "Pen Neer 600 cash"},
+    "cash1500": {"env": "PENNEER_CASH1500_PRICE", "default": "14.99", "desc": "Pen Neer 1500 cash"},
+    "starter": {"env": "PENNEER_STARTER_PRICE", "default": "9.99", "desc": "Pen Neer startpakket"},
 }
-# Coin bundle product ids in display order, with the coins each grants.
+# De negen producten in de winkel, in volgorde. Per product: hoeveel coins en
+# hoeveel cash het uitkeert. 250 cash staat er met opzet tussen, want dat is
+# exact de scheidsrechter.
 COIN_BUNDLES = [("coins100", 100), ("coins300", 300), ("coins500", 500), ("coins1000", 1000)]
+BUNDLES = [
+    ("coins100", 100, 0), ("coins300", 300, 0), ("coins500", 500, 0), ("coins1000", 1000, 0),
+    ("cash100", 0, 100), ("cash250", 0, 250), ("cash600", 0, 600), ("cash1500", 0, 1500),
+    ("starter", 500, 250),
+]
 
 
 def price(product: str = "ai") -> str:
@@ -87,6 +99,10 @@ def status() -> dict:
         "env": _env(),
         # coin bundles: [{product, coins, price}] in display order
         "bundles": [{"product": pid, "coins": n, "price": price(pid)} for pid, n in COIN_BUNDLES],
+        # de volledige negen, met beide munten per product
+        "producten": [
+            {"product": pid, "coins": c, "cash": k, "price": price(pid)} for pid, c, k in BUNDLES
+        ],
     }
 
 

@@ -246,6 +246,11 @@ class AccountManager:
         # how many are new since the last coin popup was seen.
         coins = self.db.credit_level_coins(user_id, level["level"])
         coins_pending = self.db.coins_owed(level["level"]) - self.db.coins_owed(user.get("coins_seen_level", 0))
+        # Cash loopt op dezelfde manier bij, maar heeft geen eigen popup: hij
+        # rolt mee in de coin-popup, want twee vensters om hetzelfde level is
+        # er een te veel.
+        cash = self.db.credit_level_cash(user_id, level["level"])
+        cash_pending = self.db.cash_owed(level["level"]) - self.db.cash_owed(user.get("coins_seen_level", 0))
         badges = self.db.badges_of(user_id)
         unlocked = set(titles.unlocked_for(stats, badges, level["level"]))
         chosen = user.get("title")
@@ -292,6 +297,9 @@ class AccountManager:
                 "pending_rewards": [e for e in earned if e["id"] not in claimed_rewards],
                 "coins": coins,
                 "coins_pending": coins_pending,
+                "cash": cash,
+                "cash_pending": cash_pending,
+                "land": user.get("land") or "NL",
                 "coins_pack_price": self.db.BUZZER_PACK_COINS,
                 "stats": stats,
                 "level": level,
@@ -359,6 +367,8 @@ class AccountManager:
             "claim_buzzer_reward": self.claim_buzzer_reward,
             "claim_reward": self.claim_reward,
             "buy_item_coins": self.buy_item_coins,
+            "buy_item_cash": self.buy_item_cash,
+            "set_land": self.set_land,
             "ack_coin_reward": self.ack_coin_reward,
         }.get(mtype)
         if handler is None:
@@ -1076,6 +1086,26 @@ class AccountManager:
         result = self.db.buy_item_coins(uid, item) if isinstance(item, str) else "invalid"
         await self._send(ws, {"type": "coins_result", "ok": result == "ok", "reason": result, "item": item})
         await self._send(ws, await self._account_payload(ws, uid))
+
+    async def buy_item_cash(self, ws: Any, data: dict) -> None:
+        """Hetzelfde spul afrekenen met cash. De scheidsrechter kan ALLEEN zo."""
+        uid = self.user_of(ws)
+        if not uid:
+            return
+        item = data.get("item")
+        result = self.db.buy_item_cash(uid, item) if isinstance(item, str) else "invalid"
+        await self._send(ws, {"type": "cash_result", "ok": result == "ok", "reason": result, "item": item})
+        await self._send(ws, await self._account_payload(ws, uid))
+
+    async def set_land(self, ws: Any, data: dict) -> None:
+        """Het land bij je gegevens. Staat nergens op je profiel: het stuurt de
+        advertenties en welke landenknop je voor coins mag kopen."""
+        uid = self.user_of(ws)
+        if not uid:
+            return
+        result = self.db.set_land(uid, str(data.get("land") or ""))
+        if result == "ok":
+            await self._send(ws, await self._account_payload(ws, uid))
 
     async def ack_coin_reward(self, ws: Any, data: dict) -> None:
         """The coin victory popup was seen up to the given level."""

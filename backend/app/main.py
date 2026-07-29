@@ -1186,7 +1186,7 @@ async def push_unsubscribe(request: Request) -> Response:
 async def shop_status() -> JSONResponse:
     """What the shop UI needs to render: PayPal availability + coin bundle prices
     + the coin cost of each buyable item."""
-    return JSONResponse({**paypal.status(), "coin_prices": get_db().COIN_PRICES})
+    return JSONResponse({**paypal.status(), "coin_prices": get_db().COIN_PRICES, "cash_prices": get_db().CASH_PRICES, "land_buzzers": get_db().LAND_BUZZERS})
 
 
 @app.post("/api/shop/paypal/create")
@@ -1258,9 +1258,9 @@ async def shop_paypal_capture(request: Request) -> JSONResponse:
     if not buyer or not db.get_user(buyer):
         buyer = uid
 
-    if product in db.COIN_BUNDLES:  # a coin bundle -> credit its coins
-        bal = db.fulfil_coins(order_id, buyer, paypal.price(product), paypal.currency(), product=product)
-        return JSONResponse({"ok": True, "coins": bal} if bal is not None else {"ok": True, "already": True})
+    if product in db.BUNDLE_GRANTS:  # een muntbundel -> coins en/of cash erbij
+        saldo = db.fulfil_bundle(order_id, buyer, paypal.price(product), paypal.currency(), product=product)
+        return JSONResponse({"ok": True, **saldo} if saldo is not None else {"ok": True, "already": True})
     code = db.fulfil_purchase(order_id, buyer, paypal.price(product), paypal.currency(), product=product)
     if code is None:
         # Lost a race; the winning request already fulfilled it.

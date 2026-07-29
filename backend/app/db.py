@@ -589,6 +589,14 @@ class Database:
             self._conn.execute("ALTER TABLE users ADD COLUMN coins INTEGER NOT NULL DEFAULT 0")
             self._conn.execute("ALTER TABLE users ADD COLUMN coins_level INTEGER NOT NULL DEFAULT 0")
             self._conn.execute("ALTER TABLE users ADD COLUMN coins_seen_level INTEGER NOT NULL DEFAULT 0")
+        if "cash" not in cols:
+            self._conn.execute("ALTER TABLE users ADD COLUMN cash INTEGER NOT NULL DEFAULT 0")
+            self._conn.execute("ALTER TABLE users ADD COLUMN cash_level INTEGER NOT NULL DEFAULT 0")
+        if "land" not in cols:
+            # Standaard NL, want daar begon de app. Het is geen persoonsgegeven op
+            # je profiel maar een instelling: hij stuurt de advertenties en welke
+            # landenknop je voor coins mag kopen.
+            self._conn.execute("ALTER TABLE users ADD COLUMN land TEXT NOT NULL DEFAULT 'NL'")
             self._conn.commit()
         # Premium avatar pack (av19..av36) bought in the shop.
         if "premium_avatars" not in cols:
@@ -784,7 +792,7 @@ class Database:
         with self._lock:
             rows = self._q(
                 "SELECT id, name, email, color, avatar_ver, avatar IS NOT NULL AS has_avatar, "
-                "avatar_preset, ai_unlocked, premium_avatars, buzzer_skins, buzzer_skin, avatar_frame, reel_skin, shield, title, lenient_spelling, coins, coins_level, coins_seen_level, rewards_seeded, created_at "
+                "avatar_preset, ai_unlocked, premium_avatars, buzzer_skins, buzzer_skin, avatar_frame, reel_skin, shield, title, lenient_spelling, coins, coins_level, coins_seen_level, cash, cash_level, land, rewards_seeded, created_at "
                 "FROM users WHERE id=?",
                 (user_id,),
             )
@@ -2658,9 +2666,14 @@ class Database:
         if price is None:
             return "invalid"
         with self._lock:  # self._lock is non-reentrant: check ownership inline, never via owned_items_of
-            rows = self._q("SELECT coins, buzzer_skins, premium_avatars, ai_unlocked FROM users WHERE id=?", (user_id,))
+            rows = self._q("SELECT coins, buzzer_skins, premium_avatars, ai_unlocked, land FROM users WHERE id=?", (user_id,))
             if not rows:
                 return "invalid"
+            # Landenknoppen kosten cash. Alleen de knop van je EIGEN land gaat
+            # open voor coins: dat is wat je terugkrijgt voor het invullen van je
+            # land, en het is meteen de knop waar je iets mee hebt.
+            if item in self.LAND_BUZZER_IDS and item != self.LAND_BUZZERS.get(rows[0]["land"] or "NL"):
+                return "locked"
             owned = {r["item"] for r in self._q("SELECT item FROM owned_items WHERE user_id=?", (user_id,))}
             if rows[0]["ai_unlocked"]:
                 owned.add(self.REFEREE_ITEM)
@@ -2697,6 +2710,131 @@ class Database:
                 bal += self.coins_owed(level) - self.coins_owed(credited)
                 self._exec("UPDATE users SET coins=?, coins_level=? WHERE id=?", (bal, level, user_id))
         return bal
+
+    # ---- cash currency -----------------------------------------------------
+    #
+    # Cash is de ZELDZAME munt. Coins krijg je elk level, cash alleen op
+    # mijlpalen, en daar hangt de hele prijsstelling aan: op level 45 heb je
+    # precies 250 cash, en dat is precies wat de scheidsrechter kost. Wie hem
+    # niet koopt, speelt hem in ongeveer een half seizoen bij elkaar.
+    #
+    #   elk 5e level dat GEEN tienvoud is (5, 15, 25, ...)   +10
+    #   elk 10e level (10, 20, 30, ...)                      +50
+    #   level 50, in plaats van de gewone +50                +100
+    #
+    # Cumulatief: L5=10, L10=60, L20=120, L45=250, L50=350, L100=650.
+
+    CASH_PER_STEP = 10         # elk 5e level dat geen tienvoud is
+    CASH_PER_TIER = 50         # elk 10e level
+    CASH_STEP = 5
+    CASH_TIER = 10
+    CASH_JUBILEUM = 50         # level 50 krijgt dit BOVENOP zijn tienvoud-bonus
+
+    # Wat je met cash kunt kopen. Ongeveer een derde van de coin-prijs, want
+    # cash komt ongeveer drie keer zo langzaam binnen. De scheidsrechter staat
+    # hier ALLEEN: die is niet met coins te koop.
+    CASH_PRICES = {
+        "referee": 250,
+        "bz01": 30, "bz02": 30, "bz03": 30, "bz04": 30, "bz05": 30, "bz13": 30, "bz14": 30,
+        "bz15": 30, "bz16": 30, "bz17": 30,
+        "rs01": 40, "rs02": 40, "rs03": 40, "rs04": 40, "rs05": 40,
+        "rs06": 40, "rs07": 40, "rs08": 40, "rs09": 40,
+        "empack4": 75, "empack5": 75,
+        "avpack1": 150, "avpack2": 150,
+    }
+    # PayPal cash-BUNDELS: product id -> cash. 250 is er met opzet bij: dat is
+    # exact de scheidsrechter, zodat niemand hoeft te puzzelen.
+    CASH_BUNDLES = {"cash100": 100, "cash250": 250, "cash600": 600, "cash1500": 1500}
+
+    # Welke landenknop bij welk land hoort. Staat je land er niet bij, dan is er
+    # (nog) geen knop voor je land en blijft alles gewoon met cash te koop.
+    LAND_BUZZERS = {
+        "NL": "bz01", "IT": "bz02", "SR": "bz03", "JM": "bz04", "BR": "bz05",
+        "ES": "bz13", "CW": "bz14", "DE": "bz15", "BE": "bz16", "FR": "bz17",
+    }
+    LAND_BUZZER_IDS = set(LAND_BUZZERS.values())
+
+    @classmethod
+    def cash_owed(cls, level: int) -> int:
+        """Totale cash die je verdiend hebt door level `level` te halen."""
+        level = max(0, int(level))
+        stappen = level // cls.CASH_STEP - level // cls.CASH_TIER
+        return (
+            stappen * cls.CASH_PER_STEP
+            + (level // cls.CASH_TIER) * cls.CASH_PER_TIER
+            + (cls.CASH_JUBILEUM if level >= 50 else 0)
+        )
+
+    def cash_of(self, user_id: str) -> int:
+        with self._lock:
+            rows = self._q("SELECT cash FROM users WHERE id=?", (user_id,))
+        return int(rows[0]["cash"]) if rows else 0
+
+    def credit_level_cash(self, user_id: str, level: int) -> int:
+        """Zelfde vorm als credit_level_coins: idempotent, haalt met terugwerkende
+        kracht in wat er nog niet is uitbetaald."""
+        with self._lock:
+            rows = self._q("SELECT cash, cash_level FROM users WHERE id=?", (user_id,))
+            if not rows:
+                return 0
+            credited = rows[0]["cash_level"]
+            bal = rows[0]["cash"]
+            if level > credited:
+                bal += self.cash_owed(level) - self.cash_owed(credited)
+                self._exec("UPDATE users SET cash=?, cash_level=? WHERE id=?", (bal, level, user_id))
+        return bal
+
+    def grant_cash(self, user_id: str, amount: int) -> int:
+        """Cash erbij zonder level (bundel uit de winkel, code, handmatig)."""
+        with self._lock:
+            self._exec("UPDATE users SET cash=cash+? WHERE id=?", (max(0, int(amount)), user_id))
+            rows = self._q("SELECT cash FROM users WHERE id=?", (user_id,))
+        return int(rows[0]["cash"]) if rows else 0
+
+    def buy_item_cash(self, user_id: str, item: str) -> str:
+        """Hetzelfde spul afrekenen met cash. 'ok' | 'already' | 'insufficient' | 'invalid'."""
+        price = self.CASH_PRICES.get(item)
+        if price is None:
+            return "invalid"
+        with self._lock:  # niet-herintreedbaar slot: eigendom hier inline checken
+            rows = self._q("SELECT cash, buzzer_skins, premium_avatars, ai_unlocked FROM users WHERE id=?", (user_id,))
+            if not rows:
+                return "invalid"
+            owned = {r["item"] for r in self._q("SELECT item FROM owned_items WHERE user_id=?", (user_id,))}
+            if rows[0]["ai_unlocked"]:
+                owned.add(self.REFEREE_ITEM)
+            if rows[0]["buzzer_skins"]:
+                owned |= set(BUZZER_SKIN_IDS)
+            if rows[0]["premium_avatars"]:
+                owned |= set(AVATAR_PACKS.keys())
+            if item in owned:
+                return "already"
+            if rows[0]["cash"] < price:
+                return "insufficient"
+            self._exec("UPDATE users SET cash=cash-? WHERE id=?", (price, user_id))
+            self._exec(
+                "INSERT OR IGNORE INTO owned_items (user_id, item, bought_at) VALUES (?,?,?)",
+                (user_id, item, time.time()),
+            )
+            if item == self.REFEREE_ITEM:
+                self._exec("UPDATE users SET ai_unlocked=1 WHERE id=?", (user_id,))
+        return "ok"
+
+    # ---- land --------------------------------------------------------------
+
+    def set_land(self, user_id: str, land: str) -> str:
+        """Het land dat je bij je gegevens instelt. Twee letters, ISO-stijl."""
+        land = (land or "NL").strip().upper()[:2]
+        if len(land) != 2 or not land.isalpha():
+            return "invalid"
+        with self._lock:
+            self._exec("UPDATE users SET land=? WHERE id=?", (land, user_id))
+        return "ok"
+
+    def land_of(self, user_id: str) -> str:
+        with self._lock:
+            rows = self._q("SELECT land FROM users WHERE id=?", (user_id,))
+        return (rows[0]["land"] if rows else "NL") or "NL"
 
     # ---- vrienden werven -------------------------------------------------
     #
@@ -2962,6 +3100,38 @@ class Database:
             self._exec("UPDATE users SET coins=coins+? WHERE id=?", (coins, user_id))
             rows = self._q("SELECT coins FROM users WHERE id=?", (user_id,))
         return int(rows[0]["coins"]) if rows else None
+
+    # De combo geeft BEIDE munten, dus hij kan niet door fulfil_coins: die kent
+    # maar een kolom. Vandaar een eigen tabel met wat elk product uitkeert.
+    BUNDLE_GRANTS = {
+        "coins100": (100, 0), "coins300": (300, 0), "coins500": (500, 0), "coins1000": (1000, 0),
+        "cash100": (0, 100), "cash250": (0, 250), "cash600": (0, 600), "cash1500": (0, 1500),
+        "starter": (500, 250),
+    }
+
+    def fulfil_bundle(self, order_id: str, user_id: str, amount: str, currency: str, product: str) -> Optional[dict]:
+        """Een gekochte bundel eenmalig uitkeren. Geeft de nieuwe saldi terug, of
+        None als deze bestelling al afgehandeld was."""
+        if not order_id or not user_id:
+            return None
+        coins, cash = self.BUNDLE_GRANTS.get(product, (0, 0))
+        if not coins and not cash:
+            return None
+        now = time.time()
+        with self._lock:
+            cur = self._exec(
+                "INSERT OR IGNORE INTO purchases (order_id, provider, product, user_id, amount, currency, code, email, created_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?)",
+                (order_id, "paypal", product, user_id, amount, currency, None, None, now),
+            )
+            if cur.rowcount == 0:
+                return None
+            if coins:
+                self._exec("UPDATE users SET coins=coins+? WHERE id=?", (coins, user_id))
+            if cash:
+                self._exec("UPDATE users SET cash=cash+? WHERE id=?", (cash, user_id))
+            rows = self._q("SELECT coins, cash FROM users WHERE id=?", (user_id,))
+        return {"coins": int(rows[0]["coins"]), "cash": int(rows[0]["cash"])} if rows else None
 
 
 # Module-level singleton, created lazily so tests can use their own path.

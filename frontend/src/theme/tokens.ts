@@ -76,3 +76,10 @@ export function withAlpha(hex: string, alpha: number): string {
   const b = parseInt(h.slice(4, 6), 16);
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
+
+/* De kleurenreeks van cash. GEMETEN uit de art (`ui/valuta/cash.webp`), niet
+ * gekozen: de mediane groene pixel is H=0.244 S=0.71 V=0.63, en de vier tinten
+ * lopen daar met vaste tint vanaf, alleen de helderheid schuift. Zo hoort de
+ * cash-pil bij het biljet dat erin staat, in plaats van er toevallig naast.
+ * Donker -> fel, net als GOUD. */
+export const GROEN = ["#1D2D0C", "#4D7322", "#84BD42", "#BAD898"] as const;
