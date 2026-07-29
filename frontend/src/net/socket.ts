@@ -898,6 +898,7 @@ export interface GameApi {
   divisieGezien: () => void;
   meldingenLaden: () => void;
   meldingenLezen: () => void;
+  meldingWeg: (id: number) => void;
   setAvatarFrame: (frame: string | null) => void;
   claimBuzzerReward: (skin: string, equip: boolean) => void;
   claimReward: (id: string, equip?: boolean) => void;
@@ -1146,6 +1147,7 @@ export function useGame(): GameApi {
     divisieGezien: () => send({ type: "divisie_gezien" }),
     meldingenLaden: () => send({ type: "meldingen" }),
     meldingenLezen: () => send({ type: "meldingen_lees" }),
+    meldingWeg: (id) => send({ type: "melding_weg", id }),
     setAvatarFrame: (frame) => send({ type: "set_avatar_frame", frame }),
     claimBuzzerReward: (skin, equip) => send({ type: "claim_buzzer_reward", skin, equip }),
     claimReward: (id, equip) => send({ type: "claim_reward", id, equip: !!equip }),

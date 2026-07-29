@@ -2439,6 +2439,11 @@ class Database:
     def meldingen_gelezen(self, user_id: str) -> None:
         self._exec("UPDATE meldingen SET gelezen=1 WHERE user_id=? AND gelezen=0", (user_id,))
 
+    def melding_weg(self, user_id: str, melding_id: int) -> None:
+        """Gooi een melding weg. Met het user_id erbij in de WHERE, want een id
+        uit de client is een getal dat iemand kan verzinnen."""
+        self._exec("DELETE FROM meldingen WHERE id=? AND user_id=?", (int(melding_id), user_id))
+
     def melding_laatst(self, user_id: str, soort: str) -> float:
         """Wanneer deze soort voor het laatst naar deze speler ging. Voor de
         herinneringen: hoogstens één per dag, anders is het gezeur."""

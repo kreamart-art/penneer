@@ -145,6 +145,17 @@ class AccountManager:
         self.db.meldingen_gelezen(uid)
         await self.meldingen_lijst(ws, {})
 
+    async def melding_weg(self, ws: Any, data: dict) -> None:
+        uid = self.user_of(ws)
+        if not uid:
+            return
+        try:
+            mid = int(data.get("id") or 0)
+        except (TypeError, ValueError):
+            return
+        self.db.melding_weg(uid, mid)
+        await self.meldingen_lijst(ws, {})
+
     async def herinneringen_ronde(self) -> None:
         """Eén veegbeurt: wie heeft er iets openstaan dat blijft liggen?
 
@@ -342,6 +353,7 @@ class AccountManager:
             "divisie_stand": self.divisie_stand,
             "meldingen": self.meldingen_lijst,
             "meldingen_lees": self.meldingen_lees,
+            "melding_weg": self.melding_weg,
             "divisie_gezien": self.divisie_gezien,
             "set_avatar_frame": self.set_avatar_frame,
             "claim_buzzer_reward": self.claim_buzzer_reward,

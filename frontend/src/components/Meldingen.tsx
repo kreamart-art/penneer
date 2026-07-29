@@ -9,11 +9,11 @@
 // De balk toont er ÉÉN tegelijk. Een stapel banners over elkaar leest als een
 // storing; wat er nog achter staat wacht gewoon zijn beurt.
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Trash2 } from "lucide-react";
 import { ArtIcoon, type ArtNaam } from "./ArtIcoon";
 import { CloseIcon } from "./CloseIcon";
 import { KnopPlaat } from "./KnopPlaat";
-import { KADER_LIJN_GOUD, NeonKader } from "./ProfileHero";
+import { KADER_LIJN_GOUD, NeonKader, schuin } from "./ProfileHero";
 import type { Melding } from "../net/socket";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
@@ -128,9 +128,18 @@ export function MeldingBanner({
  *  de tik ging meteen ergens heen, dus je kon nooit lezen wat er stond: je werd
  *  weggestuurd voor je het gelezen had. Nu klapt hij open, staat de hele tekst
  *  er, en pas dan kun je met de knop eronder naar waar hij over gaat. */
-export function MeldingRij({ melding, onOpen }: { melding: Melding; onOpen: () => void }) {
+export function MeldingRij({ melding, onOpen, onWeg }: { melding: Melding; onOpen: () => void; onWeg?: () => void }) {
   const { t } = useT();
   const [open, setOpen] = useState(false);
+
+  // Vegen om weg te gooien. De rij schuift naar links tot de prullenbak eronder
+  // vandaan komt en STOPT daar: hij mag de sectie niet uit. Een rij die je van
+  // het scherm af kunt schuiven voelt alsof hij al weg is, en dan verwacht je
+  // geen bevestiging meer; hier blijft hij liggen tot je de bak aantikt.
+  const BAK = 64;
+  const [x, setX] = useState(0);
+  const start = useRef<{ x: number; y: number; basis: number } | null>(null);
+  const vergrendeld = useRef<"geen" | "veeg" | "scroll">("geen");
   // Alleen meldingen die ergens over gaan krijgen een knop. "Ongelezen bericht"
   // zonder afzender heeft geen bestemming, en een knop die niets doet is erger
   // dan geen knop.
@@ -138,16 +147,92 @@ export function MeldingRij({ melding, onOpen }: { melding: Melding; onOpen: () =
   try { data = melding.data ? JSON.parse(melding.data) : {}; } catch { /* rommel is geen reden om niets te tonen */ }
   const heeftDoel = !!data.user_id || melding.naar === "duel" || melding.naar === "dagronde" || melding.naar === "profiel";
 
+  const raakStart = (e: React.PointerEvent) => {
+    if (!onWeg) return;
+    start.current = { x: e.clientX, y: e.clientY, basis: x };
+    vergrendeld.current = "geen";
+  };
+  const raakBeweeg = (e: React.PointerEvent) => {
+    const st = start.current;
+    if (!st) return;
+    const dx = e.clientX - st.x;
+    const dy = e.clientY - st.y;
+    // Pas beslissen welke richting het wordt als er echt beweging is: anders
+    // pikt de rij een verticale scroll af.
+    if (vergrendeld.current === "geen") {
+      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+      vergrendeld.current = Math.abs(dx) > Math.abs(dy) ? "veeg" : "scroll";
+    }
+    if (vergrendeld.current !== "veeg") return;
+    setX(Math.max(-BAK, Math.min(0, st.basis + dx)));
+  };
+  const raakEind = () => {
+    if (!start.current) return;
+    start.current = null;
+    // Voorbij de helft blijft de bak staan, eronder veert hij terug. Geen derde
+    // uitkomst: half open is geen toestand.
+    setX((v) => (v < -BAK / 2 ? -BAK : 0));
+  };
+
   return (
+    <div style={{ position: "relative", marginInline: 6 }}>
+      {/* De prullenbak ligt ONDER de rij en komt eronder vandaan. Hij staat er
+          altijd; je ziet hem pas als de rij opzij gaat. */}
+      {onWeg && (
+        <button
+          onClick={() => { sound.uiTap(); onWeg(); }}
+          aria-label={t("meldingWeg")}
+          style={{
+            position: "absolute",
+            right: 0,
+            top: 0,
+            bottom: 0,
+            width: BAK,
+            display: "grid",
+            placeItems: "center",
+            border: "none",
+            cursor: "pointer",
+            padding: 0,
+            clipPath: schuin(9),
+            background: `linear-gradient(180deg, ${withAlpha(colors.red, 0.3)}, ${withAlpha(colors.red, 0.16)})`,
+            boxShadow: `inset 0 0 0 1px ${withAlpha(colors.red, 0.5)}`,
+            color: colors.red,
+            opacity: x < -8 ? 1 : 0,
+            transition: "opacity .12s ease",
+            pointerEvents: x < -8 ? "auto" : "none",
+          }}
+        >
+          <Trash2 size={18} />
+        </button>
+      )}
     <NeonKader
       hoek={9}
       dik={melding.gelezen && !open ? 0.26 : 0.42}
       sterkte={melding.gelezen && !open ? 0.24 : 0.55}
       vulling="geen"
       eindkap
-      style={{ marginInline: 6 }}
-      binnen={{ display: "flex", flexDirection: "column", gap: 7, padding: "8px 10px", minHeight: 46 }}
+      style={{
+        transform: `translateX(${x}px)`,
+        transition: start.current ? "none" : "transform .22s cubic-bezier(.2,.8,.3,1)",
+        touchAction: "pan-y",
+      }}
+      binnen={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 7,
+        padding: "8px 10px",
+        minHeight: 46,
+        // Ondoorzichtig, anders zie je de bak door de rij heen liggen.
+        background: "linear-gradient(180deg, #241740, #1A1035)",
+      }}
     >
+      <span
+        onPointerDown={raakStart}
+        onPointerMove={raakBeweeg}
+        onPointerUp={raakEind}
+        onPointerCancel={raakEind}
+        style={{ position: "absolute", inset: 0 }}
+      />
       <button
         onClick={() => { sound.uiTap(); setOpen((v) => !v); }}
         aria-expanded={open}
@@ -191,6 +276,7 @@ export function MeldingRij({ melding, onOpen }: { melding: Melding; onOpen: () =
         </span>
       )}
     </NeonKader>
+    </div>
   );
 }
 

@@ -3376,7 +3376,7 @@ function InboxTab({ game, onGaNaar }: { game: GameApi; onGaNaar: (naar: string) 
         ) : (
           <Lijst n={meldingen.length} rij={46} toon={6}>
             {meldingen.map((m) => (
-              <MeldingRij key={m.id} melding={m} onOpen={() => onMelding(m)} />
+              <MeldingRij key={m.id} melding={m} onOpen={() => onMelding(m)} onWeg={() => game.meldingWeg(m.id)} />
             ))}
           </Lijst>
         )}
