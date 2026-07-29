@@ -2786,6 +2786,21 @@ function DivisieKaart({ game }: { game: GameApi }) {
  * Hij tekent zichzelf alleen als `/vlaggen/<code>.webp` echt bestaat. Faalt het
  * laden, dan haalt hij zichzelf weg. Zo staat er niets op je profiel zolang de
  * art er niet is, en verschijnt de vlag vanzelf zodra hij wordt toegevoegd. */
+function VlagIcoon({ code, maat = 18 }: { code: string; maat?: number }) {
+  const [er, setEr] = useState(false);
+  if (er) {
+    return <span style={{ fontFamily: font.ui, fontWeight: 700, fontSize: Math.round(maat * 0.55), letterSpacing: 1, color: withAlpha(colors.gold, 0.75) }}>{code}</span>;
+  }
+  return (
+    <img
+      src={`/vlaggen/${code}.webp`}
+      alt=""
+      onError={() => setEr(true)}
+      style={{ width: maat, height: Math.round(maat * 0.78), objectFit: "contain", display: "block" }}
+    />
+  );
+}
+
 function Vlag({ code }: { code?: string | null }) {
   const [er, setEr] = useState(false);
   const c = (code || "").toUpperCase();
@@ -2837,8 +2852,7 @@ function LandKnop({ game }: { game: GameApi }) {
             fontFamily: font.display, fontWeight: 700, fontSize: 13.5, color: colors.gold,
           }}
         >
-          {/* De vlagplaatjes komen later; tot die tijd draagt de code het merk. */}
-          <span style={{ fontFamily: font.ui, fontWeight: 700, fontSize: 11, letterSpacing: 1, color: withAlpha(colors.gold, 0.7) }}>{huidig}</span>
+          <VlagIcoon code={huidig} maat={20} />
           {landNaam(huidig)}
         </button>
       </div>
@@ -2888,7 +2902,7 @@ function LandKnop({ game }: { game: GameApi }) {
                     borderRadius: 12, padding: "10px 12px", cursor: "pointer", textAlign: "left",
                   }}
                 >
-                  <span style={{ fontFamily: font.ui, fontWeight: 700, fontSize: 11, letterSpacing: 1, color: withAlpha(colors.gold, 0.75), minWidth: 24 }}>{l.code}</span>
+                  <span style={{ minWidth: 24, display: "flex", justifyContent: "center" }}><VlagIcoon code={l.code} maat={22} /></span>
                   <span style={{ flex: 1, fontFamily: font.ui, fontSize: 14, color: gekozen ? colors.gold : colors.ink }}>{l.naam}</span>
                   {gekozen && <Check size={16} color={colors.gold} />}
                 </button>
