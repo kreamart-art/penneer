@@ -610,6 +610,98 @@ a:active .hex-aan {
   animation: reward-art 520ms cubic-bezier(0.34, 1.4, 0.5, 1) 260ms both;
 }
 
+/* ---- Behang voor het berichtenvenster ------------------------------------
+   Alle zes leven, en alle zes anders. Traag: tussen de veertien en veertig
+   seconden, want een achtergrond die je ziet bewegen leidt af van wat erop
+   staat. Alleen `background-position` en `opacity` bewegen, dus de browser kan
+   het op de kaart afhandelen en het kost geen batterij.
+
+   De lichtveeg is een eigen laag (::after) en geen extra achtergrondlaag: die
+   moet schuin over ALLES heen, ook over het motief, en dat kan niet als hij in
+   dezelfde stapel zit. */
+.wp-nacht,
+.wp-nevel,
+.wp-raster,
+.wp-sterren,
+.wp-goud,
+.wp-inkt {
+  position: relative;
+}
+
+/* Het dambord schuift diagonaal, met een lichtveeg eroverheen. */
+@keyframes wp-schuif-diag {
+  from { background-position: 0 0, center, center; }
+  to { background-position: 96px 96px, center, center; }
+}
+.wp-nacht { animation: wp-schuif-diag 38s linear infinite; }
+.wp-nacht::after,
+.wp-goud::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(115deg, transparent 38%, rgba(var(--wp), 0.14) 50%, transparent 62%);
+  background-size: 260% 100%;
+  animation: wp-veeg 17s ease-in-out infinite;
+}
+@keyframes wp-veeg {
+  0%, 12% { background-position: 130% 0; opacity: 0; }
+  22% { opacity: 1; }
+  70% { opacity: 1; }
+  100% { background-position: -30% 0; opacity: 0; }
+}
+
+/* De twee nevels schuiven langs elkaar. De perioden delen niet op elkaar, dus
+   ze staan nooit twee keer in dezelfde stand. */
+@keyframes wp-nevel {
+  0% { background-position: 12% 26%, 84% 70%, center; }
+  50% { background-position: 30% 16%, 66% 82%, center; }
+  100% { background-position: 12% 26%, 84% 70%, center; }
+}
+.wp-nevel { animation: wp-nevel 29s ease-in-out infinite; }
+
+/* Het raster loopt onder je door. */
+@keyframes wp-raster {
+  from { background-position: 0 0, center, center; }
+  to { background-position: 0 -68px, center, center; }
+}
+.wp-raster { animation: wp-raster 22s linear infinite; }
+
+/* De sterren fonkelen: het motief staat stil, de dekking ademt. */
+@keyframes wp-sterren {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.72; }
+}
+.wp-sterren::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(closest-side, rgba(var(--wp), 0.1), transparent 70%);
+  animation: wp-sterren 14s ease-in-out infinite;
+}
+
+/* De pennen drijven traag omhoog. */
+@keyframes wp-goud {
+  from { background-position: 0 0, center, center; }
+  to { background-position: 0 -116px, center, center; }
+}
+.wp-goud { animation: wp-goud 34s linear infinite; }
+
+/* De golven lopen van links naar rechts. */
+@keyframes wp-inkt {
+  from { background-position: 0 0, center, center; }
+  to { background-position: 144px 0, center, center; }
+}
+.wp-inkt { animation: wp-inkt 26s linear infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .wp-nacht, .wp-nevel, .wp-raster, .wp-goud, .wp-inkt,
+  .wp-nacht::after, .wp-goud::after, .wp-sterren::before {
+    animation: none;
+  }
+}
+
 /* De lichtslag op het moment dat je schild van kleur wisselt: één ring die
    uitdijt en meteen weer weg is. Kort, want het is een klap en geen puls. */
 @keyframes divisie-slag {

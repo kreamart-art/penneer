@@ -1,6 +1,7 @@
 // Pen Neer — render a shareable result card to a PNG (canvas, no assets) and
 // share via the Web Share API, falling back to a download.
 import { colors } from "../theme/tokens";
+import { SCHILD_KLEUREN } from "../components/ProfileHero";
 
 interface Row {
   name: string;
@@ -333,7 +334,9 @@ interface ProfileCardOpts {
   rankTitle: string; // localized rank name
   levelText: string; // "Level 7"
   level: number; // het cijfer op het schild
-  shield: string; // kleur van het schild, afgeleid van de divisie
+  /** De TREDE, niet de kleur. De kaart leidt het bestand er zelf uit af, zodat
+   *  de kaart en de app nooit een ander schild kunnen tonen. */
+  divisie: number;
   divisieNaam: string; // "Smaragd" — de naam van de divisie
   divisieAccent: string; // "84,206,124" — de kleur van die divisie
   xpNow: number; // XP binnen dit level
@@ -467,7 +470,7 @@ export async function makeProfileCard(opts: ProfileCardOpts): Promise<Blob | nul
     ctx.arc(gx, gy, gat / 2 + 6, 0, Math.PI * 2);
     ctx.stroke();
   }
-  const schild = await loadImage(`/ui/shield/${opts.shield}.webp`);
+  const schild = await loadImage(`/ui/shield/${SCHILD_KLEUREN[Math.max(0, Math.min(SCHILD_KLEUREN.length - 1, opts.divisie))]}.webp`);
   if (schild) {
     const sb = R * 0.24;
     const sh = sb * (972 / 821);

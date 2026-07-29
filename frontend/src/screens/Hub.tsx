@@ -9,11 +9,10 @@ import { ArrowLeft, BookOpen, Image as ImageIcon, CalendarDays, Camera, Check, C
 import { Avatar, RANK_RING } from "../components/Avatar";
 import { Plek } from "../components/ProfileShowcase";
 import { HexArt } from "../components/HexArt";
-import { schuin, DIVISIE_ACCENT, GOUD, KADER_LIJN_GOUD, KADER_LIJN_LOOP, KADER_LIJN_ROOD, KADER_LIJN_XP, NeonKader, Paneel, PlekWapen, Prestatie, RingFoto, RingPortret, SCHILD_KLEUREN, SectieKop, SierKop, StatKaart, divisieKleur, type SchildKleur } from "../components/ProfileHero";
+import { schuin, DIVISIE_ACCENT, GOUD, KADER_LIJN_GOUD, KADER_LIJN_LOOP, KADER_LIJN_PAARS, KADER_LIJN_ROOD, KADER_LIJN_XP, NeonKader, Paneel, PlekWapen, Prestatie, RingFoto, RingPortret, SCHILD_KLEUREN, SectieKop, SierKop, StatKaart, divisieKleur, type SchildKleur } from "../components/ProfileHero";
 import { DivisieLadder, Schild, divisieNaam } from "../components/Divisie";
 import { MeldingRij } from "../components/Meldingen";
-import { GlasVeld } from "../components/GlasVeld";
-import { WALLPAPERS, wallpaperStijl, wallpaperVan, wallpaperZet, type WallpaperId } from "../components/Wallpaper";
+import { WALLPAPERS, wallpaperKlasse, wallpaperStijl, wallpaperVan, wallpaperZet, type WallpaperId } from "../components/Wallpaper";
 import { ensurePushSubscription } from "../pwa/push";
 import { AvatarZoom } from "../components/AvatarZoom";
 import { Button } from "../components/Button";
@@ -901,7 +900,7 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
           </div>
         )}
 
-        <div ref={listRef} style={{ flex: 1, overflowY: "auto", padding: "14px 14px 6px", display: "flex", flexDirection: "column", gap: 8, ...wallpaperStijl(behang) }}>
+        <div ref={listRef} className={`zachtscroll ${wallpaperKlasse(behang)}`} style={{ flex: 1, overflowY: "auto", padding: "14px 14px 6px", display: "flex", flexDirection: "column", gap: 8, ...wallpaperStijl(behang) }}>
           {messages.length === 0 && (
             <p style={{ textAlign: "center", fontFamily: font.ui, fontSize: 13, color: colors.faint, marginTop: 20 }}>{t("dmNoMessages")}</p>
           )}
@@ -948,22 +947,36 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
             type="button"
             onClick={() => { sound.uiTap(); setDmEmotesOpen((v) => !v); }}
             aria-label={t("emoteTitle")}
-            style={{ flexShrink: 0, width: 44, height: 44, clipPath: schuin(9), cursor: "pointer", border: "none",
-              boxShadow: `inset 0 0 0 1.5px ${dmEmotesOpen ? withAlpha(colors.gold, 0.6) : withAlpha("#C8A0FF", 0.22)}`,
-              background: dmEmotesOpen ? withAlpha(colors.gold, 0.14) : withAlpha("#000000", 0.3),
+            style={{ flexShrink: 0, width: 44, height: 44, borderRadius: 12, cursor: "pointer", border: "none",
+              boxShadow: `inset 0 0 0 1.5px ${dmEmotesOpen ? withAlpha(colors.gold, 0.7) : withAlpha("#C8A0FF", 0.35)}`,
+              background: dmEmotesOpen ? withAlpha(colors.gold, 0.16) : withAlpha("#000000", 0.36),
               color: dmEmotesOpen ? colors.gold : colors.sub, display: "flex", alignItems: "center", justifyContent: "center" }}
           >
             <Smile size={20} />
           </button>
-          <GlasVeld
-            value={text}
-            maxLength={500}
-            placeholder={t("chatPlaceholder")}
-            gevuld={!!text.trim()}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") sendNow(); }}
-            kaderStyle={{ flex: 1, minWidth: 0 }}
-          />
+          {/* Een PIL, en een die je ziet. Een neonlijst op halve sterkte
+              verdwijnt tegen behang; hier is de lijn vol en helemaal rond, want
+              dit is het enige waar je op tikt om iets te zeggen. */}
+          <NeonKader
+            radius={999}
+            dik={0.9}
+            sterkte={text.trim() ? 1 : 0.8}
+            lijn={KADER_LIJN_PAARS}
+            gloed="verloop"
+            animeer
+            vulling="geen"
+            style={{ flex: 1, minWidth: 0 }}
+            binnen={{ display: "flex", alignItems: "center", padding: 0, background: "rgba(6,3,18,.55)" }}
+          >
+            <input
+              value={text}
+              maxLength={500}
+              placeholder={t("chatPlaceholder")}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") sendNow(); }}
+              style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", padding: "12px 16px", fontFamily: font.ui, fontSize: 15, color: colors.ink }}
+            />
+          </NeonKader>
           {text.trim() ? (
             <KnopPlaat breed={76} onClick={sendNow} label={t("chatSend")} />
           ) : (
@@ -1019,7 +1032,7 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
         rankTitle: t(`rank_${lvl.rank}`),
         levelText: t("profileCardLevel", { n: lvl.level }),
         level: lvl.level,
-        shield: account.shield || "paars",
+        divisie,
         divisieNaam: divisieNaam(divisie),
         divisieAccent: DIVISIE_ACCENT[divisie],
         xpNow: Math.max(0, lvl.xp - lvl.level_start),
@@ -3240,9 +3253,25 @@ export function ProfileViewModal({ game, userId, onClose }: { game: GameApi; use
 
 // ---- Inbox ---------------------------------------------------------------------
 
+/** Het getal op een zeshoekige plaat, voor in de keuzepil.
+ *
+ *  Een gewone ronde badge zou de derde vorm zijn in een balk die al zeshoeken
+ *  en pillen heeft. De plaat is dezelfde als in de bovenbalk, alleen klein
+ *  genoeg om in een knop te passen. */
+function TelHex({ n }: { n: number }) {
+  return (
+    <HexPlate on size={20}>
+      <span style={{ fontFamily: font.ui, fontSize: 10.5, fontWeight: 800, lineHeight: 1, color: GOUD[3] }}>
+        {n > 9 ? "9+" : n}
+      </span>
+    </HexPlate>
+  );
+}
+
 function InboxTab({ game }: { game: GameApi }) {
   const { t } = useT();
   const [viewing, setViewing] = useState<string | null>(null);
+  const [vak, setVak] = useState<"inbox" | "meld">("inbox");
   // Een tik op een melding brengt je naar waar hij over gaat, voor zover dat
   // binnen deze lijst ligt: een gesprek of het profiel van wie hem stuurde. De
   // rest (duel, dagronde) hangt aan de banner in App, want daar zitten die
@@ -3270,23 +3299,46 @@ function InboxTab({ game }: { game: GameApi }) {
     return <Card><p style={{ margin: 0, fontFamily: font.ui, fontSize: 13.5, color: colors.sub }}>{t("profileNeeded")}</p></Card>;
   }
   const items = game.state.inbox;
-  const meldingen = game.state.meldingen;
+  // Berichten horen bij de INBOX, niet bij de meldingen: in de inbox staat het
+  // gesprek zelf, en dan is een tweede regel "je hebt een bericht" naast dat
+  // gesprek dubbelop. Alles wat GEEN bericht is hoort wel bij de meldingen.
+  const meldingen = game.state.meldingen.filter((m) => m.soort !== "bericht" && m.soort !== "herinnering_bericht");
+  const ongelezenMeld = meldingen.filter((m) => !m.gelezen).length;
+  const inboxTeller = (items.length || account.inbox_count || 0) + (account.dm_unread || 0);
+
   return (
     <>
-    {meldingen.length > 0 && (
+    {/* Dezelfde pil als bij vrienden en club: twee kanten van hetzelfde scherm,
+        met per kant het getal dat er nu op wacht. */}
+    <PilKeuze
+      actief={vak}
+      onKies={setVak}
+      opties={[
+        { key: "inbox" as const, label: t("inboxTab"), icoon: inboxTeller > 0 ? <TelHex n={inboxTeller} /> : undefined },
+        { key: "meld" as const, label: t("meldingenTitle"), icoon: ongelezenMeld > 0 ? <TelHex n={ongelezenMeld} /> : undefined },
+      ]}
+    />
+
+    {vak === "meld" && (
       <Card style={{ display: "flex", flexDirection: "column", gap: 3, padding: "13px 7px 14px" }}>
         <SectieKop
           label={t("meldingenTitle")}
-          actie={game.state.meldingenOngelezen > 0 ? t("meldingenLees") : undefined}
-          onActie={game.state.meldingenOngelezen > 0 ? () => { sound.uiTap(); game.meldingenLezen(); } : undefined}
+          actie={ongelezenMeld > 0 ? t("meldingenLees") : undefined}
+          onActie={ongelezenMeld > 0 ? () => { sound.uiTap(); game.meldingenLezen(); } : undefined}
         />
-        <Lijst n={meldingen.length} rij={46} toon={4.5}>
-          {meldingen.map((m) => (
-            <MeldingRij key={m.id} melding={m} onOpen={() => onMelding(m)} />
-          ))}
-        </Lijst>
+        {meldingen.length === 0 ? (
+          <p style={{ margin: "8px 0 0", paddingInline: 8, fontFamily: font.ui, fontSize: 13, color: colors.faint }}>{t("meldingenLeeg")}</p>
+        ) : (
+          <Lijst n={meldingen.length} rij={46} toon={6}>
+            {meldingen.map((m) => (
+              <MeldingRij key={m.id} melding={m} onOpen={() => onMelding(m)} />
+            ))}
+          </Lijst>
+        )}
       </Card>
     )}
+    {vak === "inbox" && (
+    <>
     {threads.length > 0 && (
       <Card style={{ display: "flex", flexDirection: "column", gap: 3, padding: "13px 7px 14px" }}>
         <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint, marginBottom: 4 }}>
@@ -3342,6 +3394,8 @@ function InboxTab({ game }: { game: GameApi }) {
         ))
       )}
     </Card>
+    </>
+    )}
     {viewing && <ProfileViewModal game={game} userId={viewing} onClose={() => setViewing(null)} />}
     </>
   );
