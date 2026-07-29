@@ -5,7 +5,7 @@ import { ArtIcoon, STAT_ART } from "../components/ArtIcoon";
 import { CloseIcon } from "../components/CloseIcon";
 import { KnopPlaat } from "../components/KnopPlaat";
 import { ReferralAd } from "../components/ReferralAd";
-import { ArrowLeft, BookOpen, CalendarDays, Camera, Check, ChevronDown, Copy, Crown, Flame, Gem, Lock, LogOut, Medal, MessageCircle, MoreVertical, Pencil, Percent, Plus, Rocket, Search, Send, Settings as SettingsIcon, Share2, Shield, ShoppingCart, Smile, Sparkles, Star, Swords, Target, Trash2, Trophy, UserPlus, Users, X, Zap, ZoomIn, ZoomOut } from "lucide-react";
+import { ArrowLeft, BookOpen, Image as ImageIcon, CalendarDays, Camera, Check, ChevronDown, Copy, Crown, Flame, Gem, Lock, LogOut, Medal, MessageCircle, MoreVertical, Pencil, Percent, Plus, Rocket, Search, Send, Settings as SettingsIcon, Share2, Shield, ShoppingCart, Smile, Sparkles, Star, Swords, Target, Trash2, Trophy, UserPlus, Users, X, Zap, ZoomIn, ZoomOut } from "lucide-react";
 import { Avatar, RANK_RING } from "../components/Avatar";
 import { Plek } from "../components/ProfileShowcase";
 import { HexArt } from "../components/HexArt";
@@ -13,6 +13,7 @@ import { schuin, DIVISIE_ACCENT, GOUD, KADER_LIJN_GOUD, KADER_LIJN_LOOP, KADER_L
 import { DivisieLadder, Schild, divisieNaam } from "../components/Divisie";
 import { MeldingRij } from "../components/Meldingen";
 import { GlasVeld } from "../components/GlasVeld";
+import { WALLPAPERS, wallpaperStijl, wallpaperVan, wallpaperZet, type WallpaperId } from "../components/Wallpaper";
 import { ensurePushSubscription } from "../pwa/push";
 import { AvatarZoom } from "../components/AvatarZoom";
 import { Button } from "../components/Button";
@@ -779,6 +780,10 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
   const me = game.state.account?.id;
   const [text, setText] = useState("");
   const [dmEmotesOpen, setDmEmotesOpen] = useState(false);
+  // Het behang staat op dit TOESTEL en niet op je account: het is hoe JIJ je
+  // gesprekken wilt zien, niet iets wat de ander hoort te merken.
+  const [behang, setBehang] = useState<WallpaperId>(wallpaperVan);
+  const [behangOpen, setBehangOpen] = useState(false);
   const listRef = useRef<HTMLDivElement | null>(null);
   // Partner identity: from threads, friends, or the viewed profile.
   const partner =
@@ -855,12 +860,48 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
           <span style={{ flex: 1, fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {partner?.name ?? "..."}
           </span>
+          <button
+            onClick={() => { sound.uiTap(); setBehangOpen((v) => !v); }}
+            aria-label={t("wallpaperTitle")}
+            title={t("wallpaperTitle")}
+            className="pressable"
+            style={{ background: "transparent", border: "none", cursor: "pointer", color: behangOpen ? GOUD[2] : colors.faint, display: "flex", padding: 4 }}
+          >
+            <ImageIcon size={19} />
+          </button>
           <button onClick={game.dmClose} aria-label={t("back")} style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 4 }}>
             <CloseIcon size={26} />
           </button>
         </div>
 
-        <div ref={listRef} style={{ flex: 1, overflowY: "auto", padding: "14px 14px 6px", display: "flex", flexDirection: "column", gap: 8 }}>
+        {behangOpen && (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, padding: "10px 14px 4px" }}>
+            {WALLPAPERS.map((w) => (
+              <button
+                key={w.id}
+                onClick={() => { sound.uiTap(); setBehang(w.id); wallpaperZet(w.id); }}
+                aria-label={w.naam}
+                className="pressable"
+                style={{
+                  height: 54,
+                  clipPath: schuin(8),
+                  border: "none",
+                  cursor: "pointer",
+                  boxShadow: `inset 0 0 0 ${behang === w.id ? 2 : 1}px ${withAlpha(behang === w.id ? GOUD[2] : "#C8A0FF", behang === w.id ? 0.9 : 0.22)}`,
+                  ...wallpaperStijl(w.id),
+                  backgroundAttachment: "scroll",
+                  display: "grid",
+                  placeItems: "end center",
+                  paddingBottom: 4,
+                }}
+              >
+                <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 700, color: behang === w.id ? GOUD[2] : colors.sub, textShadow: "0 1px 3px rgba(6,3,18,.9)" }}>{w.naam}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div ref={listRef} style={{ flex: 1, overflowY: "auto", padding: "14px 14px 6px", display: "flex", flexDirection: "column", gap: 8, ...wallpaperStijl(behang) }}>
           {messages.length === 0 && (
             <p style={{ textAlign: "center", fontFamily: font.ui, fontSize: 13, color: colors.faint, marginTop: 20 }}>{t("dmNoMessages")}</p>
           )}

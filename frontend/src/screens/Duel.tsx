@@ -279,7 +279,7 @@ export function Duel({ game, onBack, onProfile }: { game: GameApi; onBack: () =>
     const tint = clockColor(frac);
     return (
       <Screen top={header}>
-        <Arena src="/duel-bg.webp?v=2" podium={PODIUM_Y} at="46%" width="205%" plate={false} />
+        <Arena src="/duel-bg.webp" podium={PODIUM_Y} at="46%" width="205%" plate={false} />
         <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", gap: 16 }}>
           <RoundDots total={total} idx={idx} />
 
@@ -675,7 +675,7 @@ function LetterStage({ letter, category, hint }: { letter: string; category: str
             onder de letter en dat is een verhouding van de kaart. Aan het scherm
             opgehangen schoof hij zodra het toetsenbord opengaat. Hij is breder
             dan de kaart en steekt er dus buiten, zoals bedoeld. */}
-        <ArenaPlate src="/duel-bg.webp?v=2" podium={PODIUM_Y} at="58%" width="215%" />
+        <ArenaPlate src="/duel-bg.webp" podium={PODIUM_Y} at="58%" width="215%" />
         {!!outline && (
           <svg
             aria-hidden

@@ -28,12 +28,7 @@ import { colors, font, withAlpha } from "../theme/tokens";
 //
 // Het podium zit op 77.7% van de hoogte; met object-fit: cover is de hoogte de
 // krappe kant, dus het landt vanzelf daar, netjes onder de Draai-knop.
-// Het podium zit op 77,2% van de nieuwe plaathoogte (gemeten: de helderste
-// beeldrij). De plaat is LIGGEND, net als die van Duel, dus hij ligt als band
-// over het scherm in plaats van het te vullen: een 2:1-arena die je met
-// `cover` op een staande telefoon plakt laat alleen de middelste kwart zien,
-// en dan zijn de tribunes weg waar het decor het juist om doet.
-const PODIUM = 0.772;
+const PODIUM = 0.777;
 
 export function Reveal({ game }: { game: GameApi }) {
   const { t } = useT();
@@ -62,7 +57,7 @@ export function Reveal({ game }: { game: GameApi }) {
 
   return (
     <Screen top={<div style={{ position: "relative", zIndex: 1 }}><TopBar code={room.code} roundNo={room.round_no} totalRounds={room.settings.rounds} connected={game.state.status === "open"} onLeave={game.leaveRoom} game={game} /></div>}>
-      <Arena src="/game-bg.webp?v=2" podium={PODIUM} at="76%" width="230%" glowAt="70%" />
+      <Arena src="/game-bg.webp" podium={PODIUM} at="79%" fill glowAt="70%" />
       <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column" }}>
         <AlphabetStrip used={room.used_letters} hard={room.settings.hard_letters} lockedLetter={letter} />
 
