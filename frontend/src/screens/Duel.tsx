@@ -1081,7 +1081,58 @@ const ZAAL_ART: Record<number, string> = {
   0: "/ui/inzet/z0.webp?v=3", 50: "/ui/inzet/z50.webp?v=3", 100: "/ui/inzet/z100.webp?v=3",
   250: "/ui/inzet/z250.webp?v=3", 500: "/ui/inzet/z500.webp?v=3", 1000: "/ui/inzet/z1000.webp?v=3",
 };
-/* Het cijfer draagt de kleur van zijn EIGEN zaal. GEMETEN aan de art: van elke
+/* Het bedrag als GESMEED letterwerk in plaats van platte tekst.
+ *
+ * Vijf lagen, in deze volgorde, want de volgorde IS het effect:
+ *   1. een vervaagde warme kopie erachter  -> de zaal die op de letters schijnt
+ *   2. een bijna zwarte kopie een pixel lager -> de omgevingsschaduw
+ *   3. een donkergouden kopie op 2px       -> de afschuining, de dikte
+ *   4. het verloop ivoor -> goud           -> het metaal zelf
+ *   5. een licht verloop dat bovenaan stopt -> de glans op de bovenranden
+ *
+ * De gloed MOET een vervaagde kopie zijn en geen text-shadow: `background-clip:
+ * text` en `text-shadow` gaan niet samen, de schaduw tekent over het geknipte
+ * verloop heen. En de glans stopt halverwege, want een verloop dat over de hele
+ * letter licht is leest niet als licht maar als een lichtere kleur.
+ *
+ * De kleur van de LETTER is overal hetzelfde warme ivoorgoud; alleen de gloed
+ * erachter neemt de kleur van de zaal over. Zo hoort het bedrag bij de kamer
+ * zonder dat de reeks uit elkaar valt in zes verschillende tinten. */
+const IVOOR = "#FFF3D8";
+const GOUD_WARM = "#F5C66A";
+
+function ZaalTekst({ tekst, maat, gloed, spatie = 0 }: { tekst: string; maat: number; gloed: string; spatie?: number }) {
+  const basis: React.CSSProperties = {
+    fontFamily: font.display,
+    fontWeight: 600,
+    fontSize: maat,
+    lineHeight: 1,
+    letterSpacing: spatie + maat * 0.012,
+    whiteSpace: "nowrap",
+  };
+  const laag: React.CSSProperties = { ...basis, position: "absolute", left: 0, top: 0, pointerEvents: "none" };
+  const knip: React.CSSProperties = {
+    WebkitBackgroundClip: "text",
+    backgroundClip: "text",
+    color: "transparent",
+  };
+  return (
+    <span style={{ position: "relative", display: "inline-block", ...basis }}>
+      {/* 1. het vuur van de zaal, ruim vervaagd en zwak */}
+      <span aria-hidden style={{ ...laag, color: gloed, filter: `blur(${Math.round(maat * 0.28)}px)`, opacity: 0.5 }}>{tekst}</span>
+      {/* 2. omgevingsschaduw: laag, zacht, bijna zwart */}
+      <span aria-hidden style={{ ...laag, color: "rgba(10,4,2,.85)", transform: `translateY(${Math.max(1, maat * 0.045)}px)`, filter: `blur(${Math.max(1, maat * 0.035)}px)` }}>{tekst}</span>
+      {/* 3. de afschuining: dezelfde letter in donker goud, net eronder */}
+      <span aria-hidden style={{ ...laag, color: "#8A5A1E", transform: `translateY(${Math.max(1, maat * 0.055)}px)` }}>{tekst}</span>
+      {/* 4. het metaal */}
+      <span style={{ ...laag, position: "relative", backgroundImage: `linear-gradient(178deg, ${IVOOR} 6%, #FFE6AE 34%, ${GOUD_WARM} 72%, #E0AC4F 100%)`, ...knip }}>{tekst}</span>
+      {/* 5. de glans, alleen op de bovenranden */}
+      <span aria-hidden style={{ ...laag, backgroundImage: "linear-gradient(180deg, rgba(255,255,255,.75) 0%, rgba(255,255,255,.12) 26%, transparent 44%)", ...knip }}>{tekst}</span>
+    </span>
+  );
+}
+
+/* De gloedkleur per zaal. GEMETEN aan de art: van elke
  * zaal is de mediaan van de warme, verzadigde pixels genomen (het vuur, het
  * goud, de schat) en die tint is opgetrokken tot vol licht. Zo hoort het cijfer
  * bij de kamer waar het in staat in plaats van er als sticker op te liggen, en
@@ -1227,12 +1278,17 @@ function InzetCarrousel({
           style={{
             position: "absolute", inset: 0,
             display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-            textShadow: `0 2px 12px rgba(0,0,0,.9), 0 0 30px ${withAlpha(ZAAL_KLEUR[n] ?? colors.gold, 0.55)}`,
+            // Geen text-shadow meer: ZaalTekst draagt zijn eigen schaduw en
+            // gloed in lagen, en een shadow hier zou over het geknipte verloop
+            // heen tekenen.
           }}
         >
-          <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 34, lineHeight: 1, letterSpacing: n === 0 ? 1.5 : 0, color: ZAAL_KLEUR[n] ?? colors.gold }}>
-            {n === 0 ? t("duelStakeGeen") : n}
-          </span>
+          <ZaalTekst
+            tekst={n === 0 ? t("duelStakeGeen") : String(n)}
+            maat={34}
+            gloed={ZAAL_KLEUR[n] ?? colors.gold}
+            spatie={n === 0 ? 1.2 : 0.4}
+          />
           {n > 0 && <img src="/coin.webp" alt="" width={26} height={26} style={{ display: "block" }} />}
         </span>
       </button>
