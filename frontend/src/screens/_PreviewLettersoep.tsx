@@ -1,68 +1,98 @@
-// PREVIEW van Lettersoep, het arenaspel van vrijdag. Niet aangesloten op de app:
-// een underscore ervoor en geen import vanuit App, dus hij staat in het project
-// maar niet in de bundel. Bedoeld om over het ontwerp te praten voordat er een
-// spel achter zit.
+// PREVIEW van Lettersoep, het arenaspel van vrijdag. Nog niet aangesloten op een
+// spel: een underscore ervoor, en hij hangt achter ?soep in de url als eigen
+// brok. Bedoeld om over het ontwerp te praten met de echte art in beeld.
 //
-// HET IDEE: de kast is het CHASSIS van de arena, niet van de Flitsreeks. Zijn
-// ruit is vierkant, dus wat er in past is een raster; welk raster hangt van de
-// dag af. Donderdag zijn dat vier flitspads, vrijdag zestien letters. Dezelfde
-// LED-balk erboven, dezelfde uitstapknop eronder, hetzelfde decor erachter. Dat
-// scheelt niet alleen werk: het maakt de arena één plek in plaats van zeven
-// losse spelletjes achter dezelfde tegel.
+// Alle secties komen uit de UI-map en zijn op hun eigen inhoud gesneden. Het
+// BORD en de twee letterlagen delen een doek van 4096 bij 4954, dus die gaan op
+// dezelfde uitsnede: daarmee is de opmaak de uitlijning en valt er niets te
+// plaatsen. De maten hieronder zijn in die art gemeten, als breuk, zodat ze
+// meeschalen zodra het vak smaller wordt.
 //
-// DE REGELS die al vastlagen: zestien letters, twee minuten, langere woorden
-// leveren veel meer op. Plus de drie arenaregels (ceilingloos, onbeperkt
-// herkansen met de beste poging, verdringingspush op plek 1).
-//
-// WAT DIT VOORSTEL TOEVOEGT:
-//  - Woorden worden gelegd door aangrenzende letters te verbinden (Boggle), niet
-//    door letters los te tikken. Dat is de reden dat het raster zestien vakjes
-//    heeft en niet een rij van zestien: de PLEK van een letter doet dan mee.
-//  - De punten verdubbelen per letter vanaf drie. Zo is de score ceilingloos
-//    zonder dat er een bonus-systeem bij hoeft, en is één zevenletterwoord meer
-//    waard dan tien drieletterwoorden. Dat is precies het gedrag dat je wil:
-//    zoeken in plaats van harken.
-//  - De LED-balk draagt de KLOK links en de stand rechts. Bij de Flitsreeks
-//    staat daar de ronde; een spel met een klok zet daar zijn klok.
+// Wat hier in CODE bij komt en niet in de art zit:
+//  - de neonlijn om het letterraster;
+//  - de letters zelf, want die wisselen per dag;
+//  - het pad dat je legt, als lijn achter de letters;
+//  - de vakjes van de gevonden woorden, in de vorm van de glasrijen maar met
+//    een gouden lijn zoals op de mockup.
 import { LogOut } from "lucide-react";
 import { Screen } from "../components/Layout";
-import { KADER_LIJN_ROOD, NeonKader } from "../components/ProfileHero";
-import { BALK, KAST, KAST_SCHEEF, LED, Led, Ruit, VAK } from "./Arena";
+import { KADER_LIJN_LOOP, KADER_LIJN_ROOD, NeonKader } from "../components/ProfileHero";
+import { VAK } from "./Arena";
 import { colors, font, withAlpha } from "../theme/tokens";
 
-// Het bord van deze voorbeelddag. Vier bij vier, en zo gezet dat er echte
-// Nederlandse woorden in aangrenzende paden te vinden zijn: ROL, LEK, STAK, KIN,
-// ELK, KLEIN. Een generator zal hier straks op letterfrequentie moeten letten,
-// anders krijg je een bord waar niets in zit.
+// ---- de maten van de art ----------------------------------------------------
+const BORD_V = 0.8248;      // verhouding van de bordsectie
+const SCORE_V = 3.7805;     // van de scorebordsectie
+const ONDER_V = 4.4481;     // van de ondersectie
+
+// De vier kolommen en rijen van het letterraster, als breuk van het bord.
+const KOL = [0.0561, 0.2803, 0.5051, 0.7297];
+const RIJ = [0.1616, 0.3547, 0.5431, 0.7361];
+const VAK_B = 0.213;
+const VAK_H = 0.1769;
+
+// De twee ruiten van het scorebord, links de tijd en rechts de punten.
+const SCORE_RUIT = { t: 0.2238, h: 0.6643, links: { l: 0.0407, b: 0.3213 }, rechts: { l: 0.637, b: 0.3213 } };
+// De ondersectie heeft twee banden met een streep ertussen: het woord dat je
+// legt boven, de woorden die je al hebt eronder.
+const ONDER_RUIT = { l: 0.0139, b: 0.9722, woord: { t: 0.1317, h: 0.4197 }, lijst: { t: 0.5638, h: 0.2798 } };
+
+const pct = (f: number) => `${(f * 100).toFixed(3)}%`;
+
+// Hoeveel de gloed buiten een vakje uitwaaiert, als deel van dat vakje.
+const HALO = 0.2;
+const GLOED = withAlpha("#FFA524", 0.85);
+
+// ---- de voorbeelddag --------------------------------------------------------
 const BORD = [
   ["S", "T", "E", "R"],
   ["A", "K", "L", "O"],
   ["N", "I", "E", "D"],
   ["M", "B", "A", "U"],
 ];
-
 // Het pad dat nu gelegd wordt: K-L-E-I-N, allemaal aangrenzend.
 const PAD: [number, number][] = [[1, 1], [1, 2], [2, 2], [2, 1], [2, 0]];
-
 // Verdubbelen per letter vanaf drie: 3 = 100, 4 = 200, 5 = 400, 6 = 800 ...
 const punten = (lengte: number) => (lengte < 3 ? 0 : 100 * 2 ** (lengte - 3));
-
 const GEVONDEN = [
   { woord: "ROL", n: 3 },
   { woord: "LEK", n: 3 },
   { woord: "STAK", n: 4 },
 ];
 
-const GAT = 0.028; // deel van de rasterbreedte
+/** Een ruit in een stuk sectie-art: dezelfde rekenwijze als bij de arena-kast.
+ *  Alles als breuk van de BREEDTE, want de hoogte komt uit een verhouding en
+ *  een procent op een kind rekent daar niet betrouwbaar naar terug. */
+function Sectie({ art, verhouding, breedte = VAK, children }: { art: string; verhouding: number; breedte?: string; children?: React.ReactNode }) {
+  return (
+    <div style={{ position: "relative", width: breedte, height: `calc(${breedte} / ${verhouding})`, flexShrink: 0 }}>
+      <img src={art} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} />
+      {children}
+    </div>
+  );
+}
+
+/** Een waarde met zijn opschrift, zoals in de twee ruiten van het scorebord. */
+function Meter({ kop, waarde, breuk }: { kop: string; waarde: string; breuk: { l: number; b: number } }) {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        left: pct(breuk.l), width: pct(breuk.b),
+        top: pct(SCORE_RUIT.t), height: pct(SCORE_RUIT.h),
+        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 1,
+      }}
+    >
+      <span style={{ fontFamily: font.wide, fontSize: 10, letterSpacing: 1.6, color: withAlpha("#FFE7A8", 0.72) }}>{kop}</span>
+      <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 22, lineHeight: 1, color: "#FFF3D0", textShadow: "0 0 12px rgba(255,190,60,.5)" }}>{waarde}</span>
+    </div>
+  );
+}
 
 export function PreviewLettersoep() {
   const stand = GEVONDEN.reduce((t, g) => t + punten(g.n), 0);
   const woord = PAD.map(([r, k]) => BORD[r][k]).join("");
   const inPad = (r: number, k: number) => PAD.findIndex(([pr, pk]) => pr === r && pk === k);
-
-  // De middens van de vakjes als percentage van het raster, voor de lijn die het
-  // pad tekent. Vier kolommen met drie gaten ertussen.
-  const stap = (i: number) => ((i + 0.5) * (1 - 3 * GAT) / 4 + i * GAT) * 100;
 
   return (
     <Screen
@@ -73,124 +103,199 @@ export function PreviewLettersoep() {
         </div>
       }
     >
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, paddingBottom: 30 }}>
-        {/* De balk: KLOK links, stand rechts. Bij de Flitsreeks staat links de
-            ronde; een spel met een klok zet daar zijn klok. */}
-        <Ruit
-          art="/ui/flits/ledbalk.webp?v=4"
-          maat={LED}
-          breedte={BALK}
-          style={{ marginRight: `calc(${VAK} * ${KAST_SCHEEF * 2})` }}
-          binnen={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingInline: 22, gap: 12, overflow: "hidden" }}
-        >
-          <Led maat={22} kleur="#FFC23D">1:24</Led>
-          <Led maat={30} kleur="#FF921F">{String(stand)}</Led>
-        </Ruit>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 9, paddingBottom: 24 }}>
+        {/* Tijd links, punten rechts, het wapen ertussen. Het wapen zit in de
+            art, dus de twee ruiten hoeven alleen hun cijfers te dragen. */}
+        <Sectie art="/ui/soep/scorebord.webp?v=1" verhouding={SCORE_V}>
+          <Meter kop="TIJD" waarde="1:24" breuk={SCORE_RUIT.links} />
+          <Meter kop="PUNTEN" waarde={String(stand)} breuk={SCORE_RUIT.rechts} />
+        </Sectie>
 
-        {/* Dezelfde kast, ander raster in de ruit. */}
-        <div style={{ position: "relative", width: VAK, height: `calc(${VAK} / ${KAST})`, flexShrink: 0 }}>
-          <img src="/ui/flits/machine.webp?v=5" alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} />
-          <div style={{ position: "absolute", left: "9.38%", right: "10.42%", top: "13.86%", bottom: "12.13%", display: "grid", placeItems: "center" }}>
-            <div style={{ position: "relative", width: "94%", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: `${GAT * 100}%` }}>
-              {/* Het pad als lijn ACHTER de letters: hij verbindt de middens, dus
-                  je ziet in één oogopslag welke route je legt. Een reeks losse
-                  opgelichte vakjes laat de ORDE niet zien, en juist die orde is
-                  het woord. */}
-              <svg
-                aria-hidden
-                viewBox="0 0 100 100"
-                preserveAspectRatio="none"
-                style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 1 }}
-              >
-                <polyline
-                  points={PAD.map(([r, k]) => `${stap(k)},${stap(r)}`).join(" ")}
-                  fill="none"
-                  stroke={withAlpha("#FFC23D", 0.85)}
-                  strokeWidth={2.6}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  style={{ filter: "blur(0.6px)" }}
-                />
-              </svg>
-              {BORD.map((rij, r) =>
-                rij.map((letter, k) => {
-                  const i = inPad(r, k);
-                  const aan = i >= 0;
-                  return (
-                    <div
-                      key={`${r}-${k}`}
-                      style={{
-                        position: "relative",
-                        zIndex: aan ? 2 : 0,
-                        aspectRatio: "1",
-                        display: "grid",
-                        placeItems: "center",
-                        borderRadius: "22%",
-                        // Materiaal: hetzelfde donkere metaal als de kast, met een
-                        // verlichte bovenrand. Een opgelicht vakje is geen andere
-                        // KLEUR maar hetzelfde vakje met licht erin.
-                        background: aan
-                          ? "linear-gradient(168deg, #6B3A05 0%, #3E1F02 52%, #2A1401 100%)"
-                          : "linear-gradient(168deg, #241A16 0%, #171010 52%, #0F0A0A 100%)",
-                        boxShadow: aan
-                          ? `inset 0 1px 0 ${withAlpha("#FFE7A8", 0.5)}, inset 0 -2px 4px rgba(0,0,0,.6), 0 0 14px ${withAlpha("#FFA524", 0.55)}`
-                          : "inset 0 1px 0 rgba(255,225,180,.09), inset 0 -2px 4px rgba(0,0,0,.55)",
-                        border: `1px solid ${aan ? withAlpha("#FFC23D", 0.75) : "rgba(255,200,150,.13)"}`,
-                      }}
-                    >
-                      <span
-                        style={{
-                          fontFamily: font.wide,
-                          fontSize: 21,
-                          letterSpacing: 1,
-                          color: aan ? "#FFF0C8" : withAlpha("#FFD79A", 0.62),
-                          textShadow: aan ? `0 0 10px ${withAlpha("#FFA524", 0.9)}` : "none",
-                        }}
-                      >
-                        {letter}
-                      </span>
-                      {/* De volgorde in het pad. Zonder cijfer weet je bij een
-                          woord dat over zichzelf heen loopt niet meer waar het
-                          begon. */}
-                      {aan && (
-                        <span style={{ position: "absolute", top: 2, right: 4, fontFamily: font.ui, fontSize: 8.5, fontWeight: 700, color: withAlpha("#FFE7A8", 0.75) }}>
-                          {i + 1}
-                        </span>
-                      )}
-                    </div>
-                  );
-                })
-              )}
-            </div>
+        {/* Het bord: lijst, doffe vakjes, en daarbovenop wat oplicht. */}
+        <Sectie art="/ui/soep/bord.webp?v=1" verhouding={BORD_V}>
+          <img src="/ui/soep/letters-dof.webp?v=1" alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} />
+
+          {/* De opdracht, in de lucht boven het raster die de art daarvoor
+              vrijhoudt. */}
+          <span
+            style={{
+              position: "absolute", left: 0, right: 0, top: pct(0.055),
+              textAlign: "center", fontFamily: font.wide, fontSize: 13, letterSpacing: 2.4,
+              color: "#FFD98A", textShadow: "0 0 10px rgba(255,180,50,.55)",
+            }}
+          >
+            VIND WOORDEN
+          </span>
+
+          {/* De neonlijn OM het raster. Hij zit niet in de art, want hij hoort
+              te leven: hij loopt rond zolang je zoekt. Vulling leeg, want het
+              paneel eronder is de art zelf. */}
+          <div
+            aria-hidden
+            style={{
+              position: "absolute",
+              left: pct(KOL[0] - 0.028), right: pct(1 - (KOL[3] + VAK_B) - 0.028),
+              top: pct(RIJ[0] - 0.023), bottom: pct(1 - (RIJ[3] + VAK_H) - 0.023),
+              pointerEvents: "none",
+            }}
+          >
+            <NeonKader radius={16} dik={0.45} vulling="geen" lijn={KADER_LIJN_LOOP} animeer eindkap sterkte={0.5} style={{ width: "100%", height: "100%" }} binnen={{ padding: 0 }}>
+              <span />
+            </NeonKader>
           </div>
-        </div>
 
-        {/* Het woord dat je legt, met wat het NU waard is. De waarde erbij is het
-            hele spel: je ziet leven dat een letter erbij verdubbelt. */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10, minHeight: 26 }}>
-          <span style={{ fontFamily: font.wide, fontSize: 22, letterSpacing: 3, color: colors.ink }}>{woord}</span>
-          <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 15, color: colors.green }}>+{punten(PAD.length)}</span>
-        </div>
 
-        {/* Wat je al hebt. Kort en op één regel: een lange lijst hoort bij de
-            uitslag, niet bij het spelen. */}
-        <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 6, maxWidth: VAK }}>
-          {GEVONDEN.map((g) => (
-            <span
-              key={g.woord}
-              style={{
-                display: "inline-flex", alignItems: "center", gap: 5,
-                padding: "3px 9px", borderRadius: 999,
-                background: withAlpha("#000000", 0.34),
-                border: `1px solid ${withAlpha("#FFC23D", 0.28)}`,
-                fontFamily: font.ui, fontSize: 12, color: colors.sub,
-              }}
-            >
-              {g.woord}
-              <span style={{ fontFamily: font.display, fontWeight: 800, color: withAlpha("#FFC23D", 0.9) }}>{punten(g.n)}</span>
-            </span>
-          ))}
-        </div>
+          {/* De gloed die een opgelicht vakje op het paneel werpt. De art houdt
+              zijn licht binnen zijn eigen omranding; dit is wat er buiten valt,
+              en het is wat een gekozen letter AAN laat voelen in plaats van
+              alleen anders gekleurd. Als eigen vervaagde laag en niet als
+              drop-shadow-filter: die rastert op iOS de doos van de laag mee en
+              dan zie je een rechthoek om je letter.
+
+              De kracht staat BUITEN het vakje: het dekkende vakje bedekt dit
+              verloop tot ruim de helft, dus alles voor dat punt zie je toch
+              niet. */}
+          {BORD.map((rij, r) =>
+            rij.map((_, k) => {
+              const aan = inPad(r, k) >= 0;
+              return (
+                <span
+                  key={`gloed-${r}${k}`}
+                  aria-hidden
+                  style={{
+                    position: "absolute",
+                    left: pct(KOL[k] - VAK_B * HALO), top: pct(RIJ[r] - VAK_H * HALO),
+                    width: pct(VAK_B * (1 + HALO * 2)), height: pct(VAK_H * (1 + HALO * 2)),
+                    borderRadius: "28%",
+                    background: `radial-gradient(circle, ${GLOED} 0%, ${GLOED} 44%, ${withAlpha("#FFB43C", 0.5)} 56%, ${withAlpha("#FFB43C", 0.2)} 66%, transparent 74%)`,
+                    filter: "blur(9px)",
+                    opacity: aan ? 1 : 0,
+                    transition: aan ? "opacity .1s linear" : "opacity .25s ease-out",
+                    pointerEvents: "none",
+                    zIndex: 1,
+                  }}
+                />
+              );
+            })
+          )}
+
+          {/* De opgelichte vakjes als art, elk op zijn eigen plek. */}
+          {BORD.map((rij, r) =>
+            rij.map((_, k) => {
+              const aan = inPad(r, k) >= 0;
+              return (
+                <img
+                  key={`aan-${r}${k}`}
+                  src={`/ui/soep/letter-aan-${r}${k}.webp?v=1`}
+                  alt=""
+                  aria-hidden
+                  style={{
+                    position: "absolute",
+                    left: pct(KOL[k] - 0.0015), top: pct(RIJ[r] + 0.0008),
+                    width: pct(VAK_B + 0.003), height: "auto",
+                    display: "block", zIndex: 2,
+                    opacity: aan ? 1 : 0,
+                    transition: aan ? "opacity .08s linear" : "opacity .2s ease-out",
+                  }}
+                />
+              );
+            })
+          )}
+
+          {/* De letters en de tikvlakken bovenop. */}
+          {BORD.map((rij, r) =>
+            rij.map((letter, k) => {
+              const i = inPad(r, k);
+              const aan = i >= 0;
+              return (
+                <button
+                  key={`tik-${r}${k}`}
+                  style={{
+                    position: "absolute",
+                    left: pct(KOL[k]), top: pct(RIJ[r]),
+                    width: pct(VAK_B), height: pct(VAK_H),
+                    zIndex: 3,
+                    display: "grid", placeItems: "center",
+                    background: "transparent", border: "none", padding: 0, cursor: "pointer",
+                    WebkitTapHighlightColor: "transparent",
+                  }}
+                >
+                  <span
+                    style={{
+                      fontFamily: font.wide, fontSize: 24, letterSpacing: 1,
+                      color: aan ? "#FFF6DC" : "#FFD98A",
+                      // Op goud heeft room een donkere zoom nodig, anders
+                      // vervaagt de letter in het vlak waar hij op staat.
+                      textShadow: aan ? "0 1px 2px rgba(74,38,0,.7)" : "0 0 9px rgba(255,170,40,.45)",
+                    }}
+                  >
+                    {letter}
+                  </span>
+                  {/* Het volgnummer: bij een woord dat over zichzelf heen loopt
+                      weet je zonder cijfer niet meer waar het begon. */}
+                  {aan && (
+                    <span style={{ position: "absolute", top: "8%", right: "12%", fontFamily: font.ui, fontSize: 9, fontWeight: 800, color: "#4A2C00" }}>
+                      {i + 1}
+                    </span>
+                  )}
+                </button>
+              );
+            })
+          )}
+        </Sectie>
+
+        {/* Het woord dat je legt met wat het NU waard is, en daaronder wat je al
+            hebt. De waarde erbij is het hele spel: je ziet leven dat een letter
+            erbij verdubbelt. */}
+        <Sectie art="/ui/soep/onder.webp?v=1" verhouding={ONDER_V}>
+          <div
+            style={{
+              position: "absolute",
+              left: pct(ONDER_RUIT.l), width: pct(ONDER_RUIT.b),
+              top: pct(ONDER_RUIT.woord.t), height: pct(ONDER_RUIT.woord.h),
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 9,
+            }}
+          >
+            <span style={{ fontFamily: font.wide, fontSize: 23, letterSpacing: 3, color: "#FFF3D0", textShadow: "0 0 12px rgba(255,190,60,.5)" }}>{woord}</span>
+            <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 15, color: colors.green }}>+{punten(PAD.length)}</span>
+          </div>
+
+          {/* De gevonden woorden in de vorm van de glasrijen, maar met de gouden
+              lijn van deze sectie: hetzelfde vakje, ander materiaal. De lijn is
+              een tweede geknipte laag en geen border, want een border volgt de
+              rechthoek en niet de afgeschuinde vorm. */}
+          <div
+            style={{
+              position: "absolute",
+              left: pct(ONDER_RUIT.l), width: pct(ONDER_RUIT.b),
+              top: pct(ONDER_RUIT.lijst.t), height: pct(ONDER_RUIT.lijst.h),
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 7, paddingInline: 10,
+            }}
+          >
+            {GEVONDEN.map((g) => (
+              <span
+                key={g.woord}
+                style={{
+                  display: "inline-flex", height: "84%", padding: 1,
+                  clipPath: "polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)",
+                  background: `linear-gradient(180deg, ${withAlpha("#FFD98A", 0.85)}, ${withAlpha("#B0710E", 0.7)})`,
+                }}
+              >
+                <span
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 5, paddingInline: 9,
+                    clipPath: "polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px)",
+                    background: "linear-gradient(180deg, rgba(58,26,86,.97), rgba(32,13,52,.97))",
+                    fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: withAlpha("#FFE7A8", 0.92),
+                  }}
+                >
+                  {g.woord}
+                  <span style={{ fontFamily: font.display, fontWeight: 800, color: "#FFC23D" }}>{punten(g.n)}</span>
+                </span>
+              </span>
+            ))}
+          </div>
+        </Sectie>
 
         <div style={{ display: "flex", justifyContent: "center" }}>
           <NeonKader radius={999} dik={0.5} vulling="geen" animeer lijn={KADER_LIJN_ROOD} gloed={`0 0 12px ${withAlpha(colors.red, 0.35)}`} binnen={{ padding: 0 }}>
