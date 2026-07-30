@@ -38,6 +38,8 @@ const Juridisch = lazy(() => import("./screens/Juridisch").then((m) => ({ defaul
 // Ontwerpvoorbeeld van het arenaspel van vrijdag, achter ?soep in de url.
 // Eigen brok, dus wie hem niet opent downloadt hem ook niet.
 const PreviewLettersoep = lazy(() => import("./screens/_PreviewLettersoep"));
+// En dat van zaterdag, achter ?klem.
+const PreviewKleurenklem = lazy(() => import("./screens/_PreviewKleurenklem"));
 import { InviteBanner } from "./components/InviteBanner";
 import { DmBanner } from "./components/DmBanner";
 import { localNotify } from "./components/NotifyNudge";
@@ -438,6 +440,8 @@ export default function App() {
     screen = <LanguagePage />;
   } else if (typeof location !== "undefined" && location.search.includes("soep")) {
     screen = <PreviewLettersoep />;
+  } else if (typeof location !== "undefined" && location.search.includes("klem")) {
+    screen = <PreviewKleurenklem />;
   } else if (showRules) {
     screen = <Rules onBack={() => setShowRules(false)} />;
   } else if (showDaily) {
