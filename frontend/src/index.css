@@ -306,7 +306,7 @@ body.flitskast::after {
   background-image:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
     radial-gradient(120% 62% at 50% 46%, rgba(2, 1, 7, 0) 0%, rgba(2, 1, 7, 0.3) 62%, rgba(2, 1, 7, 0.7) 100%),
-    url("/ui/flits/achtergrond.webp?v=1"),
+    url("/ui/flits/achtergrond.webp?v=2"),
     linear-gradient(180deg, #150e2e 0%, #100a24 50%, #06040e 100%);
   background-repeat: repeat, no-repeat, no-repeat, no-repeat;
   background-position: top left, center, center center, top;
@@ -330,7 +330,7 @@ body.flitshal::after {
   background-image:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
     radial-gradient(120% 62% at 50% 40%, rgba(2, 1, 7, 0) 0%, rgba(2, 1, 7, 0.26) 62%, rgba(2, 1, 7, 0.66) 100%),
-    url("/ui/flits/achtergrond-lobby.webp?v=1"),
+    url("/ui/flits/achtergrond-lobby.webp?v=2"),
     linear-gradient(180deg, #150e2e 0%, #100a24 50%, #06040e 100%);
   background-repeat: repeat, no-repeat, no-repeat, no-repeat;
   background-position: top left, center, center center, top;
@@ -715,6 +715,21 @@ a:active .hex-aan {
 
 @media (prefers-reduced-motion: reduce) {
   .wp-art::after { animation: none; opacity: 0; }
+}
+
+/* De klop van de LED-stand in de Flitsreeks: bij elke score-verhoging komt het
+   cijfer even naar voren en licht het op. Kort en zonder verplaatsing, want een
+   uitlezing die springt leest als een storing; dit is een tel die TIKT. De
+   tintwissel van de trap loopt er los van, als transition op de kleur zelf. */
+@keyframes led-klop {
+  0% { transform: scale(1); filter: brightness(1); }
+  30% { transform: scale(1.14); filter: brightness(1.7); }
+  100% { transform: scale(1); filter: brightness(1); }
+}
+.led-klop { animation: led-klop .42s cubic-bezier(.2,1.4,.4,1); transform-origin: center right; }
+
+@media (prefers-reduced-motion: reduce) {
+  .led-klop { animation: none; }
 }
 
 /* De lichtslag op het moment dat je schild van kleur wisselt: één ring die

@@ -110,8 +110,8 @@ function Bord({ aanNu, uit, onTik }: { aanNu: number | null; uit: boolean; onTik
   const { t } = useT();
   return (
     <div style={{ position: "relative", width: VAK, height: `calc(${VAK} / ${KAST})`, flexShrink: 0 }}>
-      <img src="/ui/flits/machine.webp?v=4" alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} />
-      <img src="/ui/flits/knoppen-dof.webp?v=3" alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} />
+      <img src="/ui/flits/machine.webp?v=5" alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} />
+      <img src="/ui/flits/knoppen-dof.webp?v=4" alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} />
       {KNOPPEN.map((k, i) => {
         const aan = aanNu === i;
         return (
@@ -141,7 +141,7 @@ function Bord({ aanNu, uit, onTik }: { aanNu: number | null; uit: boolean; onTik
               }}
             />
             <img
-              src={`/ui/flits/knop-${k.art}.webp?v=2`}
+              src={`/ui/flits/knop-${k.art}.webp?v=5`}
               alt=""
               style={{
                 position: "absolute",
@@ -194,7 +194,7 @@ function Bord({ aanNu, uit, onTik }: { aanNu: number | null; uit: boolean; onTik
  *  terug naar die hoogte. Met calc op één bekende maat is er niets te raden. */
 type Maten = { verhouding: number; links: number; rechts: number; boven: number; onder: number };
 
-const LED: Maten = { verhouding: 4.6263, links: 0.0362, rechts: 0.0354, boven: 0.0397, onder: 0.0444 };
+const LED: Maten = { verhouding: 4.6352, links: 0.063, rechts: 0.0639, boven: 0.0435, onder: 0.0454 };
 
 function Ruit({ art, maat, binnen, children }: { art: string; maat: Maten; binnen?: React.CSSProperties; children: React.ReactNode }) {
   return (
@@ -221,23 +221,32 @@ function Ruit({ art, maat, binnen, children }: { art: string; maat: Maten; binne
   );
 }
 
+// De kleurtrap van de stand: hoe hoger je komt, hoe heter de cijfers. Van goud
+// via oranje naar rood, dezelfde taal als de rode neonrand van de balk zelf.
+// Per twee rondes een stap, en vanaf ronde elf blijft hij op het heetste rood
+// staan: een trap zonder eind zou onzichtbaar traag verkleuren.
+const LED_TRAP = ["#FFC23D", "#FFAD2B", "#FF921F", "#FF711C", "#FF4E26", "#FF3038"] as const;
+const ledKleur = (level: number) => LED_TRAP[Math.min(LED_TRAP.length - 1, Math.floor((level - 1) / 2))];
+
 /** Cijfers achter het glas van de LED-balk.
  *
  *  Geen verloop en geen glansrandje zoals op goud: een lampje is uit zichzelf
  *  fel en overal even fel. Wat het licht doet is de vervaagde kopie erachter.
  *  De puntletter doet de rest, en die krijgt ruimte per punt via letterSpacing,
  *  anders lopen de matrixen van twee cijfers in elkaar. */
-function Led({ maat, sterk = 1, children }: { maat: number; sterk?: number; children: React.ReactNode }) {
+function Led({ maat, sterk = 1, kleur = GOUD[3], children }: { maat: number; sterk?: number; kleur?: string; children: React.ReactNode }) {
   const ruimte = Math.ceil(maat * 0.6);
   return (
     <span style={{ position: "relative", display: "inline-block", fontFamily: font.dot, fontSize: maat, lineHeight: 1, letterSpacing: maat * 0.06, whiteSpace: "nowrap" }}>
+      {/* De overgang zit op de KLEUR zelf: als de trap een stap neemt glijden
+          cijfers en gloed samen naar de nieuwe tint in plaats van te knippen. */}
       <span
         aria-hidden
-        style={{ position: "absolute", top: -ruimte, right: -ruimte, bottom: -ruimte, left: -ruimte, display: "grid", placeItems: "center", color: GOUD[2], filter: `blur(${Math.round(maat * 0.26)}px)`, opacity: 0.85 * sterk, pointerEvents: "none" }}
+        style={{ position: "absolute", top: -ruimte, right: -ruimte, bottom: -ruimte, left: -ruimte, display: "grid", placeItems: "center", color: kleur, filter: `blur(${Math.round(maat * 0.26)}px)`, opacity: 0.85 * sterk, transition: "color .5s ease", pointerEvents: "none" }}
       >
         {children}
       </span>
-      <span style={{ position: "relative", color: GOUD[3] }}>{children}</span>
+      <span style={{ position: "relative", color: kleur, transition: "color .5s ease" }}>{children}</span>
     </span>
   );
 }
@@ -373,12 +382,17 @@ function Flitsreeks({ seed, onKlaar }: { seed: string; onKlaar: (score: number, 
           puntletter: dat is wat een scorebord doet, en het haalt de cijfers weg
           uit de losse regels die boven de pads zweefden. */}
       <Ruit
-        art="/ui/flits/ledbalk.webp?v=2"
+        art="/ui/flits/ledbalk.webp?v=3"
         maat={LED}
         binnen={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingInline: "8%", gap: 10, overflow: "hidden" }}
       >
-        <Led maat={15} sterk={0.7}>{t("arenaRonde", { n: level }).toUpperCase()}</Led>
-        <Led maat={30}>{String(score)}</Led>
+        <Led maat={15} sterk={0.7} kleur={ledKleur(level)}>{t("arenaRonde", { n: level }).toUpperCase()}</Led>
+        {/* De sleutel op de score: elke verhoging hermonteert het cijfer en
+            start de klop opnieuw. De kleur zit NIET in de sleutel, dus de
+            tintwissel blijft een glijdende overgang. */}
+        <span key={score} className={score > 0 ? "led-klop" : undefined} style={{ display: "inline-flex" }}>
+          <Led maat={30} kleur={ledKleur(level)}>{String(score)}</Led>
+        </span>
       </Ruit>
 
       <Bord aanNu={aanNu} uit={fase !== "doe"} onTik={tikPad} />
