@@ -414,7 +414,7 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
               // lijn die je ziet. Overal waar je iets zegt hoort hetzelfde vak.
               background: "rgba(6,3,18,.55)",
               border: "none",
-              boxShadow: `inset 0 0 0 1.4px ${withAlpha("#A868F5", draft.trim() ? 0.8 : 0.55)}, 0 0 5px ${withAlpha("#8B45E8", 0.12)}`,
+              boxShadow: `inset 0 0 0 1px ${withAlpha("#A868F5", draft.trim() ? 0.6 : 0.42)}, 0 0 4px ${withAlpha("#8B45E8", 0.1)}`,
               borderRadius: 999,
               padding: "11px 16px",
               color: colors.ink,

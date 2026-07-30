@@ -88,7 +88,7 @@ export function GlasKnop({
       <span
         style={{
           position: "absolute",
-          inset: 1.4,
+          inset: 1,
           borderRadius: "50%",
           background:
             "radial-gradient(120% 100% at 30% 0%, rgba(255,222,138,.20) 0%, rgba(255,222,138,.05) 38%, rgba(0,0,0,0) 62%)," +
