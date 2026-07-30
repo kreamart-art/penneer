@@ -4,11 +4,17 @@
 // HET SPEL: zestien letters, 55 seconden per level. Een woord leg je door
 // aangrenzende letters te verbinden, met de vinger (swipen) of door te tikken.
 // Bestaat het woord, dan telt hij; de punten VERDUBBELEN per letter (3=100,
-// 4=200, 5=400). Vind je vijf woorden, dan vallen de letters van het bord,
+// 4=200, 5=400). Haal je het leveldoel, dan vallen de letters van het bord,
 // regent er een nieuw stel in EN gaat de klok terug naar 55. Loopt hij af,
 // dan is de poging voorbij. Geen einde aan het aantal levels, dus de
 // ceilingloze arenaregel geldt vanzelf; het plafond is hoe lang je de klok
 // blijft terugverdienen.
+//
+// VAN MAKKELIJK NAAR MOEILIJK. Level 1 is een bord waar veertig woorden in
+// zitten en je hoeft er drie. Level 12 is een bord met twaalf woorden van vier
+// letters of langer en je hebt er acht nodig, in dezelfde 55 seconden. Wat
+// daartussen oploopt staat in LADDER; hoe de borden op maat gemaakt worden
+// staat bij `maakBord`.
 //
 // TWEE MANIEREN OM TE LEGGEN, en ze mogen door elkaar:
 //  - SWIPEN: houd je vinger op een letter en sleep over de volgende. Loslaten
@@ -24,7 +30,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LogOut } from "lucide-react";
 import { Screen } from "../components/Layout";
 import { KADER_LIJN_LOOP, KADER_LIJN_ROOD, NeonKader } from "../components/ProfileHero";
-import { NL_PER_LENGTE, NL_WOORDEN } from "../data/nlwoorden";
+import { NL_MAX_LENGTE, NL_PER_LENGTE, NL_PREFIX, NL_WOORDEN } from "../data/nlwoorden";
 import { VAK } from "./Arena";
 import { sound } from "../sound/sound";
 import { colors, font, withAlpha } from "../theme/tokens";
@@ -52,15 +58,69 @@ const PANEEL = "#1D0C29";
 // ---- de regels --------------------------------------------------------------
 /** De klok per level. Hij begint elke keer opnieuw: een level uitspelen is dus
  *  letterlijk tijd terugverdienen, en dat is de spanning. Loopt hij leeg voor je
- *  vijf woorden hebt, dan stopt de poging. */
+ *  het leveldoel hebt, dan stopt de poging. */
 const LEVEL_TIJD_S = 55;
-/** Zoveel woorden per level. Vijf is genoeg om een bord echt af te zoeken en
- *  kort genoeg om vaart te houden; de druk komt van de klok, niet van het
- *  aantal. */
-const WOORDEN_PER_LEVEL = 5;
 /** Hoeveel er onderin passen. Meer dan vier en ze worden onleesbaar klein. */
 const TOON_WOORDEN = 4;
 const punten = (lengte: number) => (lengte < 3 ? 0 : 100 * 2 ** (lengte - 3));
+
+// ---- de moeilijkheidsladder -------------------------------------------------
+//
+// GEMETEN, niet gegokt. Bij 400 borden per plantplan bleek dat het plan
+// (vier woorden van 5-4-4-3 of drie van 6-5-5) nauwelijks iets doet voor het
+// aantal vindbare woorden: mediaan 23 tot 28 bij élk plan. De meeste woorden
+// ontstaan namelijk uit toevallige overlap van de paden, niet uit wat je erin
+// legt. Twee dingen doen wél iets:
+//
+//  1. De MINIMUMLENGTE. Tellen alleen woorden van vier letters of langer, dan
+//     halveert het aantal woorden op hetzelfde bord (26 -> 16). Vijf letters is
+//     te ver: dan blijven er een handvol over en is een level niet meer te doen.
+//  2. De RIJKDOM van het bord zelf. Die kun je niet plannen, alleen meten: maak
+//     een bord, tel wat erin zit, en houd hem pas als het aantal in de band van
+//     dit level valt. Dat is precies wat `maakBord` doet.
+//
+// De banden hieronder zijn zo gekozen dat ze allemaal binnen het budget van
+// zestig borden gehaald worden (gemeten: mediaan 2 pogingen, p90 zes, en de
+// hele lus kost mediaan 1 ms). Wat oploopt is de VERHOUDING tussen wat je moet
+// vinden en wat er te vinden is: 3 van de 44 in level 1, 8 van de 12 in level
+// 12. Daarna blijft de ladder staan, want daar komt in de praktijk niemand.
+type Trap = {
+  /** Zoveel woorden moet je vinden om door te mogen. */
+  doel: number;
+  /** Korter dan dit telt niet mee. */
+  min: number;
+  /** De band waarin het bord moet vallen, gemeten in telbare woorden. */
+  onder: number;
+  boven: number;
+};
+
+const LADDER: Trap[] = [
+  { doel: 3, min: 3, onder: 40, boven: 999 },
+  { doel: 4, min: 3, onder: 32, boven: 60 },
+  { doel: 4, min: 3, onder: 26, boven: 44 },
+  { doel: 5, min: 3, onder: 22, boven: 36 },
+  { doel: 5, min: 3, onder: 19, boven: 30 },
+  { doel: 6, min: 3, onder: 17, boven: 26 },
+  { doel: 6, min: 4, onder: 18, boven: 30 },
+  { doel: 7, min: 4, onder: 15, boven: 24 },
+  { doel: 7, min: 4, onder: 13, boven: 20 },
+  { doel: 8, min: 4, onder: 11, boven: 17 },
+  { doel: 8, min: 4, onder: 10, boven: 15 },
+  { doel: 8, min: 4, onder: 9, boven: 14 },
+];
+
+export function trapVoor(level: number): Trap {
+  const t = LADDER[Math.min(LADDER.length, Math.max(1, level)) - 1];
+  // Een level waarin het doel hoger ligt dan wat er op het bord staat is niet
+  // te halen. De band mag dus nooit onder het doel zakken, wat er ook in de
+  // tabel staat: liever een bord dat iets te rijk is dan een onmogelijk level.
+  return { ...t, onder: Math.max(t.onder, t.doel + 2) };
+}
+
+/** Het plantplan. Vier woorden die samen zestien vakjes vullen, zodat elk
+ *  vakje uit een echt woord komt. Welk plan het is maakt voor de moeilijkheid
+ *  weinig uit (zie de meting hierboven), dus het blijft er één. */
+const PLAN = [5, 4, 4, 3];
 
 // ---- seed en generator ------------------------------------------------------
 function maakRng(seed: string): () => number {
@@ -80,24 +140,53 @@ const buur = (a: number, b: number) => {
   return a !== b && Math.abs(r1 - r2) <= 1 && Math.abs(k1 - k2) <= 1;
 };
 
-/** Bouw een bord dat VOLLEDIG uit vier lijstwoorden bestaat: 5+4+4+3 = 16
- *  vakjes. Elk woord wordt als kronkelpad over nog vrije vakjes gelegd, dus er
- *  zit altijd wat in; door overlap van paden ontstaan er vanzelf meer woorden
- *  dan de vier die erin gelegd zijn. */
-function maakBord(seed: string): string[] {
-  const rng = maakRng(seed);
+/** De buren van elk vakje, één keer uitgerekend. De oplosser loopt hier zo vaak
+ *  overheen dat het zonde is om per stap opnieuw te rekenen. */
+const BUREN: number[][] = Array.from({ length: 16 }, (_, a) => {
+  const uit: number[] = [];
+  for (let b = 0; b < 16; b++) if (buur(a, b)) uit.push(b);
+  return uit;
+});
+
+/** Alle woorden die op dit bord te vinden zijn, van `min` letters of langer.
+ *
+ *  Dit is wat "moeilijk" meetbaar maakt: pas als je weet hoeveel er in een bord
+ *  zit, kun je een bord voor level 1 rijk maken en dat voor level 10 karig. Het
+ *  is een diepte-eerst zoektocht over alle paden, met twee remmen: een pad dat
+ *  geen begin van een woord meer is valt meteen af, en langer dan het langste
+ *  woord in de lijst hoeft nooit. De set is bewust een set: hetzelfde woord via
+ *  twee paden telt één keer, precies zoals het spel het ook rekent. */
+function telbaar(cel: string[], min: number): Set<string> {
+  const uit = new Set<string>();
+  const zoek = (c: number, woord: string, gezien: number) => {
+    const nw = woord + cel[c];
+    if (!NL_PREFIX.has(nw)) return;
+    if (nw.length >= min && NL_WOORDEN.has(nw)) uit.add(nw);
+    if (nw.length >= NL_MAX_LENGTE) return;
+    const g = gezien | (1 << c);
+    for (const b of BUREN[c]) if (!(g & (1 << b))) zoek(b, nw, g);
+  };
+  for (let c = 0; c < 16; c++) zoek(c, "", 0);
+  return uit;
+}
+
+/** Eén bord dat VOLLEDIG uit vier lijstwoorden bestaat: 5+4+4+3 = 16 vakjes.
+ *  Elk woord wordt als kronkelpad over nog vrije vakjes gelegd, dus er zit
+ *  altijd wat in; door overlap van paden ontstaan er vanzelf meer woorden dan
+ *  de vier die erin gelegd zijn. */
+function ruwBord(rng: () => number): string[] | null {
   const van = (n: number) => NL_PER_LENGTE.get(n) ?? [];
-  for (let poging = 0; poging < 300; poging++) {
+  for (let poging = 0; poging < 60; poging++) {
     const gekozen = new Set<string>();
     const woorden: string[] = [];
-    for (const n of [5, 4, 4, 3]) {
+    for (const n of PLAN) {
       const opties = van(n).filter((w) => !gekozen.has(w));
       if (!opties.length) break;
       const w = opties[Math.floor(rng() * opties.length)];
       gekozen.add(w);
       woorden.push(w);
     }
-    if (woorden.length < 4) continue;
+    if (woorden.length < PLAN.length) continue;
 
     const cel: string[] = Array(16).fill("");
     const husselen = <T,>(a: T[]) => {
@@ -122,7 +211,28 @@ function maakBord(seed: string): string[] {
     };
     if (woorden.every(leg)) return cel;
   }
-  return "STERAKLONIEDMBAU".split("");
+  return null;
+}
+
+/** Het bord voor dit level: maak er een, tel wat erin zit, en houd hem pas als
+ *  het aantal in de band van deze trap valt. Zestig borden is ruim: gemeten
+ *  haalt elke trap zijn band binnen mediaan twee pogingen en kost de hele lus
+ *  ongeveer een milliseconde. Lukt het toch niet, dan wint het bord dat er het
+ *  dichtst bij zat, want een bord dat een tikje te makkelijk is nog altijd
+ *  beter dan geen bord. */
+function maakBord(seed: string, trap: Trap): string[] {
+  const rng = maakRng(seed);
+  let beste: string[] | null = null;
+  let besteAfstand = Infinity;
+  for (let i = 0; i < 60; i++) {
+    const cel = ruwBord(rng);
+    if (!cel) continue;
+    const n = telbaar(cel, trap.min).size;
+    if (n >= trap.onder && n <= trap.boven) return cel;
+    const afstand = n < trap.onder ? trap.onder - n : n - trap.boven;
+    if (afstand < besteAfstand) { besteAfstand = afstand; beste = cel; }
+  }
+  return beste ?? "STERAKLONIEDMBAU".split("");
 }
 
 /** Een verse sleutel per POTJE, niet per dag: twee keer spelen hoort nooit
@@ -130,6 +240,13 @@ function maakBord(seed: string): string[] {
  *  server terug als het bord voor iedereen gelijk moet zijn; dat is een keuze
  *  tussen variatie en een ranglijst waarin iedereen dezelfde borden had. */
 const versSleutel = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+
+/** Waar de testversie begint: ?soep=7 start op level 7. Zonder getal level 1. */
+function startLevel(): number {
+  if (typeof location === "undefined") return 1;
+  const n = Number(new URLSearchParams(location.search).get("soep"));
+  return Number.isFinite(n) && n >= 1 ? Math.floor(n) : 1;
+}
 
 // ---- bouwstenen -------------------------------------------------------------
 function Sectie({ art, verhouding, breedte = VAK, kind, children }: { art: string; verhouding: number; breedte?: string; kind?: React.Ref<HTMLDivElement>; children?: React.ReactNode }) {
@@ -196,12 +313,16 @@ export function PreviewLettersoep() {
   }, []);
 
   const [potje, setPotje] = useState(versSleutel);
-  const [level, setLevel] = useState(1);
+  // In de testversie mag je met ?soep=7 halverwege de ladder beginnen. Anders
+  // moet je zes levels uitspelen voor je ziet of de zevende trap klopt, en dat
+  // is precies de trap waar de regels veranderen.
+  const [level, setLevel] = useState(startLevel);
   const [totaal, setTotaal] = useState(0);
   const [pad, setPad] = useState<number[]>([]);
   const [gevonden, setGevonden] = useState<{ woord: string; n: number }[]>([]);
   const [dezeLevel, setDezeLevel] = useState(0);
   const [fout, setFout] = useState(false);
+  const [reden, setReden] = useState<string | null>(null);
   const [oordeel, setOordeel] = useState<{ cellen: number[]; goed: boolean } | null>(null);
   const [weg, setWeg] = useState<{ woord: string; n: number } | null>(null);
   const [over, setOver] = useState(LEVEL_TIJD_S);
@@ -211,7 +332,8 @@ export function PreviewLettersoep() {
   const na = (ms: number, fn: () => void) => { timers.current.push(window.setTimeout(fn, ms)); };
   useEffect(() => () => timers.current.forEach((t) => window.clearTimeout(t)), []);
 
-  const bord = useMemo(() => maakBord(`${potje}:${level}`), [potje, level]);
+  const trap = useMemo(() => trapVoor(level), [level]);
+  const bord = useMemo(() => maakBord(`${potje}:${level}`, trap), [potje, level, trap]);
 
   // De klok. Hij stopt zodra de poging voorbij is, ook als je zelf op stoppen
   // drukt: `fase` staat in de afhankelijkheden, dus het interval wordt dan
@@ -232,14 +354,26 @@ export function PreviewLettersoep() {
 
   const leg = useCallback((cellen: number[]) => {
     const w = cellen.map((x) => bord[x]).join("");
-    const goed = w.length >= 3 && NL_WOORDEN.has(w) && !gevonden.some((g) => g.woord === w);
+    const bestaat = NL_WOORDEN.has(w);
+    const goed = w.length >= trap.min && bestaat && !gevonden.some((g) => g.woord === w);
     setOordeel({ cellen, goed });
     na(560, () => setOordeel(null));
     setPad([]);
     if (!goed) {
       sound.uiTap();
       setFout(true);
+      // Waarom hij afvalt. Vanaf level 7 tellen woorden van drie letters niet
+      // meer mee, en dan is "bestaat wel, telt niet" precies het geval waarin
+      // een rood vakje zonder uitleg oneerlijk voelt.
+      setReden(
+        bestaat && w.length < trap.min ? `te kort, ${trap.min}+ letters`
+        : bestaat ? "die had je al"
+        : null
+      );
+      // De schud duurt kort, want dat is een schrikje. De uitleg blijft langer
+      // staan: die moet je kunnen LEZEN terwijl je alweer aan het zoeken bent.
       na(400, () => setFout(false));
+      na(2000, () => setReden(null));
       return;
     }
     sound.approve();
@@ -257,7 +391,7 @@ export function PreviewLettersoep() {
     setTotaal((t) => t + punten(w.length));
     const nieuw = dezeLevel + 1;
     setDezeLevel(nieuw);
-    if (nieuw >= WOORDEN_PER_LEVEL) {
+    if (nieuw >= trap.doel) {
       setFase("val");
       sound.win();
       na(760, () => {
@@ -267,7 +401,7 @@ export function PreviewLettersoep() {
         setFase("spel");
       });
     }
-  }, [bord, gevonden, dezeLevel]);
+  }, [bord, gevonden, dezeLevel, trap]);
 
   // ---- invoer: swipen en tikken ---------------------------------------------
   const bordRef = useRef<HTMLDivElement>(null);
@@ -336,12 +470,12 @@ export function PreviewLettersoep() {
   const stop = () => setFase("klaar");
   const opnieuw = () => {
     setPotje(versSleutel());
-    setLevel(1); setTotaal(0); setPad([]); setGevonden([]); setDezeLevel(0);
-    setOver(LEVEL_TIJD_S); setFase("spel"); setFout(false); setOordeel(null); setWeg(null);
+    setLevel(startLevel()); setTotaal(0); setPad([]); setGevonden([]); setDezeLevel(0);
+    setOver(LEVEL_TIJD_S); setFase("spel"); setFout(false); setReden(null); setOordeel(null); setWeg(null);
   };
 
   const woord = pad.map((c) => bord[c]).join("");
-  const geldig = woord.length >= 3 && NL_WOORDEN.has(woord) && !gevonden.some((g) => g.woord === woord);
+  const geldig = woord.length >= trap.min && NL_WOORDEN.has(woord) && !gevonden.some((g) => g.woord === woord);
   const inPad = (c: number) => pad.indexOf(c);
   const midX = (c: number) => (KOL[c % 4] + VAK_B / 2) * 100;
   const midY = (c: number) => (RIJ[Math.floor(c / 4)] + VAK_H / 2) * 100;
@@ -417,8 +551,12 @@ export function PreviewLettersoep() {
               <span style={{ fontFamily: font.wide, fontSize: 16, letterSpacing: 2.8, color: "#FFD98A", textShadow: "0 0 10px rgba(255,180,50,.55)" }}>
                 LEVEL {level}
               </span>
+              {/* Het doel EN de regel, want allebei lopen ze op met het level.
+                  De minimumlengte staat er alleen bij zodra hij boven de drie
+                  ligt: eerder is het ruis, later is het het halve spel. */}
               <span style={{ fontFamily: font.ui, fontSize: 10.5, fontWeight: 600, color: withAlpha("#FFE7A8", 0.72) }}>
-                nog {WOORDEN_PER_LEVEL - dezeLevel} van de {WOORDEN_PER_LEVEL} woorden
+                nog {trap.doel - dezeLevel} van de {trap.doel} woorden
+                {trap.min > 3 ? ` · ${trap.min}+ letters` : ""}
               </span>
             </div>
 
@@ -548,7 +686,10 @@ export function PreviewLettersoep() {
                     style={{
                       animationDelay: `${(fase === "val" ? c : r * 4 + k) * 30}ms`,
                       position: "relative", zIndex: 5,
-                      fontFamily: font.wide, fontSize: 24, letterSpacing: 1,
+                      /* Een vakje is ongeveer 77px breed; op 24px vulde de letter
+                         daar maar een vijfde van. 32 laat hem de knop dragen en
+                         past ook nog voor de brede letters (W, M). */
+                      fontFamily: font.wide, fontSize: 32, letterSpacing: 0.5,
                       /* De rustende knop is goud, dus daar is de letter juist het
                          donkere deel: diep paars uit de kast, met een dun lichtrandje
                          eronder alsof hij in het metaal is gestempeld. Zodra hij
@@ -563,7 +704,7 @@ export function PreviewLettersoep() {
                     {letter}
                   </span>
                   {aan && (
-                    <span style={{ position: "absolute", top: "8%", right: "12%", zIndex: 5, fontFamily: font.ui, fontSize: 9, fontWeight: 800, color: "#FFE7A8" }}>
+                    <span style={{ position: "absolute", top: "6%", right: "10%", zIndex: 5, fontFamily: font.ui, fontSize: 10, fontWeight: 800, color: "#FFE7A8" }}>
                       {i + 1}
                     </span>
                   )}
@@ -587,12 +728,14 @@ export function PreviewLettersoep() {
               <span style={{ fontFamily: font.wide, fontSize: 21, letterSpacing: 2.4, color: "#FFF3D0" }}>
                 TIJD OM · {totaal} PUNTEN
               </span>
+            ) : reden ? (
+              <span style={{ fontFamily: font.ui, fontSize: 12.5, fontWeight: 600, color: colors.redHi }}>{reden}</span>
             ) : woord ? (
               <>
                 <span style={{ fontFamily: font.wide, fontSize: 23, letterSpacing: 3, color: "#FFF3D0", textShadow: "0 0 12px rgba(255,190,60,.5)" }}>{woord}</span>
                 {geldig ? (
                   <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 15, color: colors.green }}>+{punten(woord.length)}</span>
-                ) : woord.length >= 3 ? (
+                ) : woord.length >= trap.min ? (
                   <span style={{ fontFamily: font.ui, fontSize: 11, color: colors.faint }}>nog geen woord</span>
                 ) : null}
               </>

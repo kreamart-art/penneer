@@ -125,4 +125,19 @@ export const NL_PER_LENGTE: ReadonlyMap<number, string[]> = (() => {
   return m;
 })();
 
+/** Elk beginstuk van elk woord. Hiermee kan de oplosser van Lettersoep een pad
+ *  meteen laten vallen: is "ZQ" geen begin van iets, dan hoeft geen enkel pad
+ *  dat daarmee begint nog doorzocht te worden. Zonder deze snoei loopt een
+ *  volledige zoektocht over zestien vakjes in de miljoenen paden; mét snoei is
+ *  hij klaar in een fractie van een milliseconde. Ruim 2700 stukjes, dus de
+ *  set kost bijna niets. */
+export const NL_PREFIX: ReadonlySet<string> = (() => {
+  const s = new Set<string>();
+  for (const w of NL_WOORDEN) for (let i = 1; i <= w.length; i++) s.add(w.slice(0, i));
+  return s;
+})();
+
+/** De langste woorden in de lijst. De oplosser stopt hier met verlengen. */
+export const NL_MAX_LENGTE = Math.max(...[...NL_WOORDEN].map((w) => w.length));
+
 export const bestaat = (woord: string) => NL_WOORDEN.has(woord.toUpperCase());
