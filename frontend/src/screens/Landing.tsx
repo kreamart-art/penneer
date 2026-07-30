@@ -20,6 +20,8 @@ import { neonSkin } from "../theme/neon";
 import { TILE_ART, useTileSkin } from "../theme/tileSkin";
 import { CashPlate, CoinPlate, useTelOp } from "../components/CoinPlate";
 import { HexPlate } from "../components/HexPlate";
+import { ChatIcoon } from "../components/ChatIcoon";
+import { TelHex } from "../components/TelHex";
 import { HexArt } from "../components/HexArt";
 import { EmblemLight, EmblemLightFront } from "../components/EmblemLight";
 import { colors, font, radius, withAlpha, GROEN } from "../theme/tokens";
@@ -65,6 +67,7 @@ export function Landing({
   onShowDaily,
   onShowDuel,
   onShowProfile,
+  onShowInbox,
 }: {
   game: GameApi;
   onShowRules: () => void;
@@ -74,6 +77,7 @@ export function Landing({
   onShowDaily: () => void;
   onShowProfile: () => void;
   onShowDuel: () => void;
+  onShowInbox: () => void;
 }) {
   const { t } = useT();
   const skin = useTileSkin();
@@ -103,6 +107,12 @@ export function Landing({
   // De saldi tellen naar hun nieuwe stand (zie useTelOp). Voor de skin-platen
   // zit de teller in CoinPlate zelf; deze twee zijn voor de kale pillen.
   const coinsTel = useTelOp(account?.coins ?? 0);
+  // Exact dezelfde telling als in de Hub, anders staat er op de main page een
+  // ander cijfer dan in de inbox zelf.
+  const inboxCount =
+    (game.state.inbox.length || account?.inbox_count || 0) +
+    (account?.dm_unread || 0) +
+    game.state.meldingenOngelezen;
   const cashTel = useTelOp(account?.cash ?? 0);
 
   // First-visit guests (no account, no stored token) get a prominent prompt to
@@ -283,7 +293,7 @@ export function Landing({
         {/* Twee munten, twee pillen naast elkaar. Cash is de zeldzame, dus hij
             staat rechts van coins en is smaller: je hebt er altijd minder van,
             en dat mag je aan de pil zien. Allebei brengen ze je naar de winkel. */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: -6 }}>
           <button
             onClick={() => { sound.uiTap(); onShowShop(); }}
             aria-label={t("coinsTitle")}
@@ -331,7 +341,7 @@ export function Landing({
         {/* Op de plek waar de advertentie-pil zat, tegen de schermrand: het
             Screen-vak heeft 16px padding, dus -12 zet de art op 4px van de
             rand in plaats van tegen het logo aan. */}
-        <div style={{ position: "absolute", top: 62, left: -12, zIndex: 2, display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+        <div style={{ position: "absolute", top: 62, left: -6, zIndex: 2, display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
           <button
             onClick={() => { sound.uiTap(); setUitslagOpen(true); }}
             aria-label={t("dagUitslagTitel")}
@@ -349,16 +359,38 @@ export function Landing({
           </button>
         </div>
         {/* right cluster is a column so the music mute note sits UNDER the gear */}
-        <div style={{ position: "absolute", top: 4, right: 0, zIndex: 2, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 3 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+        <div style={{ position: "absolute", top: 4, right: -6, zIndex: 2, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 3 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+          {/* De berichtenknop stond in de kop van je profiel, maar daar moest je
+              eerst heen om te zien of er iets was. Naast het tandwiel staat hij
+              op de plek waar je toch al kijkt. */}
+          {account && (
+            <button
+              onClick={() => { sound.uiTap(); onShowInbox(); }}
+              aria-label={t("inboxTab")}
+              title={t("inboxTab")}
+              className="pressable glowhover"
+              style={{ position: "relative", background: "transparent", border: "none", cursor: "pointer", display: "flex", padding: 0, lineHeight: 0, marginTop: -4 }}
+            >
+              <ChatIcoon maat={30} licht={inboxCount > 0} />
+              {inboxCount > 0 && (
+                <span style={{ position: "absolute", top: -5, right: -6, pointerEvents: "none" }}>
+                  <TelHex n={inboxCount} maat={17} />
+                </span>
+              )}
+            </button>
+          )}
           <button
             onClick={onShowSettings}
             aria-label={t("settings")}
             className="pressable glowhover"
             style={{ background: "transparent", border: "none", cursor: "pointer", color: skin ? colors.ink : colors.sub, display: "flex", padding: skin ? 0 : 9, lineHeight: 0 }}
           >
-            <HexPlate on={skin}>
-              <SettingsIcon size={24} />
+            {/* 38 en niet de standaard 46: naast het logo is deze kolom
+                begeleiding, geen hoofdzaak, en op 46 trok het tandwiel net zo
+                hard aan je oog als de knoppen in de kaart. */}
+            <HexPlate on={skin} size={38}>
+              <SettingsIcon size={20} />
             </HexPlate>
           </button>
           </div>
@@ -377,8 +409,8 @@ export function Landing({
               className={`pressable glowhover${hulpImplodeert ? " hex-implode" : ""}`}
               style={{ background: "transparent", border: "none", cursor: "pointer", color: skin ? colors.ink : colors.sub, display: "flex", padding: skin ? 0 : 9, lineHeight: 0 }}
             >
-              <HexPlate on={skin}>
-                <HelpCircle size={24} />
+              <HexPlate on={skin} size={38}>
+                <HelpCircle size={20} />
               </HexPlate>
             </button>
           )}
@@ -395,12 +427,12 @@ export function Landing({
             }}
             aria-label={t("missionsTitle")}
             className={`pressable glowhover${hulpWeg ? " uitslag-omhoog" : ""}`}
-            style={{ position: "relative", background: "transparent", border: "none", cursor: "pointer", display: "flex", padding: 0, lineHeight: 0 }}
+            style={{ position: "relative", background: "transparent", border: "none", cursor: "pointer", display: "flex", padding: 0, lineHeight: 0, marginTop: 6 }}
           >
             <img
               src="/ui/missie-dag.webp?v=1"
               alt=""
-              style={{ height: 48, width: "auto", display: "block", filter: "drop-shadow(0 3px 8px rgba(0,0,0,.5))" }}
+              style={{ height: 42, width: "auto", display: "block", filter: "drop-shadow(0 3px 8px rgba(0,0,0,.5))" }}
             />
             {missionsOpen > 0 && (
               <CountBadge n={missionsOpen} x="calc(100% - 6px)" y="2px" size={16} />

@@ -65,13 +65,9 @@ const PACK_OF_PRESET: Record<string, string> = Object.fromEntries(
 // picker's static images cache-bust instead of serving the stale ones.
 const AVATAR_ART_VERSION = 10;
 
-export function Hub({ game, section, onBack, onShowShop, onOpenInbox, onChallenge, onGaNaar }: { game: GameApi; section: HubSection; onBack: () => void; onShowShop: () => void; onOpenInbox: () => void; onChallenge: (userId: string) => void; onGaNaar: (naar: string) => void }) {
+export function Hub({ game, section, onBack, onShowShop, onChallenge, onGaNaar }: { game: GameApi; section: HubSection; onBack: () => void; onShowShop: () => void; onChallenge: (userId: string) => void; onGaNaar: (naar: string) => void }) {
   const { t } = useT();
   const tab: Tab = section;
-  const inboxCount =
-    (game.state.inbox.length || game.state.account?.inbox_count || 0) +
-    (game.state.account?.dm_unread || 0) +
-    game.state.meldingenOngelezen;
   const account = game.state.account;
   // Het tandwiel in de bovenbalk gaat alleen nog over de CLUB. Profielinstellingen
   // hangen nu onder Instellingen op de main page: dat is de plek waar je naar
@@ -130,21 +126,6 @@ export function Hub({ game, section, onBack, onShowShop, onOpenInbox, onChalleng
           <span style={{ flex: 1, fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>{t(section === "friends" ? "friendsTab" : section === "inbox" ? "inboxTab" : section === "leaderboard" ? "leaderboardTab" : "profile")}</span>
           {account && (
             <>
-              {section === "profile" && (
-                <button onClick={() => { sound.uiTap(); onOpenInbox(); }} aria-label={t("inboxTab")} title={t("inboxTab")} className="pressable" style={{ ...topIconBtn, position: "relative" }}>
-                  {/* De getekende bel, zonder de paarse knopplaat eronder: dit
-                      is de ingang naar je berichten en die spreekt dezelfde
-                      taal als de chatknop in de room. */}
-                  <ChatIcoon maat={26} licht={inboxCount > 0} />
-                  {inboxCount > 0 && (
-                    // Zelfde badge-taal als overal: de zwarte zeshoek met het
-                    // gouden cijfer, geen gele stip.
-                    <span style={{ position: "absolute", top: -5, right: -6, pointerEvents: "none" }}>
-                      <TelHex n={inboxCount} />
-                    </span>
-                  )}
-                </button>
-              )}
               {/* Alleen de club heeft hier nog iets in te stellen: wie mag
                   uitnodigen, wie mag hernoemen, en het ledenbeheer. Op je
                   profiel, de ranglijst en de inbox is dit tandwiel weg, want

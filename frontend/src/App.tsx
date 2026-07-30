@@ -482,7 +482,6 @@ export default function App() {
           setShowHub(null);
           setShowShop(true);
         }}
-        onOpenInbox={() => setShowHub("inbox")}
         onGaNaar={(naar) => {
           // Dezelfde sprong als vanuit de meldingsbalk, alleen komt hij nu uit
           // de lijst in de inbox.
@@ -525,7 +524,7 @@ export default function App() {
       />
     );
   } else {
-    screen = <Landing game={game} onShowRules={() => setShowRules(true)} onShowSettings={() => setShowSettings(true)} onShowShop={() => setShowShop(true)} onShowTraining={() => setShowTraining(true)} onShowDaily={() => setShowDaily(true)} onShowDuel={() => setShowDuel(true)} onShowProfile={() => setShowHub("profile")} />;
+    screen = <Landing game={game} onShowRules={() => setShowRules(true)} onShowSettings={() => setShowSettings(true)} onShowShop={() => setShowShop(true)} onShowTraining={() => setShowTraining(true)} onShowDaily={() => setShowDaily(true)} onShowDuel={() => setShowDuel(true)} onShowProfile={() => setShowHub("profile")} onShowInbox={() => setShowHub("inbox")} />;
   }
 
   // Which bar item is lit. Sub-flows that are not bar destinations (rules,

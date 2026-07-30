@@ -30,8 +30,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LogOut } from "lucide-react";
 import { Screen } from "../components/Layout";
 import { KADER_LIJN_LOOP, KADER_LIJN_ROOD, NeonKader } from "../components/ProfileHero";
-import { NL_MAX_LENGTE, NL_PER_LENGTE, NL_PREFIX, NL_WOORDEN } from "../data/nlwoorden";
+import { woordenboek, type Woordenboek } from "../data/woorden";
 import { VAK } from "./Arena";
+import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { colors, font, withAlpha } from "../theme/tokens";
 
@@ -163,13 +164,13 @@ const BUREN: number[][] = Array.from({ length: 16 }, (_, a) => {
  *  geen begin van een woord meer is valt meteen af, en langer dan het langste
  *  woord in de lijst hoeft nooit. De set is bewust een set: hetzelfde woord via
  *  twee paden telt één keer, precies zoals het spel het ook rekent. */
-function telbaar(cel: string[], min: number): Set<string> {
+function telbaar(cel: string[], min: number, wb: Woordenboek): Set<string> {
   const uit = new Set<string>();
   const zoek = (c: number, woord: string, gezien: number) => {
     const nw = woord + cel[c];
-    if (!NL_PREFIX.has(nw)) return;
-    if (nw.length >= min && NL_WOORDEN.has(nw)) uit.add(nw);
-    if (nw.length >= NL_MAX_LENGTE) return;
+    if (!wb.PREFIX.has(nw)) return;
+    if (nw.length >= min && wb.WOORDEN.has(nw)) uit.add(nw);
+    if (nw.length >= wb.MAX_LENGTE) return;
     const g = gezien | (1 << c);
     for (const b of BUREN[c]) if (!(g & (1 << b))) zoek(b, nw, g);
   };
@@ -181,8 +182,8 @@ function telbaar(cel: string[], min: number): Set<string> {
  *  Elk woord wordt als kronkelpad over nog vrije vakjes gelegd, dus er zit
  *  altijd wat in; door overlap van paden ontstaan er vanzelf meer woorden dan
  *  de vier die erin gelegd zijn. */
-function ruwBord(rng: () => number): string[] | null {
-  const van = (n: number) => NL_PER_LENGTE.get(n) ?? [];
+function ruwBord(rng: () => number, wb: Woordenboek): string[] | null {
+  const van = (n: number) => wb.PER_LENGTE.get(n) ?? [];
   for (let poging = 0; poging < 60; poging++) {
     const gekozen = new Set<string>();
     const woorden: string[] = [];
@@ -227,14 +228,14 @@ function ruwBord(rng: () => number): string[] | null {
  *  ongeveer een milliseconde. Lukt het toch niet, dan wint het bord dat er het
  *  dichtst bij zat, want een bord dat een tikje te makkelijk is nog altijd
  *  beter dan geen bord. */
-function maakBord(seed: string, trap: Trap): string[] {
+function maakBord(seed: string, trap: Trap, wb: Woordenboek): string[] {
   const rng = maakRng(seed);
   let beste: string[] | null = null;
   let besteAfstand = Infinity;
   for (let i = 0; i < 60; i++) {
-    const cel = ruwBord(rng);
+    const cel = ruwBord(rng, wb);
     if (!cel) continue;
-    const n = telbaar(cel, trap.min).size;
+    const n = telbaar(cel, trap.min, wb).size;
     if (n >= trap.onder && n <= trap.boven) return cel;
     const afstand = n < trap.onder ? trap.onder - n : n - trap.boven;
     if (afstand < besteAfstand) { besteAfstand = afstand; beste = cel; }
@@ -326,6 +327,12 @@ export function Lettersoep({ seed, onKlaar, onOpnieuw }: {
   /** Testversie: een nieuw potje. Door de `key` op de parent herstart alles. */
   onOpnieuw?: () => void;
 }) {
+  const { t, lang } = useT();
+  // Het woordenboek volgt de taal van de speler. Zou dit MIDDEN in een poging
+  // omslaan, dan stond er ineens een bord waar je eigen woorden niet meer in
+  // passen; in de praktijk kies je je taal buiten het spel, dus dat kan niet.
+  const wb = useMemo(() => woordenboek(lang), [lang]);
+
   useEffect(() => {
     document.body.classList.add("soepspel");
     return () => document.body.classList.remove("soepspel");
@@ -355,7 +362,7 @@ export function Lettersoep({ seed, onKlaar, onOpnieuw }: {
   useEffect(() => () => timers.current.forEach((t) => window.clearTimeout(t)), []);
 
   const trap = useMemo(() => trapVoor(level), [level]);
-  const bord = useMemo(() => maakBord(`${potje}:${level}`, trap), [potje, level, trap]);
+  const bord = useMemo(() => maakBord(`${potje}:${level}`, trap, wb), [potje, level, trap, wb]);
 
   // De klok. Hij stopt zodra de poging voorbij is, ook als je zelf op stoppen
   // drukt: `fase` staat in de afhankelijkheden, dus het interval wordt dan
@@ -388,7 +395,7 @@ export function Lettersoep({ seed, onKlaar, onOpnieuw }: {
 
   const leg = useCallback((cellen: number[]) => {
     const w = cellen.map((x) => bord[x]).join("");
-    const bestaat = NL_WOORDEN.has(w);
+    const bestaat = wb.WOORDEN.has(w);
     const goed = w.length >= trap.min && bestaat && !gevonden.some((g) => g.woord === w);
     setOordeel({ cellen, goed });
     na(560, () => setOordeel(null));
@@ -400,8 +407,8 @@ export function Lettersoep({ seed, onKlaar, onOpnieuw }: {
       // meer mee, en dan is "bestaat wel, telt niet" precies het geval waarin
       // een rood vakje zonder uitleg oneerlijk voelt.
       setReden(
-        bestaat && w.length < trap.min ? `te kort, ${trap.min}+ letters`
-        : bestaat ? "die had je al"
+        bestaat && w.length < trap.min ? t("soepTeKort", { n: trap.min })
+        : bestaat ? t("soepAlGehad")
         : null
       );
       // De schud duurt kort, want dat is een schrikje. De uitleg blijft langer
@@ -504,7 +511,7 @@ export function Lettersoep({ seed, onKlaar, onOpnieuw }: {
   const stop = () => setFase("klaar");
 
   const woord = pad.map((c) => bord[c]).join("");
-  const geldig = woord.length >= trap.min && NL_WOORDEN.has(woord) && !gevonden.some((g) => g.woord === woord);
+  const geldig = woord.length >= trap.min && wb.WOORDEN.has(woord) && !gevonden.some((g) => g.woord === woord);
   const inPad = (c: number) => pad.indexOf(c);
   const midX = (c: number) => (KOL[c % 4] + VAK_B / 2) * 100;
   const midY = (c: number) => (RIJ[Math.floor(c / 4)] + VAK_H / 2) * 100;
@@ -513,8 +520,8 @@ export function Lettersoep({ seed, onKlaar, onOpnieuw }: {
   return (
       <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 9, paddingBottom: 24 }}>
         <Sectie art="/ui/soep/scorebord.webp?v=1" verhouding={SCORE_V}>
-          <Meter kop="TIJD" waarde={klok(over)} kleur={over <= 15 ? "#FF6A5A" : "#FFF3D0"} breuk={SCORE_RUIT.links} />
-          <Meter kop="PUNTEN" waarde={String(totaal)} breuk={SCORE_RUIT.rechts} />
+          <Meter kop={t("soepTijd")} waarde={klok(over)} kleur={over <= 15 ? "#FF6A5A" : "#FFF3D0"} breuk={SCORE_RUIT.links} />
+          <Meter kop={t("soepPunten")} waarde={String(totaal)} breuk={SCORE_RUIT.rechts} />
         </Sectie>
 
         {fase === "klaar" ? (
@@ -528,10 +535,10 @@ export function Lettersoep({ seed, onKlaar, onOpnieuw }: {
               }}
             >
               <span style={{ fontFamily: font.wide, fontSize: 16, letterSpacing: 2.8, color: "#FFD98A", textShadow: "0 0 10px rgba(255,180,50,.55)" }}>
-                {gevonden.length} WOORDEN
+                {t("soepWoordenTal", { n: gevonden.length })}
               </span>
               <span style={{ fontFamily: font.ui, fontSize: 10.5, fontWeight: 600, color: withAlpha("#FFE7A8", 0.72) }}>
-                level {level} · {totaal} punten
+                {t("soepNiveauPunten", { level, n: totaal })}
               </span>
             </div>
             <div
@@ -546,7 +553,7 @@ export function Lettersoep({ seed, onKlaar, onOpnieuw }: {
             >
               {gevonden.length === 0 ? (
                 <span style={{ alignSelf: "center", fontFamily: font.ui, fontSize: 12, color: withAlpha("#FFE7A8", 0.5) }}>
-                  geen woorden gevonden
+                  {t("soepGeenWoorden")}
                 </span>
               ) : (
                 gevonden.map((g) => (
@@ -570,14 +577,14 @@ export function Lettersoep({ seed, onKlaar, onOpnieuw }: {
               }}
             >
               <span style={{ fontFamily: font.wide, fontSize: 16, letterSpacing: 2.8, color: "#FFD98A", textShadow: "0 0 10px rgba(255,180,50,.55)" }}>
-                LEVEL {level}
+                {t("soepLevel", { n: level })}
               </span>
               {/* Het doel EN de regel, want allebei lopen ze op met het level.
                   De minimumlengte staat er alleen bij zodra hij boven de drie
                   ligt: eerder is het ruis, later is het het halve spel. */}
               <span style={{ fontFamily: font.ui, fontSize: 10.5, fontWeight: 600, color: withAlpha("#FFE7A8", 0.72) }}>
-                nog {trap.doel - dezeLevel} van de {trap.doel} woorden
-                {trap.min > 3 ? ` · ${trap.min}+ letters` : ""}
+                {t("soepNog", { n: trap.doel - dezeLevel, van: trap.doel })}
+                {trap.min > 3 ? ` · ${t("soepMinLetters", { n: trap.min })}` : ""}
               </span>
             </div>
 
@@ -747,7 +754,7 @@ export function Lettersoep({ seed, onKlaar, onOpnieuw }: {
           >
             {fase === "klaar" ? (
               <span style={{ fontFamily: font.wide, fontSize: 21, letterSpacing: 2.4, color: "#FFF3D0" }}>
-                TIJD OM · {totaal} PUNTEN
+                {t("soepTijdOm", { n: totaal })}
               </span>
             ) : reden ? (
               <span style={{ fontFamily: font.ui, fontSize: 12.5, fontWeight: 600, color: colors.redHi }}>{reden}</span>
@@ -757,12 +764,12 @@ export function Lettersoep({ seed, onKlaar, onOpnieuw }: {
                 {geldig ? (
                   <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 15, color: colors.green }}>+{punten(woord.length)}</span>
                 ) : woord.length >= trap.min ? (
-                  <span style={{ fontFamily: font.ui, fontSize: 11, color: colors.faint }}>nog geen woord</span>
+                  <span style={{ fontFamily: font.ui, fontSize: 11, color: colors.faint }}>{t("soepGeenWoord")}</span>
                 ) : null}
               </>
             ) : (
               <span style={{ fontFamily: font.ui, fontSize: 11.5, color: withAlpha("#FFE7A8", 0.6) }}>
-                veeg over de letters, of tik ze een voor een
+                {t("soepVeeg")}
               </span>
             )}
           </div>
@@ -779,7 +786,7 @@ export function Lettersoep({ seed, onKlaar, onOpnieuw }: {
                 dezelfde vier daar nog eens herhalen leest als een fout. */}
             {fase === "klaar" ? (
               <span style={{ fontFamily: font.ui, fontSize: 11.5, color: withAlpha("#FFE7A8", 0.6) }}>
-                tik op Opnieuw voor een nieuw bord
+                {t("soepOpnieuwTip")}
               </span>
             ) : (
               <>
@@ -788,7 +795,7 @@ export function Lettersoep({ seed, onKlaar, onOpnieuw }: {
                   <WoordVak key={g.woord} woord={g.woord} n={g.n} />
                 ))}
                 {gevonden.length === 0 && (
-                  <span style={{ fontFamily: font.ui, fontSize: 11, color: withAlpha("#FFE7A8", 0.45) }}>je woorden komen hier</span>
+                  <span style={{ fontFamily: font.ui, fontSize: 11, color: withAlpha("#FFE7A8", 0.45) }}>{t("soepJouwWoorden")}</span>
                 )}
               </>
             )}
@@ -806,7 +813,7 @@ export function Lettersoep({ seed, onKlaar, onOpnieuw }: {
                 className="pressable"
                 style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, background: "transparent", border: "none", cursor: "pointer", color: colors.redHi, fontFamily: font.ui, fontSize: 13, fontWeight: 600, padding: "7px 16px" }}
               >
-                <LogOut size={14} /> {fase === "klaar" ? "Opnieuw" : "Stoppen"}
+                <LogOut size={14} /> {fase === "klaar" ? t("soepOpnieuw") : t("arenaStop")}
               </button>
             </NeonKader>
           </div>
@@ -817,16 +824,17 @@ export function Lettersoep({ seed, onKlaar, onOpnieuw }: {
 
 // ---- de losse testversie achter ?soep ---------------------------------------
 export function PreviewLettersoep() {
+  const { t } = useT();
   const [potje, setPotje] = useState(versSleutel);
   return (
     <Screen
       top={
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", paddingTop: "calc(14px + env(safe-area-inset-top))" }}>
-          <span style={{ flex: 1, fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>Arena</span>
+          <span style={{ flex: 1, fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>{"Arena"}</span>
           {/* Onmisverstaanbaar, want dit is precies waar het een keer misging:
               iemand speelde hier een mooie score en die kwam nergens terecht.
               Deze route levert NIETS in; het echte spel zit in de dagronde. */}
-          <span style={{ fontFamily: font.ui, fontSize: 11.5, fontWeight: 600, color: colors.redHi }}>oefenen, telt niet mee</span>
+          <span style={{ fontFamily: font.ui, fontSize: 11.5, fontWeight: 600, color: colors.redHi }}>{t("soepOefenen")}</span>
         </div>
       }
     >

@@ -11,7 +11,7 @@ import { InfoDot } from "../components/InfoDot";
 import { Toggle } from "../components/Toggle";
 import { Screen, Card } from "../components/Layout";
 import { TopBar } from "../components/TopBar";
-import { GlasRij, Lijst, PilKeuze, ProfileViewModal, ZoekKnop } from "./Hub";
+import { GlasRij, Lijst, ProfileViewModal, ZoekKnop } from "./Hub";
 import { KADER_LIJN_ROOD, NeonKader, Paneel } from "../components/ProfileHero";
 import { GlasVeld } from "../components/GlasVeld";
 import { KnopPlaat } from "../components/KnopPlaat";
@@ -143,7 +143,7 @@ export function Lobby({ game }: { game: GameApi }) {
   const room = game.state.room!;
   const { settings } = room;
   const isHost = game.isHost;
-  const { t, tCat, lang, setLang } = useT();
+  const { t, tCat } = useT();
   const [copied, setCopied] = useState(false);
   const [deelInput, setDeelInput] = useState("");
   const [deelErr, setDeelErr] = useState("");
@@ -243,18 +243,10 @@ export function Lobby({ game }: { game: GameApi }) {
   return (
     <Screen top={<TopBar code={room.code} connected={game.state.status === "open"} onLeave={game.leaveRoom} game={game} />}>
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        {/* language + sound (per device) */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <PilKeuze
-            actief={lang ?? "nl"}
-            onKies={setLang}
-            opties={[
-              { key: "nl" as const, label: "NL" },
-              { key: "en" as const, label: "EN" },
-            ]}
-          />
-        </div>
-
+        {/* De NL/EN-pil stond hier en is eruit: je taal kies je bij het
+            binnenkomen en daarna staat hij in Instellingen. In een lobby waar
+            je op mensen wacht is het geen keuze die je nog maakt, en hij nam de
+            hele bovenregel in beslag. */}
         {/* De roomcode is het enige op dit scherm dat je aan een ander geeft,
             dus die krijgt de sierlijst van het profiel: een lijst om iets dat
             je laat zien. De art heeft een VASTE verhouding, dus de inhoud voegt
