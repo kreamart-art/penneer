@@ -681,41 +681,28 @@ a:active .hex-aan {
   animation: reward-art 520ms cubic-bezier(0.34, 1.4, 0.5, 1) 260ms both;
 }
 
-/* ---- Behang voor het berichtenvenster ------------------------------------
-   Alle zes leven, en alle zes anders. Traag: tussen de veertien en veertig
-   seconden, want een achtergrond die je ziet bewegen leidt af van wat erop
-   staat. Alleen `background-position` en `opacity` bewegen, dus de browser kan
-   het op de kaart afhandelen en het kost geen batterij.
+/* ---- Behang van het berichtenvenster ---------------------------------------
+   De zes behangen zijn nu echte art (zie components/Wallpaper.tsx). Wat hier
+   overblijft is hun LEVEN: een lichtveeg die er traag over strijkt.
 
-   De lichtveeg is een eigen laag (::after) en geen extra achtergrondlaag: die
-   moet schuin over ALLES heen, ook over het motief, en dat kan niet als hij in
-   dezelfde stapel zit. */
-.wp-nacht,
-.wp-nevel,
-.wp-raster,
-.wp-sterren,
-.wp-goud,
-.wp-inkt {
+   De art zelf beweegt niet. Hij ligt op `cover`, dus schuiven zou zijn randen
+   laten zien, en dat is precies wat een achtergrond niet mag doen. Een veeg
+   over een stilstaand vlak leest als een spot die erlangs gaat en dat is
+   genoeg: zeventien seconden per keer, want een achtergrond die je ziet bewegen
+   leidt af van wat erop staat.
+
+   De veeg is een eigen laag (::after) en geen extra achtergrondlaag: hij moet
+   schuin over ALLES heen, ook over de sluier, en dat kan niet als hij in
+   dezelfde stapel zit. De kleur komt uit `--wp`, het accent van dat behang. */
+.wp-art {
   position: relative;
 }
-
-/* Het dambord schuift diagonaal, met een lichtveeg eroverheen. */
-@keyframes wp-schuif-diag {
-  from { background-position: 0 0, center, center; }
-  to { background-position: 96px 96px, center, center; }
-}
-.wp-nacht { animation: wp-schuif-diag 38s linear infinite; }
-/* De veeg hoort bij alles wat LIJNEN heeft: een lichtstreep over een raster
-   leest als een spot die erlangs strijkt, en dat is precies wat een raster
-   nodig heeft om geen behangpapier te zijn. */
-.wp-nacht::after,
-.wp-raster::after,
-.wp-goud::after {
+.wp-art::after {
   content: "";
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(115deg, transparent 38%, rgba(var(--wp), 0.14) 50%, transparent 62%);
+  background: linear-gradient(115deg, transparent 38%, rgba(var(--wp), 0.1) 50%, transparent 62%);
   background-size: 260% 100%;
   animation: wp-veeg 17s ease-in-out infinite;
 }
@@ -726,101 +713,8 @@ a:active .hex-aan {
   100% { background-position: -30% 0; opacity: 0; }
 }
 
-/* De twee nevels schuiven langs elkaar. De perioden delen niet op elkaar, dus
-   ze staan nooit twee keer in dezelfde stand. */
-@keyframes wp-nevel {
-  0% { background-position: 12% 26%, 84% 70%, center; }
-  50% { background-position: 30% 16%, 66% 82%, center; }
-  100% { background-position: 12% 26%, 84% 70%, center; }
-}
-.wp-nevel { animation: wp-nevel 29s ease-in-out infinite; }
-
-/* Het raster loopt onder je door. */
-@keyframes wp-raster {
-  from { background-position: 0 0, center, center; }
-  to { background-position: 0 -68px, center, center; }
-}
-.wp-raster { animation: wp-raster 22s linear infinite; }
-
-/* De sterren. Drie dingen tegelijk, en dat is met opzet: een sterrenhemel waar
-   niets gebeurt is een stipjespatroon.
-
-   1. Het hele veld ademt traag, zodat het niet stilstaat.
-   2. Een paar sterren SCHIJNEN echt: losse lichtpunten met een eigen puls en
-      een eigen tempo, want twee sterren die samen knipperen is een lampje.
-   3. Om de zoveel tijd valt er een. Kort, schuin, en met een lange pauze
-      ertussen: een vallende ster die elke vijf seconden komt is geen wonder
-      meer maar een metronoom. */
-@keyframes wp-sterren {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.72; }
-}
-.wp-sterren::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(closest-side, rgba(var(--wp), 0.1), transparent 70%),
-    /* de vier die echt schijnen, elk op een eigen plek */
-    radial-gradient(2.4px 2.4px at 22% 18%, rgba(255,255,255,.95), transparent 100%),
-    radial-gradient(2px 2px at 71% 34%, rgba(200,220,255,.9), transparent 100%),
-    radial-gradient(2.6px 2.6px at 39% 66%, rgba(255,240,200,.9), transparent 100%),
-    radial-gradient(1.8px 1.8px at 84% 79%, rgba(255,255,255,.85), transparent 100%);
-  animation: wp-sterren 14s ease-in-out infinite, wp-fonkel 6.3s ease-in-out infinite;
-}
-@keyframes wp-fonkel {
-  0%, 100% { filter: brightness(1) drop-shadow(0 0 3px rgba(255,255,255,.5)); }
-  40% { filter: brightness(1.7) drop-shadow(0 0 7px rgba(255,255,255,.9)); }
-  70% { filter: brightness(1.1) drop-shadow(0 0 4px rgba(255,255,255,.6)); }
-}
-
-/* De vallende ster: een streepje dat schuin door het beeld trekt en meteen weer
-   weg is. Zeventien seconden ertussen, waarvan hij er nog geen anderhalf te
-   zien is. */
-.wp-sterren::after {
-  content: "";
-  position: absolute;
-  top: -6%;
-  left: -14%;
-  width: 120px;
-  height: 2px;
-  pointer-events: none;
-  border-radius: 999px;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,.9), rgba(200,220,255,.2), transparent);
-  transform: rotate(28deg);
-  opacity: 0;
-  animation: wp-valster 17s ease-in infinite;
-}
-@keyframes wp-valster {
-  0%, 88% { transform: translate(0, 0) rotate(28deg); opacity: 0; }
-  90% { opacity: 0; }
-  92% { opacity: 1; }
-  99% { transform: translate(150%, 420%) rotate(28deg); opacity: 0; }
-  100% { transform: translate(0, 0) rotate(28deg); opacity: 0; }
-}
-
-/* De pennen drijven traag omhoog. */
-@keyframes wp-goud {
-  from { background-position: 0 0, center, center; }
-  to { background-position: 0 -116px, center, center; }
-}
-.wp-goud { animation: wp-goud 34s linear infinite; }
-
-/* De golven lopen van links naar rechts. */
-@keyframes wp-inkt {
-  from { background-position: 0 0, center, center; }
-  to { background-position: 144px 0, center, center; }
-}
-.wp-inkt { animation: wp-inkt 26s linear infinite; }
-
 @media (prefers-reduced-motion: reduce) {
-  .wp-nacht, .wp-nevel, .wp-raster, .wp-goud, .wp-inkt,
-  .wp-nacht::after, .wp-raster::after, .wp-goud::after,
-  .wp-sterren::before, .wp-sterren::after {
-    animation: none;
-  }
-  .wp-sterren::after { opacity: 0; }
+  .wp-art::after { animation: none; opacity: 0; }
 }
 
 /* De lichtslag op het moment dat je schild van kleur wisselt: één ring die
@@ -1169,19 +1063,3 @@ html.klassiek body.lijst::after {
 }
 .kist-knal { animation: kist-knal .5s cubic-bezier(.2,1.4,.4,1) both; }
 
-/* De flits in de Arena. De KERN en de ARMEN komen op met een korte pop en
-   zakken dan iets terug: een flits die alleen infadet leest als een lamp die
-   aangaat, een flits die eerst doorschiet leest als een tik. Ze zijn alleen
-   gemonteerd terwijl de pad aan staat, dus elke flits begint bij nul. */
-@keyframes flits-kern {
-  0%   { transform: scale(.42); opacity: 0; }
-  38%  { transform: scale(1.08); opacity: 1; }
-  100% { transform: scale(.96); opacity: .9; }
-}
-@keyframes flits-ster {
-  0%   { transform: scaleX(.25) scaleY(.6); opacity: 0; }
-  32%  { transform: scaleX(1.06) scaleY(1); opacity: .95; }
-  100% { transform: scaleX(1) scaleY(1); opacity: .62; }
-}
-.flits-kern { animation: flits-kern .24s cubic-bezier(.2,1.5,.4,1) both; }
-.flits-ster { animation: flits-ster .26s cubic-bezier(.2,1.5,.4,1) both; transform-origin: center; }

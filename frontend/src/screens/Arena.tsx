@@ -74,111 +74,114 @@ function klok(s: number): string {
   return `${u}:${pad(Math.floor((s % 3600) / 60))}:${pad(s % 60)}`;
 }
 
-// De vier pads. De art heeft twee standen (dof en aan) die exact op elkaar
-// liggen, dus wisselen is een kwestie van de bovenste laag laten opkomen; de
-// vorm blijft staan. De kleur staat hier los bij, want de gloed en de kern
-// worden in code getekend zodat ze kunnen PULSEREN zonder in de art te zitten.
-const PADS = [
-  { kleur: colors.gold, art: "goud" },
-  { kleur: colors.violet, art: "violet" },
-  { kleur: colors.green, art: "groen" },
-  { kleur: colors.red, art: "rood" },
+// De breedte van het hele apparaat. De LED-balk en de kast delen hem, want ze
+// horen als EEN geheel te lezen: de stand boven, het bord eronder.
+const VAK = "min(360px, 94vw)";
+// De verhouding van de kast-art, na het wegknippen van de doorzichtige rand.
+const KAST = 0.9241;
+
+// De vier pads staan nu OP de sectie opgemaakt: de kast, de doffe knoppen en de
+// opgelichte knoppen komen als hetzelfde doek uit de art, op dezelfde uitsnede
+// geknipt. Daarmee is de OPMAAK de uitlijning en valt er niets meer te plaatsen.
+// Zolang de knoppen los stonden moest ik hun raster narekenen (hoe groot, welk
+// gat, waar in de ruit) en daar liep het steeds op scheef.
+//
+// De opgelichte stand staat per pad apart, want er brandt er maar een tegelijk.
+// De maten hieronder zijn breuken van de uitsnede: `a*` is de doos van de
+// opgelichte art (die reikt verder, want zijn licht valt buiten de knop), `k*` is
+// de doos van de knop zelf en daarmee het tikvlak.
+const KNOPPEN = [
+  { kleur: colors.gold, art: "goud", aL: 0.0733, aT: 0.1225, aB: 0.4104, kL: 0.1515, kT: 0.1806, kB: 0.3301, kH: 0.3327 },
+  { kleur: colors.violet, art: "violet", aL: 0.5101, aT: 0.1663, aB: 0.3746, kL: 0.5098, kT: 0.1806, kB: 0.3550, kH: 0.3327 },
+  { kleur: colors.green, art: "groen", aL: 0.1094, aT: 0.5382, aB: 0.3734, kL: 0.1515, kT: 0.5374, kB: 0.3301, kH: 0.3368 },
+  { kleur: colors.red, art: "rood", aL: 0.5101, aT: 0.5380, aB: 0.4131, kL: 0.5098, kT: 0.5374, kB: 0.3550, kH: 0.3368 },
 ] as const;
 
-function Pad({ kleur, art, aan, onTik, uit }: { kleur: string; art: string; aan: boolean; onTik: () => void; uit: boolean }) {
+// Hoeveel de halo buiten de knop uitwaaiert, als deel van de knop.
+const HALO = 0.17;
+const pct = (f: number) => `${(f * 100).toFixed(3)}%`;
+
+/** Het bord: de kast met de vier knoppen erin.
+ *
+ *  Drie lagen op inset 0 (kast, doffe knoppen) plus per pad een opgelichte laag
+ *  op zijn eigen plek. De tikvlakken liggen als laatste bovenop, want die moeten
+ *  de aanraking krijgen. */
+function Bord({ aanNu, uit, onTik }: { aanNu: number | null; uit: boolean; onTik: (i: number) => void }) {
+  const { t } = useT();
   return (
-    <button
-      onClick={onTik}
-      disabled={uit}
-      className="pressable"
-      style={{
-        position: "relative",
-        aspectRatio: "1",
-        background: "transparent",
-        border: "none",
-        padding: 0,
-        cursor: uit ? "default" : "pointer",
-        // De halo mag buiten de knop uitkomen; overflow visible is daarvoor nodig.
-        overflow: "visible",
-        // De opgelichte pad komt BOVEN zijn buren te liggen, anders wordt zijn
-        // halo overschilderd door de pads die later in de rij staan.
-        zIndex: aan ? 2 : 1,
-      }}
-    >
-      {/* De HALO achter de pad, als eigen vervaagde laag en niet als
-          drop-shadow-filter: die rastert op iOS de doos van de laag mee en dan
-          zie je een rechthoek om je flits. */}
-      <span
-        aria-hidden
-        style={{
-          position: "absolute",
-          inset: "-16%",
-          borderRadius: "30%",
-          // Zelfde MAAT als eerst, alleen feller. De truc zit in WAAR de kracht
-          // staat: de dekkende pad bedekt dit verloop tot ongeveer 54%, dus
-          // alles voor dat punt zie je niet. Vandaar vol kracht tot 46% en pas
-          // daarna de afval, in plaats van een verloop dat al binnen de pad is
-          // uitgedoofd. Hij straalt dus harder zonder verder te reiken.
-          background: `radial-gradient(circle, ${kleur} 0%, ${kleur} 46%, ${withAlpha(kleur, 0.82)} 57%, ${withAlpha(kleur, 0.42)} 65%, ${withAlpha(kleur, 0.14)} 71%, transparent 76%)`,
-          filter: "blur(12px)",
-          opacity: aan ? 1 : 0,
-          // Snel AAN, langzamer uit: zo tikt de flits en dooft hij na.
-          transition: aan ? "opacity .05s linear" : "opacity .22s ease-out",
-          pointerEvents: "none",
-        }}
-      />
-      {/* De dove pad staat er altijd; de opgelichte komt eroverheen. Twee lagen
-          in plaats van een bronwissel, want een src-wissel geeft een frame wit. */}
-      <img src={`/ui/flits/${art}-dof.webp?v=2`} alt="" aria-hidden style={{ position: "relative", width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
-      <img
-        src={`/ui/flits/${art}.webp?v=2`}
-        alt=""
-        aria-hidden
-        style={{
-          position: "absolute",
-          inset: 0,
-          width: "100%",
-          height: "100%",
-          objectFit: "contain",
-          opacity: aan ? 1 : 0,
-          transition: aan ? "opacity .05s linear" : "opacity .2s ease-out",
-          pointerEvents: "none",
-        }}
-      />
-      {/* De KERN: een witte kern met vier lichtarmen die opkomt in het midden,
-          zoals op de eerste art. Alleen gemonteerd terwijl de pad aan staat, dus
-          elke flits start de animatie opnieuw. */}
-      {aan && (
-        <>
-          <span
-            aria-hidden
-            className="flits-kern"
-            style={{
-              position: "absolute",
-              left: "50%",
-              top: "50%",
-              width: "52%",
-              height: "52%",
-              marginLeft: "-26%",
-              marginTop: "-26%",
-              borderRadius: "50%",
-              background: `radial-gradient(circle, #fff 0%, ${withAlpha(kleur, 0.9)} 26%, ${withAlpha(kleur, 0.35)} 52%, transparent 72%)`,
-              pointerEvents: "none",
-            }}
-          />
-          {/* De vier armen: twee balken die naar hun uiteinden uitdoven. Samen
-              lezen ze als een ster zonder dat er art voor nodig is. */}
-          <span aria-hidden className="flits-ster" style={{ position: "absolute", left: "6%", right: "6%", top: "50%", height: 3, marginTop: -1.5, borderRadius: 999, background: `linear-gradient(90deg, transparent, #fff 50%, transparent)`, pointerEvents: "none" }} />
-          <span aria-hidden className="flits-ster" style={{ position: "absolute", top: "6%", bottom: "6%", left: "50%", width: 3, marginLeft: -1.5, borderRadius: 999, background: `linear-gradient(180deg, transparent, #fff 50%, transparent)`, pointerEvents: "none" }} />
-        </>
-      )}
-    </button>
+    <div style={{ position: "relative", width: VAK, height: `calc(${VAK} / ${KAST})`, flexShrink: 0 }}>
+      <img src="/ui/flits/machine.webp?v=4" alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} />
+      <img src="/ui/flits/knoppen-dof.webp?v=3" alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} />
+      {KNOPPEN.map((k, i) => {
+        const aan = aanNu === i;
+        return (
+          <div key={k.art} aria-hidden style={{ position: "absolute", inset: 0, zIndex: aan ? 2 : 1, pointerEvents: "none" }}>
+            {/* De halo: het licht dat de kast OP loopt. De art houdt zijn eigen
+                gloed binnen de omranding van de knop, dus dit is wat er buiten
+                valt. Als eigen vervaagde laag en niet als drop-shadow-filter:
+                die rastert op iOS de doos van de laag mee en dan zie je een
+                rechthoek om je flits. */}
+            <span
+              style={{
+                position: "absolute",
+                left: pct(k.kL - k.kB * HALO),
+                top: pct(k.kT - k.kH * HALO),
+                width: pct(k.kB * (1 + HALO * 2)),
+                height: pct(k.kH * (1 + HALO * 2)),
+                borderRadius: "30%",
+                // De kracht staat BUITEN de knop: de dekkende knop bedekt dit
+                // verloop tot ruim de helft, dus alles voor dat punt zie je toch
+                // niet. Vol tot 46 procent en pas daarna de afval, anders is de
+                // gloed al uitgedoofd voordat hij achter de knop uit komt.
+                background: `radial-gradient(circle, ${k.kleur} 0%, ${k.kleur} 46%, ${withAlpha(k.kleur, 0.82)} 57%, ${withAlpha(k.kleur, 0.42)} 65%, ${withAlpha(k.kleur, 0.14)} 71%, transparent 76%)`,
+                filter: "blur(12px)",
+                opacity: aan ? 1 : 0,
+                // Snel AAN, langzamer uit: zo tikt de flits en dooft hij na.
+                transition: aan ? "opacity .05s linear" : "opacity .22s ease-out",
+              }}
+            />
+            <img
+              src={`/ui/flits/knop-${k.art}.webp?v=2`}
+              alt=""
+              style={{
+                position: "absolute",
+                left: pct(k.aL),
+                top: pct(k.aT),
+                width: pct(k.aB),
+                height: "auto",
+                display: "block",
+                opacity: aan ? 1 : 0,
+                transition: aan ? "opacity .05s linear" : "opacity .2s ease-out",
+              }}
+            />
+          </div>
+        );
+      })}
+      {KNOPPEN.map((k, i) => (
+        <button
+          key={`tik-${k.art}`}
+          onClick={() => onTik(i)}
+          disabled={uit}
+          aria-label={t("arenaPad", { n: i + 1 })}
+          style={{
+            position: "absolute",
+            left: pct(k.kL),
+            top: pct(k.kT),
+            width: pct(k.kB),
+            height: pct(k.kH),
+            zIndex: 3,
+            background: "transparent",
+            border: "none",
+            padding: 0,
+            borderRadius: "18%",
+            cursor: uit ? "default" : "pointer",
+            WebkitTapHighlightColor: "transparent",
+          }}
+        />
+      ))}
+    </div>
   );
 }
-
-// De breedte van het hele apparaat. De LED-balk en de machine delen hem, want ze
-// horen als EEN kast te lezen: de stand boven, het bord eronder.
-const VAK = "min(360px, 94vw)";
 
 /** Een stuk sectie-art met een RUIT waar inhoud in gaat.
  *
@@ -192,17 +195,6 @@ const VAK = "min(360px, 94vw)";
 type Maten = { verhouding: number; links: number; rechts: number; boven: number; onder: number };
 
 const LED: Maten = { verhouding: 4.6263, links: 0.0362, rechts: 0.0354, boven: 0.0397, onder: 0.0444 };
-// De ruit van de machine is VIERKANT (0.802 bij 0.801), dus het 2x2-raster past
-// er op volle maat in. De eerste versie van deze art was breder dan hoog en dan
-// moesten de pads krimpen om binnen de hoogte te blijven.
-//
-// Deze maten zijn de INZINKING, gemeten op donkerte en niet op de neonlijn: de
-// gouden lijn om de inzinking is links donkerder dan rechts, dus daar pakte de
-// lijndetectie een rand verder naar buiten en hing de ruit scheef.
-const MACHINE: Maten = { verhouding: 0.9241, links: 0.0938, rechts: 0.1042, boven: 0.15, onder: 0.1313 };
-
-/** De hoogte van een ruit, ook als factor van de breedte. */
-const ruitHoogte = (m: Maten) => 1 / m.verhouding - m.boven - m.onder;
 
 function Ruit({ art, maat, binnen, children }: { art: string; maat: Maten; binnen?: React.CSSProperties; children: React.ReactNode }) {
   return (
@@ -381,7 +373,7 @@ function Flitsreeks({ seed, onKlaar }: { seed: string; onKlaar: (score: number, 
           puntletter: dat is wat een scorebord doet, en het haalt de cijfers weg
           uit de losse regels die boven de pads zweefden. */}
       <Ruit
-        art="/ui/flits/ledbalk.webp?v=1"
+        art="/ui/flits/ledbalk.webp?v=2"
         maat={LED}
         binnen={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingInline: "8%", gap: 10, overflow: "hidden" }}
       >
@@ -389,24 +381,7 @@ function Flitsreeks({ seed, onKlaar }: { seed: string; onKlaar: (score: number, 
         <Led maat={30}>{String(score)}</Led>
       </Ruit>
 
-      {/* De pads zitten IN de machine. Eerst stonden ze in een kader dat ik zelf
-          tekende; nu is de sectie art en dragen de vier vakken de vier pads. Het
-          raster is vierkant en staat gecentreerd, want de ruit is iets breder
-          dan hoog en gerekte pads zouden hun ronde hoeken vervormen.
-          Overloop zichtbaar, anders knipt de ruit de halo's van de flits af. */}
-      <Ruit art="/ui/flits/machine.webp?v=2" maat={MACHINE} binnen={{ display: "grid", placeItems: "center", overflow: "visible" }}>
-        {/* Alleen de BREEDTE staat vast; de hoogte volgt uit de vierkante pads,
-            want twee rijen van (b - gat)/2 plus het gat is precies b weer. Een
-            hoogte opgeven werkt hier niet: een rasteronderdeel mag niet kleiner
-            dan zijn inhoud, dus de pads duwden het raster buiten de ruit.
-            Negentig procent van de ruit, niet meer: de inzinking heeft een eigen
-            gouden rand en daar hoort lucht tussen te zitten. */}
-        <div style={{ width: `calc(${VAK} * ${(ruitHoogte(MACHINE) * 0.9).toFixed(4)})`, display: "grid", gridTemplateColumns: "1fr 1fr", gap: `calc(${VAK} * 0.03)` }}>
-          {PADS.map((p, i) => (
-            <Pad key={p.art} kleur={p.kleur} art={p.art} aan={aanNu === i} uit={fase !== "doe"} onTik={() => tikPad(i)} />
-          ))}
-        </div>
-      </Ruit>
+      <Bord aanNu={aanNu} uit={fase !== "doe"} onTik={tikPad} />
 
       {/* Wat er van je verwacht wordt, plus hoe ver je in de reeks bent. Vanaf
           een reeks van zes weet je zonder die stipjes niet meer of je bij de
