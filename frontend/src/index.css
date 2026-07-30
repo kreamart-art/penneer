@@ -717,12 +717,65 @@ a:active .hex-aan {
   .wp-art::after { animation: none; opacity: 0; }
 }
 
-/* De arena-hal een slag donkerder voor de Lettersoep. De secties van dat spel
-   zijn zelf al goud en licht; op het volle decor concurreren die twee en dan
-   leest het bord niet meer als het ding waar je naar kijkt. Een extra donkere
-   laag OVER het decor, en niet een tweede decor: zo blijft het dezelfde plek. */
-body.soepdonker::before {
-  filter: brightness(0.62) saturate(0.9);
+/* De Lettersoep heeft een eigen zaal: een gouden hal met een verlichte vloer.
+   Twee versies, want het voorportaal en het spel zijn twee momenten: in de hal
+   sta je voor de poort, tijdens het spel sta je in de zaal zelf.
+
+   Verankerd aan de ONDERKANT, want de vloer hoort op de vloer te blijven staan;
+   bovenlangs loopt hij ruim door zodat er nooit een strook overblijft als de
+   adresbalk wegvalt. Er ligt een donkere sluier over: de secties van dit spel
+   zijn zelf goud en licht, en zonder die sluier concurreren die twee. */
+body.soephal::after,
+body.soepspel::after {
+  content: "";
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(100vh + 240px);
+  height: calc(100lvh + 240px);
+  z-index: -1;
+  pointer-events: none;
+  background-color: #0B0518;
+  background-repeat: repeat, no-repeat, no-repeat, no-repeat;
+  background-position: bottom left, bottom, bottom center, bottom;
+  background-size: 160px 160px, 100% 100%, cover, 100% 100%;
+}
+body.soephal::after {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
+    linear-gradient(180deg, rgba(6, 3, 16, 0.5) 0%, rgba(6, 3, 16, 0.4) 46%, rgba(6, 3, 16, 0.62) 100%),
+    url("/ui/soep/bg-lobby.webp?v=1"),
+    linear-gradient(180deg, #150e2e 0%, #100a24 50%, #06040e 100%);
+}
+body.soepspel::after {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
+    linear-gradient(180deg, rgba(6, 3, 16, 0.62) 0%, rgba(6, 3, 16, 0.5) 46%, rgba(6, 3, 16, 0.7) 100%),
+    url("/ui/soep/bg-spel.webp?v=1"),
+    linear-gradient(180deg, #150e2e 0%, #100a24 50%, #06040e 100%);
+}
+
+/* De lijn om een gevonden woord leeft: een licht dat er traag langs strijkt.
+   Alleen `background-position` beweegt, dus de browser kan het op de kaart
+   afhandelen. De lijn zelf is de rand die tussen twee geknipte lagen uitsteekt,
+   dus het licht loopt vanzelf de vorm rond. */
+@keyframes soep-lijn {
+  from { background-position: 0% 50%; }
+  to   { background-position: 200% 50%; }
+}
+.soep-lijn { animation: soep-lijn 3.4s linear infinite; }
+
+/* Een gevonden woord komt op: kort opzwellen en meteen weer op maat. */
+@keyframes soep-vak {
+  0%   { transform: scale(.7); opacity: 0; }
+  55%  { transform: scale(1.06); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.soep-vak { animation: soep-vak .34s cubic-bezier(.2,1.4,.4,1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .soep-lijn, .soep-vak { animation: none; }
 }
 
 /* De klop van de LED-stand in de Flitsreeks: bij elke score-verhoging komt het

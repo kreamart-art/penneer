@@ -31,6 +31,9 @@ const KOL = [0.0561, 0.2803, 0.5051, 0.7297];
 const RIJ = [0.1636, 0.359, 0.5497, 0.7451];
 const VAK_B = 0.213;
 const VAK_H = 0.1791;
+// Waar het donkere paneel binnen de lijst begint. Boven de eerste rij letters
+// zit daardoor een open vak, en daar hoort de opdracht in het midden van.
+const PANEEL_TOP = 0.024;
 
 // De twee ruiten van het scorebord, links de tijd en rechts de punten.
 const SCORE_RUIT = { t: 0.2238, h: 0.6643, links: { l: 0.0407, b: 0.3213 }, rechts: { l: 0.637, b: 0.3213 } };
@@ -117,16 +120,19 @@ function Meter({ kop, waarde, breuk }: { kop: string; waarde: string; breuk: { l
 }
 
 export function PreviewLettersoep() {
-  // Het decor een slag donkerder: de secties van dit spel zijn zelf goud en
-  // licht, en op het volle decor concurreren die twee.
+  // De zaal van dit spel. Het voorportaal krijgt straks `soephal`, dezelfde
+  // plek maar dan voor de poort in plaats van erin.
   useEffect(() => {
-    document.body.classList.add("arena", "soepdonker");
-    return () => document.body.classList.remove("arena", "soepdonker");
+    document.body.classList.add("soepspel");
+    return () => document.body.classList.remove("soepspel");
   }, []);
 
   const stand = GEVONDEN.reduce((t, g) => t + punten(g.n), 0);
   const woord = PAD.map(([r, k]) => BORD[r][k]).join("");
   const inPad = (r: number, k: number) => PAD.findIndex(([pr, pk]) => pr === r && pk === k);
+  // Het midden van een vakje, voor de lijn die je pad verbindt.
+  const midX = (k: number) => (KOL[k] + VAK_B / 2) * 100;
+  const midY = (r: number) => (RIJ[r] + VAK_H / 2) * 100;
 
   return (
     <Screen
@@ -151,15 +157,20 @@ export function PreviewLettersoep() {
 
           {/* De opdracht, in de lucht boven het raster die de art daarvoor
               vrijhoudt. */}
-          <span
+          {/* Gecentreerd in het OPEN VAK, dus tussen de binnenkant van de lijst
+              en de bovenste rij letters. Op een vaste afstand van boven hangt
+              hij te hoog: het vak is hoger dan de tekst en dan zie je dat. */}
+          <div
             style={{
-              position: "absolute", left: 0, right: 0, top: pct(0.048),
-              textAlign: "center", fontFamily: font.wide, fontSize: 17, letterSpacing: 3,
-              color: "#FFD98A", textShadow: "0 0 10px rgba(255,180,50,.55)",
+              position: "absolute", left: 0, right: 0,
+              top: pct(PANEEL_TOP), height: pct(RIJ[0] - PANEEL_TOP),
+              display: "flex", alignItems: "center", justifyContent: "center",
             }}
           >
-            VIND WOORDEN
-          </span>
+            <span style={{ fontFamily: font.wide, fontSize: 17, letterSpacing: 3, color: "#FFD98A", textShadow: "0 0 10px rgba(255,180,50,.55)" }}>
+              VIND WOORDEN
+            </span>
+          </div>
 
           {/* De neonlijn OM het raster. Hij zit niet in de art, want hij hoort
               te leven: hij loopt rond zolang je zoekt. Vulling leeg, want het
@@ -236,6 +247,29 @@ export function PreviewLettersoep() {
             })
           )}
 
+          {/* De lijn die je woord verbindt, ACHTER de vakjes: hij duikt onder
+              een vakje door en komt in de kier weer boven, dus je ziet precies
+              dat twee vakjes aan elkaar vast zitten zonder dat er iets over de
+              letters heen loopt. Fel genoeg om in de kier te winnen van de
+              gloed: een brede warme onderlaag met een bijna witte kern erop. */}
+          <svg
+            aria-hidden
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 1 }}
+          >
+            <polyline
+              points={PAD.map(([r, k]) => `${midX(k)},${midY(r)}`).join(" ")}
+              fill="none" stroke={withAlpha("#FFC85A", 0.95)} strokeWidth={5.6}
+              strokeLinecap="round" strokeLinejoin="round"
+            />
+            <polyline
+              points={PAD.map(([r, k]) => `${midX(k)},${midY(r)}`).join(" ")}
+              fill="none" stroke="#FFFFFF" strokeWidth={2.6}
+              strokeLinecap="round" strokeLinejoin="round"
+            />
+          </svg>
+
           {/* De letters en de tikvlakken bovenop. */}
           {BORD.map((rij, r) =>
             rij.map((letter, k) => {
@@ -248,7 +282,7 @@ export function PreviewLettersoep() {
                     position: "absolute",
                     left: pct(KOL[k]), top: pct(RIJ[r]),
                     width: pct(VAK_B), height: pct(VAK_H),
-                    zIndex: 3,
+                    zIndex: 4,
                     display: "grid", placeItems: "center",
                     background: "transparent", border: "none", padding: 0, cursor: "pointer",
                     WebkitTapHighlightColor: "transparent",
@@ -310,10 +344,14 @@ export function PreviewLettersoep() {
               <span
                 key={g.woord}
                 style={{
-                  display: "inline-flex", height: "84%", padding: 1.5,
+                  display: "inline-flex", height: "84%", padding: 1,
                   clipPath: ACHT(6),
-                  background: `linear-gradient(180deg, ${withAlpha("#FFD98A", 0.95)}, ${withAlpha("#B0710E", 0.85)})`,
+                  // Het verloop is twee keer zo breed als het vakje, dus als het
+                  // opschuift loopt er een licht de lijn rond.
+                  background: `linear-gradient(100deg, ${withAlpha("#B0710E", 0.85)} 0%, ${withAlpha("#FFD98A", 0.95)} 22%, ${withAlpha("#FFF6DC", 1)} 34%, ${withAlpha("#FFD98A", 0.95)} 46%, ${withAlpha("#B0710E", 0.85)} 70%, ${withAlpha("#B0710E", 0.85)} 100%)`,
+                  backgroundSize: "200% 100%",
                 }}
+                className="soep-lijn soep-vak"
               >
                 {/* De lijn is de rand die tussen twee geknipte lagen uitsteekt.
                     Eerst probeerde ik hem als masker dat zijn eigen binnenkant
