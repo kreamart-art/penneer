@@ -1285,10 +1285,10 @@ async def missions_claim(request: Request) -> JSONResponse:
     stand = db.missie_teller(uid, spec["teller"], spec["van"], spec["tot"])
     if stand < spec["target"]:
         return JSONResponse({"error": "not_done", "progress": stand}, status_code=409)
-    if not db.missie_claim(uid, spec["periode"], key, spec["reward"], spec["cash"], time.time()):
+    if not db.missie_claim(uid, spec["periode"], key, spec["reward"], spec["cash"], time.time(), coins=spec.get("coins", 0)):
         return JSONResponse({"error": "already"}, status_code=409)
     await accounts.push_account(uid)
-    return JSONResponse({"ok": True, "reward": spec["reward"], "cash": spec["cash"]})
+    return JSONResponse({"ok": True, "reward": spec["reward"], "coins": spec.get("coins", 0), "cash": spec["cash"]})
 
 
 @app.post("/api/kist/open")

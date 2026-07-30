@@ -1408,7 +1408,7 @@ class Database:
             rows = self._q("SELECT key FROM mission_claims WHERE periode=? AND user_id=?", (periode, user_id))
         return {r["key"] for r in rows}
 
-    def missie_claim(self, user_id: str, periode: str, key: str, xp: int, cash: int, now: float) -> bool:
+    def missie_claim(self, user_id: str, periode: str, key: str, xp: int, cash: int, now: float, coins: int = 0) -> bool:
         """Haal een beloning op. True alleen als DEZE aanroep hem ophaalde, dus
         twee tikken tegelijk betalen nooit twee keer uit."""
         with self._lock:
@@ -1420,8 +1420,8 @@ class Database:
                 self._conn.commit()
                 return False
             self._conn.execute(
-                "UPDATE users SET bonus_xp = bonus_xp + ?, cash = cash + ? WHERE id=?",
-                (max(0, int(xp)), max(0, int(cash)), user_id),
+                "UPDATE users SET bonus_xp = bonus_xp + ?, coins = coins + ?, cash = cash + ? WHERE id=?",
+                (max(0, int(xp)), max(0, int(coins)), max(0, int(cash)), user_id),
             )
             self._conn.commit()
         return True

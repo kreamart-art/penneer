@@ -12,8 +12,11 @@ export function CloseIcon({ size = 24 }: { size?: number }) {
       alt=""
       aria-hidden
       // De art is 220x232, dus width EN height op dezelfde maat drukte hem 5%
-      // te breed. size is de HOOGTE; de breedte volgt de echte verhouding.
-      style={{ height: size, width: "auto", display: "block", flexShrink: 0 }}
+      // te breed. size is de HOOGTE en de breedte wordt hier UITGEREKEND, niet
+      // op auto gezet: in een absoluut geplaatste knop tegen de rand mag een
+      // auto-breedte niet breder worden dan de resterende ruimte, en dan werd
+      // het kruis tot de helft samengeknepen.
+      style={{ height: size, width: size * (220 / 232), display: "block", flexShrink: 0 }}
     />
   );
 }

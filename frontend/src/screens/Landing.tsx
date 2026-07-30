@@ -333,32 +333,30 @@ export function Landing({
             </button>
           )}
         </div>
+        {/* De uitslag aan de LINKERkant, gespiegeld: de spiegel laat de art
+            het scherm in kijken in plaats van eruit. Alleen het plaatje is
+            gespiegeld; de cijfers eronder natuurlijk niet. */}
+        {/* Onder de kleine ad (die eindigt rond y 132), niet erachter. */}
+        <div style={{ position: "absolute", top: 140, left: 0, zIndex: 2, display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+          <button
+            onClick={() => { sound.uiTap(); setUitslagOpen(true); }}
+            aria-label={t("dagUitslagTitel")}
+            className="pressable glowhover"
+            style={{ background: "transparent", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 1, padding: 0, lineHeight: 0 }}
+          >
+            <img
+              src="/ui/dagronde-uitslag.webp?v=2"
+              alt=""
+              style={{ width: 58, height: 58, objectFit: "contain", display: "block", transform: "scaleX(-1)", filter: "drop-shadow(0 3px 8px rgba(0,0,0,.5))" }}
+            />
+            <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 11, lineHeight: 1, letterSpacing: 0.3, color: colors.gold, fontVariantNumeric: "tabular-nums", textShadow: "0 1px 3px rgba(0,0,0,.75)" }}>
+              {dagKlok(dagOver)}
+            </span>
+          </button>
+        </div>
         {/* right cluster is a column so the music mute note sits UNDER the gear */}
         <div style={{ position: "absolute", top: 4, right: 0, zIndex: 2, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 3 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          <button
-            onClick={() => {
-              sound.uiTap();
-              if (!missions) fetchMissions(); // first fetch may have failed offline
-              setShowMissions(true);
-            }}
-            aria-label={t("missionsTitle")}
-            className="pressable glowhover"
-            style={{ position: "relative", background: "transparent", border: "none", cursor: "pointer", display: "flex", padding: 0, lineHeight: 0 }}
-          >
-            {/* Het dagschild uit de missiepopup, vrijstaand: eigen art hoort
-                niet op een plaat, net als de dagronde-uitslag ernaast. */}
-            <img
-              src="/ui/missie-dag.webp?v=1"
-              alt=""
-              style={{ height: 44, width: "auto", display: "block", filter: "drop-shadow(0 3px 8px rgba(0,0,0,.5))" }}
-            />
-            {missionsOpen > 0 && (
-              // Hetzelfde knopje als op de tegels. Twee soorten telknopjes op
-              // een scherm is er een te veel.
-              <CountBadge n={missionsOpen} x="calc(100% - 6px)" y="2px" size={16} />
-            )}
-          </button>
           <button
             onClick={onShowSettings}
             aria-label={t("settings")}
@@ -392,23 +390,27 @@ export function Landing({
           )}
           {/* De dagronde-uitslag: vrijstaande art, dus geen plaat eronder. Hij
               schuift omhoog zodra het vraagteken weg is. */}
+          {/* Het missieschild op de onderste plek van de kolom: naast het
+              tandwiel stond eigen art er gedrongen bij. Hij schuift omhoog
+              zodra het vraagteken implodeert, zoals de uitslag eerst deed. */}
           <button
-            onClick={() => { sound.uiTap(); setUitslagOpen(true); }}
-            aria-label={t("dagUitslagTitel")}
+            onClick={() => {
+              sound.uiTap();
+              if (!missions) fetchMissions(); // first fetch may have failed offline
+              setShowMissions(true);
+            }}
+            aria-label={t("missionsTitle")}
             className={`pressable glowhover${hulpWeg ? " uitslag-omhoog" : ""}`}
-            style={{ background: "transparent", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 1, padding: 0, lineHeight: 0 }}
+            style={{ position: "relative", background: "transparent", border: "none", cursor: "pointer", display: "flex", padding: 0, lineHeight: 0 }}
           >
             <img
-              src="/ui/dagronde-uitslag.webp?v=2"
+              src="/ui/missie-dag.webp?v=1"
               alt=""
-              style={{ width: 58, height: 58, objectFit: "contain", display: "block", filter: "drop-shadow(0 3px 8px rgba(0,0,0,.5))" }}
+              style={{ height: 48, width: "auto", display: "block", filter: "drop-shadow(0 3px 8px rgba(0,0,0,.5))" }}
             />
-            {/* Alleen de cijfers. Een woord erbij ("nog") maakt er een zin van
-                en dan lees je hem; zo staat er een klok en die begrijp je in
-                een oogopslag. */}
-            <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 11, lineHeight: 1, letterSpacing: 0.3, color: colors.gold, fontVariantNumeric: "tabular-nums", textShadow: "0 1px 3px rgba(0,0,0,.75)" }}>
-              {dagKlok(dagOver)}
-            </span>
+            {missionsOpen > 0 && (
+              <CountBadge n={missionsOpen} x="calc(100% - 6px)" y="2px" size={16} />
+            )}
           </button>
         </div>
       </div>

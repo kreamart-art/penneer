@@ -303,27 +303,10 @@ export function DagUitslagPopup({ game, onClose }: { game: GameApi; onClose: () 
           {/* Zeven rijen en niet meer; de rest schuift. Staat er meer onder,
               dan loopt de onderste rij uit in het niets. Zonder dat teken is
               een afgekapte lijst niet te onderscheiden van een volledige. */}
-          {/* De klok hangt direct onder de lijn van de binnenlijst. Hij is de
-              reden dat je hier komt: zonder aftelling is een stand een lijstje,
-              met aftelling een wedstrijd die nog loopt. */}
-          <span
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 7,
-              flexShrink: 0,
-              padding: "4px 13px",
-              borderRadius: 999,
-              background: withAlpha(colors.gold, 0.13),
-              border: `1px solid ${withAlpha(colors.gold, 0.4)}`,
-            }}
-          >
-            <span style={{ fontFamily: font.ui, fontSize: 10, letterSpacing: 0.4, textTransform: "uppercase", color: colors.sub }}>
-              {t("dagUitslagOver")}
-            </span>
-            <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 14, lineHeight: 1, color: colors.gold, fontVariantNumeric: "tabular-nums" }}>
-              {klok(over)}
-            </span>
+          {/* Alleen de klok, gecentreerd: geen pil en geen etiket. Het icoon
+              erboven zegt al waar dit over gaat; de cijfers zeggen wanneer. */}
+          <span style={{ flexShrink: 0, fontFamily: font.display, fontWeight: 800, fontSize: 17, lineHeight: 1, color: colors.gold, fontVariantNumeric: "tabular-nums" }}>
+            {klok(over)}
           </span>
 
           {/* Waarom je zou doorspelen. Dit staat er niet als uitleg maar als
