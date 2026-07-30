@@ -218,3 +218,23 @@ def maak(soort: str, **vars) -> Optional[dict]:
         "naar": sjabloon["naar"],
         "push": bool(sjabloon.get("push")),
     }
+
+
+def link(naar: Optional[str], data: Optional[dict] = None) -> str:
+    """De adresbalk-versie van een bestemming, voor een tik op een push.
+
+    Een push komt binnen terwijl de app dicht is, dus de bestemming moet in de
+    URL passen: de melding zelf is dan het enige wat de app nog heeft. De
+    frontend leest deze twee parameters bij het opstarten en gooit ze daarna
+    weg, zodat je bij het delen van de link niet iemands gesprek meestuurt.
+
+    Het `wie` is bewust een tweede parameter en geen pad: alles achter de eerste
+    schuine streep is een route die de app niet heeft, en die eindigt op de
+    index met een lege staat.
+    """
+    if not naar:
+        return "/"
+    d = data or {}
+    wie = d.get("user_id") or d.get("duel_id") or ""
+    return f"/?melding={naar}&wie={wie}" if wie else f"/?melding={naar}"
+

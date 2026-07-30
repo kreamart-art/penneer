@@ -300,6 +300,46 @@ export default function App() {
     }
   };
 
+  // Een tik op een PUSH-melding. Twee wegen naar binnen, want een push komt in
+  // twee soorten: met de app dicht (dan opent hij een venster met ?melding= in
+  // de adresbalk) of met de app open (dan brengt de service worker het venster
+  // naar voren en stuurt hij de bestemming als bericht). Allebei komen ze uit
+  // op openMelding, zodat er maar EEN tabel is die weet waar iets heen gaat.
+  const openMeldingRef = useRef(openMelding);
+  openMeldingRef.current = openMelding;
+  useEffect(() => {
+    const uitAdres = (href: string) => {
+      const u = new URL(href, location.origin);
+      const naar = u.searchParams.get("melding");
+      if (!naar) return false;
+      const wie = u.searchParams.get("wie") || "";
+      // Een duel-id en een user-id zijn allebei "wie": welke van de twee het is
+      // weet de bestemming zelf, dus ze gaan er allebei in.
+      openMeldingRef.current(naar, JSON.stringify({ user_id: wie, duel_id: wie }));
+      return true;
+    };
+    // Bij het opstarten: uit de adresbalk, en daarna weg uit de adresbalk. Wie
+    // deze link deelt hoort niet andermans gesprek mee te sturen, en een
+    // herlaadbeurt hoort je niet opnieuw in datzelfde gesprek te zetten.
+    //
+    // Even wachten met openen: bij een koude start staat er nog geen account
+    // en dan opent het gespreksscherm op "je hebt een profiel nodig". Een halve
+    // seconde is genoeg voor de inlog, en als die er niet komt gaan we alsnog,
+    // want een bestemming als de dagronde heeft geen account nodig.
+    const uitUrl = new URL(location.href).searchParams.get("melding");
+    if (uitUrl) {
+      const href = location.href;
+      history.replaceState(null, "", location.pathname);
+      window.setTimeout(() => uitAdres(href), 600);
+    }
+    const opBericht = (e: MessageEvent) => {
+      if (e.data?.type === "melding-open" && typeof e.data.url === "string") uitAdres(e.data.url);
+    };
+    navigator.serviceWorker?.addEventListener("message", opBericht);
+    return () => navigator.serviceWorker?.removeEventListener("message", opBericht);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Meldingen ophalen zodra er een account is: het bolletje op de balk hoort te
   // kloppen voordat je de inbox opent, niet erna.
   useEffect(() => {

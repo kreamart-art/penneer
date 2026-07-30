@@ -126,7 +126,8 @@ class AccountManager:
             await self._push(user_id, {"type": "melding", "melding": rij,
                                        "ongelezen": self.db.meldingen_ongelezen(user_id)})
         elif m["push"]:
-            asyncio.create_task(push.notify(user_id, m["titel"], m["body"], tag=m["tag"]))
+            asyncio.create_task(push.notify(user_id, m["titel"], m["body"], tag=m["tag"],
+                                            url=meldingen.link(m["naar"], data)))
 
     async def meldingen_lijst(self, ws: Any, data: dict) -> None:
         uid = self.user_of(ws)

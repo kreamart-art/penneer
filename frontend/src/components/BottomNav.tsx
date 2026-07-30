@@ -66,7 +66,6 @@ export function BottomNav({
   // Wat er per bestemming op je wacht. Elke teller komt uit iets wat de app al
   // bijhoudt; de balk verzint niets zelf.
   //  - vrienden: uitnodigingen/verzoeken in de inbox plus ongelezen DM's
-  //  - profiel (je avatar): ongelezen meldingen
   //  - winkel: een nieuwe drop die je nog niet gezien hebt (lokaal vinkje)
   //  - ranglijst: een divisie-uitslag die je nog niet hebt bekeken
   //  - home: verdiende beloningen waar hun victory-popup nog van wacht
@@ -95,7 +94,6 @@ export function BottomNav({
   } catch {
     vriendenTeller = ruweVrienden;
   }
-  const meldTeller = account ? game.state.meldingenOngelezen : 0;
   const shopTeller = account && Number(localStorage.getItem("penneer.shopDrop") || 0) < SHOP_DROP ? 1 : 0;
   const rangTeller = account?.divisie_change ? 1 : 0;
   const homeTeller = account
@@ -103,7 +101,6 @@ export function BottomNav({
     : 0;
   const badges: Partial<Record<NavKey, number>> = {
     friends: vriendenTeller,
-    profile: meldTeller,
     shop: shopTeller,
     leaderboard: rangTeller,
     home: homeTeller,

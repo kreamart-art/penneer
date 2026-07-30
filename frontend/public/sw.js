@@ -116,6 +116,11 @@ self.addEventListener("notificationclick", (e) => {
       for (const client of list) {
         if ("focus" in client) {
           await client.focus();
+          // Een openstaand venster naar voren halen is niet genoeg: de app
+          // staat dan nog op het scherm waar je hem liet liggen. Navigeren zou
+          // je potje weggooien, dus de bestemming gaat als bericht naar binnen
+          // en de app doet er zelf wat mee.
+          client.postMessage({ type: "melding-open", url });
           return;
         }
       }

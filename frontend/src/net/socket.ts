@@ -987,9 +987,6 @@ export function useGame(): GameApi {
       ws.onopen = () => {
         if (!alive) return;
         dispatch({ type: "status", status: "open" });
-        // Flush any queued messages.
-        for (const data of queueRef.current) ws.send(data);
-        queueRef.current = [];
         // Attempt session reconnect.
         const sess = loadSession();
         if (sess) {
@@ -1015,6 +1012,13 @@ export function useGame(): GameApi {
             ws.send(JSON.stringify({ type: "account_login", token: accountToken }));
           }
         }
+        // De wachtrij gaat er ACHTERAAN, niet ervoor. Wat er in de wachtrij
+        // staat is opgespaard terwijl de verbinding weg was, en dat is bijna
+        // altijd iets wat een sessie nodig heeft: de server kijkt wie je bent
+        // voordat hij een gesprek opent, en zonder inlog laat hij het vallen.
+        // Een tik op een melding met de app dicht liep daar precies op stuk.
+        for (const data of queueRef.current) ws.send(data);
+        queueRef.current = [];
       };
 
       ws.onmessage = (ev) => {

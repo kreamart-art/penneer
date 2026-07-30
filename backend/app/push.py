@@ -134,8 +134,13 @@ def _send_sync(sub: dict, payload: str, private_key: str) -> Optional[int]:
         return None
 
 
-async def notify(user_id: str, title: str, body: str, tag: str = "penneer") -> None:
-    """Best-effort push to every device of `user_id`. Never raises."""
+async def notify(user_id: str, title: str, body: str, tag: str = "penneer", url: str = "/") -> None:
+    """Best-effort push to every device of `user_id`. Never raises.
+
+    `url` is waar de tik op de melding je heen brengt. Zonder dat opent de app
+    op de plek waar je hem liet liggen, en dan moet je een bericht dat je net
+    op je vergrendelscherm las alsnog zelf gaan zoeken.
+    """
     if not available():
         return
     db = get_db()
@@ -143,7 +148,7 @@ async def notify(user_id: str, title: str, body: str, tag: str = "penneer") -> N
     if not subs:
         return
     private_key = _private_key_for_pywebpush()
-    payload = json.dumps({"title": title, "body": body, "tag": tag, "url": "/"})
+    payload = json.dumps({"title": title, "body": body, "tag": tag, "url": url})
     loop = asyncio.get_running_loop()
     for sub in subs:
         try:

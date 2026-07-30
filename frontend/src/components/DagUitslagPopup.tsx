@@ -38,6 +38,10 @@ import { colors, font, withAlpha } from "../theme/tokens";
 // icoon en de wereldbol staan in het plaatje zelf. Er hoeft hier dus niets
 // meer bovenop gelegd of uitgelijnd te worden; wat overblijft is de klok en de
 // lijst, en die krijgen allebei een vak dat in de art is opgemeten.
+// Het titelbord zit IN de plaat, dus de taal kiest de plaat. De twee bronnen
+// delen hun frame op de pixel (alleen de bovenste 976 pixels verschillen), dus
+// alle maten hieronder gelden voor allebei.
+const PLAAT = (taal: string | null) => `/ui/dagronde-sectie${taal === "en" ? "-en" : ""}.webp?v=2`;
 const ART_B = 2430;
 const ART_H = 4704;
 // Iets krapper dan de gemeten binnenmaat (x 134..2293, y 1402..4569): de
@@ -193,7 +197,7 @@ export interface Uitslag {
 }
 
 export function DagUitslagPopup({ game, onClose, uitslag }: { game: GameApi; onClose: () => void; uitslag?: Uitslag | null }) {
-  const { t } = useT();
+  const { t, lang } = useT();
   const account = game.state.account;
   const [over, setOver] = useState(secTotSluiting);
   const [info, setInfo] = useState<Info | null>(null);
@@ -251,7 +255,7 @@ export function DagUitslagPopup({ game, onClose, uitslag }: { game: GameApi; onC
           ["--pop-b" as string]: `min(356px, calc(100vw - 40px), calc(88vh * ${ART_B} / ${ART_H}))`,
           width: "var(--pop-b)",
           height: `calc(var(--pop-b) * ${ART_H} / ${ART_B})`,
-          backgroundImage: "url(/ui/dagronde-sectie.webp?v=2)",
+          backgroundImage: `url(${PLAAT(lang)})`,
           backgroundSize: "100% 100%",
           backgroundRepeat: "no-repeat",
         }}
