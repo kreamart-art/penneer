@@ -694,29 +694,6 @@ a:active .hex-aan {
    De veeg is een eigen laag (::after) en geen extra achtergrondlaag: hij moet
    schuin over ALLES heen, ook over de sluier, en dat kan niet als hij in
    dezelfde stapel zit. De kleur komt uit `--wp`, het accent van dat behang. */
-.wp-art {
-  position: relative;
-}
-.wp-art::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(115deg, transparent 38%, rgba(var(--wp), 0.1) 50%, transparent 62%);
-  background-size: 260% 100%;
-  animation: wp-veeg 17s ease-in-out infinite;
-}
-@keyframes wp-veeg {
-  0%, 12% { background-position: 130% 0; opacity: 0; }
-  22% { opacity: 1; }
-  70% { opacity: 1; }
-  100% { background-position: -30% 0; opacity: 0; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .wp-art::after { animation: none; opacity: 0; }
-}
-
 /* De Lettersoep heeft een eigen zaal: een gouden hal met een verlichte vloer.
    Twee versies, want het voorportaal en het spel zijn twee momenten: in de hal
    sta je voor de poort, tijdens het spel sta je in de zaal zelf.

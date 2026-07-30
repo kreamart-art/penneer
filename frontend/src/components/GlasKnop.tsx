@@ -73,43 +73,37 @@ export function GlasKnop({
         ...style,
       }}
     >
-      {/* De rand: een gouden ring die linksboven het licht vangt. Het glas ligt
-          er als tweede laag net binnen, dus wat overblijft IS de lijn. */}
+      {/* De rand: een gouden ring die linksboven het licht vangt. Als ECHTE
+          ring, met het masker dat het midden wegknipt: het glas erbinnen is
+          doorschijnend, en een volle gouden schijf eronder scheen daar geel
+          doorheen. */}
       <span
         style={{
           position: "absolute",
           inset: 0,
           borderRadius: "50%",
+          padding: 1,
           background: `linear-gradient(155deg, ${GOUD_LICHT} 0%, ${GOUD_LIJN} 34%, ${GOUD_DONKER} 68%, ${GOUD_LIJN} 100%)`,
           opacity: 0.85,
+          WebkitMask: "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
+          WebkitMaskComposite: "xor",
+          mask: "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
+          maskComposite: "exclude",
         }}
       />
-      {/* Het glas. Donker en doorschijnend, met een lichte bovenhelft: een bol
-          oppervlak vangt bovenaan meer licht dan onderaan. */}
+      {/* Het glas: VLAK, dezelfde finish als de glasrijen van de ranglijst. De
+          eerdere versie had een radiale lichtbron bovenin plus een ovale
+          glansstreep, en dat samen las als een bolle knikker. Vlak glas is een
+          donkere vulling (dezelfde als het invulveld ernaast) met een schuine
+          witte glans van een paar procent, meer niet. */}
       <span
         style={{
           position: "absolute",
           inset: 1,
           borderRadius: "50%",
           background:
-            "radial-gradient(120% 100% at 30% 0%, rgba(255,222,138,.20) 0%, rgba(255,222,138,.05) 38%, rgba(0,0,0,0) 62%)," +
-            "linear-gradient(180deg, rgba(52,34,86,.92) 0%, rgba(18,9,38,.95) 100%)",
-          boxShadow: "inset 0 -3px 8px rgba(0,0,0,.55)",
-        }}
-      />
-      {/* De glans: een kort streepje bovenaan, niet een halve ring. Licht is
-          kort, anders leest het als een gekleurd vlak in plaats van als glas. */}
-      <span
-        style={{
-          position: "absolute",
-          top: maat * 0.11,
-          left: "50%",
-          transform: "translateX(-50%)",
-          width: maat * 0.44,
-          height: maat * 0.16,
-          borderRadius: "50%",
-          background: "linear-gradient(180deg, rgba(255,255,255,.34), rgba(255,255,255,0))",
-          pointerEvents: "none",
+            "linear-gradient(135deg, rgba(255,255,255,.07) 0%, rgba(255,255,255,.02) 34%, rgba(255,255,255,0) 56%)," +
+            "linear-gradient(180deg, rgba(6,3,18,.62) 0%, rgba(6,3,18,.55) 100%)",
         }}
       />
       {children}

@@ -11,8 +11,9 @@
 //
 // Twee dingen die daarbij horen. Er ligt altijd een SLUIER over de art, want
 // berichten moeten leesbaar blijven en een foto is nooit egaal genoeg om dat
-// vanzelf te doen. En de art zelf beweegt niet: hij ligt op `cover`, en dan
-// zou schuiven zijn randen laten zien. Wat beweegt is een lichtveeg eroverheen.
+// vanzelf te doen. En er beweegt NIETS: de lichtveeg die er eerst overheen
+// liep is er in v2.81 afgehaald, want boven een gesprek is elke beweging
+// afleiding. Achtergrond hoort achtergrond te zijn.
 export type WallpaperId = "zijde" | "heelal" | "marmer" | "paneel" | "kosmos" | "goud";
 
 export const WALLPAPERS: { id: WallpaperId; naam: string }[] = [
@@ -82,8 +83,9 @@ export function wallpaperStijl(id: WallpaperId): React.CSSProperties {
   };
 }
 
-/** De klasse die het behang laat leven. Los van de stijl, want een STILSTAANDE
- *  voorbeeldtegel in de kiezer wil de kleuren wel en de beweging niet. */
+/** Ooit de klasse met de lichtveeg-animatie; het behang staat nu stil. De
+ *  functie blijft zodat de aanroepplekken niet hoeven te weten dat er niets
+ *  meer te doen valt. */
 export function wallpaperKlasse(_id: WallpaperId): string {
-  return "wp-art";
+  return "";
 }
