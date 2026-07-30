@@ -8,7 +8,11 @@ corrections; words the curated list misses are settled once by the AI referee
 and then cached in word_verdicts, so every player on the board is judged by the
 same verdict — which is what a ranked daily needs.
 
-The day rolls over at midnight Dutch time (the player base), not UTC.
+De ronde sluit om 21:00 Nederlandse tijd (de spelersgroep), niet om
+middernacht en niet op UTC. Om negen uur 's avonds is iedereen thuis: dan valt
+de uitslag op een moment dat je hem ook kunt zien, in plaats van in je slaap.
+De ronde die om 21:00 sluit draagt de datum van DIE dag, dus na 21:00 loopt de
+ronde van morgen al.
 """
 from __future__ import annotations
 
@@ -21,6 +25,9 @@ from .models import LETTER_POOL
 
 TZ = ZoneInfo("Europe/Amsterdam")  # tzdata pip package backs this on slim images
 
+# Het uur waarop de ronde sluit en de volgende begint (lokale tijd).
+SLUIT_UUR = 21
+
 DURATION_S = 60          # fill window
 GRACE_S = 15             # network/submit slack on top of the window
 POINTS_PER_WORD = 10     # score = list words x this (max 50 with 5 categories)
@@ -32,15 +39,27 @@ def now_local() -> dt.datetime:
     return dt.datetime.now(TZ)
 
 
-def today() -> str:
-    """The current daily-round day, e.g. '2026-07-13'."""
-    return now_local().date().isoformat()
+def today(now: dt.datetime | None = None) -> str:
+    """De ronde die NU loopt, bijvoorbeeld '2026-07-13'.
+
+    De naam is de dag waarop de ronde sluit. Voor 21:00 is dat vandaag; daarna
+    loopt de ronde die morgen om 21:00 sluit, dus dan is het morgen.
+    """
+    n = now or now_local()
+    d = n.date()
+    if n.hour >= SLUIT_UUR:
+        d += dt.timedelta(days=1)
+    return d.isoformat()
 
 
-def seconds_to_next_day() -> int:
-    n = now_local()
-    tomorrow = dt.datetime.combine(n.date() + dt.timedelta(days=1), dt.time.min, TZ)
-    return max(1, int((tomorrow - n).total_seconds()))
+def sluit_op(day: str) -> dt.datetime:
+    """Het moment waarop deze ronde dicht gaat."""
+    return dt.datetime.combine(dt.date.fromisoformat(day), dt.time(SLUIT_UUR), TZ)
+
+
+def seconds_to_next_day(now: dt.datetime | None = None) -> int:
+    n = now or now_local()
+    return max(1, int((sluit_op(today(n)) - n).total_seconds()))
 
 
 def previous_day(day: str) -> str:

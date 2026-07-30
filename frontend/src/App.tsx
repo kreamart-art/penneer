@@ -13,6 +13,8 @@ const Rules = lazy(() => import("./screens/Rules").then((m) => ({ default: m.Rul
 const Settings = lazy(() => import("./screens/Settings").then((m) => ({ default: m.Settings })));
 import { Landing } from "./screens/Landing";
 import { type HubSection } from "./screens/Hub";
+import { DagUitslagPopup, type Uitslag } from "./components/DagUitslagPopup";
+import { secTotSluiting } from "./lib/dagklok";
 const Hub = lazy(() => import("./screens/Hub").then((m) => ({ default: m.Hub })));
 // Profielinstellingen zijn een EIGEN scherm geworden, bereikbaar vanuit
 // Instellingen op de main page. Uit dezelfde brok als de Hub, dus dit kost geen
@@ -67,10 +69,39 @@ export default function App() {
   // account-veld verdwijnt bij het openen en de popup moet de onthulling
   // afmaken. Zie de mount onderaan voor waarom dit in App staat.
   const [kistToon, setKistToon] = useState<{ id: number; kist: string } | null>(null);
+  // De uitslag van de ronde die om 21:00 sloot. Op APP-niveau en niet op de
+  // main page: hij moet ook komen als je op dat moment in je profiel of in de
+  // winkel staat, en hij moet een schermwissel overleven.
+  const [dagBon, setDagBon] = useState<Uitslag | null>(null);
   const accountKist = game.state.account?.kist ?? null;
   useEffect(() => {
     if (accountKist) setKistToon((oud) => oud ?? accountKist);
   }, [accountKist]);
+
+  // De uitslag ophalen: bij binnenkomst, en zodra de klok over 21:00 heen gaat.
+  // Dat moment herken je aan de teller die OMHOOG springt (van bijna nul naar
+  // bijna een etmaal); dat is betrouwbaarder dan op een tijdstip mikken, want
+  // een telefoon die in de slaapstand stond mist zo'n tijdstip gewoon.
+  const account = game.state.account;
+  const vorigeOver = useRef(secTotSluiting());
+  useEffect(() => {
+    if (!account) return;
+    let levend = true;
+    const haal = () => {
+      const tok = localStorage.getItem("penneer.accountToken");
+      fetch("/api/daily/uitslag", { headers: tok ? { Authorization: `Bearer ${tok}` } : {} })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => { if (levend && d && d.day) setDagBon(d); })
+        .catch(() => {});
+    };
+    haal();
+    const id = window.setInterval(() => {
+      const over = secTotSluiting();
+      if (over > vorigeOver.current) haal();
+      vorigeOver.current = over;
+    }, 20000);
+    return () => { levend = false; window.clearInterval(id); };
+  }, [account?.id]);
   // The bottom bar owns which section is open; Hub renders whichever one the
   // bar points at, so there is no in-screen tab strip any more.
   const [showHub, setShowHub] = useState<HubSection | null>(null);
@@ -595,6 +626,10 @@ export default function App() {
           onthulling. Het account-veld wordt bij het openen leeg (push_account),
           dus de kist wordt LOKAAL vastgehouden tot de speler zelf sluit. */}
       {kistToon &&
+        // Eerst de uitslag, dan pas de kist: de kist is de PRIJS voor je plek,
+        // dus die plek hoort er eerst te staan. Andersom krijg je een kist uit
+        // het niets en zie je daarna pas waarvoor.
+        !dagBon &&
         uitslagKlaar &&
         introDone &&
         !inRoom &&
@@ -605,6 +640,21 @@ export default function App() {
         !showShop &&
         !showHub &&
         !showSettings && <KistPopup kist={kistToon} onClose={() => setKistToon(null)} />}
+
+      {/* De uitslag van 21:00. Hij gaat VOOR de kist: eerst zie je waar je
+          eindigde, daarna pas wat er in de kist zit die je ermee won. */}
+      {dagBon && (
+        <DagUitslagPopup
+          game={game}
+          uitslag={dagBon}
+          onClose={() => {
+            const tok = localStorage.getItem("penneer.accountToken");
+            fetch("/api/daily/uitslag/gezien", { method: "POST", headers: tok ? { Authorization: `Bearer ${tok}` } : {} }).catch(() => {});
+            setDagBon(null);
+            game.updateAccount({});
+          }}
+        />
+      )}
       {/* De maandag-uitslag gaat VOOR de beloningen: hij hoort bij de week die
           net eindigde, en pas daarna kijk je naar wat je nog te claimen hebt.
           Dezelfde plek-voorwaarden, want ook dit moet niet over een potje heen. */}

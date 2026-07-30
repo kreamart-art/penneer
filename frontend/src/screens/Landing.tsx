@@ -1,5 +1,6 @@
 // Landing — emblem, wordmark, tagline, name input, create / join, rules link.
 import { useEffect, useRef, useState } from "react";
+import { dagKlok, secTotSluiting } from "../lib/dagklok";
 import { CloseIcon } from "../components/CloseIcon";
 import { Bot, CalendarDays, Check, GraduationCap, Hash, HelpCircle, Play, Settings as SettingsIcon, Sparkles, Swords } from "lucide-react";
 import { Logo } from "../components/Logo";
@@ -55,21 +56,6 @@ const inputStyle: React.CSSProperties = {
   padding: "13px 15px",
 };
 
-/** Seconden tot middernacht: de dagronde loopt tot de dagwissel. */
-function secTotMiddernacht(): number {
-  const nu = new Date();
-  const morgen = new Date(nu);
-  morgen.setHours(24, 0, 0, 0);
-  return Math.max(0, Math.floor((morgen.getTime() - nu.getTime()) / 1000));
-}
-
-/** Alleen cijfers, u:mm:ss. Onder een icoon is er geen ruimte voor woorden en
- *  is een klok ook zonder uitleg duidelijk. */
-function dagKlok(s: number): string {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  const u = Math.floor(s / 3600);
-  return `${u}:${pad(Math.floor((s % 3600) / 60))}:${pad(s % 60)}`;
-}
 
 export function Landing({
   game,
@@ -123,9 +109,9 @@ export function Landing({
   // De aftelling onder het uitslagicoon. Opnieuw UITREKENEN per tik en niet
   // aftrekken: een telefoon in de slaapstand bevriest zijn timers, en dan zou
   // een aftrekker na het ontwaken achterlopen.
-  const [dagOver, setDagOver] = useState(secTotMiddernacht);
+  const [dagOver, setDagOver] = useState(secTotSluiting);
   useEffect(() => {
-    const id = window.setInterval(() => setDagOver(secTotMiddernacht()), 1000);
+    const id = window.setInterval(() => setDagOver(secTotSluiting()), 1000);
     return () => window.clearInterval(id);
   }, []);
 

@@ -205,15 +205,15 @@ body.arena::after {
   position: fixed;
   left: 0;
   right: 0;
-  /* Verankerd aan de ONDERKANT en op de KLEINE viewporthoogte. De horizon met
-     zijn roze lijn zit in de onderste band van de art, en die moet je zien.
-     Met de grote viewporthoogte plus tweehonderd pixels marge (zoals de andere
-     decors, die alleen maar door mogen lopen) viel juist die lijn onder de vouw
-     zodra de adresbalk in beeld stond. `svh` is de hoogte MET die balk, dus dit
-     past altijd. */
+  /* Verankerd aan de ONDERKANT, want de horizon met zijn roze lijn zit in de
+     onderste band van de art en die moet je zien. Bovenlangs mag hij juist ruim
+     doorlopen: op `100svh` (de hoogte MET adresbalk) bleef er bovenaan een
+     strook over zodra die balk wegviel, en die strook hield precies op bij de
+     terugpijl. Nu de grote viewport plus marge: onder blijft hij op zijn plek
+     en boven kan er niets meer overblijven. */
   bottom: 0;
-  height: 100vh;
-  height: 100svh;
+  height: calc(100vh + 240px);
+  height: calc(100lvh + 240px);
   z-index: -1;
   pointer-events: none;
   background-color: #06040e;

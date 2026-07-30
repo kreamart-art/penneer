@@ -440,6 +440,54 @@ async def daily_info(request: Request) -> JSONResponse:
     })
 
 
+@app.get("/api/daily/uitslag")
+async def daily_uitslag(request: Request) -> JSONResponse:
+    """De uitslag van de ronde die het laatst SLOOT, één keer per speler.
+
+    Dit is het moment van 21:00: de stand is definitief, de prijs wordt hier
+    uitbetaald en de client mag hem tonen. Leeg antwoord betekent: niets te
+    vieren (je deed niet mee, of je hebt hem al gezien).
+
+    De lopende ronde draagt de datum waarop hij sluit, dus de laatst gesloten
+    ronde is per definitie de dag daarvoor.
+    """
+    db = get_db()
+    uid = db.auth(_bearer(request))
+    if not uid:
+        return JSONResponse({})
+    dag = daily.previous_day(daily.today())
+    # Geen terugwerkende uitbetaling. De rondes van voor deze functie liepen tot
+    # middernacht en hadden geen prijzen; die alsnog uitkeren zou op de dag van
+    # uitrollen in een keer de halve muntvoorraad de wereld in gooien. De eerste
+    # ronde die meetelt is dus de ronde die liep toen dit aanging.
+    vanaf = db.meta_get("uitslag_vanaf")
+    if not vanaf:
+        vanaf = daily.today()
+        db.meta_set("uitslag_vanaf", vanaf)
+    if dag < vanaf:
+        return JSONResponse({})
+    bon = db.dag_uitslag(uid, dag, time.time())
+    if not bon or bon["gezien"]:
+        return JSONResponse({})
+    return JSONResponse({
+        "day": dag,
+        "plek": bon["plek"],
+        "spelers": bon["spelers"],
+        "score": bon["score"],
+        "prijs": {"coins": bon["coins"], "cash": bon["cash"], "kist": bon["kist"]},
+        "board": _met_prijzen(db.dag_totaal_board(dag, 25)),
+    })
+
+
+@app.post("/api/daily/uitslag/gezien")
+async def daily_uitslag_gezien(request: Request) -> JSONResponse:
+    db = get_db()
+    uid = db.auth(_bearer(request))
+    if uid:
+        db.dag_uitslag_gezien(uid, daily.previous_day(daily.today()))
+    return JSONResponse({"ok": True})
+
+
 @app.post("/api/daily/start")
 async def daily_start(request: Request) -> JSONResponse:
     """Hand out today's letter. For accounts this anchors the submit window at

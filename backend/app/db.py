@@ -242,6 +242,19 @@ CREATE INDEX IF NOT EXISTS idx_arena_dag ON arena_attempts (day, user_id);
 -- Kisten: elke rij is EEN kist die iemand heeft gekregen. De inhoud wordt pas
 -- bij het OPENEN bepaald en vastgelegd, zodat de onthulling de waarheid is en
 -- een herladen popup niets anders kan laten zien.
+CREATE TABLE IF NOT EXISTS dag_prijzen (
+    day TEXT NOT NULL,                -- de ronde die sloot (naam = sluitdag)
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    plek INTEGER NOT NULL,
+    spelers INTEGER NOT NULL,
+    score INTEGER NOT NULL,
+    coins INTEGER NOT NULL,
+    cash INTEGER NOT NULL,
+    kist TEXT,                        -- kist1..kist5 of leeg
+    gezien INTEGER NOT NULL DEFAULT 0,
+    created_at REAL NOT NULL,
+    PRIMARY KEY (day, user_id)
+);
 CREATE TABLE IF NOT EXISTS kisten (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -1593,6 +1606,62 @@ class Database:
                 "SELECT COUNT(DISTINCT user_id) AS n FROM arena_attempts WHERE day=? AND finished_at IS NOT NULL",
                 (day,),
             )[0]["n"])
+
+
+    # ---- het uitslagmoment van de dagronde ------------------------------------
+    #
+    # De ronde sluit om 21:00 en dan pas is de stand definitief. Uitbetalen
+    # gebeurt hier, EEN keer per speler per ronde: de rij in dag_prijzen is
+    # tegelijk de bon en het slot op de deur. Wie zijn app die avond niet opent
+    # krijgt zijn prijs de eerstvolgende keer dat hij binnenkomt; er draait geen
+    # klus op de achtergrond die iedereen langsgaat, want dan moet je op elke
+    # herstart weer bedenken wie je gemist hebt.
+
+    def dag_uitslag(self, user_id: str, day: str, now: float) -> Optional[dict]:
+        """De uitslag van een GESLOTEN ronde voor deze speler, en betaal hem uit.
+
+        None als je niet meedeed. Al uitbetaald? Dan komt dezelfde bon terug
+        zonder tweede uitbetaling.
+        """
+        from .dagprijzen import prijs_voor
+
+        with self._lock:
+            rij = self._q("SELECT * FROM dag_prijzen WHERE day=? AND user_id=?", (day, user_id))
+        if rij:
+            return dict(rij[0])
+
+        plek, spelers = self.dag_totaal_rank(user_id, day)
+        if not plek:
+            return None
+        prijs = prijs_voor(plek)
+        bord = self.dag_totaal_board(day, limit=1000)
+        score = next((int(r["score"]) for r in bord if r["id"] == user_id), 0)
+
+        with self._lock:
+            # INSERT OR IGNORE plus rowcount: twee tabbladen die tegelijk
+            # binnenkomen betalen zo samen precies een keer uit.
+            cur = self._conn.execute(
+                """INSERT OR IGNORE INTO dag_prijzen
+                   (day, user_id, plek, spelers, score, coins, cash, kist, created_at)
+                   VALUES (?,?,?,?,?,?,?,?,?)""",
+                (day, user_id, plek, spelers, score, prijs["coins"], prijs["cash"], prijs["kist"], now),
+            )
+            nieuw = bool(cur.rowcount)
+            if nieuw:
+                self._conn.execute(
+                    "UPDATE users SET coins = coins + ?, cash = cash + ? WHERE id=?",
+                    (prijs["coins"], prijs["cash"], user_id),
+                )
+            self._conn.commit()
+        if nieuw and prijs["kist"]:
+            self.kist_geef(user_id, prijs["kist"], "dagronde", now)
+
+        with self._lock:
+            rij = self._q("SELECT * FROM dag_prijzen WHERE day=? AND user_id=?", (day, user_id))
+        return dict(rij[0]) if rij else None
+
+    def dag_uitslag_gezien(self, user_id: str, day: str) -> None:
+        self._exec("UPDATE dag_prijzen SET gezien=1 WHERE day=? AND user_id=?", (day, user_id))
 
     # ---- kisten --------------------------------------------------------------
     # Wat er in een kist zit, per soort. Munten, bewust bescheiden: de kist is

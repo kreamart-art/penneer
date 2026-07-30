@@ -22,6 +22,7 @@
 // steekt de inhoud eruit. calc(var(--pop-b) * f) is gewoon een lengte en heeft
 // dat probleem niet.
 import { useEffect, useState } from "react";
+import { dagKlok, secTotSluiting } from "../lib/dagklok";
 import { Avatar } from "./Avatar";
 import { CloseIcon } from "./CloseIcon";
 import { GOUD, PlekWapen } from "./ProfileHero";
@@ -89,22 +90,6 @@ const authHeaders = (): Record<string, string> => {
   return tok ? { Authorization: `Bearer ${tok}` } : {};
 };
 
-/** Seconden tot middernacht, aan de klok van dit toestel. De server stuurt dit
- *  ook mee, maar dat is een momentopname; hier moet hij per seconde doorlopen,
- *  dus rekent hij zelf. */
-function totMiddernacht(): number {
-  const nu = new Date();
-  const morgen = new Date(nu);
-  morgen.setHours(24, 0, 0, 0);
-  return Math.max(0, Math.floor((morgen.getTime() - nu.getTime()) / 1000));
-}
-
-function klok(s: number): string {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  const u = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  return u > 0 ? `${u}:${pad(m)}:${pad(s % 60)}` : `${pad(m)}:${pad(s % 60)}`;
-}
 
 /** Een prijs in de rij: alleen het plaatje, het bedrag komt bij een tik.
  *
@@ -197,32 +182,45 @@ function PrijsCluster({ prijs }: { prijs?: Prijs }) {
   );
 }
 
-export function DagUitslagPopup({ game, onClose }: { game: GameApi; onClose: () => void }) {
+/** De bon van een GESLOTEN ronde: wat je won en waar je eindigde. */
+export interface Uitslag {
+  day: string;
+  plek: number;
+  spelers: number;
+  score: number;
+  prijs: { coins: number; cash: number; kist: string | null };
+  board: BordRij[];
+}
+
+export function DagUitslagPopup({ game, onClose, uitslag }: { game: GameApi; onClose: () => void; uitslag?: Uitslag | null }) {
   const { t } = useT();
   const account = game.state.account;
-  const [over, setOver] = useState(totMiddernacht);
+  const [over, setOver] = useState(secTotSluiting);
   const [info, setInfo] = useState<Info | null>(null);
 
   // Elke seconde bijwerken, en opnieuw UITREKENEN in plaats van aftrekken: een
   // telefoon die in de slaapstand gaat bevriest zijn timers, en dan zou een
   // aftrekker na het ontwaken achterlopen.
   useEffect(() => {
-    const id = window.setInterval(() => setOver(totMiddernacht()), 1000);
+    const id = window.setInterval(() => setOver(secTotSluiting()), 1000);
     return () => window.clearInterval(id);
   }, []);
 
-  // Verse standen bij het openen: je komt hier om te zien hoe het NU staat.
+  // Verse standen bij het openen: je komt hier om te zien hoe het NU staat. Bij
+  // een uitslag hoeft dat niet: die stand ligt vast, hij komt mee met de bon.
   useEffect(() => {
+    if (uitslag) return;
     let levend = true;
     fetch("/api/daily/info", { headers: authHeaders() })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => { if (levend && d) setInfo(d); })
       .catch(() => {});
     return () => { levend = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const rijen = info?.board ?? [];
-  const mijnPlek = info?.rank ?? 0;
+  const rijen = uitslag ? uitslag.board : (info?.board ?? []);
+  const mijnPlek = uitslag ? uitslag.plek : (info?.rank ?? 0);
   // Sta je buiten de lijst, dan hoort daar een regel over te staan: anders zoek
   // je jezelf in een top 25 waar je niet in staat.
   const buitenLijst = mijnPlek > 0 && !rijen.some((r) => r.id === account?.id);
@@ -309,14 +307,32 @@ export function DagUitslagPopup({ game, onClose }: { game: GameApi; onClose: () 
               een afgekapte lijst niet te onderscheiden van een volledige. */}
           {/* Alleen de klok, gecentreerd: geen pil en geen etiket. Het icoon
               erboven zegt al waar dit over gaat; de cijfers zeggen wanneer. */}
-          <span style={{ flexShrink: 0, fontFamily: font.display, fontWeight: 800, fontSize: 17, lineHeight: 1, color: colors.gold, fontVariantNumeric: "tabular-nums" }}>
-            {klok(over)}
-          </span>
+          {/* Loopt de ronde nog, dan staat hier de klok: wanneer valt de
+              beslissing. Is hij gevallen, dan staat er wat JIJ eraan overhield;
+              een aftelling naar een ronde die voorbij is zegt niets meer. */}
+          {uitslag ? (
+            <span style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 8, whiteSpace: "nowrap", fontFamily: font.display, fontWeight: 800, fontSize: 17, lineHeight: 1, color: colors.gold }}>
+              {t("dagUitslagPlek", { n: uitslag.plek })}
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 15 }}>
+                {uitslag.prijs.coins}<img src="/coin.webp" alt="" width={13} height={13} />
+              </span>
+              {uitslag.prijs.cash > 0 && (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 15, color: colors.green }}>
+                  {uitslag.prijs.cash}<img src="/cash.webp" alt="" width={14} height={14} />
+                </span>
+              )}
+              {uitslag.prijs.kist && <img src={`/ui/${uitslag.prijs.kist}.webp?v=1`} alt="" aria-hidden style={{ height: 22, width: "auto", maxWidth: "none", display: "block" }} />}
+            </span>
+          ) : (
+            <span style={{ flexShrink: 0, fontFamily: font.display, fontWeight: 800, fontSize: 17, lineHeight: 1, color: colors.gold, fontVariantNumeric: "tabular-nums" }}>
+              {dagKlok(over)}
+            </span>
+          )}
 
           {/* Waarom je zou doorspelen. Dit staat er niet als uitleg maar als
               aanbod: het zegt wat je wint door het andere deel ook te doen. */}
           <p style={{ margin: 0, flexShrink: 0, paddingInline: 10, fontFamily: font.ui, fontSize: 10.5, lineHeight: 1.3, color: colors.sub, textAlign: "center" }}>
-            {t("dagUitslagAanmoediging")}
+            {uitslag ? t("dagUitslagKlaar", { n: uitslag.spelers }) : t("dagUitslagAanmoediging")}
           </p>
 
           {/* Zelfde streep als op de glasrijen: de kop erboven, de stand
