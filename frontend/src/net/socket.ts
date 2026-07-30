@@ -123,6 +123,7 @@ export interface Account {
   cash: number; // de zeldzame munt: alleen op mijlpalen, koopt de scheidsrechter
   cash_pending: number; // nieuwe cash sinds de laatste popup (rolt mee met coins)
   land: string; // tweeletterige landcode uit je gegevens, standaard "NL"
+  created_at: number; // wanneer je je aanmeldde (seconden), voor de uitleg-knop
   coins_pack_price: number; // legacy (old all-in-one country pack cost)
   owned_items: string[]; // coin-bought items owned: buzzer ids (bz01..05) + avatar packs (avpack1/2)
   stats: AccountStats;

@@ -5,7 +5,8 @@ import { Bot, CalendarDays, Check, GraduationCap, Hash, HelpCircle, Play, Settin
 import { Logo } from "../components/Logo";
 import { Button } from "../components/Button";
 import { NotifyNudge } from "../components/NotifyNudge";
-import { MusicToggle } from "../components/MusicToggle";
+import { DagUitslagPopup } from "../components/DagUitslagPopup";
+import { MissiesPopup } from "../components/MissiesPopup";
 import { ProfilePrompt, profilePromptSeen } from "../components/ProfilePrompt";
 import { InstallPrompt, installPromptSeen, type InstallVariant } from "../components/InstallPrompt";
 import { canInstall, isIos, isIosChrome, isIosInAppBrowser, isStandalone, onInstallChange } from "../pwa/install";
@@ -53,6 +54,22 @@ const inputStyle: React.CSSProperties = {
   borderRadius: radius.button,
   padding: "13px 15px",
 };
+
+/** Seconden tot middernacht: de dagronde loopt tot de dagwissel. */
+function secTotMiddernacht(): number {
+  const nu = new Date();
+  const morgen = new Date(nu);
+  morgen.setHours(24, 0, 0, 0);
+  return Math.max(0, Math.floor((morgen.getTime() - nu.getTime()) / 1000));
+}
+
+/** Alleen cijfers, u:mm:ss. Onder een icoon is er geen ruimte voor woorden en
+ *  is een klok ook zonder uitleg duidelijk. */
+function dagKlok(s: number): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const u = Math.floor(s / 3600);
+  return `${u}:${pad(Math.floor((s % 3600) / 60))}:${pad(s % 60)}`;
+}
 
 export function Landing({
   game,
@@ -102,6 +119,42 @@ export function Landing({
   // First-visit guests (no account, no stored token) get a prominent prompt to
   // make a profile. Returning users with a token skip it (avoids a flash).
   const [toonGids, setToonGids] = useState(false);
+  const [uitslagOpen, setUitslagOpen] = useState(false);
+  // De aftelling onder het uitslagicoon. Opnieuw UITREKENEN per tik en niet
+  // aftrekken: een telefoon in de slaapstand bevriest zijn timers, en dan zou
+  // een aftrekker na het ontwaken achterlopen.
+  const [dagOver, setDagOver] = useState(secTotMiddernacht);
+  useEffect(() => {
+    const id = window.setInterval(() => setDagOver(secTotMiddernacht()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  // De uitleg-knop verdwijnt een week na aanmelden. Twee toestanden, want een
+  // knop die zomaar weg is voelt als een fout: eerst speelt hij de implosie
+  // (een halve seconde), daarna is hij er niet meer en schuift de
+  // dagronde-uitslag op zijn plek. Zonder account blijft hij staan: een gast
+  // heeft de uitleg juist nodig.
+  const WEEK = 7 * 24 * 3600;
+  const oudGenoeg = !!account?.created_at && Date.now() / 1000 - account.created_at > WEEK;
+  const [hulpImplodeert, setHulpImplodeert] = useState(false);
+  const [hulpWeg, setHulpWeg] = useState(() => {
+    try { return localStorage.getItem("penneer.hulpWeg") === "1"; } catch { return false; }
+  });
+  useEffect(() => {
+    if (!oudGenoeg || hulpWeg || hulpImplodeert) return;
+    // Even wachten tot de main page staat: een implosie tijdens het opbouwen
+    // van het scherm zie je niet.
+    const start = window.setTimeout(() => setHulpImplodeert(true), 1400);
+    return () => window.clearTimeout(start);
+  }, [oudGenoeg, hulpWeg, hulpImplodeert]);
+  useEffect(() => {
+    if (!hulpImplodeert) return;
+    const klaar = window.setTimeout(() => {
+      setHulpWeg(true);
+      try { localStorage.setItem("penneer.hulpWeg", "1"); } catch { /* prima */ }
+    }, 520);
+    return () => window.clearTimeout(klaar);
+  }, [hulpImplodeert]);
   const [showPrompt, setShowPrompt] = useState(() => {
     try {
       return !localStorage.getItem("penneer.accountToken") && !profilePromptSeen();
@@ -193,7 +246,6 @@ export function Landing({
   // Today's missions (progress for accounts; guests see them with a nudge).
   // Lives behind the Target icon in the top bar; the badge counts what's open.
   const [missions, setMissions] = useState<{ key: string; target: number; reward: number; coins: number; cash?: number; progress: number; done: boolean }[] | null>(null);
-  const [missionsLeft, setMissionsLeft] = useState(0);
   const [showMissions, setShowMissions] = useState(false);
   const fetchMissions = () => {
     const tok = localStorage.getItem("penneer.accountToken");
@@ -201,7 +253,6 @@ export function Landing({
       .then((r) => r.json())
       .then((d) => {
         setMissions(d.missions);
-        setMissionsLeft(d.seconds_left || 0);
       })
       .catch(() => {});
   };
@@ -315,18 +366,45 @@ export function Landing({
             </HexPlate>
           </button>
           </div>
-          <MusicToggle size={24} padding={skin ? 0 : 9} plate={skin} />
-          {/* Icon-only: the rules live one tap away here and in Instellingen,
-              so the main page needs no explaining line at the bottom. */}
+          {/* De muziekknop is van de main page af: hij staat in Instellingen,
+              en vier knoppen in een kolom naast het logo is er een te veel. Het
+              vraagteken schuift op naar zijn plek en de dagronde-uitslag neemt
+              de onderste over.
+
+              Het vraagteken IMPLODEERT een week na aanmelden: wie er dan nog
+              zit heeft de uitleg niet meer nodig, en dan schuift de uitslag
+              vanzelf een plek op. */}
+          {!hulpWeg && (
+            <button
+              onClick={() => { sound.uiTap(); onShowRules(); }}
+              aria-label={t("howItWorks")}
+              className={`pressable glowhover${hulpImplodeert ? " hex-implode" : ""}`}
+              style={{ background: "transparent", border: "none", cursor: "pointer", color: skin ? colors.ink : colors.sub, display: "flex", padding: skin ? 0 : 9, lineHeight: 0 }}
+            >
+              <HexPlate on={skin}>
+                <HelpCircle size={24} />
+              </HexPlate>
+            </button>
+          )}
+          {/* De dagronde-uitslag: vrijstaande art, dus geen plaat eronder. Hij
+              schuift omhoog zodra het vraagteken weg is. */}
           <button
-            onClick={() => { sound.uiTap(); onShowRules(); }}
-            aria-label={t("howItWorks")}
-            className="pressable glowhover"
-            style={{ background: "transparent", border: "none", cursor: "pointer", color: skin ? colors.ink : colors.sub, display: "flex", padding: skin ? 0 : 9, lineHeight: 0 }}
+            onClick={() => { sound.uiTap(); setUitslagOpen(true); }}
+            aria-label={t("dagUitslagTitel")}
+            className={`pressable glowhover${hulpWeg ? " uitslag-omhoog" : ""}`}
+            style={{ background: "transparent", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 1, padding: 0, lineHeight: 0 }}
           >
-            <HexPlate on={skin}>
-              <HelpCircle size={24} />
-            </HexPlate>
+            <img
+              src="/ui/dagronde-uitslag.webp?v=2"
+              alt=""
+              style={{ width: 58, height: 58, objectFit: "contain", display: "block", filter: "drop-shadow(0 3px 8px rgba(0,0,0,.5))" }}
+            />
+            {/* Alleen de cijfers. Een woord erbij ("nog") maakt er een zin van
+                en dan lees je hem; zo staat er een klok en die begrijp je in
+                een oogopslag. */}
+            <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 11, lineHeight: 1, letterSpacing: 0.3, color: colors.gold, fontVariantNumeric: "tabular-nums", textShadow: "0 1px 3px rgba(0,0,0,.75)" }}>
+              {dagKlok(dagOver)}
+            </span>
           </button>
         </div>
       </div>
@@ -615,16 +693,12 @@ export function Landing({
         />
       )}
       {showPrompt && !account && <ProfilePrompt game={game} onClose={(aangemaakt) => { setShowPrompt(false); if (aangemaakt) setToonGids(true); }} />}
+      {uitslagOpen && <DagUitslagPopup game={game} onClose={() => setUitslagOpen(false)} />}
       {toonGids && account && <ProfielGids account={account} onNaarProfiel={() => { setToonGids(false); onShowProfile(); }} onLater={() => setToonGids(false)} />}
       {installVariant && !showPrompt && <InstallPrompt variant={installVariant} onClose={() => setInstallVariant(null)} />}
-      {showMissions && (
-        <MissionsSheet
-          missions={missions ?? []}
-          secondsLeft={missionsLeft}
-          isAccount={!!account}
-          onClose={() => setShowMissions(false)}
-        />
-      )}
+      {/* De missies hebben nu drie lagen (dag, week, seizoen) en een eigen
+          popup met de sectie-art. MissionsSheet toonde alleen de dag. */}
+      {showMissions && <MissiesPopup onClose={() => { setShowMissions(false); fetchMissions(); }} />}
     </Screen>
   );
 }
@@ -679,119 +753,6 @@ function FriendsSheet({
           </span>
         </Button>
       </div>
-    </div>
-  );
-}
-
-// Missions overlay behind the Target icon: today's three with progress, the
-// reward, and when the next set drops. Tap the backdrop or X to close.
-function MissionsSheet({
-  missions,
-  secondsLeft,
-  isAccount,
-  onClose,
-}: {
-  missions: { key: string; target: number; reward: number; coins: number; cash?: number; progress: number; done: boolean }[];
-  secondsLeft: number;
-  isAccount: boolean;
-  onClose: () => void;
-}) {
-  const { t } = useT();
-  const [left, setLeft] = useState(secondsLeft);
-  useEffect(() => {
-    const id = window.setInterval(() => setLeft((n) => Math.max(0, n - 1)), 1000);
-    return () => window.clearInterval(id);
-  }, []);
-  const p = (n: number) => String(n).padStart(2, "0");
-  const countdown = `${p(Math.floor(left / 3600))}:${p(Math.floor((left % 3600) / 60))}:${p(Math.floor(left % 60))}`;
-  return (
-    <div
-      onClick={onClose}
-      style={{ position: "fixed", inset: 0, zIndex: 80, display: "grid", placeItems: "center", padding: 22, background: "rgba(6,3,18,.6)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)" }}
-    >
-      {/* Een eigen DONKERE bodem. De sectiestijl is doorzichtig, en dat werkt op
-          een pagina omdat het decor eronder rustig is; boven een popup zie je de
-          hele main page erdoorheen en valt de tekst weg. Een venster hoort af te
-          dekken wat eronder ligt. */}
-      <Card
-        className="pop-in"
-        style={{
-          width: "100%",
-          maxWidth: 360,
-          display: "flex",
-          flexDirection: "column",
-          gap: 12,
-          padding: 20,
-          backgroundImage: [
-            "linear-gradient(180deg, rgba(255,243,181,.07) 0%, transparent 14%)",
-            "linear-gradient(180deg, #241740 0%, #1A1035 55%, #120A28 100%)",
-          ].join(", "),
-          boxShadow: "0 24px 70px rgba(0,0,0,.6)",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }} onClick={(e) => e.stopPropagation()}>
-          <Target size={17} color={colors.gold} />
-          <span style={{ flex: 1, fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink }}>{t("missionsTitle")}</span>
-          <button onClick={onClose} aria-label={t("back")} className="pressable" style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 4 }}>
-            <CloseIcon size={26} />
-          </button>
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 11 }} onClick={(e) => e.stopPropagation()}>
-          {missions.map((m) => (
-            <div key={m.key} style={{ display: "flex", alignItems: "center", gap: 10, opacity: isAccount ? 1 : 0.55 }}>
-              <span
-                style={{
-                  width: 21,
-                  height: 21,
-                  borderRadius: 999,
-                  flexShrink: 0,
-                  display: "grid",
-                  placeItems: "center",
-                  background: m.done ? colors.green : withAlpha("#000000", 0.3),
-                  border: `1px solid ${m.done ? colors.green : colors.hairline}`,
-                  color: colors.bg0,
-                }}
-              >
-                {m.done && <Check size={13} strokeWidth={3} />}
-              </span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
-                  <span style={{ fontFamily: font.ui, fontSize: 13.5, fontWeight: 600, color: m.done ? colors.sub : colors.ink, textDecoration: m.done ? "line-through" : "none" }}>
-                    {t(`mission_${m.key}`)}
-                  </span>
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontFamily: font.ui, fontSize: 11.5, fontWeight: 700, color: colors.gold }}>
-                      +{m.coins}<img src="/coin.webp" alt="" width={13} height={13} style={{ display: "block" }} />
-                    </span>
-                    {/* Op woensdag en zondag draagt de zware missie 10 cash. */}
-                    {!!m.cash && (
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontFamily: font.ui, fontSize: 11.5, fontWeight: 700, color: GROEN[3] }}>
-                        +{m.cash}<img src="/ui/valuta/cash.webp?v=1" alt="" width={13} height={13} style={{ display: "block" }} />
-                      </span>
-                    )}
-                  </span>
-                </div>
-                {m.target > 1 && !m.done && (
-                  <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 4 }}>
-                    <div style={{ flex: 1, height: 5, borderRadius: 999, background: withAlpha("#000000", 0.32), overflow: "hidden" }}>
-                      <div style={{ width: `${Math.round((m.progress / m.target) * 100)}%`, height: "100%", borderRadius: 999, background: colors.gold }} />
-                    </div>
-                    <span style={{ fontFamily: font.ui, fontSize: 10.5, color: colors.faint }}>
-                      {m.progress}/{m.target}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-        {!isAccount && (
-          <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.faint }} onClick={(e) => e.stopPropagation()}>{t("missionsGuest")}</p>
-        )}
-        <p style={{ margin: 0, textAlign: "center", fontFamily: font.ui, fontSize: 12, color: colors.faint }} onClick={(e) => e.stopPropagation()}>
-          {t("missionsNewIn", { t: countdown })}
-        </p>
-      </Card>
     </div>
   );
 }

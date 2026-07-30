@@ -34,8 +34,10 @@ def test_starts_with_basic_and_diacritics():
 
 def test_starts_with_ij_y_leniency():
     assert game.starts_with("IJsland", "I")
-    assert game.starts_with("IJsbeer", "Y")  # lenient: IJ accepted for Y
-    assert game.starts_with("Yoghurt", "I")  # lenient: Y accepted for I
+    assert game.starts_with("IJsbeer", "Y")  # soepel: IJ telt mee bij de Y
+    # En maar een kant op. Bij de letter I mag een woord met Y niet meetellen,
+    # anders zijn yak, yoghurt en youtuber ineens goede antwoorden op de I.
+    assert not game.starts_with("Yoghurt", "I")
 
 
 def test_unique_scores_full():

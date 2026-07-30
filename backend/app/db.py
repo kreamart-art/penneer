@@ -219,6 +219,17 @@ CREATE TABLE IF NOT EXISTS mission_progress (
     done INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (day, user_id, key)
 );
+-- Week- en seizoensmissies slaan GEEN voortgang op: die wordt geteld uit de
+-- potjes, dagrondes en duels die er toch al staan (zie missies_lang.py). Het
+-- enige dat een gebeurtenis is en dus bewaard moet blijven, is of je je
+-- beloning hebt opgehaald. De primaire sleutel maakt dubbel ophalen onmogelijk.
+CREATE TABLE IF NOT EXISTS mission_claims (
+    periode TEXT NOT NULL,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    key TEXT NOT NULL,
+    claimed_at REAL NOT NULL,
+    PRIMARY KEY (periode, user_id, key)
+);
 -- Dagronde: one ranked entry per account per day. words = the submitted
 -- answers as JSON, kept so the player can re-open their result later.
 -- AI referee verdicts, shared by EVERYONE: the daily is a leaderboard, so the
@@ -764,7 +775,9 @@ class Database:
         self._conn.commit()
         return cur
 
-    def _q(self, sql: str, args: tuple = ()) -> list[sqlite3.Row]:
+    # args mag ook een dict zijn, voor query's met benoemde parameters (:dag).
+    # Handig zodra dezelfde waarde meerdere keren in de query voorkomt.
+    def _q(self, sql: str, args: tuple | dict = ()) -> list[sqlite3.Row]:
         return self._conn.execute(sql, args).fetchall()
 
     # ---- users / auth -------------------------------------------------------
@@ -1342,6 +1355,65 @@ class Database:
             )
         return {r["key"]: {"progress": int(r["progress"]), "done": bool(r["done"])} for r in rows}
 
+    # ---- week- en seizoensmissies -------------------------------------------
+    # De voortgang wordt GETELD en niet bijgehouden, zodat een gemiste bump een
+    # missie van dertig dagen niet permanent scheeftrekt. Elke teller is een
+    # vraag over tabellen die er al zijn.
+
+    def missie_teller(self, user_id: str, teller: str, van, tot) -> int:
+        """Hoe ver je staat op een teller, tussen twee momenten."""
+        van_ts, tot_ts = van.timestamp(), tot.timestamp()
+        van_dag, tot_dag = van.date().isoformat(), tot.date().isoformat()
+        potje = """
+            FROM game_players gp JOIN games g ON g.id = gp.game_id
+            WHERE gp.user_id = ? AND g.finished_at >= ? AND g.finished_at < ?
+        """
+        vragen: dict[str, tuple[str, tuple]] = {
+            "potjes":    ("SELECT COUNT(*) AS n " + potje, (user_id, van_ts, tot_ts)),
+            "winsten":   ("SELECT COUNT(*) AS n " + potje + " AND gp.is_winner = 1", (user_id, van_ts, tot_ts)),
+            "unieken":   ("SELECT COALESCE(SUM(gp.uniques), 0) AS n " + potje, (user_id, van_ts, tot_ts)),
+            "punten":    ("SELECT COALESCE(SUM(gp.score), 0) AS n " + potje, (user_id, van_ts, tot_ts)),
+            "dagrondes": ("SELECT COUNT(*) AS n FROM daily_scores WHERE user_id=? AND day>=? AND day<?", (user_id, van_dag, tot_dag)),
+            "topo":      ("SELECT COUNT(*) AS n FROM topo_scores  WHERE user_id=? AND day>=? AND day<?", (user_id, van_dag, tot_dag)),
+            "duelwin":   ("SELECT COUNT(*) AS n FROM duels WHERE winner=? AND finished_at>=? AND finished_at<?", (user_id, van_ts, tot_ts)),
+            "dubbels":   ("SELECT COALESCE(SUM(gp.dubbels), 0) AS n " + potje, (user_id, van_ts, tot_ts)),
+            "duels":     ("SELECT COUNT(*) AS n FROM duels WHERE (a=? OR b=?) AND status='done' AND finished_at>=? AND finished_at<?", (user_id, user_id, van_ts, tot_ts)),
+            # De dagronde als geheel: woorden en topografie bij elkaar, net als
+            # in de uitslag. Twee losse sommen, want het zijn twee tabellen.
+            "dagpunten": ("""
+                SELECT COALESCE((SELECT SUM(score) FROM daily_scores WHERE user_id=? AND day>=? AND day<?), 0)
+                     + COALESCE((SELECT SUM(score) FROM topo_scores  WHERE user_id=? AND day>=? AND day<?), 0) AS n
+                """, (user_id, van_dag, tot_dag, user_id, van_dag, tot_dag)),
+        }
+        vraag = vragen.get(teller)
+        if not vraag:
+            return 0
+        with self._lock:
+            return int(self._q(vraag[0], vraag[1])[0]["n"])
+
+    def missie_claims(self, user_id: str, periode: str) -> set[str]:
+        with self._lock:
+            rows = self._q("SELECT key FROM mission_claims WHERE periode=? AND user_id=?", (periode, user_id))
+        return {r["key"] for r in rows}
+
+    def missie_claim(self, user_id: str, periode: str, key: str, xp: int, cash: int, now: float) -> bool:
+        """Haal een beloning op. True alleen als DEZE aanroep hem ophaalde, dus
+        twee tikken tegelijk betalen nooit twee keer uit."""
+        with self._lock:
+            cur = self._conn.execute(
+                "INSERT OR IGNORE INTO mission_claims (periode, user_id, key, claimed_at) VALUES (?,?,?,?)",
+                (periode, user_id, key, now),
+            )
+            if not cur.rowcount:
+                self._conn.commit()
+                return False
+            self._conn.execute(
+                "UPDATE users SET bonus_xp = bonus_xp + ?, cash = cash + ? WHERE id=?",
+                (max(0, int(xp)), max(0, int(cash)), user_id),
+            )
+            self._conn.commit()
+        return True
+
     # ---- clubs ---------------------------------------------------------------
 
     CLUB_MAX = 50
@@ -1772,6 +1844,65 @@ class Database:
     def topo_players_count(self, day: str) -> int:
         with self._lock:
             return int(self._q("SELECT COUNT(*) AS n FROM topo_scores WHERE day=?", (day,))[0]["n"])
+
+    # ---- de dag als GEHEEL ---------------------------------------------------
+    # Woorden en topografie hebben elk hun eigen potje en hun eigen ranglijst,
+    # maar de dagwinnaar is er maar een: die met de hoogste dagtotaal. Daarom
+    # telt dit de twee delen bij elkaar op in plaats van twee lijsten naast
+    # elkaar te zetten. Wie maar een deel speelde telt gewoon mee, met alleen
+    # dat deel; je hoeft niet allebei te spelen om in de uitslag te staan, je
+    # laat dan wel punten liggen.
+
+    _TOTAAL_SQL = """
+        WITH deelnemers AS (
+            SELECT user_id FROM daily_scores WHERE day = :dag
+            UNION
+            SELECT user_id FROM topo_scores  WHERE day = :dag
+        )
+        SELECT u.id, u.name, u.color, u.avatar_ver, u.divisie,
+               u.avatar IS NOT NULL AS has_avatar,
+               COALESCE(ds.score, 0) + COALESCE(ts.score, 0)     AS score,
+               COALESCE(ds.time_ms, 0) + COALESCE(ts.time_ms, 0) AS time_ms,
+               MIN(COALESCE(ds.created_at, 1e18),
+                   COALESCE(ts.created_at, 1e18))                AS created_at
+        FROM deelnemers d
+        JOIN users u ON u.id = d.user_id
+        LEFT JOIN daily_scores ds ON ds.user_id = d.user_id AND ds.day = :dag
+        LEFT JOIN topo_scores  ts ON ts.user_id = d.user_id AND ts.day = :dag
+    """
+    # Hoogste totaal eerst; bij gelijk totaal wie sneller was, en daarna wie
+    # eerder klaar was. Dezelfde volgorde als bij de losse delen, zodat een
+    # gelijkspel overal op dezelfde manier wordt beslecht.
+    _TOTAAL_ORDER = " ORDER BY score DESC, time_ms ASC, created_at ASC "
+
+    def dag_totaal_board(self, day: str, limit: int = 25) -> list[dict]:
+        with self._lock:
+            rows = self._q(self._TOTAAL_SQL + self._TOTAAL_ORDER + " LIMIT :n",
+                           {"dag": day, "n": limit})
+        return [dict(r) for r in rows]
+
+    def dag_totaal_rank(self, user_id: str, day: str) -> tuple[int, int]:
+        """(plek, aantal deelnemers) op het dagtotaal; plek 0 als je niet meedeed."""
+        with self._lock:
+            allen = self._q(self._TOTAAL_SQL + self._TOTAAL_ORDER, {"dag": day})
+        for i, r in enumerate(allen):
+            if r["id"] == user_id:
+                return i + 1, len(allen)
+        return 0, len(allen)
+
+    def dag_totaal_players_count(self, day: str) -> int:
+        """Iedereen die vandaag aan minstens EEN van de twee delen meedeed."""
+        with self._lock:
+            return int(self._q(
+                """
+                SELECT COUNT(*) AS n FROM (
+                    SELECT user_id FROM daily_scores WHERE day=?
+                    UNION
+                    SELECT user_id FROM topo_scores  WHERE day=?
+                )
+                """,
+                (day, day),
+            )[0]["n"])
 
     def topo_days_of(self, user_id: str, limit: int = 400) -> list[str]:
         with self._lock:

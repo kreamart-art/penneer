@@ -1064,3 +1064,30 @@ html.klassiek body.lijst::after {
   background-size: 160px 160px, 100% 100%;
 }
 
+/* De uitleg-knop implodeert: hij zuigt zich samen naar zijn eigen midden en
+   dooft daarbij uit. Alleen `transform` en `opacity`, dus de browser hoeft
+   niets opnieuw op te meten en het blijft vloeiend op een telefoon. */
+@keyframes hex-implode {
+  0%   { transform: scale(1)    rotate(0deg);  opacity: 1; }
+  38%  { transform: scale(1.12) rotate(-6deg); opacity: 1; }
+  100% { transform: scale(0)    rotate(28deg); opacity: 0; }
+}
+.hex-implode {
+  animation: hex-implode .52s cubic-bezier(.5,-0.2,.7,.4) forwards;
+  pointer-events: none;
+}
+
+/* En de uitslag schuift op naar de plek die vrijkomt. Van onder naar zijn
+   nieuwe plek, zodat je ZIET dat hij opschuift in plaats van dat hij er
+   ineens hoger staat. */
+@keyframes uitslag-omhoog {
+  from { transform: translateY(46px); }
+  to   { transform: translateY(0); }
+}
+.uitslag-omhoog { animation: uitslag-omhoog .42s cubic-bezier(.22,.9,.28,1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hex-implode { animation-duration: .01s; }
+  .uitslag-omhoog { animation: none; }
+}
+

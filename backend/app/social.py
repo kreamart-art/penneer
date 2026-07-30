@@ -300,6 +300,10 @@ class AccountManager:
                 "cash": cash,
                 "cash_pending": cash_pending,
                 "land": user.get("land") or "NL",
+                # Wanneer je je aanmeldde. De main page gebruikt dit om de
+                # uitleg-knop na een week te laten imploderen: wie er dan nog
+                # zit heeft hem niet meer nodig.
+                "created_at": float(user.get("created_at") or 0),
                 "coins_pack_price": self.db.BUZZER_PACK_COINS,
                 "stats": stats,
                 "level": level,

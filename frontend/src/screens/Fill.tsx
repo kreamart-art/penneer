@@ -12,7 +12,7 @@ import { TopBar } from "../components/TopBar";
 import type { GameApi } from "../net/socket";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
-import { KADER_LIJN_LOOP, NeonKader } from "../components/ProfileHero";
+import { Paneel } from "../components/ProfileHero";
 import { colors, font, withAlpha } from "../theme/tokens";
 
 export function Fill({ game }: { game: GameApi }) {
@@ -70,19 +70,12 @@ export function Fill({ game }: { game: GameApi }) {
   return (
     <Screen top={<TopBar code={room.code} roundNo={room.round_no} totalRounds={room.settings.rounds} connected={game.state.status === "open"} onLeave={game.leaveRoom} game={game} />}>
       <div style={{ display: "flex", flexDirection: "column", gap: 16, paddingBottom: showFloatingReady || showFloatingStop ? 104 : 0 }}>
-        {/* Letter + timer. Met de sierlijst van het profiel eromheen: dit is de
-            kop van de ronde, en elders in de app draagt de kop die lijst al.
-            Een gewone Card las hier als een willekeurig vlak. */}
-        <NeonKader
-          radius={18}
-          dik={0.4}
-          vulling="geen"
-          lijn={KADER_LIJN_LOOP}
-          gloed="none"
-          animeer
-          sterkte={0.34}
-          binnen={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "14px 14px 15px" }}
-        >
+        {/* Letter + timer, in de PROFIELSECTIE: dezelfde art als de heldenkaart
+            op het profiel. Dit is de kop van de ronde, en die hoort dezelfde
+            lijst te dragen als de kop van het profiel; een neonkader was hier
+            een tweede taal naast de art. */}
+        <Paneel>
+          <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6 }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
             <span style={{ fontFamily: font.ui, fontSize: 13, color: colors.sub }}>{t("letterIs")}</span>
             {/* Zelfde behandeling als de letter op de rol: een verloop over het
@@ -100,7 +93,8 @@ export function Fill({ game }: { game: GameApi }) {
             // Timed mode: the countdown speaks for itself, nobody keeps time.
             <Timer endsAt={room.timer.ends_at} duration={room.timer.duration} onTick={onTick} />
           )}
-        </NeonKader>
+          </div>
+        </Paneel>
 
         {/* other players + ready state */}
         {others.length > 0 && (

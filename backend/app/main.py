@@ -18,7 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import ai_referee, daily, duel, game, missions, paypal, push
+from . import ai_referee, daily, dagprijzen, duel, game, missies_lang, missions, paypal, push
 from . import topo
 from .db import AVATAR_MAX_BYTES, get_db
 from .social import accounts, _level_of
@@ -398,6 +398,14 @@ def _daily_result_payload(db, uid: str | None, day: str, score: int, breakdown: 
     }
 
 
+def _met_prijzen(board: list[dict]) -> list[dict]:
+    """Hang aan elke rij de prijs die bij die plek hoort.
+
+    De volgorde van de lijst IS de rangschikking, dus de index bepaalt de plek.
+    """
+    return [{**rij, "prijs": dagprijzen.prijs_voor(i + 1)} for i, rij in enumerate(board)]
+
+
 @app.get("/api/daily/info")
 async def daily_info(request: Request) -> JSONResponse:
     """Landing/intro state: the day, how many played, whether YOU played."""
@@ -414,6 +422,16 @@ async def daily_info(request: Request) -> JSONResponse:
         # er los van het woordendeel aan meedoen.
         "topo_played": bool(uid and db.topo_entry(uid, day)),
         "topo_players": db.topo_players_count(day),
+        # De STAND van vandaag, voor de uitslag-popup op de main page. EEN
+        # lijst: de twee delen zijn twee potjes, maar de dagwinnaar is degene
+        # met het hoogste dagtotaal. De prijs hangt aan de RIJ en niet aan de
+        # client, zodat de ladder op een plek staat en de popup nooit iets kan
+        # tonen wat je niet krijgt.
+        "board": _met_prijzen(db.dag_totaal_board(day, 25)),
+        "total_players": db.dag_totaal_players_count(day),
+        # Waar JIJ staat, zodat de popup je eigen plek kan aanwijzen zonder de
+        # hele lijst te hoeven doorzoeken (je kunt buiten de top 25 vallen).
+        "rank": (db.dag_totaal_rank(uid, day)[0] if uid else 0),
     })
 
 
@@ -1220,6 +1238,57 @@ async def missions_get(request: Request) -> JSONResponse:
         "authed": bool(uid),
         "missions": out,
     })
+
+
+@app.get("/api/missions/all")
+async def missions_all(request: Request) -> JSONResponse:
+    """Alle drie de lagen in een keer: dag, week en seizoen.
+
+    De dagmissies claimen zichzelf zodra ze af zijn (dat deden ze altijd al),
+    de week- en seizoensmissies moet je zelf ophalen. Daarom draagt elke rij een
+    `claimed`, zodat de popup weet of er een knop hoort te staan.
+    """
+    db = get_db()
+    uid = db.auth(_bearer(request))
+    day = daily.today()
+    defs = missions.missions_for(day)
+    state = db.mission_state(uid, day) if uid else {}
+    dag = [
+        {**d, "progress": min(d["target"], int(state.get(d["key"], {}).get("progress", 0))),
+         "done": bool(state.get(d["key"], {}).get("done", False)),
+         # Een dagmissie is opgehaald op het moment dat hij af is.
+         "claimed": bool(state.get(d["key"], {}).get("done", False))}
+        for d in defs
+    ]
+    return JSONResponse({
+        "authed": bool(uid),
+        "dag": {"periode": day, "seconds_left": daily.seconds_to_next_day(), "missions": dag},
+        "week": missies_lang.week_missies(db, uid),
+        "seizoen": missies_lang.seizoen_missies(db, uid),
+    })
+
+
+@app.post("/api/missions/claim")
+async def missions_claim(request: Request) -> JSONResponse:
+    """Haal de beloning van een afgeronde week- of seizoensmissie op."""
+    db = get_db()
+    uid = db.auth(_bearer(request))
+    if not uid:
+        return JSONResponse({"error": "auth"}, status_code=401)
+    body = await request.json()
+    soort, key = str(body.get("soort") or ""), str(body.get("key") or "")
+    spec = missies_lang.zoek(soort, key)
+    if not spec:
+        return JSONResponse({"error": "unknown"}, status_code=404)
+    # Opnieuw TELLEN op het moment van ophalen. De client mag zeggen dat hij
+    # klaar is, maar de server gelooft alleen zijn eigen telling.
+    stand = db.missie_teller(uid, spec["teller"], spec["van"], spec["tot"])
+    if stand < spec["target"]:
+        return JSONResponse({"error": "not_done", "progress": stand}, status_code=409)
+    if not db.missie_claim(uid, spec["periode"], key, spec["reward"], spec["cash"], time.time()):
+        return JSONResponse({"error": "already"}, status_code=409)
+    await accounts.push_account(uid)
+    return JSONResponse({"ok": True, "reward": spec["reward"], "cash": spec["cash"]})
 
 
 # ---- web push (real notifications while the app is closed) ------------------

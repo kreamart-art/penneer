@@ -3837,7 +3837,7 @@ export function PilKeuze<T extends string>({ opties, actief, onKies, schuif }: {
   );
 }
 
-function LeaderboardTab({ game }: { game: GameApi }) {
+export function LeaderboardTab({ game }: { game: GameApi }) {
   const { t } = useT();
   const lb = game.state.leaderboard;
   const account = game.state.account;
