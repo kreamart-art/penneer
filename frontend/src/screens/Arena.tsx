@@ -17,12 +17,12 @@
 // snelheidsbonus van hoogstens 99. De server controleert dat bij het
 // inleveren, samen met de minimaal benodigde tijd.
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, LogOut } from "lucide-react";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { Screen } from "../components/Layout";
 import { NeonText } from "../components/NeonText";
-import { GOUD, Paneel, PlekWapen } from "../components/ProfileHero";
+import { GOUD, KADER_LIJN_ROOD, NeonKader, Paneel, PlekWapen } from "../components/ProfileHero";
 import { GlasRij, Lijst } from "./Hub";
 import type { GameApi } from "../net/socket";
 import { useT } from "../i18n/i18n";
@@ -76,9 +76,9 @@ function klok(s: number): string {
 
 // De breedte van het hele apparaat. De LED-balk en de kast delen hem, want ze
 // horen als EEN geheel te lezen: de stand boven, het bord eronder.
-const VAK = "min(360px, 94vw)";
+export const VAK = "min(360px, 94vw)";
 // De verhouding van de kast-art, na het wegknippen van de doorzichtige rand.
-const KAST = 0.9241;
+export const KAST = 0.9241;
 
 // De vier pads staan nu OP de sectie opgemaakt: de kast, de doffe knoppen en de
 // opgelichte knoppen komen als hetzelfde doek uit de art, op dezelfde uitsnede
@@ -192,9 +192,9 @@ function Bord({ aanNu, uit, onTik }: { aanNu: number | null; uit: boolean; onTik
  *  Waarom factoren van de breedte en niet procenten: de hoogte van de doos komt
  *  uit een verhouding, en een procent op een kind rekent dan niet betrouwbaar
  *  terug naar die hoogte. Met calc op één bekende maat is er niets te raden. */
-type Maten = { verhouding: number; links: number; rechts: number; boven: number; onder: number };
+export type Maten = { verhouding: number; links: number; rechts: number; boven: number; onder: number };
 
-const LED: Maten = { verhouding: 4.6374, links: 0.0722, rechts: 0.062, boven: 0.0435, onder: 0.0435 };
+export const LED: Maten = { verhouding: 4.6374, links: 0.0722, rechts: 0.062, boven: 0.0435, onder: 0.0435 };
 
 // De kast vult zijn eigen doos NIET helemaal: zijn dekkende silhouet is 98,44%
 // breed en hangt daarbinnen 0,47% links van het midden (de gloed loopt rechts
@@ -203,10 +203,10 @@ const LED: Maten = { verhouding: 4.6374, links: 0.0722, rechts: 0.062, boven: 0.
 // mee, plus een marge die zijn midden op dat van de kast legt: in een gecentreerde
 // kolom schuift een marge rechts het element de helft daarvan naar links.
 const KAST_VUL = 0.9844;
-const KAST_SCHEEF = 0.0047;
-const BALK = `calc(${VAK} * ${KAST_VUL})`;
+export const KAST_SCHEEF = 0.0047;
+export const BALK = `calc(${VAK} * ${KAST_VUL})`;
 
-function Ruit({ art, maat, breedte = VAK, binnen, style, children }: { art: string; maat: Maten; breedte?: string; binnen?: React.CSSProperties; style?: React.CSSProperties; children: React.ReactNode }) {
+export function Ruit({ art, maat, breedte = VAK, binnen, style, children }: { art: string; maat: Maten; breedte?: string; binnen?: React.CSSProperties; style?: React.CSSProperties; children: React.ReactNode }) {
   return (
     <div style={{ position: "relative", width: breedte, height: `calc(${breedte} / ${maat.verhouding})`, flexShrink: 0, ...style }}>
       <img
@@ -236,7 +236,7 @@ function Ruit({ art, maat, breedte = VAK, binnen, style, children }: { art: stri
 // Per twee rondes een stap, en vanaf ronde elf blijft hij op het heetste rood
 // staan: een trap zonder eind zou onzichtbaar traag verkleuren.
 const LED_TRAP = ["#FFC23D", "#FFAD2B", "#FF921F", "#FF711C", "#FF4E26", "#FF3038"] as const;
-const ledKleur = (level: number) => LED_TRAP[Math.min(LED_TRAP.length - 1, Math.floor((level - 1) / 2))];
+export const ledKleur = (level: number) => LED_TRAP[Math.min(LED_TRAP.length - 1, Math.floor((level - 1) / 2))];
 
 /** Cijfers achter het glas van de LED-balk.
  *
@@ -244,7 +244,7 @@ const ledKleur = (level: number) => LED_TRAP[Math.min(LED_TRAP.length - 1, Math.
  *  fel en overal even fel. Wat het licht doet is de vervaagde kopie erachter.
  *  De puntletter doet de rest, en die krijgt ruimte per punt via letterSpacing,
  *  anders lopen de matrixen van twee cijfers in elkaar. */
-function Led({ maat, sterk = 1, kleur = GOUD[3], children }: { maat: number; sterk?: number; kleur?: string; children: React.ReactNode }) {
+export function Led({ maat, sterk = 1, kleur = GOUD[3], children }: { maat: number; sterk?: number; kleur?: string; children: React.ReactNode }) {
   const ruimte = Math.ceil(maat * 0.6);
   return (
     <span style={{ position: "relative", display: "inline-block", fontFamily: font.dot, fontSize: maat, lineHeight: 1, letterSpacing: maat * 0.06, whiteSpace: "nowrap" }}>
@@ -385,6 +385,13 @@ function Flitsreeks({ seed, onKlaar }: { seed: string; onKlaar: (score: number, 
     na(520, () => speel(volgend));
   };
 
+  // Vrijwillig stoppen levert in wat je HEBT: elke voltooide reeks is al
+  // bijgeschreven, dus het gehaalde level is er een minder dan waar je in zit.
+  const stop = () => {
+    stopTimers();
+    onKlaar(score, level - 1, Math.round(performance.now() - start.current));
+  };
+
   const aanNu = lit ?? tik;
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
@@ -396,14 +403,19 @@ function Flitsreeks({ seed, onKlaar }: { seed: string; onKlaar: (score: number, 
         maat={LED}
         breedte={BALK}
         style={{ marginRight: `calc(${VAK} * ${KAST_SCHEEF * 2})` }}
-        binnen={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingInline: "8%", gap: 10, overflow: "hidden" }}
+        binnen={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingInline: 22, gap: 12, overflow: "hidden" }}
       >
-        <Led maat={15} sterk={0.7} kleur={ledKleur(level)}>{t("arenaRonde", { n: level }).toUpperCase()}</Led>
+        <Led maat={13} sterk={0.7} kleur={ledKleur(level)}>{t("arenaRonde", { n: level }).toUpperCase()}</Led>
         {/* De sleutel op de score: elke verhoging hermonteert het cijfer en
             start de klop opnieuw. De kleur zit NIET in de sleutel, dus de
             tintwissel blijft een glijdende overgang. */}
         <span key={score} className={score > 0 ? "led-klop" : undefined} style={{ display: "inline-flex" }}>
-          <Led maat={30} kleur={ledKleur(level)}>{String(score)}</Led>
+          {/* De cijfers staan in VASTE punten, dus ze krimpen niet mee als de
+              balk smaller wordt. Wat wel meebeweegt is het AANTAL cijfers: vanaf
+              vijf stappen ze een maat terug en vanaf zes nog een, zodat een
+              topscore nooit tegen "ronde" aan loopt. Zonder die trap zou de
+              ruimte ergens boven de tienduizend opraken. */}
+          <Led maat={score >= 100000 ? 24 : score >= 10000 ? 27 : 30} kleur={ledKleur(level)}>{String(score)}</Led>
         </span>
       </Ruit>
 
@@ -429,6 +441,23 @@ function Flitsreeks({ seed, onKlaar }: { seed: string; onKlaar: (score: number, 
             }}
           />
         ))}
+      </div>
+
+      {/* Stoppen: je poging inleveren met wat je tot nu toe hebt. Zonder deze
+          knop was de pijl in de bovenbalk de enige uitweg, en die levert NIET
+          in: wie zo wegliep verloor zijn hele score zonder het te weten. Zelfde
+          vorm als "verlaat club": zo breed als zijn eigen tekst, want een knop
+          die iets afbreekt hoort niet even groot te zijn als het spel. */}
+      <div style={{ display: "flex", justifyContent: "center" }}>
+        <NeonKader radius={999} dik={0.5} vulling="geen" animeer lijn={KADER_LIJN_ROOD} gloed={`0 0 12px ${withAlpha(colors.red, 0.35)}`} binnen={{ padding: 0 }}>
+          <button
+            onClick={stop}
+            className="pressable"
+            style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, background: "transparent", border: "none", cursor: "pointer", color: colors.redHi, fontFamily: font.ui, fontSize: 13, fontWeight: 600, padding: "7px 16px" }}
+          >
+            <LogOut size={14} /> {t("arenaStop")}
+          </button>
+        </NeonKader>
       </div>
     </div>
   );

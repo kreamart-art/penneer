@@ -33,6 +33,9 @@ import { MeldingBanner, useMeldingWachtrij } from "./components/Meldingen";
 import { Tour, tourGezien } from "./components/Tour";
 import { ChunkGrens, chunkHerlaadWissen } from "./components/ChunkGrens";
 const Juridisch = lazy(() => import("./screens/Juridisch").then((m) => ({ default: m.Juridisch })));
+// Ontwerpvoorbeeld van het arenaspel van vrijdag, achter ?soep in de url.
+// Eigen brok, dus wie hem niet opent downloadt hem ook niet.
+const PreviewLettersoep = lazy(() => import("./screens/_PreviewLettersoep"));
 import { InviteBanner } from "./components/InviteBanner";
 import { DmBanner } from "./components/DmBanner";
 import { localNotify } from "./components/NotifyNudge";
@@ -402,6 +405,8 @@ export default function App() {
     );
   } else if (!lang) {
     screen = <LanguagePage />;
+  } else if (typeof location !== "undefined" && location.search.includes("soep")) {
+    screen = <PreviewLettersoep />;
   } else if (showRules) {
     screen = <Rules onBack={() => setShowRules(false)} />;
   } else if (showDaily) {
