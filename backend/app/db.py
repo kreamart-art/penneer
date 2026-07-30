@@ -729,16 +729,22 @@ class Database:
         if "rewards_seeded" not in cols:
             self._conn.execute("ALTER TABLE users ADD COLUMN rewards_seeded INTEGER NOT NULL DEFAULT 0")
             self._conn.commit()
-        # Preset artwork changed (v9 = the v8 body-width algorithm plus hand-tuned
-        # per-avatar overrides, from per-avatar user feedback: av02 less zoom so
-        # her shoulders are back, av06/13/14 nudged down, av15 down + recentered,
-        # av16 pirate smaller with hat headroom, av17 cat a touch smaller, av18
-        # alien smaller and fully in frame): refresh every account's preset
-        # bytes, once per version.
-        PRESET_ART_VERSION = "9"
+        # Preset artwork changed. v10: opnieuw uitgesneden op de FIGUREN in
+        # plaats van op een raster van 3x3. De bronvellen zijn 3x3, maar de
+        # figuren zijn er niet binnen getekend: piratenhoeden, kronen,
+        # vikinghorens en tovenaarspunten steken boven de denkbeeldige
+        # rasterlijn uit. Een strak raster sneed daar dwars doorheen, en dat is
+        # waarom sommige avatars bovenaan afgeknipt stonden. Nu wordt elke
+        # figuur als aaneengesloten vlek in het alfakanaal opgezocht en is zijn
+        # eigen doos de uitsnede. De kadrering en de achtergrondverlopen zijn
+        # ongewijzigd, dus alleen de uitsnede is anders.
+        # v10 ververst OOK de premium-avatars: die zijn met hetzelfde raster
+        # gesneden en hadden dezelfde kwaal, en wie er een draagt zou anders het
+        # oude plaatje houden.
+        PRESET_ART_VERSION = "10"
         row = self._conn.execute("SELECT value FROM meta WHERE key='preset_art_version'").fetchone()
         if (row["value"] if row else None) != PRESET_ART_VERSION:
-            for pid in PRESET_IDS:
+            for pid in ALL_PRESET_IDS:
                 data = preset_bytes(pid)
                 if data:
                     self._conn.execute(

@@ -61,7 +61,7 @@ const PACK_OF_PRESET: Record<string, string> = Object.fromEntries(
 );
 // Bump whenever the preset artwork changes (matches db.PRESET_ART_VERSION) so the
 // picker's static images cache-bust instead of serving the stale ones.
-const AVATAR_ART_VERSION = 9;
+const AVATAR_ART_VERSION = 10;
 
 export function Hub({ game, section, onBack, onShowShop, onOpenInbox, onChallenge, onGaNaar }: { game: GameApi; section: HubSection; onBack: () => void; onShowShop: () => void; onOpenInbox: () => void; onChallenge: (userId: string) => void; onGaNaar: (naar: string) => void }) {
   const { t } = useT();

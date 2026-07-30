@@ -10,7 +10,7 @@
 //    briefly-stale shell can still boot from cache instead of going black.
 //  - Every activation purges ALL old caches (drops any poisoned shell).
 // Never touches the WebSocket or the API.
-const CACHE = "penneer-v86"; // v86: fonts naar de art-cache
+const CACHE = "penneer-v87"; // v87: avatars opnieuw uitgesneden
 // De art in zijn EIGEN cache die releases overleeft. We deployden vandaag negen
 // keer, en elke activatie gooide alles weg: elke update was daardoor een koude
 // her-download van ~15MB aan knoppen, emotes, vlaggen en achtergronden. Dat is
