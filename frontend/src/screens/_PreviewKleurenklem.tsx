@@ -29,6 +29,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LogOut } from "lucide-react";
 import { Screen } from "../components/Layout";
+import { KADER_LIJN_ROOD, NeonKader } from "../components/ProfileHero";
 import { colors, font, withAlpha } from "../theme/tokens";
 import { sound } from "../sound/sound";
 import { VAK } from "./Arena";
@@ -571,12 +572,17 @@ export function PreviewKleurenklem() {
           </div>
         </Sectie>
 
-        <button
-          onClick={fase === "klaar" ? opnieuw : stop}
-          style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, background: "transparent", border: "none", cursor: "pointer", color: colors.redHi, fontFamily: font.ui, fontSize: 13, fontWeight: 600, padding: "7px 16px" }}
-        >
-          <LogOut size={14} /> {fase === "klaar" ? "Opnieuw" : "Stoppen"}
-        </button>
+        {/* Dezelfde pil als in de arena: zwarte vulling, want hij ligt op de
+            zaal en zonder vulling loopt die er dwars doorheen. */}
+        <NeonKader radius={999} dik={0.5} vulling="zwart" animeer lijn={KADER_LIJN_ROOD} gloed={`0 0 12px ${withAlpha(colors.red, 0.35)}`} binnen={{ padding: 0 }}>
+          <button
+            onClick={fase === "klaar" ? opnieuw : stop}
+            className="pressable"
+            style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, background: "transparent", border: "none", cursor: "pointer", color: colors.redHi, fontFamily: font.ui, fontSize: 13, fontWeight: 600, padding: "7px 16px" }}
+          >
+            <LogOut size={14} /> {fase === "klaar" ? "Opnieuw" : "Stoppen"}
+          </button>
+        </NeonKader>
       </div>
     </Screen>
   );

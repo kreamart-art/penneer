@@ -477,8 +477,11 @@ export function NeonKader({
    *  wat erachter ligt. */
   hoek?: number;
   /** "geen" laat de achtergrond volledig door: dan is de lijst puur lijn en
-   *  licht. "licht" legt er een heel dun paars waas onder. */
-  vulling?: "geen" | "licht";
+   *  licht. "licht" legt er een heel dun paars waas onder. "zwart" is bijna
+   *  dekkend: voor een knop die ergens BOVENOP ligt, zoals stoppen boven een
+   *  arena-achtergrond. Zonder vulling loopt daar de zaal dwars door de knop
+   *  heen en dan is de pil geen knop meer maar een omlijnd stuk decor. */
+  vulling?: "geen" | "licht" | "zwart";
   /** De dikte van de lijn. Onder de pixel: dat mag, een scherm van drie keer
    *  tekent er nog anderhalve echte pixel van en op een gewoon scherm wordt het
    *  een vervaagd streepje. Precies wat je wilt bij een lijn die er eerder moet
@@ -590,6 +593,11 @@ export function NeonKader({
           backgroundImage:
             vulling === "geen"
               ? undefined
+              : vulling === "zwart"
+                // Niet volledig zwart maar de donkerste kleur van de app met een
+                // scheutje van de lijn erin, zodat de knop bij zijn eigen rand
+                // hoort en niet als een gat in het scherm leest.
+                ? "linear-gradient(180deg, rgba(10,4,20,.92) 0%, rgba(6,3,14,.95) 100%)"
               : hoek
                 ? [
                     // Rond de vijf procent. Genoeg om te zien dat er iets voor

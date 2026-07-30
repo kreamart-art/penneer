@@ -451,7 +451,7 @@ function Flitsreeks({ seed, onKlaar }: { seed: string; onKlaar: (score: number, 
           vorm als "verlaat club": zo breed als zijn eigen tekst, want een knop
           die iets afbreekt hoort niet even groot te zijn als het spel. */}
       <div style={{ display: "flex", justifyContent: "center" }}>
-        <NeonKader radius={999} dik={0.5} vulling="geen" animeer lijn={KADER_LIJN_ROOD} gloed={`0 0 12px ${withAlpha(colors.red, 0.35)}`} binnen={{ padding: 0 }}>
+        <NeonKader radius={999} dik={0.5} vulling="zwart" animeer lijn={KADER_LIJN_ROOD} gloed={`0 0 12px ${withAlpha(colors.red, 0.35)}`} binnen={{ padding: 0 }}>
           <button
             onClick={stop}
             className="pressable"

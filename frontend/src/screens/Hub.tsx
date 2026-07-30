@@ -2257,7 +2257,7 @@ function ClubScreen({ game, onBack, embedded }: { game: GameApi; onBack?: () => 
           // knop die iets ongedaan maakt hoort niet net zo groot te zijn als de
           // knoppen waarmee je iets doet.
           <div style={{ display: "flex", justifyContent: "center" }}>
-            <NeonKader radius={999} dik={0.5} vulling="geen" animeer lijn={KADER_LIJN_ROOD} gloed={`0 0 12px ${withAlpha(colors.red, 0.35)}`} binnen={{ padding: 0 }}>
+            <NeonKader radius={999} dik={0.5} vulling="zwart" animeer lijn={KADER_LIJN_ROOD} gloed={`0 0 12px ${withAlpha(colors.red, 0.35)}`} binnen={{ padding: 0 }}>
               <button
                 onClick={() => setConfirmLeave(true)}
                 className="pressable"
