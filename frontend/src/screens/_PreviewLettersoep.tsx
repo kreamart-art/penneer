@@ -1,12 +1,14 @@
 // LETTERSOEP, het arenaspel van vrijdag. Speelbare testversie achter ?soep in
 // de url (eigen brok, dus wie hem niet opent downloadt hem ook niet).
 //
-// HET SPEL: zestien letters, twee minuten. Een woord leg je door aangrenzende
-// letters te verbinden, met de vinger (swipen) of door te tikken. Bestaat het
-// woord, dan telt hij; de punten VERDUBBELEN per letter (3=100, 4=200, 5=400).
-// Vind je genoeg woorden, dan vallen de letters van het bord en regent er een
-// nieuw stel in: volgend level, dezelfde klok. Geen einde, dus de ceilingloze
-// arenaregel geldt vanzelf.
+// HET SPEL: zestien letters, 55 seconden per level. Een woord leg je door
+// aangrenzende letters te verbinden, met de vinger (swipen) of door te tikken.
+// Bestaat het woord, dan telt hij; de punten VERDUBBELEN per letter (3=100,
+// 4=200, 5=400). Vind je vijf woorden, dan vallen de letters van het bord,
+// regent er een nieuw stel in EN gaat de klok terug naar 55. Loopt hij af,
+// dan is de poging voorbij. Geen einde aan het aantal levels, dus de
+// ceilingloze arenaregel geldt vanzelf; het plafond is hoe lang je de klok
+// blijft terugverdienen.
 //
 // TWEE MANIEREN OM TE LEGGEN, en ze mogen door elkaar:
 //  - SWIPEN: houd je vinger op een letter en sleep over de volgende. Loslaten
@@ -48,7 +50,10 @@ const GLOED = withAlpha("#FFA524", 0.7);
 const PANEEL = "#1D0C29";
 
 // ---- de regels --------------------------------------------------------------
-const SPEELTIJD_S = 120;
+/** De klok per level. Hij begint elke keer opnieuw: een level uitspelen is dus
+ *  letterlijk tijd terugverdienen, en dat is de spanning. Loopt hij leeg voor je
+ *  vijf woorden hebt, dan stopt de poging. */
+const LEVEL_TIJD_S = 55;
 /** Zoveel woorden per level. Vijf is genoeg om een bord echt af te zoeken en
  *  kort genoeg om vaart te houden; de druk komt van de klok, niet van het
  *  aantal. */
@@ -199,7 +204,7 @@ export function PreviewLettersoep() {
   const [fout, setFout] = useState(false);
   const [oordeel, setOordeel] = useState<{ cellen: number[]; goed: boolean } | null>(null);
   const [weg, setWeg] = useState<{ woord: string; n: number } | null>(null);
-  const [over, setOver] = useState(SPEELTIJD_S);
+  const [over, setOver] = useState(LEVEL_TIJD_S);
   const [fase, setFase] = useState<"spel" | "val" | "klaar">("spel");
 
   const timers = useRef<number[]>([]);
@@ -258,6 +263,7 @@ export function PreviewLettersoep() {
       na(760, () => {
         setLevel((l) => l + 1);
         setDezeLevel(0);
+        setOver(LEVEL_TIJD_S);   // verse klok voor het nieuwe bord
         setFase("spel");
       });
     }
@@ -331,7 +337,7 @@ export function PreviewLettersoep() {
   const opnieuw = () => {
     setPotje(versSleutel());
     setLevel(1); setTotaal(0); setPad([]); setGevonden([]); setDezeLevel(0);
-    setOver(SPEELTIJD_S); setFase("spel"); setFout(false); setOordeel(null); setWeg(null);
+    setOver(LEVEL_TIJD_S); setFase("spel"); setFout(false); setOordeel(null); setWeg(null);
   };
 
   const woord = pad.map((c) => bord[c]).join("");
