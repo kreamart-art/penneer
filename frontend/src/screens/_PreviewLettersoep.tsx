@@ -14,6 +14,7 @@
 //  - het pad dat je legt, als lijn achter de letters;
 //  - de vakjes van de gevonden woorden, in de vorm van de glasrijen maar met
 //    een gouden lijn zoals op de mockup.
+import { useEffect } from "react";
 import { LogOut } from "lucide-react";
 import { Screen } from "../components/Layout";
 import { KADER_LIJN_LOOP, KADER_LIJN_ROOD, NeonKader } from "../components/ProfileHero";
@@ -21,27 +22,34 @@ import { VAK } from "./Arena";
 import { colors, font, withAlpha } from "../theme/tokens";
 
 // ---- de maten van de art ----------------------------------------------------
-const BORD_V = 0.8248;      // verhouding van de bordsectie
+const BORD_V = 0.8349;      // verhouding van de bordsectie
 const SCORE_V = 3.7805;     // van de scorebordsectie
-const ONDER_V = 4.4481;     // van de ondersectie
+const ONDER_V = 2.9589;     // van de ondersectie
 
 // De vier kolommen en rijen van het letterraster, als breuk van het bord.
 const KOL = [0.0561, 0.2803, 0.5051, 0.7297];
-const RIJ = [0.1616, 0.3547, 0.5431, 0.7361];
+const RIJ = [0.1636, 0.359, 0.5497, 0.7451];
 const VAK_B = 0.213;
-const VAK_H = 0.1769;
+const VAK_H = 0.1791;
 
 // De twee ruiten van het scorebord, links de tijd en rechts de punten.
 const SCORE_RUIT = { t: 0.2238, h: 0.6643, links: { l: 0.0407, b: 0.3213 }, rechts: { l: 0.637, b: 0.3213 } };
 // De ondersectie heeft twee banden met een streep ertussen: het woord dat je
 // legt boven, de woorden die je al hebt eronder.
-const ONDER_RUIT = { l: 0.0139, b: 0.9722, woord: { t: 0.1317, h: 0.4197 }, lijst: { t: 0.5638, h: 0.2798 } };
+const ONDER_RUIT = { l: 0.0148, b: 0.9704, woord: { t: 0.1315, h: 0.4192 }, lijst: { t: 0.5589, h: 0.2849 } };
 
 const pct = (f: number) => `${(f * 100).toFixed(3)}%`;
 
-// Hoeveel de gloed buiten een vakje uitwaaiert, als deel van dat vakje.
-const HALO = 0.2;
-const GLOED = withAlpha("#FFA524", 0.85);
+/** De vorm van de glasrijen: een achthoek, dus ALLE VIER de hoeken afgesneden.
+ *  Twee afgeschuinde hoeken leest als een fout in plaats van als een vorm. */
+const ACHT = (c: number) =>
+  `polygon(${c}px 0, calc(100% - ${c}px) 0, 100% ${c}px, 100% calc(100% - ${c}px), calc(100% - ${c}px) 100%, ${c}px 100%, 0 calc(100% - ${c}px), 0 ${c}px)`;
+
+// Hoeveel de gloed buiten een vakje uitwaaiert, als deel van dat vakje. Kort
+// houden: waaiert hij verder dan de kier tussen twee vakjes, dan loopt hij die
+// kier vol en verdwijnt de streep die het raster maakt.
+const HALO = 0.11;
+const GLOED = withAlpha("#FFA524", 0.7);
 
 // ---- de voorbeelddag --------------------------------------------------------
 const BORD = [
@@ -66,6 +74,22 @@ const GEVONDEN = [
 function Sectie({ art, verhouding, breedte = VAK, children }: { art: string; verhouding: number; breedte?: string; children?: React.ReactNode }) {
   return (
     <div style={{ position: "relative", width: breedte, height: `calc(${breedte} / ${verhouding})`, flexShrink: 0 }}>
+      {/* De schaduw waarop de sectie zweeft. Een TWEEDE kopie van dezelfde art,
+          helemaal zwart gemaakt en vervaagd, en niet `filter: drop-shadow`: die
+          rastert op iOS de doos van de laag mee en dan zie je zwarte hoekjes
+          rond elke afschuining. `brightness(0)` maakt elke pixel zwart en laat
+          het alfakanaal staan, dus de schaduw volgt de VORM. Recht naar beneden,
+          want het licht komt van boven. */}
+      <img
+        src={art}
+        alt=""
+        aria-hidden
+        style={{
+          position: "absolute", inset: 0, width: "100%", height: "100%", display: "block",
+          filter: "brightness(0) blur(11px)", opacity: 0.55, transform: "translateY(9px)",
+          pointerEvents: "none",
+        }}
+      />
       <img src={art} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} />
       {children}
     </div>
@@ -90,6 +114,13 @@ function Meter({ kop, waarde, breuk }: { kop: string; waarde: string; breuk: { l
 }
 
 export function PreviewLettersoep() {
+  // Het decor een slag donkerder: de secties van dit spel zijn zelf goud en
+  // licht, en op het volle decor concurreren die twee.
+  useEffect(() => {
+    document.body.classList.add("arena", "soepdonker");
+    return () => document.body.classList.remove("arena", "soepdonker");
+  }, []);
+
   const stand = GEVONDEN.reduce((t, g) => t + punten(g.n), 0);
   const woord = PAD.map(([r, k]) => BORD[r][k]).join("");
   const inPad = (r: number, k: number) => PAD.findIndex(([pr, pk]) => pr === r && pk === k);
@@ -119,8 +150,8 @@ export function PreviewLettersoep() {
               vrijhoudt. */}
           <span
             style={{
-              position: "absolute", left: 0, right: 0, top: pct(0.055),
-              textAlign: "center", fontFamily: font.wide, fontSize: 13, letterSpacing: 2.4,
+              position: "absolute", left: 0, right: 0, top: pct(0.048),
+              textAlign: "center", fontFamily: font.wide, fontSize: 17, letterSpacing: 3,
               color: "#FFD98A", textShadow: "0 0 10px rgba(255,180,50,.55)",
             }}
           >
@@ -167,8 +198,8 @@ export function PreviewLettersoep() {
                     left: pct(KOL[k] - VAK_B * HALO), top: pct(RIJ[r] - VAK_H * HALO),
                     width: pct(VAK_B * (1 + HALO * 2)), height: pct(VAK_H * (1 + HALO * 2)),
                     borderRadius: "28%",
-                    background: `radial-gradient(circle, ${GLOED} 0%, ${GLOED} 44%, ${withAlpha("#FFB43C", 0.5)} 56%, ${withAlpha("#FFB43C", 0.2)} 66%, transparent 74%)`,
-                    filter: "blur(9px)",
+                    background: `radial-gradient(circle, ${GLOED} 0%, ${GLOED} 46%, ${withAlpha("#FFB43C", 0.38)} 58%, ${withAlpha("#FFB43C", 0.14)} 68%, transparent 76%)`,
+                    filter: "blur(6px)",
                     opacity: aan ? 1 : 0,
                     transition: aan ? "opacity .1s linear" : "opacity .25s ease-out",
                     pointerEvents: "none",
@@ -191,7 +222,7 @@ export function PreviewLettersoep() {
                   aria-hidden
                   style={{
                     position: "absolute",
-                    left: pct(KOL[k] - 0.0015), top: pct(RIJ[r] + 0.0008),
+                    left: pct(KOL[k] - 0.0015), top: pct(RIJ[r] + 0.0015),
                     width: pct(VAK_B + 0.003), height: "auto",
                     display: "block", zIndex: 2,
                     opacity: aan ? 1 : 0,
@@ -277,14 +308,14 @@ export function PreviewLettersoep() {
                 key={g.woord}
                 style={{
                   display: "inline-flex", height: "84%", padding: 1,
-                  clipPath: "polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)",
+                  clipPath: ACHT(6),
                   background: `linear-gradient(180deg, ${withAlpha("#FFD98A", 0.85)}, ${withAlpha("#B0710E", 0.7)})`,
                 }}
               >
                 <span
                   style={{
                     display: "inline-flex", alignItems: "center", gap: 5, paddingInline: 9,
-                    clipPath: "polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px)",
+                    clipPath: ACHT(5),
                     background: "linear-gradient(180deg, rgba(58,26,86,.97), rgba(32,13,52,.97))",
                     fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: withAlpha("#FFE7A8", 0.92),
                   }}
