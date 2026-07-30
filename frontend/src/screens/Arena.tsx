@@ -194,11 +194,21 @@ function Bord({ aanNu, uit, onTik }: { aanNu: number | null; uit: boolean; onTik
  *  terug naar die hoogte. Met calc op één bekende maat is er niets te raden. */
 type Maten = { verhouding: number; links: number; rechts: number; boven: number; onder: number };
 
-const LED: Maten = { verhouding: 4.6352, links: 0.063, rechts: 0.0639, boven: 0.0435, onder: 0.0454 };
+const LED: Maten = { verhouding: 4.6374, links: 0.0722, rechts: 0.062, boven: 0.0435, onder: 0.0435 };
 
-function Ruit({ art, maat, binnen, children }: { art: string; maat: Maten; binnen?: React.CSSProperties; children: React.ReactNode }) {
+// De kast vult zijn eigen doos NIET helemaal: zijn dekkende silhouet is 98,44%
+// breed en hangt daarbinnen 0,47% links van het midden (de gloed loopt rechts
+// iets verder uit). De LED-balk is strak op zijn balk gesneden en vult zijn doos
+// dus wel. Om ze even breed te laten LIJKEN krijgt de balk die 98,44% als doos
+// mee, plus een marge die zijn midden op dat van de kast legt: in een gecentreerde
+// kolom schuift een marge rechts het element de helft daarvan naar links.
+const KAST_VUL = 0.9844;
+const KAST_SCHEEF = 0.0047;
+const BALK = `calc(${VAK} * ${KAST_VUL})`;
+
+function Ruit({ art, maat, breedte = VAK, binnen, style, children }: { art: string; maat: Maten; breedte?: string; binnen?: React.CSSProperties; style?: React.CSSProperties; children: React.ReactNode }) {
   return (
-    <div style={{ position: "relative", width: VAK, height: `calc(${VAK} / ${maat.verhouding})`, flexShrink: 0 }}>
+    <div style={{ position: "relative", width: breedte, height: `calc(${breedte} / ${maat.verhouding})`, flexShrink: 0, ...style }}>
       <img
         src={art}
         alt=""
@@ -208,10 +218,10 @@ function Ruit({ art, maat, binnen, children }: { art: string; maat: Maten; binne
       <div
         style={{
           position: "absolute",
-          left: `calc(${VAK} * ${maat.links})`,
-          right: `calc(${VAK} * ${maat.rechts})`,
-          top: `calc(${VAK} * ${maat.boven})`,
-          bottom: `calc(${VAK} * ${maat.onder})`,
+          left: `calc(${breedte} * ${maat.links})`,
+          right: `calc(${breedte} * ${maat.rechts})`,
+          top: `calc(${breedte} * ${maat.boven})`,
+          bottom: `calc(${breedte} * ${maat.onder})`,
           ...binnen,
         }}
       >
@@ -382,8 +392,10 @@ function Flitsreeks({ seed, onKlaar }: { seed: string; onKlaar: (score: number, 
           puntletter: dat is wat een scorebord doet, en het haalt de cijfers weg
           uit de losse regels die boven de pads zweefden. */}
       <Ruit
-        art="/ui/flits/ledbalk.webp?v=3"
+        art="/ui/flits/ledbalk.webp?v=4"
         maat={LED}
+        breedte={BALK}
+        style={{ marginRight: `calc(${VAK} * ${KAST_SCHEEF * 2})` }}
         binnen={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingInline: "8%", gap: 10, overflow: "hidden" }}
       >
         <Led maat={15} sterk={0.7} kleur={ledKleur(level)}>{t("arenaRonde", { n: level }).toUpperCase()}</Led>
