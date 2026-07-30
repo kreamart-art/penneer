@@ -12,7 +12,11 @@
  *  dus zonder deze sleutel blijft de vorige tekening hangen. */
 export const CHAT_ART = 1;
 
-export function ChatIcoon({ maat = 30, licht = false }: { maat?: number; licht?: boolean }) {
+/** 24 en niet 30. De getekende bel VULT zijn doos, terwijl de zeshoekige
+ *  knopplaat die hier eerst stond een lijnicoontje van 17 in een plaat van 38
+ *  zette: bijna de helft was rand. Op dezelfde doosmaat werd het voorwerp dus
+ *  ineens twee keer zo groot. */
+export function ChatIcoon({ maat = 24, licht = false }: { maat?: number; licht?: boolean }) {
   return (
     <img
       src={`/ui/chat.webp?v=${CHAT_ART}`}

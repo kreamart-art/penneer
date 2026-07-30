@@ -135,7 +135,7 @@ export function Hub({ game, section, onBack, onShowShop, onOpenInbox, onChalleng
                   {/* De getekende bel, zonder de paarse knopplaat eronder: dit
                       is de ingang naar je berichten en die spreekt dezelfde
                       taal als de chatknop in de room. */}
-                  <ChatIcoon maat={HEX} licht={inboxCount > 0} />
+                  <ChatIcoon maat={26} licht={inboxCount > 0} />
                   {inboxCount > 0 && (
                     // Zelfde badge-taal als overal: de zwarte zeshoek met het
                     // gouden cijfer, geen gele stip.
