@@ -3,8 +3,9 @@
 // the TopBar, so it's reachable on every in-room screen.
 import { useEffect, useRef, useState } from "react";
 import { CloseIcon } from "./CloseIcon";
-import { MessageCircle, Send } from "lucide-react";
-import { HexPlate } from "./HexPlate";
+import { Send } from "lucide-react";
+import { TelHex } from "./TelHex";
+import { ChatIcoon } from "./ChatIcoon";
 import type { GameApi } from "../net/socket";
 import { MicButton } from "./MicButton";
 import { VoiceNote } from "./VoiceNote";
@@ -44,34 +45,10 @@ export function ChatButton({ game }: { game: GameApi }) {
           display: "flex",
         }}
       >
-        {/* Dezelfde zeshoekige plaat als de andere knoppen in de bovenbalk. Een
-            kaal lijnicoontje tussen platen leest als een knop die vergeten is;
-            en de plaat licht op zodra er iets ongelezen is, dus je ziet aan de
-            KNOP dat er iets is en niet alleen aan het bolletje erboven. */}
-        <HexPlate on={unread > 0} size={30}>
-          <MessageCircle size={16} />
-        </HexPlate>
+        <ChatIcoon licht={unread > 0} />
         {unread > 0 && (
-          <span
-            style={{
-              position: "absolute",
-              top: -4,
-              right: -5,
-              minWidth: 15,
-              height: 15,
-              padding: "0 4px",
-              borderRadius: 999,
-              background: colors.gold,
-              color: colors.bg0,
-              fontFamily: font.ui,
-              fontSize: 10,
-              fontWeight: 800,
-              lineHeight: "15px",
-              textAlign: "center",
-              boxShadow: `0 0 8px ${withAlpha(colors.gold, 0.6)}`,
-            }}
-          >
-            {unread > 9 ? "9+" : unread}
+          <span style={{ position: "absolute", top: -6, right: -7 }}>
+            <TelHex n={unread} />
           </span>
         )}
       </button>

@@ -5,10 +5,12 @@ import { ArtIcoon, STAT_ART } from "../components/ArtIcoon";
 import { CloseIcon } from "../components/CloseIcon";
 import { KnopPlaat } from "../components/KnopPlaat";
 import { ReferralAd } from "../components/ReferralAd";
-import { ArrowLeft, BookOpen, CalendarDays, Camera, Check, ChevronDown, Copy, Crown, Flame, Gem, Lock, LogOut, Medal, MessageCircle, MoreVertical, Pencil, Percent, Plus, Rocket, Search, Send, Settings as SettingsIcon, Share2, Shield, ShoppingCart, Smile, Sparkles, Star, Swords, Target, Trash2, Trophy, UserPlus, Users, X, Zap, ZoomIn, ZoomOut } from "lucide-react";
+import { ArrowLeft, BookOpen, CalendarDays, Camera, Check, ChevronDown, Copy, Crown, Flame, Gem, Lock, LogOut, Medal, MessageCircle, MoreVertical, Pencil, Percent, Plus, Rocket, Search, Settings as SettingsIcon, Share2, Shield, ShoppingCart, Smile, Sparkles, Star, Swords, Target, Trash2, Trophy, UserPlus, Users, X, Zap, ZoomIn, ZoomOut } from "lucide-react";
 import { Avatar, SCHILD_RAND } from "../components/Avatar";
 import { Plek } from "../components/ProfileShowcase";
 import { HexArt } from "../components/HexArt";
+import { ChatIcoon } from "../components/ChatIcoon";
+import { TelHex } from "../components/TelHex";
 import { SchermTip } from "../components/SchermTip";
 import { DIVISIE_ACCENT, GOUD, KADER_LIJN_GOUD, KADER_LIJN_LOOP, KADER_LIJN_PAARS, KADER_LIJN_ROOD, KADER_LIJN_XP, NeonKader, Paneel, PlekWapen, Prestatie, RingFoto, RingPortret, SCHILD_KLEUREN, SectieKop, SierKop, StatKaart, divisieKleur, type SchildKleur } from "../components/ProfileHero";
 import { DivisieLadder, Schild, divisieNaam } from "../components/Divisie";
@@ -130,9 +132,10 @@ export function Hub({ game, section, onBack, onShowShop, onOpenInbox, onChalleng
             <>
               {section === "profile" && (
                 <button onClick={() => { sound.uiTap(); onOpenInbox(); }} aria-label={t("inboxTab")} title={t("inboxTab")} className="pressable" style={{ ...topIconBtn, position: "relative" }}>
-                  <HexPlate on size={HEX}>
-                    <Send size={17} />
-                  </HexPlate>
+                  {/* De getekende bel, zonder de paarse knopplaat eronder: dit
+                      is de ingang naar je berichten en die spreekt dezelfde
+                      taal als de chatknop in de room. */}
+                  <ChatIcoon maat={HEX} licht={inboxCount > 0} />
                   {inboxCount > 0 && (
                     // Zelfde badge-taal als overal: de zwarte zeshoek met het
                     // gouden cijfer, geen gele stip.
@@ -3440,9 +3443,10 @@ export function ProfileViewModal({ game, userId, onClose }: { game: GameApi; use
                   }}
                   aria-label={t("sendMessage")}
                   title={t("sendMessage")}
-                  style={{ background: withAlpha(colors.gold, 0.14), border: `1px solid ${withAlpha(colors.gold, 0.45)}`, borderRadius: 10, width: 36, height: 36, display: "grid", placeItems: "center", cursor: "pointer", color: colors.gold, flexShrink: 0 }}
+                  className="pressable"
+                  style={{ background: "transparent", border: "none", padding: 0, width: 36, height: 36, display: "grid", placeItems: "center", cursor: "pointer", flexShrink: 0, lineHeight: 0 }}
                 >
-                  <MessageCircle size={17} />
+                  <ChatIcoon />
                 </button>
               )}
               <button onClick={onClose} aria-label={t("back")} style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 2 }}>
@@ -3496,19 +3500,6 @@ export function ProfileViewModal({ game, userId, onClose }: { game: GameApi; use
  *  Een gewone ronde badge zou de derde vorm zijn in een balk die al zeshoeken
  *  en pillen heeft. De plaat is dezelfde als in de bovenbalk, alleen klein
  *  genoeg om in een knop te passen. */
-function TelHex({ n }: { n: number }) {
-  // De ZWARTE zeshoek met de gouden rand (HexArt), niet de paarse knopplaat:
-  // dit is een teller, geen knop, en een knopplaat op iets waar je niet apart
-  // op kunt drukken belooft een tik die er niet is.
-  return (
-    <HexArt maat={19}>
-      <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 800, lineHeight: 1, color: GOUD[3] }}>
-        {n > 9 ? "9+" : n}
-      </span>
-    </HexArt>
-  );
-}
-
 function InboxTab({ game, onGaNaar }: { game: GameApi; onGaNaar: (naar: string) => void }) {
   const { t } = useT();
   const [viewing, setViewing] = useState<string | null>(null);
@@ -3607,9 +3598,12 @@ function InboxTab({ game, onGaNaar }: { game: GameApi; onGaNaar: (naar: string) 
                 {th.last_from_me ? `${t("chatYou")}: ` : ""}{th.last_emote ? t("stickerOne") : th.last_voice ? t("voiceMemo") : th.last_text}
               </div>
             </div>
+            {/* Zelfde badge als overal: de zwarte zeshoek met het gouden
+                cijfer. De gele schijf die hier stond was de enige plek waar
+                nog een andere taal gesproken werd. */}
             {th.unread > 0 && (
-              <span style={{ minWidth: 18, height: 18, padding: "0 5px", borderRadius: 999, background: colors.gold, color: colors.bg0, fontFamily: font.ui, fontSize: 11, fontWeight: 800, lineHeight: "18px", textAlign: "center", flexShrink: 0 }}>
-                {th.unread > 9 ? "9+" : th.unread}
+              <span style={{ flexShrink: 0, lineHeight: 0 }}>
+                <TelHex n={th.unread} maat={20} />
               </span>
             )}
           </button>
