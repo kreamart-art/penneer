@@ -71,24 +71,22 @@ export function Hub({ game, section, onBack, onShowShop, onOpenInbox, onChalleng
     (game.state.account?.dm_unread || 0) +
     game.state.meldingenOngelezen;
   const account = game.state.account;
-  // Profielinstellingen + delen leven nu in de bovenbalk (naast de muziekknop),
-  // dus hun state hangt op Hub-niveau i.p.v. in de ProfileTab.
+  // Het tandwiel in de bovenbalk gaat alleen nog over de CLUB. Profielinstellingen
+  // hangen nu onder Instellingen op de main page: dat is de plek waar je naar
+  // instellingen zoekt, en dan hoeft hetzelfde tandwiel niet op drie pagina's te
+  // staan met op elke pagina een andere betekenis.
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [email, setEmail] = useState("");
   // Vrienden en clubs stonden onder elkaar, dus je scrollde altijd langs het
   // ene om bij het andere te komen. Als twee knopjes in EEN pil zie je meteen
   // dat het twee kanten van hetzelfde scherm zijn.
   const [sociaal, setSociaal] = useState<"friends" | "club">("friends");
-
-
-  useEffect(() => {
-    if (settingsOpen && account) game.refreshBlocked();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settingsOpen]);
+  // Het tandwiel hoort bij de club, dus het verdwijnt zodra je op vrienden
+  // staat. Wie de pil omzet terwijl de clubinstellingen open staan zou anders
+  // in een scherm blijven hangen dat bij de andere kant hoort.
+  const clubTandwiel = tab === "friends" && sociaal === "club";
 
   useEffect(() => {
     if (!account) return;
-    if (tab === "profile") game.refreshBlocked();
     if (tab === "friends") game.refreshFriends();
     if (tab === "inbox") game.refreshInbox();
     if (tab === "friends") game.loadClub("month");
@@ -116,14 +114,8 @@ export function Hub({ game, section, onBack, onShowShop, onOpenInbox, onChalleng
   const topIconBtn: React.CSSProperties = { background: "transparent", border: "none", cursor: "pointer", color: colors.sub, display: "flex", padding: 0 };
   const HEX = 38;
 
-  // Het tandwiel opent de instellingen die bij DEZE pagina horen: op je profiel
-  // je profielinstellingen, op vrienden en club die van vrienden en club. Eén
-  // knop die naar twee verschillende schermen wijst, want "instellingen" hangt
-  // af van waar je staat.
-  if (settingsOpen && account) {
-    return tab === "friends"
-      ? <SocialSettings game={game} onBack={() => setSettingsOpen(false)} />
-      : <ProfileSettings game={game} email={email} setEmail={setEmail} onShowShop={onShowShop} onBack={() => setSettingsOpen(false)} />;
+  if (settingsOpen && account && clubTandwiel) {
+    return <SocialSettings game={game} onBack={() => setSettingsOpen(false)} />;
   }
 
   return (
@@ -150,11 +142,13 @@ export function Hub({ game, section, onBack, onShowShop, onOpenInbox, onChalleng
                   )}
                 </button>
               )}
-              {/* Geen instellingenknop op de inbox: profielinstellingen staan
-                  al op het profiel, en op een lijst berichten valt er niets in
-                  te stellen. */}
-              {section !== "inbox" && (
-                <button onClick={() => { sound.uiTap(); setSettingsOpen(true); }} aria-label={t(tab === "friends" ? "socialSettings" : "profileSettings")} title={t(tab === "friends" ? "socialSettings" : "profileSettings")} className="pressable" style={topIconBtn}>
+              {/* Alleen de club heeft hier nog iets in te stellen: wie mag
+                  uitnodigen, wie mag hernoemen, en het ledenbeheer. Op je
+                  profiel, de ranglijst en de inbox is dit tandwiel weg, want
+                  daar wees hij naar profielinstellingen en die staan nu onder
+                  Instellingen op de main page. */}
+              {clubTandwiel && (
+                <button onClick={() => { sound.uiTap(); setSettingsOpen(true); }} aria-label={t("clubSettings")} title={t("clubSettings")} className="pressable" style={topIconBtn}>
                   <HexPlate on size={HEX}>
                     <SettingsIcon size={16} />
                   </HexPlate>
@@ -2633,7 +2627,7 @@ function SocialSettings({ game, onBack }: { game: GameApi; onBack: () => void })
   const leden = (game.state.club?.members ?? []).filter((m) => m.id !== account?.id);
 
   useEffect(() => {
-    if (account) { game.refreshBlocked(); game.loadClub("month"); }
+    if (account) game.loadClub("month");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -2649,7 +2643,7 @@ function SocialSettings({ game, onBack }: { game: GameApi; onBack: () => void })
           <button onClick={onBack} aria-label={t("back")} style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 2 }}>
             <ArrowLeft size={20} />
           </button>
-          <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>{t("socialSettings")}</span>
+          <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>{t("clubSettings")}</span>
         </div>
       }
     >
@@ -2718,26 +2712,35 @@ function SocialSettings({ game, onBack }: { game: GameApi; onBack: () => void })
           </Card>
         )}
 
-        {/* De blokkeerlijst hoort bij vrienden, niet bij je avatar. Hij stond in
-            de profielinstellingen en staat nu waar hij over gaat. */}
-        <Card style={{ display: "flex", flexDirection: "column", gap: 8, padding: "13px 7px 14px" }}>
-          <SierKop label={t("blockedTitle")} />
-          {game.state.blocked.length === 0 ? (
-            <p style={{ margin: "6px 0 0", paddingInline: 8, fontFamily: font.ui, fontSize: 13, color: colors.faint }}>{t("noBlocked")}</p>
-          ) : (
-            <Lijst n={game.state.blocked.length} rij={44} toon={5}>
-              {game.state.blocked.map((b) => (
-                <GlasRij key={b.id} dun>
-                  <Avatar name={b.name} color={b.color} size={28} userId={b.id} hasAvatar={b.has_avatar} avatarVer={b.avatar_ver} divisie={b.divisie} />
-                  <span style={{ flex: 1, minWidth: 0, fontFamily: font.ui, fontSize: 13.5, color: colors.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.name}</span>
-                  <KnopPlaat breed={86} onClick={() => { sound.uiTap(); game.friendBlock(b.id, true); }} label={t("unblockBtn")} />
-                </GlasRij>
-              ))}
-            </Lijst>
-          )}
-        </Card>
       </div>
     </Screen>
+  );
+}
+
+/** Wie je hebt geblokkeerd, met de knop om dat terug te draaien.
+ *
+ *  Stond hier bij vrienden en club, maar dit gaat over JOU en niet over de
+ *  groep: het is de enige lijst op dit scherm die niemand anders aangaat. Nu
+ *  staat hij bij de rest van je eigen instellingen. */
+function BlokkeerKaart({ game }: { game: GameApi }) {
+  const { t } = useT();
+  return (
+    <Card style={{ display: "flex", flexDirection: "column", gap: 8, padding: "13px 7px 14px" }}>
+      <SierKop label={t("blockedTitle")} />
+      {game.state.blocked.length === 0 ? (
+        <p style={{ margin: "6px 0 0", paddingInline: 8, fontFamily: font.ui, fontSize: 13, color: colors.faint }}>{t("noBlocked")}</p>
+      ) : (
+        <Lijst n={game.state.blocked.length} rij={44} toon={5}>
+          {game.state.blocked.map((b) => (
+            <GlasRij key={b.id} dun>
+              <Avatar name={b.name} color={b.color} size={28} userId={b.id} hasAvatar={b.has_avatar} avatarVer={b.avatar_ver} divisie={b.divisie} />
+              <span style={{ flex: 1, minWidth: 0, fontFamily: font.ui, fontSize: 13.5, color: colors.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.name}</span>
+              <KnopPlaat breed={86} onClick={() => { sound.uiTap(); game.friendBlock(b.id, true); }} label={t("unblockBtn")} />
+            </GlasRij>
+          ))}
+        </Lijst>
+      )}
+    </Card>
   );
 }
 
@@ -2943,24 +2946,35 @@ function LandKnop({ game }: { game: GameApi }) {
   );
 }
 
-function ProfileSettings({
+/** Profielinstellingen: alles wat over JOU gaat en niet op je profiel hoort te
+ *  staan omdat anderen het toch niet zien.
+ *
+ *  Hij hangt niet meer onder een tandwiel op het profiel maar onder Instellingen
+ *  op de main page. Dat is waar iemand instellingen zoekt, en het scheelt drie
+ *  tandwielen die op elke pagina iets anders betekenden. Daarom staat hij ook op
+ *  eigen benen: eigen e-mailveld, eigen ophaalronde voor de blokkeerlijst.
+ *
+ *  Eigen `Screen` (veilige zone, marge, scrollen), want hij wordt op het hoogste
+ *  niveau getekend en niet binnen een ander scherm. */
+export function ProfileSettings({
   game,
-  email,
-  setEmail,
   onShowShop,
   onBack,
 }: {
   game: GameApi;
-  email: string;
-  setEmail: (v: string) => void;
   onShowShop: () => void;
   onBack: () => void;
 }) {
   const { t } = useT();
   const account = game.state.account!;
   const [pw, setPw] = useState("");
-  // Own Screen wrapper (safe-area + padding + scroll) because the Hub renders
-  // this at the top level, not nested inside its tab Screen.
+  const [email, setEmail] = useState("");
+
+  useEffect(() => {
+    game.refreshBlocked();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const header = (
     <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", paddingTop: "calc(14px + env(safe-area-inset-top))" }}>
       <button onClick={onBack} aria-label={t("back")} style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 2 }}>
@@ -3044,26 +3058,9 @@ function ProfileSettings({
         </div>
       </Card>
 
-      {/* geblokkeerd */}
-      <Card style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint }}>{t("blockedTitle")}</span>
-        {game.state.blocked.length === 0 ? (
-          <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13, color: colors.faint }}>{t("noBlocked")}</p>
-        ) : (
-          game.state.blocked.map((u) => (
-            <div key={u.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <Avatar name={u.name} color={u.color} size={32} userId={u.id} hasAvatar={u.has_avatar} avatarVer={u.avatar_ver} divisie={u.divisie} />
-              <span style={{ flex: 1, fontFamily: font.ui, fontWeight: 600, fontSize: 14, color: colors.ink, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.name}</span>
-              <button
-                onClick={() => game.friendBlock(u.id, true)}
-                style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, padding: "7px 11px", borderRadius: 9, cursor: "pointer", color: colors.sub, background: "transparent", border: `1px solid ${colors.hairline}` }}
-              >
-                {t("unblockBtn")}
-              </button>
-            </div>
-          ))
-        )}
-      </Card>
+      {/* Wie je hebt geblokkeerd. Stond bij vrienden en club, maar dat is een
+          lijst over jou en niet over de groep. */}
+      <BlokkeerKaart game={game} />
 
       {/* beheer */}
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>

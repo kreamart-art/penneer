@@ -1,7 +1,7 @@
 // Settings + About — reachable from the Landing gear. Language, sound, how-to,
 // install-as-app, and an About card with the version and studio credit.
 import { useEffect, useState } from "react";
-import { ArrowLeft, ChevronRight, Compass, Download, Globe, HelpCircle, Mail, Music, Share, Trash2, Volume2 } from "lucide-react";
+import { ArrowLeft, ChevronRight, Compass, Download, Globe, HelpCircle, Mail, Music, Share, Trash2, UserCog, Volume2 } from "lucide-react";
 import { Logo } from "../components/Logo";
 import { Paneel, SierKop } from "../components/ProfileHero";
 import { PilKeuze } from "./Hub";
@@ -214,7 +214,7 @@ function Fader({
   );
 }
 
-export function Settings({ game, onBack, onShowRules, onShowTour, onShowLegal }: { game: GameApi; onBack: () => void; onShowRules: () => void; onShowTour: () => void; onShowLegal: (tab: "privacy" | "terms") => void }) {
+export function Settings({ game, onBack, onShowRules, onShowTour, onShowLegal, onProfileSettings }: { game: GameApi; onBack: () => void; onShowRules: () => void; onShowTour: () => void; onShowLegal: (tab: "privacy" | "terms") => void; onProfileSettings: () => void }) {
   const [skinAan, setSkinAan] = useState(tileSkinOn());
   const { t, lang, setLang } = useT();
   const [musicVol, setMusicVol] = useState(sound.musicVolume());
@@ -308,6 +308,22 @@ export function Settings({ game, onBack, onShowRules, onShowTour, onShowLegal }:
             />
           </div>
         </Card>
+
+        {/* Profielinstellingen. Zaten achter een tandwiel op je profiel, wat
+            een rare plek is voor instellingen: wie ze zoekt komt hier. De regel
+            eronder zegt wat erin zit, want een verhuisde knop moet zichzelf
+            uitleggen. Alleen met profiel, want er valt niets in te stellen
+            zonder account. */}
+        {!!game.state.account && (
+          <div>
+            <Button variant="ghost" full onClick={onProfileSettings}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                <UserCog size={18} /> {t("profileSettings")}
+              </span>
+            </Button>
+            <p style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint, textAlign: "center", margin: "8px 0 0" }}>{t("profileSettingsHint")}</p>
+          </div>
+        )}
 
         <Button variant="ghost" full onClick={onShowRules}>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>

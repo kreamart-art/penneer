@@ -22,7 +22,7 @@ import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { Screen } from "../components/Layout";
 import { NeonText } from "../components/NeonText";
-import { GOUD, KADER_LIJN_LOOP, NeonKader, Paneel, PlekWapen } from "../components/ProfileHero";
+import { GOUD, Paneel, PlekWapen } from "../components/ProfileHero";
 import { GlasRij, Lijst } from "./Hub";
 import type { GameApi } from "../net/socket";
 import { useT } from "../i18n/i18n";
@@ -129,9 +129,9 @@ function Pad({ kleur, art, aan, onTik, uit }: { kleur: string; art: string; aan:
       />
       {/* De dove pad staat er altijd; de opgelichte komt eroverheen. Twee lagen
           in plaats van een bronwissel, want een src-wissel geeft een frame wit. */}
-      <img src={`/ui/flits/${art}-dof.webp?v=1`} alt="" aria-hidden style={{ position: "relative", width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
+      <img src={`/ui/flits/${art}-dof.webp?v=2`} alt="" aria-hidden style={{ position: "relative", width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
       <img
-        src={`/ui/flits/${art}.webp?v=1`}
+        src={`/ui/flits/${art}.webp?v=2`}
         alt=""
         aria-hidden
         style={{
@@ -173,6 +173,80 @@ function Pad({ kleur, art, aan, onTik, uit }: { kleur: string; art: string; aan:
         </>
       )}
     </button>
+  );
+}
+
+// De breedte van het hele apparaat. De LED-balk en de machine delen hem, want ze
+// horen als EEN kast te lezen: de stand boven, het bord eronder.
+const VAK = "min(360px, 94vw)";
+
+/** Een stuk sectie-art met een RUIT waar inhoud in gaat.
+ *
+ *  De maten van elke ruit zijn uitgemeten in de art zelf (binnen de binnenste
+ *  neonlijn) en staan als factor van de BREEDTE, dus ze schuiven mee zodra het
+ *  vak smaller wordt.
+ *
+ *  Waarom factoren van de breedte en niet procenten: de hoogte van de doos komt
+ *  uit een verhouding, en een procent op een kind rekent dan niet betrouwbaar
+ *  terug naar die hoogte. Met calc op één bekende maat is er niets te raden. */
+type Maten = { verhouding: number; links: number; rechts: number; boven: number; onder: number };
+
+const LED: Maten = { verhouding: 4.6263, links: 0.0362, rechts: 0.0354, boven: 0.0397, onder: 0.0444 };
+// De ruit van de machine is VIERKANT (0.802 bij 0.801), dus het 2x2-raster past
+// er op volle maat in. De eerste versie van deze art was breder dan hoog en dan
+// moesten de pads krimpen om binnen de hoogte te blijven.
+//
+// Deze maten zijn de INZINKING, gemeten op donkerte en niet op de neonlijn: de
+// gouden lijn om de inzinking is links donkerder dan rechts, dus daar pakte de
+// lijndetectie een rand verder naar buiten en hing de ruit scheef.
+const MACHINE: Maten = { verhouding: 0.9241, links: 0.0938, rechts: 0.1042, boven: 0.15, onder: 0.1313 };
+
+/** De hoogte van een ruit, ook als factor van de breedte. */
+const ruitHoogte = (m: Maten) => 1 / m.verhouding - m.boven - m.onder;
+
+function Ruit({ art, maat, binnen, children }: { art: string; maat: Maten; binnen?: React.CSSProperties; children: React.ReactNode }) {
+  return (
+    <div style={{ position: "relative", width: VAK, height: `calc(${VAK} / ${maat.verhouding})`, flexShrink: 0 }}>
+      <img
+        src={art}
+        alt=""
+        aria-hidden
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "contain", display: "block" }}
+      />
+      <div
+        style={{
+          position: "absolute",
+          left: `calc(${VAK} * ${maat.links})`,
+          right: `calc(${VAK} * ${maat.rechts})`,
+          top: `calc(${VAK} * ${maat.boven})`,
+          bottom: `calc(${VAK} * ${maat.onder})`,
+          ...binnen,
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/** Cijfers achter het glas van de LED-balk.
+ *
+ *  Geen verloop en geen glansrandje zoals op goud: een lampje is uit zichzelf
+ *  fel en overal even fel. Wat het licht doet is de vervaagde kopie erachter.
+ *  De puntletter doet de rest, en die krijgt ruimte per punt via letterSpacing,
+ *  anders lopen de matrixen van twee cijfers in elkaar. */
+function Led({ maat, sterk = 1, children }: { maat: number; sterk?: number; children: React.ReactNode }) {
+  const ruimte = Math.ceil(maat * 0.6);
+  return (
+    <span style={{ position: "relative", display: "inline-block", fontFamily: font.dot, fontSize: maat, lineHeight: 1, letterSpacing: maat * 0.06, whiteSpace: "nowrap" }}>
+      <span
+        aria-hidden
+        style={{ position: "absolute", top: -ruimte, right: -ruimte, bottom: -ruimte, left: -ruimte, display: "grid", placeItems: "center", color: GOUD[2], filter: `blur(${Math.round(maat * 0.26)}px)`, opacity: 0.85 * sterk, pointerEvents: "none" }}
+      >
+        {children}
+      </span>
+      <span style={{ position: "relative", color: GOUD[3] }}>{children}</span>
+    </span>
   );
 }
 
@@ -264,6 +338,14 @@ function Flitsreeks({ seed, onKlaar }: { seed: string; onKlaar: (score: number, 
     return stopTimers;
   }, [speel]);
 
+  // Het decor achter de kast. Op de BODY en niet op een laag hierbinnen: het
+  // moet ook onder de bovenbalk en in de veilige zones doorlopen, en die staan
+  // buiten dit onderdeel. Weg zodra je stopt met spelen.
+  useEffect(() => {
+    document.body.classList.add("flitskast");
+    return () => document.body.classList.remove("flitskast");
+  }, []);
+
   const tikPad = (pad: number) => {
     if (fase !== "doe") return;
     if (pad !== reeks.current[stapRef.current]) {
@@ -294,41 +376,46 @@ function Flitsreeks({ seed, onKlaar }: { seed: string; onKlaar: (score: number, 
 
   const aanNu = lit ?? tik;
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 14 }}>
-        <span style={{ fontFamily: font.ui, fontSize: 12, color: colors.sub }}>{t("arenaRonde", { n: level })}</span>
-        <NeonText accent={colors.gold} blur={14} glow={0.7} style={{ fontFamily: font.display, fontWeight: 800, fontSize: 30, lineHeight: 1 }}>
-          {String(score)}
-        </NeonText>
-      </div>
-      <span style={{ fontFamily: font.ui, fontSize: 12.5, fontWeight: 600, minHeight: 18, color: fase === "goed" ? colors.green : fase === "kijk" ? colors.gold : colors.sub }}>
-        {fase === "goed" ? t("arenaGoed") : fase === "kijk" ? t("arenaKijk") : t("arenaDoe")}
-      </span>
-      {/* Een neon-lijst om het speelvak: dat maakt van vier losse knoppen EEN
-          bord, en het geeft de flitsen een rand om tegen af te zetten. De
-          vulling blijft leeg, want de achtergrond van het scherm hoort door te
-          lopen; overflow zichtbaar, anders knipt de lijst de halo's af. */}
-      <NeonKader
-        radius={22}
-        dik={0.5}
-        vulling="geen"
-        lijn={KADER_LIJN_LOOP}
-        animeer
-        eindkap
-        sterkte={0.55}
-        style={{ width: "min(320px, 86vw)" }}
-        binnen={{ padding: 14, overflow: "visible" }}
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+      {/* De stand achter glas. Ronde links, punten rechts, allebei in de
+          puntletter: dat is wat een scorebord doet, en het haalt de cijfers weg
+          uit de losse regels die boven de pads zweefden. */}
+      <Ruit
+        art="/ui/flits/ledbalk.webp?v=1"
+        maat={LED}
+        binnen={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingInline: "8%", gap: 10, overflow: "hidden" }}
       >
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <Led maat={15} sterk={0.7}>{t("arenaRonde", { n: level }).toUpperCase()}</Led>
+        <Led maat={30}>{String(score)}</Led>
+      </Ruit>
+
+      {/* De pads zitten IN de machine. Eerst stonden ze in een kader dat ik zelf
+          tekende; nu is de sectie art en dragen de vier vakken de vier pads. Het
+          raster is vierkant en staat gecentreerd, want de ruit is iets breder
+          dan hoog en gerekte pads zouden hun ronde hoeken vervormen.
+          Overloop zichtbaar, anders knipt de ruit de halo's van de flits af. */}
+      <Ruit art="/ui/flits/machine.webp?v=2" maat={MACHINE} binnen={{ display: "grid", placeItems: "center", overflow: "visible" }}>
+        {/* Alleen de BREEDTE staat vast; de hoogte volgt uit de vierkante pads,
+            want twee rijen van (b - gat)/2 plus het gat is precies b weer. Een
+            hoogte opgeven werkt hier niet: een rasteronderdeel mag niet kleiner
+            dan zijn inhoud, dus de pads duwden het raster buiten de ruit.
+            Negentig procent van de ruit, niet meer: de inzinking heeft een eigen
+            gouden rand en daar hoort lucht tussen te zitten. */}
+        <div style={{ width: `calc(${VAK} * ${(ruitHoogte(MACHINE) * 0.9).toFixed(4)})`, display: "grid", gridTemplateColumns: "1fr 1fr", gap: `calc(${VAK} * 0.03)` }}>
           {PADS.map((p, i) => (
             <Pad key={p.art} kleur={p.kleur} art={p.art} aan={aanNu === i} uit={fase !== "doe"} onTik={() => tikPad(i)} />
           ))}
         </div>
-      </NeonKader>
-      {/* Hoe ver je in de reeks bent. Vanaf een reeks van zes weet je zonder
-          deze stipjes niet meer of je bij de vierde of de vijfde zit, en dan
-          verlies je op tellen in plaats van op onthouden. */}
-      <div style={{ display: "flex", alignItems: "center", gap: 5, minHeight: 8 }}>
+      </Ruit>
+
+      {/* Wat er van je verwacht wordt, plus hoe ver je in de reeks bent. Vanaf
+          een reeks van zes weet je zonder die stipjes niet meer of je bij de
+          vierde of de vijfde zit, en dan verlies je op tellen in plaats van op
+          onthouden. */}
+      <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, minHeight: 18, color: fase === "goed" ? colors.green : fase === "kijk" ? colors.gold : colors.sub }}>
+        {fase === "goed" ? t("arenaGoed") : fase === "kijk" ? t("arenaKijk") : t("arenaDoe")}
+      </span>
+      <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", alignItems: "center", gap: 5, minHeight: 8, maxWidth: VAK }}>
         {fase === "doe" && Array.from({ length: level }, (_, i) => (
           <span
             key={i}
@@ -362,6 +449,14 @@ export function ArenaDeel({ game, onBack }: { game: GameApi; onBack: () => void 
       .catch(() => {});
   }, []);
   useEffect(haal, [haal]);
+  // De hal om de kast heen. Alleen op het voorportaal en de uitslag: tijdens het
+  // spel neemt de Flitsreeks zijn eigen decor over, en twee lagen tegelijk zou
+  // twee panelen door elkaar tekenen.
+  useEffect(() => {
+    if (fase === "spel") return;
+    document.body.classList.add("flitshal");
+    return () => document.body.classList.remove("flitshal");
+  }, [fase]);
   useEffect(() => {
     const id = window.setInterval(() => setOver((s) => Math.max(0, s - 1)), 1000);
     return () => window.clearInterval(id);

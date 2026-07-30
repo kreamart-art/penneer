@@ -41,6 +41,10 @@ export const font = {
   ui: '"Inter", system-ui, sans-serif',
   // Smalle hoofdletters, voor korte kreten: de tagline, de spelernaam, koppen.
   wide: '"Bebas Neue", "Space Grotesk", system-ui, sans-serif',
+  // Puntmatrix, voor uitlezingen achter glas: de LED-balk van de Flitsreeks. De
+  // reserve is een monospace, want een puntletter is per definitie op een raster
+  // getekend en cijfers die van breedte wisselen laten de stand dansen.
+  dot: '"Dotfont", ui-monospace, "SFMono-Regular", monospace',
 } as const;
 
 // Reusable surface for translucent panels / cards.

@@ -10,7 +10,7 @@
 //    briefly-stale shell can still boot from cache instead of going black.
 //  - Every activation purges ALL old caches (drops any poisoned shell).
 // Never touches the WebSocket or the API.
-const CACHE = "penneer-v85"; // v85: art-cache overleeft releases
+const CACHE = "penneer-v86"; // v86: fonts naar de art-cache
 // De art in zijn EIGEN cache die releases overleeft. We deployden vandaag negen
 // keer, en elke activatie gooide alles weg: elke update was daardoor een koude
 // her-download van ~15MB aan knoppen, emotes, vlaggen en achtergronden. Dat is
@@ -25,7 +25,9 @@ const ART = "penneer-art-v11"; // v11: arena-icoon
 // hangen. Zonder dit gooide elke activatie precies de brokken weg die een
 // lopende sessie nog nodig had.
 const BROK = "penneer-brok-v1";
-const ART_PADEN = ["/ui/", "/buzzers/", "/emotes/", "/tiles/", "/vlaggen/", "/frames/", "/emblems/", "/music/", "/sfx/", "/reels/", "/shield/"];
+// `/fonts/` hoort hier ook: een letterbestand verandert nooit van inhoud, dus
+// het had geen zin om er zes bij elke release opnieuw te halen.
+const ART_PADEN = ["/ui/", "/buzzers/", "/emotes/", "/tiles/", "/vlaggen/", "/frames/", "/emblems/", "/music/", "/sfx/", "/reels/", "/shield/", "/fonts/"];
 const artCache = (pad) => ART_PADEN.some((p) => pad.startsWith(p));
 
 self.addEventListener("install", () => {

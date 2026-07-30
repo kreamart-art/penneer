@@ -35,6 +35,16 @@
   font-display: swap;
 }
 
+/* Dotfont: de puntmatrixletter voor de LED-balk in de Flitsreeks. Alleen achter
+   glas gebruiken, op maten waar je de punten los ziet; klein wordt hij pap. */
+@font-face {
+  font-family: "Dotfont";
+  src: url("/fonts/dotfont.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 @font-face {
   font-family: "Cybergame";
   src: url("/fonts/cybergame-italic.ttf") format("truetype");
@@ -271,6 +281,60 @@ body.lijst::after {
   background-repeat: repeat, no-repeat, no-repeat, no-repeat, no-repeat;
   background-position: top left, top, top, center top, top;
   background-size: 160px 160px, 100% 100%, 100% 100%, cover, 100% 100%;
+}
+
+/* De Flitsreeks staat in zijn eigen kast: een sci-fi paneel als decor achter de
+   LED-balk en de machine. Zelfde opbouw en zelfde geometrie als `lijst`
+   hierboven (grote viewport plus marge, anders houdt iOS onderaan een strook
+   over zodra de adresbalk wegschuift).
+
+   De art is VIERKANT en het scherm staand, dus met `cover` gaan er links en
+   rechts randen af. Dat mag: de versiering loopt rondom, dus boven en onder
+   blijft hij staan, en dat is precies waar het decor telt. Rekken zou de hoeken
+   ruim twee keer uittrekken en dan is het geen paneel meer maar een vlek. */
+body.flitskast::after {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: calc(100vh + 200px);
+  height: calc(100lvh + 200px);
+  z-index: -1;
+  pointer-events: none;
+  background-color: #06040e;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
+    radial-gradient(120% 62% at 50% 46%, rgba(2, 1, 7, 0) 0%, rgba(2, 1, 7, 0.3) 62%, rgba(2, 1, 7, 0.7) 100%),
+    url("/ui/flits/achtergrond.webp?v=1"),
+    linear-gradient(180deg, #150e2e 0%, #100a24 50%, #06040e 100%);
+  background-repeat: repeat, no-repeat, no-repeat, no-repeat;
+  background-position: top left, center, center center, top;
+  background-size: 160px 160px, 100% 100%, cover, 100% 100%;
+}
+
+/* De hal waar de kast staat: het decor van het arena-voorportaal, met een vloer
+   onderaan. Zelfde opbouw als `flitskast`; alleen de art wisselt, zodat de twee
+   schermen als dezelfde plek lezen. */
+body.flitshal::after {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: calc(100vh + 200px);
+  height: calc(100lvh + 200px);
+  z-index: -1;
+  pointer-events: none;
+  background-color: #06040e;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
+    radial-gradient(120% 62% at 50% 40%, rgba(2, 1, 7, 0) 0%, rgba(2, 1, 7, 0.26) 62%, rgba(2, 1, 7, 0.66) 100%),
+    url("/ui/flits/achtergrond-lobby.webp?v=1"),
+    linear-gradient(180deg, #150e2e 0%, #100a24 50%, #06040e 100%);
+  background-repeat: repeat, no-repeat, no-repeat, no-repeat;
+  background-position: top left, center, center center, top;
+  background-size: 160px 160px, 100% 100%, cover, 100% 100%;
 }
 
 body {

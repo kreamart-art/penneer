@@ -14,6 +14,10 @@ const Settings = lazy(() => import("./screens/Settings").then((m) => ({ default:
 import { Landing } from "./screens/Landing";
 import { type HubSection } from "./screens/Hub";
 const Hub = lazy(() => import("./screens/Hub").then((m) => ({ default: m.Hub })));
+// Profielinstellingen zijn een EIGEN scherm geworden, bereikbaar vanuit
+// Instellingen op de main page. Uit dezelfde brok als de Hub, dus dit kost geen
+// tweede download.
+const ProfielInstellingen = lazy(() => import("./screens/Hub").then((m) => ({ default: m.ProfileSettings })));
 const Shop = lazy(() => import("./screens/Shop").then((m) => ({ default: m.Shop })));
 const Training = lazy(() => import("./screens/Training").then((m) => ({ default: m.Training })));
 const Daily = lazy(() => import("./screens/Daily").then((m) => ({ default: m.Daily })));
@@ -55,6 +59,7 @@ export default function App() {
   const [introDone, setIntroDone] = useState(() => sessionStorage.getItem(INTRO_KEY) === "1");
   const [showRules, setShowRules] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showProfielInstellingen, setShowProfielInstellingen] = useState(false);
   // De dichte kist, LOKAAL vastgehouden zodra hij in het account opduikt: het
   // account-veld verdwijnt bij het openen en de popup moet de onthulling
   // afmaken. Zie de mount onderaan voor waarom dit in App staat.
@@ -236,6 +241,7 @@ export default function App() {
     setShowShop(false);
     setShowRules(false);
     setShowSettings(false);
+    setShowProfielInstellingen(false);
     if (naar === "duel") {
       setShowHub(null);
       // Niet alleen NAAR het duelscherm maar naar DIT duel: een melding over
@@ -452,11 +458,24 @@ export default function App() {
     );
   } else if (showLegal) {
     screen = <Juridisch start={showLegal} onBack={() => setShowLegal(null)} />;
+  } else if (showProfielInstellingen && game.state.account) {
+    screen = (
+      <ProfielInstellingen
+        game={game}
+        onBack={() => setShowProfielInstellingen(false)}
+        onShowShop={() => {
+          setShowProfielInstellingen(false);
+          setShowSettings(false);
+          setShowShop(true);
+        }}
+      />
+    );
   } else if (showSettings) {
     screen = (
       <Settings
         game={game}
         onBack={() => setShowSettings(false)}
+        onProfileSettings={() => setShowProfielInstellingen(true)}
         onShowRules={() => {
           setShowSettings(false);
           setShowRules(true);
