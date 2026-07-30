@@ -22,7 +22,7 @@ import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { Screen } from "../components/Layout";
 import { NeonText } from "../components/NeonText";
-import { GOUD, Paneel, PlekWapen } from "../components/ProfileHero";
+import { GOUD, KADER_LIJN_LOOP, NeonKader, Paneel, PlekWapen } from "../components/ProfileHero";
 import { GlasRij, Lijst } from "./Hub";
 import type { GameApi } from "../net/socket";
 import { useT } from "../i18n/i18n";
@@ -100,6 +100,9 @@ function Pad({ kleur, art, aan, onTik, uit }: { kleur: string; art: string; aan:
         cursor: uit ? "default" : "pointer",
         // De halo mag buiten de knop uitkomen; overflow visible is daarvoor nodig.
         overflow: "visible",
+        // De opgelichte pad komt BOVEN zijn buren te liggen, anders wordt zijn
+        // halo overschilderd door de pads die later in de rij staan.
+        zIndex: aan ? 2 : 1,
       }}
     >
       {/* De HALO achter de pad, als eigen vervaagde laag en niet als
@@ -111,7 +114,12 @@ function Pad({ kleur, art, aan, onTik, uit }: { kleur: string; art: string; aan:
           position: "absolute",
           inset: "-16%",
           borderRadius: "30%",
-          background: `radial-gradient(circle, ${withAlpha(kleur, 0.6)} 0%, ${withAlpha(kleur, 0.22)} 42%, transparent 70%)`,
+          // Zelfde MAAT als eerst, alleen feller. De truc zit in WAAR de kracht
+          // staat: de dekkende pad bedekt dit verloop tot ongeveer 54%, dus
+          // alles voor dat punt zie je niet. Vandaar vol kracht tot 46% en pas
+          // daarna de afval, in plaats van een verloop dat al binnen de pad is
+          // uitgedoofd. Hij straalt dus harder zonder verder te reiken.
+          background: `radial-gradient(circle, ${kleur} 0%, ${kleur} 46%, ${withAlpha(kleur, 0.82)} 57%, ${withAlpha(kleur, 0.42)} 65%, ${withAlpha(kleur, 0.14)} 71%, transparent 76%)`,
           filter: "blur(12px)",
           opacity: aan ? 1 : 0,
           // Snel AAN, langzamer uit: zo tikt de flits en dooft hij na.
@@ -296,11 +304,27 @@ function Flitsreeks({ seed, onKlaar }: { seed: string; onKlaar: (score: number, 
       <span style={{ fontFamily: font.ui, fontSize: 12.5, fontWeight: 600, minHeight: 18, color: fase === "goed" ? colors.green : fase === "kijk" ? colors.gold : colors.sub }}>
         {fase === "goed" ? t("arenaGoed") : fase === "kijk" ? t("arenaKijk") : t("arenaDoe")}
       </span>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, width: "min(300px, 82vw)" }}>
-        {PADS.map((p, i) => (
-          <Pad key={p.art} kleur={p.kleur} art={p.art} aan={aanNu === i} uit={fase !== "doe"} onTik={() => tikPad(i)} />
-        ))}
-      </div>
+      {/* Een neon-lijst om het speelvak: dat maakt van vier losse knoppen EEN
+          bord, en het geeft de flitsen een rand om tegen af te zetten. De
+          vulling blijft leeg, want de achtergrond van het scherm hoort door te
+          lopen; overflow zichtbaar, anders knipt de lijst de halo's af. */}
+      <NeonKader
+        radius={22}
+        dik={0.5}
+        vulling="geen"
+        lijn={KADER_LIJN_LOOP}
+        animeer
+        eindkap
+        sterkte={0.55}
+        style={{ width: "min(320px, 86vw)" }}
+        binnen={{ padding: 14, overflow: "visible" }}
+      >
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          {PADS.map((p, i) => (
+            <Pad key={p.art} kleur={p.kleur} art={p.art} aan={aanNu === i} uit={fase !== "doe"} onTik={() => tikPad(i)} />
+          ))}
+        </div>
+      </NeonKader>
       {/* Hoe ver je in de reeks bent. Vanaf een reeks van zes weet je zonder
           deze stipjes niet meer of je bij de vierde of de vijfde zit, en dan
           verlies je op tellen in plaats van op onthouden. */}
