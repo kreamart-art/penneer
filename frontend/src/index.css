@@ -1104,3 +1104,20 @@ html.klassiek body.lijst::after {
   100% { transform: scale(1); }
 }
 .kist-knal { animation: kist-knal .5s cubic-bezier(.2,1.4,.4,1) both; }
+
+/* De flits in de Arena. De KERN en de ARMEN komen op met een korte pop en
+   zakken dan iets terug: een flits die alleen infadet leest als een lamp die
+   aangaat, een flits die eerst doorschiet leest als een tik. Ze zijn alleen
+   gemonteerd terwijl de pad aan staat, dus elke flits begint bij nul. */
+@keyframes flits-kern {
+  0%   { transform: scale(.42); opacity: 0; }
+  38%  { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(.96); opacity: .9; }
+}
+@keyframes flits-ster {
+  0%   { transform: scaleX(.25) scaleY(.6); opacity: 0; }
+  32%  { transform: scaleX(1.06) scaleY(1); opacity: .95; }
+  100% { transform: scaleX(1) scaleY(1); opacity: .62; }
+}
+.flits-kern { animation: flits-kern .24s cubic-bezier(.2,1.5,.4,1) both; }
+.flits-ster { animation: flits-ster .26s cubic-bezier(.2,1.5,.4,1) both; transform-origin: center; }

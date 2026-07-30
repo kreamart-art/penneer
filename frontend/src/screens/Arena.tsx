@@ -74,31 +74,97 @@ function klok(s: number): string {
   return `${u}:${pad(Math.floor((s % 3600) / 60))}:${pad(s % 60)}`;
 }
 
-// De vier pads. Kleuren uit het eigen palet, want op een flits moet je in een
-// oogopslag zien WELKE pad het was.
-const PADS = [colors.gold, colors.violet, colors.green, colors.red];
+// De vier pads. De art heeft twee standen (dof en aan) die exact op elkaar
+// liggen, dus wisselen is een kwestie van de bovenste laag laten opkomen; de
+// vorm blijft staan. De kleur staat hier los bij, want de gloed en de kern
+// worden in code getekend zodat ze kunnen PULSEREN zonder in de art te zitten.
+const PADS = [
+  { kleur: colors.gold, art: "goud" },
+  { kleur: colors.violet, art: "violet" },
+  { kleur: colors.green, art: "groen" },
+  { kleur: colors.red, art: "rood" },
+] as const;
 
-function Pad({ kleur, aan, onTik, uit }: { kleur: string; aan: boolean; onTik: () => void; uit: boolean }) {
+function Pad({ kleur, art, aan, onTik, uit }: { kleur: string; art: string; aan: boolean; onTik: () => void; uit: boolean }) {
   return (
     <button
       onClick={onTik}
       disabled={uit}
       className="pressable"
       style={{
+        position: "relative",
         aspectRatio: "1",
-        borderRadius: 18,
-        border: `1.5px solid ${withAlpha(kleur, aan ? 0.95 : 0.4)}`,
-        cursor: uit ? "default" : "pointer",
-        // Aan = het licht staat AAN in het glas; uit is hetzelfde materiaal in
-        // rust. Geen tweede vormtaal, alleen meer licht.
-        background: aan
-          ? `radial-gradient(circle at 50% 38%, ${withAlpha(kleur, 0.85)} 0%, ${withAlpha(kleur, 0.3)} 62%, rgba(0,0,0,.35) 100%)`
-          : `radial-gradient(circle at 50% 38%, ${withAlpha(kleur, 0.2)} 0%, rgba(0,0,0,.3) 70%)`,
-        boxShadow: aan ? `0 0 22px ${withAlpha(kleur, 0.55)}, inset 0 0 14px ${withAlpha(kleur, 0.5)}` : "inset 0 2px 8px rgba(0,0,0,.45)",
-        transition: "background .12s ease, box-shadow .12s ease, border-color .12s ease",
+        background: "transparent",
+        border: "none",
         padding: 0,
+        cursor: uit ? "default" : "pointer",
+        // De halo mag buiten de knop uitkomen; overflow visible is daarvoor nodig.
+        overflow: "visible",
       }}
-    />
+    >
+      {/* De HALO achter de pad, als eigen vervaagde laag en niet als
+          drop-shadow-filter: die rastert op iOS de doos van de laag mee en dan
+          zie je een rechthoek om je flits. */}
+      <span
+        aria-hidden
+        style={{
+          position: "absolute",
+          inset: "-16%",
+          borderRadius: "30%",
+          background: `radial-gradient(circle, ${withAlpha(kleur, 0.6)} 0%, ${withAlpha(kleur, 0.22)} 42%, transparent 70%)`,
+          filter: "blur(12px)",
+          opacity: aan ? 1 : 0,
+          // Snel AAN, langzamer uit: zo tikt de flits en dooft hij na.
+          transition: aan ? "opacity .05s linear" : "opacity .22s ease-out",
+          pointerEvents: "none",
+        }}
+      />
+      {/* De dove pad staat er altijd; de opgelichte komt eroverheen. Twee lagen
+          in plaats van een bronwissel, want een src-wissel geeft een frame wit. */}
+      <img src={`/ui/flits/${art}-dof.webp?v=1`} alt="" aria-hidden style={{ position: "relative", width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
+      <img
+        src={`/ui/flits/${art}.webp?v=1`}
+        alt=""
+        aria-hidden
+        style={{
+          position: "absolute",
+          inset: 0,
+          width: "100%",
+          height: "100%",
+          objectFit: "contain",
+          opacity: aan ? 1 : 0,
+          transition: aan ? "opacity .05s linear" : "opacity .2s ease-out",
+          pointerEvents: "none",
+        }}
+      />
+      {/* De KERN: een witte kern met vier lichtarmen die opkomt in het midden,
+          zoals op de eerste art. Alleen gemonteerd terwijl de pad aan staat, dus
+          elke flits start de animatie opnieuw. */}
+      {aan && (
+        <>
+          <span
+            aria-hidden
+            className="flits-kern"
+            style={{
+              position: "absolute",
+              left: "50%",
+              top: "50%",
+              width: "52%",
+              height: "52%",
+              marginLeft: "-26%",
+              marginTop: "-26%",
+              borderRadius: "50%",
+              background: `radial-gradient(circle, #fff 0%, ${withAlpha(kleur, 0.9)} 26%, ${withAlpha(kleur, 0.35)} 52%, transparent 72%)`,
+              pointerEvents: "none",
+            }}
+          />
+          {/* De vier armen: twee balken die naar hun uiteinden uitdoven. Samen
+              lezen ze als een ster zonder dat er art voor nodig is. */}
+          <span aria-hidden className="flits-ster" style={{ position: "absolute", left: "6%", right: "6%", top: "50%", height: 3, marginTop: -1.5, borderRadius: 999, background: `linear-gradient(90deg, transparent, #fff 50%, transparent)`, pointerEvents: "none" }} />
+          <span aria-hidden className="flits-ster" style={{ position: "absolute", top: "6%", bottom: "6%", left: "50%", width: 3, marginLeft: -1.5, borderRadius: 999, background: `linear-gradient(180deg, transparent, #fff 50%, transparent)`, pointerEvents: "none" }} />
+        </>
+      )}
+    </button>
   );
 }
 
@@ -231,8 +297,8 @@ function Flitsreeks({ seed, onKlaar }: { seed: string; onKlaar: (score: number, 
         {fase === "goed" ? t("arenaGoed") : fase === "kijk" ? t("arenaKijk") : t("arenaDoe")}
       </span>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, width: "min(300px, 82vw)" }}>
-        {PADS.map((kleur, i) => (
-          <Pad key={kleur} kleur={kleur} aan={aanNu === i} uit={fase !== "doe"} onTik={() => tikPad(i)} />
+        {PADS.map((p, i) => (
+          <Pad key={p.art} kleur={p.kleur} art={p.art} aan={aanNu === i} uit={fase !== "doe"} onTik={() => tikPad(i)} />
         ))}
       </div>
       {/* Hoe ver je in de reeks bent. Vanaf een reeks van zes weet je zonder
