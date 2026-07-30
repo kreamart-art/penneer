@@ -50,19 +50,25 @@ const PANEEL = "#1D0C29";
 
 // ---- de kleuren -------------------------------------------------------------
 //
-// Zes hues die ook náást elkaar op een donkerpaars paneel uit elkaar te houden
-// zijn. Paars zit er met opzet NIET bij: de hele app is paars, dus een paarse
-// knop op een paars paneel is geen keuze maar een gok. Roze doet hetzelfde werk
-// en blijft leesbaar. Per kleur een reeks van drie: diep, vlak, fel.
-type Kleur = { key: string; naam: string; diep: string; vlak: string; fel: string; inkt: string };
+// Zes edelstenen uit de UI-map, alle zes op dezelfde maat gebracht: in de bron
+// waren groen en paars zeven procent smaller dan de rest, en naast elkaar in
+// een raster zie je dat meteen.
+//
+// De INKT is de kleur waarin het woord op het scherm staat. Die is niet zomaar
+// de kleur van de steen: een steen mag donker zijn, een letter op een
+// donkerpaars paneel niet. Het is de tint van de steen, opgetrokken tot hij
+// leesbaar is en niet verder, zodat knop en woord nog steeds dezelfde kleur
+// heten. Goud is expres bleker dan het goud van de app zelf, anders lijkt het
+// woord GOUD gewoon een stuk gewone tekst.
+type Kleur = { key: string; naam: string; inkt: string };
 
 const KLEUREN: Kleur[] = [
-  { key: "rood", naam: "ROOD", diep: "#5E0A0C", vlak: "#C51F26", fel: "#FF6A63", inkt: "#FF4A44" },
-  { key: "oranje", naam: "ORANJE", diep: "#5A2A00", vlak: "#D2700B", fel: "#FFB65A", inkt: "#FF9A2E" },
-  { key: "geel", naam: "GEEL", diep: "#54430A", vlak: "#C9A214", fel: "#FFE773", inkt: "#FFD63D" },
-  { key: "groen", naam: "GROEN", diep: "#0A4423", vlak: "#1E9350", fel: "#63E39B", inkt: "#3FD37E" },
-  { key: "blauw", naam: "BLAUW", diep: "#0A2A5E", vlak: "#1E63C8", fel: "#6FAEFF", inkt: "#4A97FF" },
-  { key: "roze", naam: "ROZE", diep: "#5A0A38", vlak: "#C41E78", fel: "#FF7CC0", inkt: "#FF5FAE" },
+  { key: "rood", naam: "ROOD", inkt: "#FF4A44" },
+  { key: "blauw", naam: "BLAUW", inkt: "#4A9BFF" },
+  { key: "groen", naam: "GROEN", inkt: "#2FE06E" },
+  { key: "oranje", naam: "ORANJE", inkt: "#FF9A2E" },
+  { key: "paars", naam: "PAARS", inkt: "#D64DFF" },
+  { key: "goud", naam: "GOUD", inkt: "#EFE0B0" },
 ];
 
 // ---- de ladder --------------------------------------------------------------
@@ -182,48 +188,80 @@ function Meter({ kop, waarde, kleur = "#FFF3D0", breuk }: { kop: string; waarde:
   );
 }
 
-/** Een kleurknop: een gem in zijn eigen reeks. De rand is de padding-truc (een
- *  laag met het verloop, met daarop een iets kleinere laag met de vulling), want
- *  een border volgt de rechthoek en niet de afgeschuinde vorm. De glans zit als
- *  eigen laagje bovenop en alleen in de bovenste helft, anders leest hij als een
- *  lichter vlak in plaats van als licht. */
-function KleurKnop({ kleur, staat, hoog, onKies }: { kleur: Kleur; staat: "rust" | "goed" | "fout" | "dood"; hoog: number; onKies: () => void }) {
+/** Een kleurknop is de edelsteen zelf. De schaduw eronder is een tweede kopie
+ *  van dezelfde art met brightness(0) en een blur: `drop-shadow` breekt op iOS
+ *  (Safari rastert de laag apart en dan zie je de rechthoek eromheen), maar een
+ *  zwartgemaakte kopie volgt het alfakanaal en dus de achthoek. */
+function KleurKnop({ kleur, staat, onKies }: { kleur: Kleur; staat: "rust" | "goed" | "fout" | "dood"; onKies: () => void }) {
   const dood = staat === "dood";
+  const art = `/ui/klem/${kleur.key}.webp?v=1`;
   return (
     <button
       onPointerDown={(e) => { e.preventDefault(); if (!dood) onKies(); }}
       disabled={dood}
       aria-label={kleur.naam.toLowerCase()}
+      className={staat === "fout" ? "klem-mis" : undefined}
       style={{
-        position: "relative", padding: 1.6, border: "none", background: "transparent",
-        clipPath: ACHT(11), cursor: dood ? "default" : "pointer",
+        position: "relative", border: "none", background: "transparent", padding: 0,
+        aspectRatio: "420 / 244", width: "100%",
+        cursor: dood ? "default" : "pointer",
         WebkitTapHighlightColor: "transparent", touchAction: "manipulation",
-        filter: dood ? "grayscale(.7) brightness(.55)" : undefined,
-        transform: staat === "goed" ? "scale(1.06)" : staat === "fout" ? "scale(.94)" : "scale(1)",
-        transition: "transform .12s ease-out",
+        filter: dood ? "grayscale(.75) brightness(.42)" : staat === "goed" ? "brightness(1.22) saturate(1.15)" : undefined,
+        transform: staat === "goed" ? "scale(1.07)" : "scale(1)",
+        transition: "transform .12s ease-out, filter .12s ease-out",
       }}
     >
-      <span
-        aria-hidden
-        style={{
-          position: "absolute", inset: 0, clipPath: ACHT(11),
-          background: `linear-gradient(160deg, ${kleur.fel} 0%, ${kleur.vlak} 34%, ${kleur.diep} 72%, ${kleur.vlak} 100%)`,
-          boxShadow: staat === "goed" ? `0 0 18px 2px ${withAlpha(kleur.fel, 0.75)}` : undefined,
-        }}
-      />
-      <span
-        style={{
-          position: "relative", display: "grid", placeItems: "center",
-          width: "100%", height: hoog, clipPath: ACHT(10),
-          background: `linear-gradient(180deg, ${kleur.vlak} 0%, ${kleur.diep} 78%, ${withAlpha(kleur.diep, 0.9)} 100%)`,
-          boxShadow: `inset 0 -7px 12px -6px rgba(0,0,0,.75)`,
-        }}
-      >
-        {/* De korte glans, alleen bovenin en met een eigen breedte. */}
-        <span aria-hidden style={{ position: "absolute", left: "14%", right: "14%", top: 3, height: "34%", borderRadius: 999, background: `linear-gradient(180deg, ${withAlpha("#FFFFFF", 0.34)} 0%, ${withAlpha("#FFFFFF", 0.05)} 70%, transparent 100%)` }} />
-        <span aria-hidden style={{ width: 18, height: 18, borderRadius: 6, background: `radial-gradient(circle at 34% 30%, ${kleur.fel} 0%, ${kleur.vlak} 58%, ${kleur.diep} 100%)`, boxShadow: `0 0 12px ${withAlpha(kleur.fel, 0.65)}, inset 0 1px 1.5px ${withAlpha("#FFFFFF", 0.55)}` }} />
-      </span>
+      <img src={art} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block", filter: "brightness(0) blur(7px)", opacity: 0.6, transform: "translateY(6px)", pointerEvents: "none" }} />
+      {staat === "goed" && (
+        <img src={art} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block", filter: "blur(11px)", opacity: 0.85, pointerEvents: "none" }} />
+      )}
+      <img src={art} alt="" style={{ position: "relative", width: "100%", height: "100%", display: "block" }} />
     </button>
+  );
+}
+
+/** Het vak waarin het woord staat: een gouden neonlijn met doorschijnende
+ *  vulling, en in die lijn een verloop in de kleur van het woord.
+ *
+ *  Waarom SVG en niet de padding-truc met twee lagen: die truc maakt een rand
+ *  door een gevulde laag over een verlooplaag te leggen, en dan MOET de
+ *  binnenkant dus dekkend zijn. Hier moet het paneel er juist doorheen te zien
+ *  zijn. Een `stroke` op een polygoon doet dat wel, houdt zijn dikte gelijk op
+ *  elke schermbreedte, en kan een verloop met alfa dragen.
+ *
+ *  De viewBox heeft precies de verhouding van het vak, dus er wordt niets
+ *  uitgerekt en de hoeken blijven 45 graden. */
+function WoordVak({ kleur, id }: { kleur: string; id: string }) {
+  const B = 319, H = 104, c = 16, m = 2.4;
+  const punten = [
+    [c + m, m], [B - c - m, m], [B - m, c + m], [B - m, H - c - m],
+    [B - c - m, H - m], [c + m, H - m], [m, H - c - m], [m, c + m],
+  ].map((p) => p.join(",")).join(" ");
+  return (
+    <svg viewBox={`0 0 ${B} ${H}`} preserveAspectRatio="none" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 3, overflow: "visible" }}>
+      <defs>
+        {/* Goud is de lijn, de kleur is een doorloop erin. Geef je de kleur de
+            helft van het verloop, dan is het geen gouden lijn meer maar een
+            gekleurde, en dan gaat de art van de kast er tegenin. */}
+        <linearGradient id={`lijn-${id}`} x1="0" y1="0" x2="1" y2="0.35">
+          <stop offset="0%" stopColor="#B0710E" stopOpacity="0.7" />
+          <stop offset="20%" stopColor="#FFD98A" stopOpacity="0.95" />
+          <stop offset="40%" stopColor="#FFF6DC" stopOpacity="1" />
+          <stop offset="52%" stopColor={kleur} stopOpacity="1" />
+          <stop offset="64%" stopColor="#FFF6DC" stopOpacity="1" />
+          <stop offset="84%" stopColor="#FFD98A" stopOpacity="0.9" />
+          <stop offset="100%" stopColor="#B0710E" stopOpacity="0.7" />
+        </linearGradient>
+        <filter id={`bloei-${id}`} x="-20%" y="-40%" width="140%" height="180%">
+          <feGaussianBlur stdDeviation="3.4" />
+        </filter>
+      </defs>
+      {/* De bloei is een tweede, vervaagde kopie ACHTER de lijn. Ruim baan
+          eromheen, anders knipt het filtervenster de vervaging af. */}
+      <polygon points={punten} fill="none" stroke="#FFB43C" strokeWidth="4.2" opacity="0.42" filter={`url(#bloei-${id})`} />
+      <polygon points={punten} fill="none" stroke={kleur} strokeWidth="3" opacity="0.3" filter={`url(#bloei-${id})`} />
+      <polygon points={punten} fill="none" stroke={`url(#lijn-${id})`} strokeWidth="2.2" strokeLinejoin="round" />
+    </svg>
   );
 }
 
@@ -356,6 +394,8 @@ export function PreviewKleurenklem() {
 
   const alarm = rest < 0.34;
   const regelTekst = trap.regel === "inkt" ? "KIES DE INKTKLEUR" : "KIES HET WOORD";
+  // Tijdens het aftellen is er nog geen opgave, dus dan is de lijn gewoon goud.
+  const inktNu = fase === "tel" ? "#FFD98A" : opgave.inkt.inkt;
 
   return (
     <Screen
@@ -432,15 +472,17 @@ export function PreviewKleurenklem() {
             </div>
           ) : (
             <>
-              {/* Het woord met de klem eromheen. */}
+              {/* Het woord: doorschijnend vak, gouden neonlijn met een verloop
+                  in de kleur van het woord, de klem eromheen, en een lichtveeg
+                  die er in dezelfde kleur overheen loopt. */}
               <div
                 style={{
                   position: "absolute",
                   left: pct(VENSTER.l), right: pct(VENSTER.r), top: pct(VENSTER.t + 0.02),
                   height: pct(0.24),
                   display: "grid", placeItems: "center", overflow: "hidden",
-                  clipPath: ACHT(10),
-                  background: `radial-gradient(120% 140% at 50% 20%, ${withAlpha("#3A1B52", 0.85)} 0%, ${withAlpha(PANEEL, 0.92)} 70%)`,
+                  clipPath: ACHT(16),
+                  background: `radial-gradient(120% 150% at 50% 12%, ${withAlpha(inktNu, 0.14)} 0%, ${withAlpha("#3A1B52", 0.5)} 42%, ${withAlpha(PANEEL, 0.68)} 100%)`,
                 }}
               >
                 {fase === "spel" && <Klem rest={rest} alarm={alarm} />}
@@ -450,12 +492,26 @@ export function PreviewKleurenklem() {
                   style={{
                     position: "relative", zIndex: 2,
                     fontFamily: font.display, fontWeight: 800, fontSize: fase === "tel" ? 52 : 40, letterSpacing: 1.5, lineHeight: 1,
-                    color: fase === "tel" ? "#FFD98A" : opgave.inkt.inkt,
-                    textShadow: `0 0 16px ${withAlpha(fase === "tel" ? "#FFB43C" : opgave.inkt.inkt, 0.55)}, 0 2px 3px rgba(0,0,0,.6)`,
+                    color: inktNu,
+                    textShadow: `0 0 16px ${withAlpha(inktNu, 0.55)}, 0 2px 3px rgba(0,0,0,.6)`,
                   }}
                 >
                   {fase === "tel" ? tel : opgave.woord.naam}
                 </span>
+                {/* De veeg ligt BOVEN de letters en licht ze op als hij passeert.
+                    `screen` en niet `overlay`: overlay maakt donkere letters nog
+                    donkerder, en dan flikkert het woord in plaats van te glanzen. */}
+                <span
+                  aria-hidden
+                  className="klem-veeg"
+                  style={{
+                    position: "absolute", inset: 0, zIndex: 4, pointerEvents: "none",
+                    mixBlendMode: "screen",
+                    background: `linear-gradient(104deg, transparent 34%, ${withAlpha(inktNu, 0.28)} 44%, ${withAlpha("#FFF6DC", 0.62)} 50%, ${withAlpha(inktNu, 0.28)} 56%, transparent 66%)`,
+                    backgroundSize: "260% 100%",
+                  }}
+                />
+                <WoordVak kleur={inktNu} id={fase === "tel" ? "tel" : opgave.inkt.key} />
               </div>
 
               {/* De knoppen. Altijd twee volle rijen, dus vier kleuren worden
@@ -478,7 +534,6 @@ export function PreviewKleurenklem() {
                   <KleurKnop
                     key={k.key}
                     kleur={k}
-                    hoog={trap.kleuren <= 4 ? 66 : 56}
                     staat={
                       fase === "tel" ? "dood"
                       : oordeel?.key === k.key ? (oordeel.goed ? "goed" : "fout")

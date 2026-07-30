@@ -812,6 +812,28 @@ body.soepspel::after {
 }
 .klem-wissel { animation: klem-wissel .62s ease-out both; }
 
+/* De lichtveeg die over het woord loopt. Hij begint rechts buiten beeld en
+   loopt naar links het beeld uit, dus je ziet één passage en geen sprong. */
+@keyframes klem-veeg {
+  from { background-position: 160% 0; }
+  to   { background-position: -60% 0; }
+}
+.klem-veeg { animation: klem-veeg 2.4s linear infinite; }
+
+/* Een misgreep schudt de knop. Kort, want er komt meteen een nieuwe opgave. */
+@keyframes klem-mis {
+  0%, 100% { transform: translateX(0); }
+  20%      { transform: translateX(-4px); }
+  45%      { transform: translateX(3px); }
+  72%      { transform: translateX(-2px); }
+}
+.klem-mis { animation: klem-mis .3s ease-out both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .klem-veeg { animation: none; opacity: .35; }
+  .klem-mis, .klem-wissel { animation: none; }
+}
+
 /* Een afgekeurd woord schudt kort: nee. */
 @keyframes soep-fout {
   0%, 100% { transform: translateX(0); }
