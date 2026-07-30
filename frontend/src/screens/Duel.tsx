@@ -504,9 +504,12 @@ export function Duel({ game, onBack, onProfile, openId, onGeopend }: {
                   // is de kop en de score het middelpunt; wat er met de pot
                   // gebeurde is de voetnoot, en een voetnoot staat onderaan.
                   // Absoluut, zodat hij de gecentreerde score niet omlaag duwt.
-                  <span style={{ position: "absolute", left: "50%", bottom: "9%", transform: "translateX(-50%)", display: "inline-flex", alignItems: "center", gap: 5, whiteSpace: "nowrap", padding: "4px 12px", borderRadius: 999, background: withAlpha(colors.gold, 0.14), border: `1px solid ${withAlpha(colors.gold, 0.4)}` }}>
+                  // Geen pil eromheen: de art achter dit paneel is al rijk
+                  // genoeg, en een omlijnd vakje binnen een omlijst paneel leest
+                  // als een tweede kader. Alleen de regel, gecentreerd.
+                  <span style={{ position: "absolute", left: "50%", bottom: "9%", transform: "translateX(-50%)", display: "inline-flex", alignItems: "center", gap: 5, whiteSpace: "nowrap" }}>
                     <img src="/coin.webp" alt="" width={15} height={15} style={{ display: "block" }} />
-                    <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 700, color: colors.gold }}>
+                    <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 700, color: colors.gold, textShadow: "0 1px 4px rgba(0,0,0,.7)" }}>
                       {duel.winner === "draw"
                         ? t("duelPotTerug", { n: duel.stake })
                         : duel.winner === "me"
