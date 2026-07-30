@@ -104,12 +104,12 @@ function Pad({ kleur, aan, onTik, uit }: { kleur: string; aan: boolean; onTik: (
 
 function Flitsreeks({ seed, onKlaar }: { seed: string; onKlaar: (score: number, level: number, timeMs: number) => void }) {
   const { t } = useT();
-  // De hele dagreeks ligt vast zodra de seed er is; levels zijn er een prefix van.
+  // De hele dagreeks ligt vast zodra de seed er is; levels zijn er een prefix
+  // van. Elke ronde is dus DEZELFDE reeks, één element langer: zo bouw je een
+  // pad op in je hoofd in plaats van elke ronde iets nieuws te moeten leren.
   const reeks = useRef<number[]>([]);
   if (reeks.current.length === 0) {
     const rng = maakRng(seed);
-    // Nooit twee keer dezelfde pad achter elkaar: dat leest als een haperende
-    // flits en test niets extra's.
     let vorige = -1;
     for (let i = 0; i < 64; i++) {
       let p = Math.floor(rng() * 4);
@@ -120,76 +120,136 @@ function Flitsreeks({ seed, onKlaar }: { seed: string; onKlaar: (score: number, 
   }
 
   const [level, setLevel] = useState(1);
-  const [fase, setFase] = useState<"kijk" | "doe">("kijk");
+  const [score, setScore] = useState(0);
+  const [fase, setFase] = useState<"kijk" | "doe" | "goed">("kijk");
+  // TWEE lampjes, bewust gescheiden: `lit` is de reeks die voorspeelt, `tik` is
+  // je eigen aanraking. In de eerste versie deelden ze één toestand, en dan
+  // doofde de na-oplichting van je laatste tik de EERSTE flits van de nieuwe
+  // ronde. Dat is precies wat er in de opname te zien was.
   const [lit, setLit] = useState<number | null>(null);
+  const [tik, setTik] = useState<number | null>(null);
   const [stap, setStap] = useState(0);
-  const score = useRef(0);
+  const stapRef = useRef(0);
   const start = useRef(0);
   const invoerStart = useRef(0);
   const timers = useRef<number[]>([]);
 
-  const speelFlits = useCallback((lvl: number) => {
-    setFase("kijk");
-    setStap(0);
-    const duur = Math.max(260, 520 - lvl * 15);
-    const gat = 150;
+  const stopTimers = () => {
     timers.current.forEach((id) => window.clearTimeout(id));
     timers.current = [];
-    for (let i = 0; i < lvl; i++) {
-      timers.current.push(window.setTimeout(() => { setLit(reeks.current[i]); sound.uiTap(); }, i * (duur + gat)));
-      timers.current.push(window.setTimeout(() => setLit(null), i * (duur + gat) + duur));
-    }
-    timers.current.push(window.setTimeout(() => {
-      setFase("doe");
-      invoerStart.current = performance.now();
-    }, lvl * (duur + gat) + 80));
+  };
+  // ELKE timer loopt hierlangs, ook de korte na-oplichting van een tik. Eén
+  // losse timer die aan deze lijst ontsnapt overleeft de rondewissel en gaat
+  // daar iets doven wat net was aangegaan.
+  const na = (ms: number, fn: () => void) => {
+    timers.current.push(window.setTimeout(fn, ms));
+  };
+
+  const speel = useCallback((lvl: number) => {
+    stopTimers();
+    setLit(null);
+    setTik(null);
+    setStap(0);
+    stapRef.current = 0;
+    setFase("kijk");
+    // Leesbaar blijven is belangrijker dan snel worden: de moeilijkheid zit in
+    // de LENGTE van de reeks, niet in onzichtbaar korte flitsen. Daarom een
+    // bodem van 300ms aan en 180ms stilte.
+    const AAN = Math.max(300, 420 - lvl * 8);
+    const UIT = Math.max(180, 240 - lvl * 4);
+    let i = 0;
+    // Zelf-plannend: de volgende stap wordt pas gezet NADAT de vorige echt
+    // gelopen heeft. De eerste versie plande de hele reeks vooruit met vaste
+    // deadlines, en dan eet een haperende telefoon de eerste flitsen op omdat
+    // hun aan-timer te laat komt terwijl de uit-timer op tijd is.
+    const stapje = () => {
+      if (i >= lvl) {
+        na(120, () => {
+          setFase("doe");
+          invoerStart.current = performance.now();
+        });
+        return;
+      }
+      const pad = reeks.current[i];
+      i += 1;
+      setLit(pad);
+      sound.uiTap();
+      na(AAN, () => {
+        setLit(null);
+        na(UIT, stapje);
+      });
+    };
+    // Aanloop voordat de eerste flits komt. Zonder die stilte valt hij samen
+    // met de rondewissel en zie je hem niet.
+    na(380, stapje);
   }, []);
 
   useEffect(() => {
     start.current = performance.now();
-    speelFlits(1);
-    return () => timers.current.forEach((id) => window.clearTimeout(id));
-  }, [speelFlits]);
+    speel(1);
+    return stopTimers;
+  }, [speel]);
 
-  const tik = (pad: number) => {
+  const tikPad = (pad: number) => {
     if (fase !== "doe") return;
-    if (pad !== reeks.current[stap]) {
-      // Fout: de poging is voorbij. Het level dat je HAALDE is level - 1.
-      onKlaar(score.current, level - 1, Math.round(performance.now() - start.current));
+    if (pad !== reeks.current[stapRef.current]) {
+      stopTimers();
+      // Het level dat je HAALDE is er een minder dan waar je in zat.
+      onKlaar(score, level - 1, Math.round(performance.now() - start.current));
       return;
     }
     sound.uiTap();
-    // Even oplichten als bevestiging van je eigen tik.
-    setLit(pad);
-    window.setTimeout(() => setLit(null), 130);
-    if (stap + 1 < level) {
-      setStap(stap + 1);
-      return;
-    }
-    // Reeks compleet: k*100 plus de snelheidsbonus (sneller dan een seconde
-    // per element = bonus), en dan dezelfde reeks een element langer.
+    setTik(pad);
+    na(160, () => setTik(null));
+    const volgendeStap = stapRef.current + 1;
+    stapRef.current = volgendeStap;
+    setStap(volgendeStap);
+    if (volgendeStap < level) return;
+
+    // Reeks compleet: punten, en dan een korte bevestiging voordat de volgende
+    // reeks begint. Die pauze is niet cosmetisch: hij houdt jouw tik en de
+    // eerste nieuwe flits uit elkaar.
     const invoerMs = performance.now() - invoerStart.current;
     const bonus = Math.max(0, Math.min(99, Math.round(99 * (1 - invoerMs / (level * 1000)))));
-    score.current += level * 100 + bonus;
+    setScore((s) => s + level * 100 + bonus);
     const volgend = level + 1;
     setLevel(volgend);
-    speelFlits(volgend);
+    setFase("goed");
+    na(520, () => speel(volgend));
   };
 
+  const aanNu = lit ?? tik;
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 14 }}>
         <span style={{ fontFamily: font.ui, fontSize: 12, color: colors.sub }}>{t("arenaRonde", { n: level })}</span>
         <NeonText accent={colors.gold} blur={14} glow={0.7} style={{ fontFamily: font.display, fontWeight: 800, fontSize: 30, lineHeight: 1 }}>
-          {String(score.current)}
+          {String(score)}
         </NeonText>
       </div>
-      <span style={{ fontFamily: font.ui, fontSize: 12.5, color: fase === "kijk" ? colors.gold : colors.sub, minHeight: 18 }}>
-        {fase === "kijk" ? t("arenaKijk") : t("arenaDoe")}
+      <span style={{ fontFamily: font.ui, fontSize: 12.5, fontWeight: 600, minHeight: 18, color: fase === "goed" ? colors.green : fase === "kijk" ? colors.gold : colors.sub }}>
+        {fase === "goed" ? t("arenaGoed") : fase === "kijk" ? t("arenaKijk") : t("arenaDoe")}
       </span>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, width: "min(300px, 82vw)" }}>
         {PADS.map((kleur, i) => (
-          <Pad key={kleur} kleur={kleur} aan={lit === i} uit={fase !== "doe"} onTik={() => tik(i)} />
+          <Pad key={kleur} kleur={kleur} aan={aanNu === i} uit={fase !== "doe"} onTik={() => tikPad(i)} />
+        ))}
+      </div>
+      {/* Hoe ver je in de reeks bent. Vanaf een reeks van zes weet je zonder
+          deze stipjes niet meer of je bij de vierde of de vijfde zit, en dan
+          verlies je op tellen in plaats van op onthouden. */}
+      <div style={{ display: "flex", alignItems: "center", gap: 5, minHeight: 8 }}>
+        {fase === "doe" && Array.from({ length: level }, (_, i) => (
+          <span
+            key={i}
+            style={{
+              width: i < stap ? 8 : 6,
+              height: i < stap ? 8 : 6,
+              borderRadius: "50%",
+              background: i < stap ? colors.gold : "rgba(255,255,255,.22)",
+              transition: "width .15s ease, height .15s ease, background .15s ease",
+            }}
+          />
         ))}
       </div>
     </div>
