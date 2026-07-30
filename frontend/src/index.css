@@ -739,7 +739,7 @@ body.soepspel::after {
   background-color: #0B0518;
   background-repeat: repeat, no-repeat, no-repeat, no-repeat;
   background-position: bottom left, bottom, bottom center, bottom;
-  background-size: 160px 160px, 100% 100%, cover, 100% 100%;
+  background-size: 160px 160px, 100% 100%, 100% 100%, 100% 100%;
 }
 /* Geen vignet meer, en de zaal helemaal in beeld.
 
@@ -748,11 +748,18 @@ body.soepspel::after {
    een zaal met pilaren links en rechts, een boog erboven en een vloercirkel
    eronder bleef precies het lege midden over. Vandaar dat de achtergrond leek
    te ontbreken.
-   Nu wordt hij op beide assen op het scherm getrokken. Dat rekt hem verticaal
-   op, maar het onderwerp is architectuur: pilaren worden langer en dat leest
-   als een hogere zaal, niet als een fout. De smeer die in het midden ontstaat
-   valt achter de kast, en juist de randen, waar de pilaren staan, blijven
-   scherp.
+   Nu staat de HELE plaat in beeld: bovenkant van de foto op de bovenkant van
+   het scherm, onderkant op de onderkant, en de volle breedte ertussen. Dat kan
+   op een staand scherm maar op één manier, en dat is hem op beide assen
+   optrekken. Hij wordt daar verticaal van uitgerekt, en dat is geen fout maar
+   de prijs: elke andere maat betekent snijden, en snijden betekent bij deze
+   plaat dat de pilaren of de boog buiten beeld vallen. Het onderwerp is
+   architectuur, dus langere pilaren lezen als een hogere zaal.
+
+   (Geprobeerd en weer weggegooid: een versie waarin alleen de middenband met
+   de schachten werd opgerekt en boog en vloer op ware grootte bleven. Die was
+   meetkundig netter, maar hij moest op `cover` en sneed dan juist de bovenkant
+   van de boog af. Precies wat je wél wilt zien.)
 
    De donkere sluier eroverheen stond op 0,4 tot 0,58 en dat is waarom de plaat
    op het scherm veel doffer was dan in het bestand: er lag simpelweg een half
@@ -763,21 +770,21 @@ body.soephal::after {
   background-image:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
     linear-gradient(180deg, rgba(6, 3, 16, 0.22) 0%, rgba(6, 3, 16, 0.06) 46%, rgba(6, 3, 16, 0.2) 100%),
-    url("/ui/soep/bg-lobby-hoog.webp?v=1"),
+    url("/ui/soep/bg-lobby.webp?v=2"),
     linear-gradient(180deg, #150e2e 0%, #100a24 50%, #06040e 100%);
   background-repeat: repeat, no-repeat, no-repeat, no-repeat;
   background-position: bottom left, bottom, bottom center, bottom;
-  background-size: 160px 160px, 100% 100%, cover, 100% 100%;
+  background-size: 160px 160px, 100% 100%, 100% 100%, 100% 100%;
 }
 body.soepspel::after {
   background-image:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
     linear-gradient(180deg, rgba(6, 3, 16, 0.22) 0%, rgba(6, 3, 16, 0.06) 46%, rgba(6, 3, 16, 0.2) 100%),
-    url("/ui/soep/bg-spel-hoog.webp?v=1"),
+    url("/ui/soep/bg-spel.webp?v=2"),
     linear-gradient(180deg, #150e2e 0%, #100a24 50%, #06040e 100%);
   background-repeat: repeat, no-repeat, no-repeat, no-repeat;
   background-position: bottom left, bottom, bottom center, bottom;
-  background-size: 160px 160px, 100% 100%, cover, 100% 100%;
+  background-size: 160px 160px, 100% 100%, 100% 100%, 100% 100%;
 }
 
 /* De lijn om een gevonden woord leeft: een licht dat er traag langs strijkt.
