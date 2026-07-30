@@ -405,7 +405,7 @@ export function PreviewLettersoep() {
         ) : (
           // ---- het bord ------------------------------------------------------
           <Sectie art="/ui/soep/bord.webp?v=1" verhouding={BORD_V} kind={bordRef}>
-            <img src="/ui/soep/letters-dof.webp?v=2" alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} />
+            <img src="/ui/soep/letters-dof.webp?v=3" alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} />
 
             <div
               style={{
@@ -549,8 +549,15 @@ export function PreviewLettersoep() {
                       animationDelay: `${(fase === "val" ? c : r * 4 + k) * 30}ms`,
                       position: "relative", zIndex: 5,
                       fontFamily: font.wide, fontSize: 24, letterSpacing: 1,
-                      color: aan || beoordeeld ? "#FFF6DC" : "#FFD98A",
-                      textShadow: aan || beoordeeld ? "0 1px 2px rgba(20,16,10,.75)" : "0 0 9px rgba(255,170,40,.45)",
+                      /* De rustende knop is goud, dus daar is de letter juist het
+                         donkere deel: diep paars uit de kast, met een dun lichtrandje
+                         eronder alsof hij in het metaal is gestempeld. Zodra hij
+                         oplicht wordt de letter room, en daarmee is aan/uit ook te
+                         zien zonder naar de gloed te kijken. */
+                      color: aan || beoordeeld ? "#FFF6DC" : "#3D0F5C",
+                      textShadow: aan || beoordeeld
+                        ? "0 1px 2px rgba(20,16,10,.75)"
+                        : "0 1px 0 rgba(255,240,200,.38)",
                     }}
                   >
                     {letter}
