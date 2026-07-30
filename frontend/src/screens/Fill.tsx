@@ -91,7 +91,11 @@ export function Fill({ game }: { game: GameApi }) {
             </div>
           ) : (
             // Timed mode: the countdown speaks for itself, nobody keeps time.
-            <Timer endsAt={room.timer.ends_at} duration={room.timer.duration} onTick={onTick} />
+            // De balk smaller dan het paneel: op volle breedte lag hij tegen
+            // de gouden binnenlijst van de art aan.
+            <div style={{ width: "68%" }}>
+              <Timer endsAt={room.timer.ends_at} duration={room.timer.duration} onTick={onTick} />
+            </div>
           )}
           </div>
         </Paneel>

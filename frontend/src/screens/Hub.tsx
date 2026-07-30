@@ -151,16 +151,21 @@ export function Hub({ game, section, onBack, onShowShop, onOpenInbox, onChalleng
                   )}
                 </button>
               )}
-              <button onClick={() => { sound.uiTap(); setSettingsOpen(true); }} aria-label={t(tab === "friends" ? "socialSettings" : "profileSettings")} title={t(tab === "friends" ? "socialSettings" : "profileSettings")} className="pressable" style={topIconBtn}>
-                <HexPlate on size={HEX}>
-                  <SettingsIcon size={16} />
-                </HexPlate>
-              </button>
+              {/* Geen instellingenknop op de inbox: profielinstellingen staan
+                  al op het profiel, en op een lijst berichten valt er niets in
+                  te stellen. */}
+              {section !== "inbox" && (
+                <button onClick={() => { sound.uiTap(); setSettingsOpen(true); }} aria-label={t(tab === "friends" ? "socialSettings" : "profileSettings")} title={t(tab === "friends" ? "socialSettings" : "profileSettings")} className="pressable" style={topIconBtn}>
+                  <HexPlate on size={HEX}>
+                    <SettingsIcon size={16} />
+                  </HexPlate>
+                </button>
+              )}
             </>
           )}
-          {/* De muziekknop staat op de main page al op zo'n plaat; hier stond hij
-              er als enige naast en dat viel op. */}
-          <MusicToggle plate plateSize={HEX} size={16} padding={0} />
+          {/* De muziekknop alleen waar hij iets toevoegt: op de inbox en bij
+              vrienden/club is hij chroom dat de balk vult zonder reden. */}
+          {section !== "inbox" && section !== "friends" && <MusicToggle plate plateSize={HEX} size={16} padding={0} />}
         </div>
       }
     >

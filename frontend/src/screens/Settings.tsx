@@ -9,6 +9,7 @@ import { Button } from "../components/Button";
 import { Toggle } from "../components/Toggle";
 import { Screen, Card } from "../components/Layout";
 import type { GameApi } from "../net/socket";
+import { AdminDashboard } from "../components/AdminDashboard";
 import { ArtIcoon } from "../components/ArtIcoon";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
@@ -395,6 +396,7 @@ export function Settings({ game, onBack, onShowRules, onShowTour, onShowLegal }:
             </div>
           ) : (
             <>
+              <AdminDashboard game={game} />
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <span style={{ fontFamily: font.ui, fontSize: 14, color: colors.green }}>{t("loggedInAdmin")}</span>
                 <Button variant="ghost" onClick={game.adminLogout}>{t("logout")}</Button>

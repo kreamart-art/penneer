@@ -1291,6 +1291,21 @@ async def missions_claim(request: Request) -> JSONResponse:
     return JSONResponse({"ok": True, "reward": spec["reward"], "cash": spec["cash"]})
 
 
+@app.post("/api/kist/open")
+async def kist_open(request: Request) -> JSONResponse:
+    """Open je oudste dichte kist. De server bepaalt en betaalt de inhoud."""
+    db = get_db()
+    uid = db.auth(_bearer(request))
+    if not uid:
+        return JSONResponse({"error": "auth"}, status_code=401)
+    body = await request.json()
+    uit = db.kist_open(uid, int(body.get("id") or 0), time.time())
+    if not uit:
+        return JSONResponse({"error": "geen_kist"}, status_code=404)
+    await accounts.push_account(uid)
+    return JSONResponse({"ok": True, **uit})
+
+
 # ---- web push (real notifications while the app is closed) ------------------
 
 @app.get("/api/push/key")

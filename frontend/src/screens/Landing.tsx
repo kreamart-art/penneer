@@ -1,7 +1,7 @@
 // Landing — emblem, wordmark, tagline, name input, create / join, rules link.
 import { useEffect, useRef, useState } from "react";
 import { CloseIcon } from "../components/CloseIcon";
-import { Bot, CalendarDays, Check, GraduationCap, Hash, HelpCircle, Play, Settings as SettingsIcon, Sparkles, Swords, Target } from "lucide-react";
+import { Bot, CalendarDays, Check, GraduationCap, Hash, HelpCircle, Play, Settings as SettingsIcon, Sparkles, Swords } from "lucide-react";
 import { Logo } from "../components/Logo";
 import { Button } from "../components/Button";
 import { NotifyNudge } from "../components/NotifyNudge";
@@ -344,15 +344,19 @@ export function Landing({
             }}
             aria-label={t("missionsTitle")}
             className="pressable glowhover"
-            style={{ position: "relative", background: "transparent", border: "none", cursor: "pointer", color: skin ? colors.ink : colors.sub, display: "flex", padding: skin ? 0 : 9, lineHeight: 0 }}
+            style={{ position: "relative", background: "transparent", border: "none", cursor: "pointer", display: "flex", padding: 0, lineHeight: 0 }}
           >
-            <HexPlate on={skin}>
-              <Target size={23} />
-            </HexPlate>
+            {/* Het dagschild uit de missiepopup, vrijstaand: eigen art hoort
+                niet op een plaat, net als de dagronde-uitslag ernaast. */}
+            <img
+              src="/ui/missie-dag.webp?v=1"
+              alt=""
+              style={{ height: 44, width: "auto", display: "block", filter: "drop-shadow(0 3px 8px rgba(0,0,0,.5))" }}
+            />
             {missionsOpen > 0 && (
               // Hetzelfde knopje als op de tegels. Twee soorten telknopjes op
               // een scherm is er een te veel.
-              <CountBadge n={missionsOpen} x={skin ? "80%" : "calc(100% - 4px)"} y={skin ? "20%" : "4px"} size={16} />
+              <CountBadge n={missionsOpen} x="calc(100% - 6px)" y="2px" size={16} />
             )}
           </button>
           <button

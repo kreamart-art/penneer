@@ -223,6 +223,18 @@ CREATE TABLE IF NOT EXISTS mission_progress (
 -- potjes, dagrondes en duels die er toch al staan (zie missies_lang.py). Het
 -- enige dat een gebeurtenis is en dus bewaard moet blijven, is of je je
 -- beloning hebt opgehaald. De primaire sleutel maakt dubbel ophalen onmogelijk.
+-- Kisten: elke rij is EEN kist die iemand heeft gekregen. De inhoud wordt pas
+-- bij het OPENEN bepaald en vastgelegd, zodat de onthulling de waarheid is en
+-- een herladen popup niets anders kan laten zien.
+CREATE TABLE IF NOT EXISTS kisten (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    kist TEXT NOT NULL,               -- kist1..kist5
+    bron TEXT NOT NULL,               -- test | dagronde | gratis
+    created_at REAL NOT NULL,
+    opened_at REAL,
+    inhoud TEXT                       -- JSON, gezet bij openen
+);
 CREATE TABLE IF NOT EXISTS mission_claims (
     periode TEXT NOT NULL,
     user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -1414,6 +1426,122 @@ class Database:
             self._conn.commit()
         return True
 
+    # ---- admin-dashboard -----------------------------------------------------
+    # Alles GETELD uit bestaande tabellen, niets bijgehouden: het dashboard is
+    # een vraag, geen administratie.
+
+    def admin_stats(self, nu: float, uur_offset: int = 0) -> dict:
+        import datetime as _dt
+        dag_s = 86400.0
+
+        def spelers_tussen(van: float, tot: float) -> int:
+            with self._lock:
+                return int(self._q("""
+                    SELECT COUNT(*) AS n FROM (
+                        SELECT gp.user_id AS u FROM game_players gp JOIN games g ON g.id=gp.game_id WHERE g.finished_at>=? AND g.finished_at<?
+                        UNION SELECT user_id FROM daily_scores WHERE created_at>=? AND created_at<?
+                        UNION SELECT user_id FROM topo_scores WHERE created_at>=? AND created_at<?
+                        UNION SELECT a FROM duels WHERE finished_at>=? AND finished_at<?
+                        UNION SELECT b FROM duels WHERE finished_at>=? AND finished_at<?
+                    )
+                """, (van, tot) * 5)[0]["n"])
+
+        def tel(sql: str, args: tuple) -> int:
+            with self._lock:
+                return int(self._q(sql, args)[0]["n"])
+
+        vandaag0 = _dt.datetime.combine(_dt.date.today(), _dt.time.min).timestamp()
+        d7, d30 = nu - 7 * dag_s, nu - 30 * dag_s
+
+        # Wanneer komen mensen: activiteit per uur over de laatste 14 dagen.
+        # De tijdstempels zijn UTC; de offset schuift ze naar speler-tijd.
+        per_uur = [0] * 24
+        with self._lock:
+            momenten = [r["t"] for r in self._q("""
+                SELECT finished_at AS t FROM games WHERE finished_at>=?
+                UNION ALL SELECT created_at FROM daily_scores WHERE created_at>=?
+                UNION ALL SELECT created_at FROM topo_scores WHERE created_at>=?
+                UNION ALL SELECT finished_at FROM duels WHERE finished_at>=?
+            """, (nu - 14 * dag_s,) * 4)]
+        for t in momenten:
+            per_uur[int(((t / 3600) + uur_offset) % 24)] += 1
+
+        # Per dag, laatste 14: spelers en potjes.
+        per_dag = []
+        for i in range(13, -1, -1):
+            van = vandaag0 - i * dag_s
+            tot = van + dag_s
+            per_dag.append({
+                "dag": _dt.date.fromtimestamp(van).isoformat(),
+                "spelers": spelers_tussen(van, tot),
+                "potjes": tel("SELECT COUNT(*) AS n FROM games WHERE finished_at>=? AND finished_at<?", (van, tot)),
+            })
+
+        with self._lock:
+            economie = dict(self._q("SELECT COALESCE(SUM(coins),0) AS coins, COALESCE(SUM(cash),0) AS cash FROM users")[0])
+
+        return {
+            "accounts": tel("SELECT COUNT(*) AS n FROM users", ()),
+            "accounts_nieuw_7d": tel("SELECT COUNT(*) AS n FROM users WHERE created_at>=?", (d7,)),
+            "spelers_vandaag": spelers_tussen(vandaag0, nu + 1),
+            "spelers_7d": spelers_tussen(d7, nu + 1),
+            "potjes_vandaag": tel("SELECT COUNT(*) AS n FROM games WHERE finished_at>=?", (vandaag0,)),
+            "potjes_7d": tel("SELECT COUNT(*) AS n FROM games WHERE finished_at>=?", (d7,)),
+            "potjes_totaal": tel("SELECT COUNT(*) AS n FROM games", ()),
+            # Wat wordt het meest gespeeld, laatste 30 dagen.
+            "modi_30d": {
+                "potjes": tel("SELECT COUNT(*) AS n FROM games WHERE finished_at>=?", (d30,)),
+                "dagronde": tel("SELECT COUNT(*) AS n FROM daily_scores WHERE created_at>=?", (d30,)),
+                "topo": tel("SELECT COUNT(*) AS n FROM topo_scores WHERE created_at>=?", (d30,)),
+                "duels": tel("SELECT COUNT(*) AS n FROM duels WHERE finished_at>=?", (d30,)),
+            },
+            "per_uur_14d": per_uur,
+            "per_dag_14d": per_dag,
+            "economie": economie,
+        }
+
+    # ---- kisten --------------------------------------------------------------
+    # Wat er in een kist zit, per soort. Munten, bewust bescheiden: de kist is
+    # een moment, geen vierde inkomstenkraan. Scherven en tokens komen hier bij
+    # zodra die bestaan als saldo.
+    KIST_INHOUD = {"kist1": 40, "kist2": 80, "kist3": 150, "kist4": 300, "kist5": 500}
+
+    def kist_geef(self, user_id: str, kist: str, bron: str, now: float) -> None:
+        if kist not in self.KIST_INHOUD:
+            raise ValueError(f"onbekende kist: {kist}")
+        self._exec("INSERT INTO kisten (user_id, kist, bron, created_at) VALUES (?,?,?,?)",
+                   (user_id, kist, bron, now))
+
+    def kist_dicht(self, user_id: str) -> Optional[dict]:
+        """De oudste ongeopende kist, of None. Een voor een: het openen is het
+        moment, en drie kisten tegelijk maken er een klusje van."""
+        with self._lock:
+            rows = self._q("SELECT id, kist, bron FROM kisten WHERE user_id=? AND opened_at IS NULL ORDER BY created_at ASC LIMIT 1", (user_id,))
+        return dict(rows[0]) if rows else None
+
+    def kist_open(self, user_id: str, kist_id: int, now: float) -> Optional[dict]:
+        """Open een kist. De inhoud wordt HIER bepaald en meteen uitbetaald;
+        None als de kist niet van jou is of al open. Het UPDATE-filter op
+        opened_at IS NULL maakt dubbel openen onmogelijk, ook bij twee tikken
+        tegelijk."""
+        with self._lock:
+            rows = self._q("SELECT kist FROM kisten WHERE id=? AND user_id=? AND opened_at IS NULL", (kist_id, user_id))
+            if not rows:
+                return None
+            kist = rows[0]["kist"]
+            coins = int(self.KIST_INHOUD.get(kist, 0))
+            inhoud = {"coins": coins}
+            cur = self._conn.execute(
+                "UPDATE kisten SET opened_at=?, inhoud=? WHERE id=? AND user_id=? AND opened_at IS NULL",
+                (now, json.dumps(inhoud), kist_id, user_id),
+            )
+            if not cur.rowcount:
+                self._conn.commit()
+                return None
+            self._conn.execute("UPDATE users SET coins = coins + ? WHERE id=?", (coins, user_id))
+            self._conn.commit()
+        return {"kist": kist, **inhoud}
+
     # ---- clubs ---------------------------------------------------------------
 
     CLUB_MAX = 50
@@ -1679,7 +1807,7 @@ class Database:
             rows = self._q("SELECT score, time_ms, words, created_at, lenient FROM daily_scores WHERE day=? AND user_id=?", (day, user_id))
         return dict(rows[0]) if rows else None
 
-    DAILY_RETRY_COINS = 500  # cost of the one paid daily-round retry
+    DAILY_RETRY_COINS = 100  # herkansing goedkoop houden: de drempel om nog eens te willen is het punt
 
     def daily_retried(self, user_id: str, day: str) -> bool:
         if not user_id:

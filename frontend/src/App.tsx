@@ -21,6 +21,7 @@ const Duel = lazy(() => import("./screens/Duel").then((m) => ({ default: m.Duel 
 import { BadgeToasts } from "./components/BadgeToasts";
 import { BottomNav, type NavKey } from "./components/BottomNav";
 import { BuzzerRewardPopup } from "./components/BuzzerRewardPopup";
+import { KistPopup } from "./components/KistPopup";
 import { DivisiePopup } from "./components/Divisie";
 import { KoopPopup } from "./components/KoopPopup";
 import { AD_WEG } from "./components/ReferralAd";
@@ -54,6 +55,14 @@ export default function App() {
   const [introDone, setIntroDone] = useState(() => sessionStorage.getItem(INTRO_KEY) === "1");
   const [showRules, setShowRules] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  // De dichte kist, LOKAAL vastgehouden zodra hij in het account opduikt: het
+  // account-veld verdwijnt bij het openen en de popup moet de onthulling
+  // afmaken. Zie de mount onderaan voor waarom dit in App staat.
+  const [kistToon, setKistToon] = useState<{ id: number; kist: string } | null>(null);
+  const accountKist = game.state.account?.kist ?? null;
+  useEffect(() => {
+    if (accountKist) setKistToon((oud) => oud ?? accountKist);
+  }, [accountKist]);
   // The bottom bar owns which section is open; Hub renders whichever one the
   // bar points at, so there is no in-screen tab strip any more.
   const [showHub, setShowHub] = useState<HubSection | null>(null);
@@ -557,6 +566,21 @@ export default function App() {
         !showShop &&
         !showHub &&
         !showSettings && <BuzzerRewardPopup game={game} />}
+      {/* De kist hangt hier en niet in een scherm: een schermwissel of een
+          room-reconnect remountte Landing en veegde de popup weg midden in de
+          onthulling. Het account-veld wordt bij het openen leeg (push_account),
+          dus de kist wordt LOKAAL vastgehouden tot de speler zelf sluit. */}
+      {kistToon &&
+        uitslagKlaar &&
+        introDone &&
+        !inRoom &&
+        !showRules &&
+        !showDaily &&
+        !showDuel &&
+        !showTraining &&
+        !showShop &&
+        !showHub &&
+        !showSettings && <KistPopup kist={kistToon} onClose={() => setKistToon(null)} />}
       {/* De maandag-uitslag gaat VOOR de beloningen: hij hoort bij de week die
           net eindigde, en pas daarna kijk je naar wat je nog te claimen hebt.
           Dezelfde plek-voorwaarden, want ook dit moet niet over een potje heen. */}

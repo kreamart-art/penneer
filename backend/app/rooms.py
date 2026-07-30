@@ -169,6 +169,18 @@ class RoomManager:
         if room:
             await self.send_state(room)
 
+    async def admin_stats(self, ws: Any, player_id: Optional[str], payload: dict) -> None:
+        """Het dashboard: alles geteld op het moment van vragen. Uur-offset +2
+        (Nederlandse tijd t.o.v. UTC op de server) zodat "wanneer komen mensen"
+        in speler-uren staat en niet in servertijd."""
+        if not self._is_admin_conn(ws):
+            return
+        import time as _time
+        try:
+            await ws.send_json({"type": "admin_stats", "stats": get_db().admin_stats(_time.time(), uur_offset=2)})
+        except Exception:
+            pass
+
     async def admin_gen_ai_codes(self, ws: Any, player_id: Optional[str], payload: dict) -> None:
         """Owner mints one-time shop codes that unlock the AI for ONE account
         each (never admin). Handed out or sold manually; PayPal mints its own."""

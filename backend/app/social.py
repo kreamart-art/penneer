@@ -313,6 +313,9 @@ class AccountManager:
                 "club": self.db.club_of(user_id),
                 "lenient_spelling": bool(user.get("lenient_spelling")),
                 "inbox_count": len(self.db.inbox(user_id)),
+                # De oudste DICHTE kist, of None. De client toont hem als een
+                # onthulmoment; openen gaat via /api/kist/open.
+                "kist": self.db.kist_dicht(user_id),
                 "dm_unread": self.db.dm_unread_total(user_id),
             },
         }

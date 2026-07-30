@@ -7,6 +7,20 @@ import { geworvenDoor } from "./referral";
 
 // ---- types mirroring the server's public() shapes --------------------------
 
+export interface AdminStats {
+  accounts: number;
+  accounts_nieuw_7d: number;
+  spelers_vandaag: number;
+  spelers_7d: number;
+  potjes_vandaag: number;
+  potjes_7d: number;
+  potjes_totaal: number;
+  modi_30d: Record<string, number>;
+  per_uur_14d: number[];
+  per_dag_14d: { dag: string; spelers: number; potjes: number }[];
+  economie: { coins: number; cash: number };
+}
+
 export interface Player {
   id: string;
   name: string;
@@ -124,6 +138,7 @@ export interface Account {
   cash_pending: number; // nieuwe cash sinds de laatste popup (rolt mee met coins)
   land: string; // tweeletterige landcode uit je gegevens, standaard "NL"
   created_at: number; // wanneer je je aanmeldde (seconden), voor de uitleg-knop
+  kist: { id: number; kist: string; bron: string } | null; // oudste dichte kist, voor de open-popup
   coins_pack_price: number; // legacy (old all-in-one country pack cost)
   owned_items: string[]; // coin-bought items owned: buzzer ids (bz01..05) + avatar packs (avpack1/2)
   stats: AccountStats;
@@ -361,6 +376,7 @@ export interface ClientState {
   roundEndedToken: number;
   // Admin (owner) state.
   isAdmin: boolean;
+  adminStats: AdminStats | null; // dashboard-cijfers, alleen na admin_stats-verzoek
   adminAi: AdminAi | null;
   recoveryCodes: RecoveryCode[];
   aiCodes: AiCodeInfo | null; // AI-referee unlock-code stats + freshly generated codes
@@ -459,6 +475,7 @@ type ServerMessage =
   | { type: "results_updated"; points: RoundView["points"]; scores: Record<string, number>; answers: RoundView["answers"] }
   | { type: "game_over"; scores: Record<string, number>; winner_id: string | null }
   | { type: "admin_ok"; is_admin: boolean; ai: AdminAi; recovery_codes: RecoveryCode[]; ai_codes: AiCodeInfo; avatar_codes?: AiCodeInfo; buzzer_codes?: AiCodeInfo }
+  | { type: "admin_stats"; stats: AdminStats }
   | { type: "admin_categories"; categories: AdminCategory[]; note?: string }
   | { type: "shop_result"; ok: boolean; reason: string }
   | { type: "coins_result"; ok: boolean; reason: string; item?: string }
@@ -553,6 +570,7 @@ const initialState: ClientState = {
   error: null,
   roundEndedToken: 0,
   isAdmin: false,
+  adminStats: null,
   adminAi: null,
   adminCategories: null,
   recoveryCodes: [],
@@ -690,6 +708,8 @@ function reducer(state: ClientState, action: Action): ClientState {
     case "results_updated":
     case "game_over":
       return state; // room_state carries the authoritative snapshot
+    case "admin_stats":
+      return { ...state, adminStats: msg.stats };
     case "admin_ok":
       return { ...state, isAdmin: msg.is_admin, adminAi: msg.ai, recoveryCodes: msg.recovery_codes, aiCodes: msg.ai_codes, avatarCodes: msg.avatar_codes ?? state.avatarCodes, buzzerCodes: msg.buzzer_codes ?? state.buzzerCodes };
     case "admin_categories":
@@ -860,6 +880,7 @@ export interface GameApi {
   adminLogout: () => void;
   adminSetAi: (enabled: boolean) => void;
   adminGenAiCodes: (count: number) => void;
+  adminStats: () => void;
   adminGenAvatarCodes: (count: number) => void;
   adminGenBuzzerCodes: (count: number) => void;
   adminCatList: () => void;
@@ -1089,6 +1110,7 @@ export function useGame(): GameApi {
     },
     adminSetAi: (enabled) => send({ type: "admin_set_ai", enabled }),
     adminGenAiCodes: (count) => send({ type: "admin_gen_ai_codes", count }),
+    adminStats: () => send({ type: "admin_stats" }),
     adminGenAvatarCodes: (count) => send({ type: "admin_gen_ai_codes", count, product: "avatars" }),
     adminGenBuzzerCodes: (count) => send({ type: "admin_gen_ai_codes", count, product: "buzzers" }),
     adminCatList: () => send({ type: "admin_cat_list" }),

@@ -15,9 +15,11 @@ die halverwege wordt toegevoegd telt met terugwerkende kracht mee.
 Het enige dat wel wordt opgeslagen is of je je beloning hebt OPGEHAALD, want dat
 is een gebeurtenis en geen telling. Dat staat in mission_claims.
 
-Beloningen zijn XP en cash, geen munten. Munten hebben al drie kranen (levels,
-dagmissies en de dagronde) en een vierde zou de winkelprijzen uithollen. Cash is
-schaars, dus daar is een missie juist een goede bron voor.
+Beloningen zijn XP, en op het seizoen een enkele cash. Munten hebben al drie
+kranen (levels, dagmissies en de dagronde) en een vierde zou de winkelprijzen
+uithollen. Cash moet SCHAARS blijven: de week betaalde eerst 3-6 per missie en
+dat telde op tot een scheidsrechter per anderhalve maand uit missies alleen,
+dus de week betaalt nu niets en het seizoen precies 1 per missie.
 """
 
 from __future__ import annotations
@@ -30,31 +32,31 @@ from typing import Any
 # db.missie_teller. Keys komen in mission_claims te staan, dus hernoem er nooit
 # een; alleen toevoegen.
 WEEK_POOL: dict[str, tuple[str, int, int, int]] = {
-    "wk_potjes": ("potjes", 10, 150, 3),
-    "wk_winsten": ("winsten", 3, 200, 4),
-    "wk_dagrondes": ("dagrondes", 5, 150, 3),
-    "wk_topo": ("topo", 4, 150, 3),
-    "wk_unieken": ("unieken", 40, 200, 4),
-    "wk_punten": ("punten", 400, 150, 3),
-    "wk_duels": ("duelwin", 2, 200, 4),
-    "wk_dubbels": ("dubbels", 25, 150, 3),
-    "wk_duelspeel": ("duels", 5, 150, 3),
-    "wk_dagpunten": ("dagpunten", 300, 200, 4),
-    "wk_potjes20": ("potjes", 20, 250, 5),
-    "wk_winsten6": ("winsten", 6, 300, 6),
-    "wk_unieken80": ("unieken", 80, 250, 5),
+    "wk_potjes": ("potjes", 10, 150, 0),
+    "wk_winsten": ("winsten", 3, 200, 0),
+    "wk_dagrondes": ("dagrondes", 5, 150, 0),
+    "wk_topo": ("topo", 4, 150, 0),
+    "wk_unieken": ("unieken", 40, 200, 0),
+    "wk_punten": ("punten", 400, 150, 0),
+    "wk_duels": ("duelwin", 2, 200, 0),
+    "wk_dubbels": ("dubbels", 25, 150, 0),
+    "wk_duelspeel": ("duels", 5, 150, 0),
+    "wk_dagpunten": ("dagpunten", 300, 200, 0),
+    "wk_potjes20": ("potjes", 20, 250, 0),
+    "wk_winsten6": ("winsten", 6, 300, 0),
+    "wk_unieken80": ("unieken", 80, 250, 0),
 }
 SEIZOEN_POOL: dict[str, tuple[str, int, int, int]] = {
-    "sz_potjes": ("potjes", 40, 600, 12),
-    "sz_winsten": ("winsten", 15, 800, 15),
-    "sz_dagrondes": ("dagrondes", 20, 600, 12),
-    "sz_unieken": ("unieken", 200, 800, 15),
-    "sz_duels": ("duelwin", 10, 600, 12),
-    "sz_punten": ("punten", 3000, 700, 14),
-    "sz_topo": ("topo", 15, 600, 12),
-    "sz_dubbels": ("dubbels", 100, 600, 12),
-    "sz_dagpunten": ("dagpunten", 1200, 700, 14),
-    "sz_duelspeel": ("duels", 25, 700, 14),
+    "sz_potjes": ("potjes", 40, 600, 1),
+    "sz_winsten": ("winsten", 15, 800, 1),
+    "sz_dagrondes": ("dagrondes", 20, 600, 1),
+    "sz_unieken": ("unieken", 200, 800, 1),
+    "sz_duels": ("duelwin", 10, 600, 1),
+    "sz_punten": ("punten", 3000, 700, 1),
+    "sz_topo": ("topo", 15, 600, 1),
+    "sz_dubbels": ("dubbels", 100, 600, 1),
+    "sz_dagpunten": ("dagpunten", 1200, 700, 1),
+    "sz_duelspeel": ("duels", 25, 700, 1),
 }
 WEEK_AANTAL = 4
 SEIZOEN_AANTAL = 4

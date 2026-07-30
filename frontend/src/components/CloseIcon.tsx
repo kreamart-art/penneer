@@ -11,7 +11,9 @@ export function CloseIcon({ size = 24 }: { size?: number }) {
       src="/ui/close.webp"
       alt=""
       aria-hidden
-      style={{ width: size, height: size, display: "block", flexShrink: 0 }}
+      // De art is 220x232, dus width EN height op dezelfde maat drukte hem 5%
+      // te breed. size is de HOOGTE; de breedte volgt de echte verhouding.
+      style={{ height: size, width: "auto", display: "block", flexShrink: 0 }}
     />
   );
 }
