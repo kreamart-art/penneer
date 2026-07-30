@@ -997,7 +997,7 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
             {/* De eerste sticker uit het Blij-pak in plaats van een lijnicoon.
                 Kaal, zonder vakje: de sticker IS de knop, en een kader eromheen
                 maakt er een knop met een plaatje in van. */}
-            <img src={EMOTE_SRC("ce01")} alt="" aria-hidden style={{ width: 32, height: 32, objectFit: "contain", display: "block" }} />
+            <img src={EMOTE_SRC("ce01")} alt="" aria-hidden style={{ width: 38, height: 38, objectFit: "contain", display: "block" }} />
           </button>
           {/* Een PIL, en een die je ziet. Een neonlijst op halve sterkte
               verdwijnt tegen behang; hier is de lijn vol en helemaal rond, want
@@ -1005,10 +1005,9 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
           <NeonKader
             radius={999}
             dik={0.9}
-            sterkte={text.trim() ? 1 : 0.8}
+            sterkte={text.trim() ? 0.55 : 0.42}
             lijn={KADER_LIJN_PAARS}
             gloed="verloop"
-            animeer
             vulling="geen"
             style={{ flex: 1, minWidth: 0 }}
             binnen={{ display: "flex", alignItems: "center", padding: 0, background: "rgba(6,3,18,.55)" }}
@@ -3513,6 +3512,8 @@ function InboxTab({ game, onGaNaar }: { game: GameApi; onGaNaar: (naar: string) 
   const { t } = useT();
   const [viewing, setViewing] = useState<string | null>(null);
   const [vak, setVak] = useState<"inbox" | "meld">("inbox");
+  const [zoekOpen, setZoekOpen] = useState(false);
+  const [zoek, setZoek] = useState("");
   // Een tik op een melding brengt je naar waar hij over gaat, voor zover dat
   // binnen deze lijst ligt: een gesprek of het profiel van wie hem stuurde. De
   // rest (duel, dagronde) hangt aan de banner in App, want daar zitten die
@@ -3535,6 +3536,10 @@ function InboxTab({ game, onGaNaar }: { game: GameApi; onGaNaar: (naar: string) 
     if (account) {
       game.dmRefreshThreads();
       game.meldingenLaden();
+      // De zoeker zoekt in je VRIENDEN: je kunt alleen vrienden een bericht
+      // sturen, dus zoeken in alle spelers zou je bij mensen brengen waar de
+      // server je bericht toch weigert.
+      game.refreshFriends();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [!!account]);
@@ -3589,16 +3594,63 @@ function InboxTab({ game, onGaNaar }: { game: GameApi; onGaNaar: (naar: string) 
     )}
     {vak === "inbox" && (
     <>
-    {threads.length > 0 && (
-      <Card style={{ display: "flex", flexDirection: "column", gap: 3, padding: "13px 7px 14px" }}>
-        <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint, marginBottom: 4 }}>
-          {t("dmTitle")}
-        </span>
-        {threads.map((th) => (
+    {/* De kaart staat er ALTIJD, ook zonder gesprekken: de zoekknop erin is de
+        enige plek waar je een gesprek BEGINT met iemand met wie je er nog geen
+        hebt. Stond hij alleen bij bestaande gesprekken, dan kwam je er nooit. */}
+    <Card style={{ display: "flex", flexDirection: "column", gap: 3, padding: "13px 14px 14px 18px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+          <span style={{ flex: 1, fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint }}>
+            {t("dmTitle")}
+          </span>
+          <button
+            onClick={() => { sound.uiTap(); setZoekOpen((v) => !v); setZoek(""); }}
+            aria-label={t("dmZoek")}
+            title={t("dmZoek")}
+            className="pressable"
+            style={{ background: "transparent", border: "none", padding: 0, cursor: "pointer", color: zoekOpen ? colors.gold : colors.faint, display: "flex", lineHeight: 0 }}
+          >
+            <Search size={18} />
+          </button>
+        </div>
+        {zoekOpen && (
+          <>
+            <input
+              autoFocus
+              value={zoek}
+              onChange={(e) => setZoek(e.target.value)}
+              placeholder={t("dmZoek")}
+              style={{
+                margin: "2px 0 6px", background: "rgba(6,3,18,.55)", border: "none",
+                boxShadow: `inset 0 0 0 1.4px ${withAlpha("#A868F5", 0.55)}`, borderRadius: 999,
+                padding: "9px 14px", color: colors.ink, fontFamily: font.ui, fontSize: 14, outline: "none",
+              }}
+            />
+            {(() => {
+              const q = zoek.trim().toLowerCase();
+              const gevonden = game.state.friends
+                .filter((f) => f.status === "accepted" && (!q || f.name.toLowerCase().includes(q)))
+                .slice(0, 8);
+              if (gevonden.length === 0) {
+                return <p style={{ margin: "2px 0 4px", paddingInline: 4, fontFamily: font.ui, fontSize: 12.5, color: colors.faint }}>{t("dmZoekLeeg")}</p>;
+              }
+              return gevonden.map((f) => (
+                <button
+                  key={f.id}
+                  onClick={() => { sound.uiTap(); setZoekOpen(false); setZoek(""); game.dmOpen(f.id); }}
+                  style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 0", background: "transparent", border: "none", cursor: "pointer", textAlign: "left", width: "100%" }}
+                >
+                  <Avatar name={f.name} color={f.color} size={32} userId={f.id} hasAvatar={f.has_avatar} avatarVer={f.avatar_ver} divisie={f.divisie} />
+                  <span style={{ fontFamily: font.ui, fontWeight: 600, fontSize: 14, color: colors.ink }}>{f.name}</span>
+                </button>
+              ));
+            })()}
+          </>
+        )}
+        {!zoekOpen && threads.map((th) => (
           <button
             key={th.partner}
             onClick={() => game.dmOpen(th.partner)}
-            style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 4px", background: "transparent", border: "none", cursor: "pointer", textAlign: "left", width: "100%" }}
+            style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", background: "transparent", border: "none", cursor: "pointer", textAlign: "left", width: "100%" }}
           >
             <Avatar name={th.user.name} color={th.user.color} size={36} userId={th.user.id} hasAvatar={th.user.has_avatar} avatarVer={th.user.avatar_ver} divisie={th.user.divisie} />
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -3617,13 +3669,13 @@ function InboxTab({ game, onGaNaar }: { game: GameApi; onGaNaar: (naar: string) 
             )}
           </button>
         ))}
+        {!zoekOpen && threads.length === 0 && (
+          <p style={{ margin: "2px 0 0", paddingInline: 4, fontFamily: font.ui, fontSize: 13, color: colors.faint }}>{t("dmLeeg")}</p>
+        )}
       </Card>
-    )}
+    {items.length > 0 && (
     <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      {items.length === 0 ? (
-        <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13, color: colors.faint, lineHeight: 1.5 }}>{t("inboxEmpty")}</p>
-      ) : (
-        items.map((item: InboxItem, i) => (
+      {items.map((item: InboxItem, i) => (
           <div key={item.id ?? `fr-${item.from_id}-${i}`} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 12, background: withAlpha("#000000", 0.18), border: `1px solid ${colors.hairline}` }}>
             <Avatar name={item.from_name} color={item.from_color} size={36} userId={item.from_id} hasAvatar={item.has_avatar} avatarVer={item.avatar_ver} />
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -3644,9 +3696,9 @@ function InboxTab({ game, onGaNaar }: { game: GameApi; onGaNaar: (naar: string) 
               </div>
             )}
           </div>
-        ))
-      )}
+        ))}
     </Card>
+    )}
     </>
     )}
     {viewing && <ProfileViewModal game={game} userId={viewing} onClose={() => setViewing(null)} />}

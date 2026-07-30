@@ -393,7 +393,7 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
           >
             {/* De eerste sticker uit het Blij-pak, kaal. Zie de privéberichten:
                 de sticker IS de knop. */}
-            <img src={EMOTE_SRC("ce01")} alt="" aria-hidden style={{ width: 32, height: 32, objectFit: "contain", display: "block" }} />
+            <img src={EMOTE_SRC("ce01")} alt="" aria-hidden style={{ width: 38, height: 38, objectFit: "contain", display: "block" }} />
           </button>
           <input
             ref={inputRef}
@@ -414,7 +414,7 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
               // lijn die je ziet. Overal waar je iets zegt hoort hetzelfde vak.
               background: "rgba(6,3,18,.55)",
               border: "none",
-              boxShadow: `inset 0 0 0 1.6px ${withAlpha("#A868F5", draft.trim() ? 0.85 : 0.6)}, 0 0 10px ${withAlpha("#8B45E8", 0.22)}`,
+              boxShadow: `inset 0 0 0 1.4px ${withAlpha("#A868F5", draft.trim() ? 0.8 : 0.55)}, 0 0 5px ${withAlpha("#8B45E8", 0.12)}`,
               borderRadius: 999,
               padding: "11px 16px",
               color: colors.ink,

@@ -3,7 +3,8 @@
 // caller-provided uploader, then hands back {id, dur} to attach to a message.
 import { useEffect, useRef, useState } from "react";
 import { CloseIcon } from "./CloseIcon";
-import { Check, Mic } from "lucide-react";
+import { Check } from "lucide-react";
+import { GlasKnop, GoudLijnDefs } from "./GlasKnop";
 import { recordingSupported, startRecording, type Recorder } from "../audio/recorder";
 import { colors, font, withAlpha } from "../theme/tokens";
 
@@ -110,24 +111,15 @@ export function MicButton({
   }
 
   return (
-    <button
-      onClick={begin}
-      disabled={disabled || busy}
-      aria-label="Neem spraakbericht op"
-      style={{
-        flexShrink: 0,
-        width: 44,
-        height: 44,
-        borderRadius: "50%",
-        border: `1px solid ${colors.panelBorder}`,
-        cursor: disabled ? "default" : "pointer",
-        background: withAlpha("#000000", 0.25),
-        color: colors.sub,
-        display: "grid",
-        placeItems: "center",
-      }}
-    >
-      <Mic size={19} />
-    </button>
+    <GlasKnop onClick={begin} uit={disabled || busy} label="Neem spraakbericht op" maat={44}>
+      {/* Dezelfde gouden lijn en dikte als de knoppen ernaast: drie manieren
+          om iets te zeggen mogen niet op drie dingen lijken. */}
+      <svg width={19} height={19} viewBox="0 0 24 24" fill="none" aria-hidden style={{ position: "relative" }}>
+        <GoudLijnDefs id="mic-goud" />
+        <rect x="9" y="2.6" width="6" height="11.4" rx="3" stroke="url(#mic-goud)" strokeWidth="1.3" />
+        <path d="M5.4 11.2a6.6 6.6 0 0 0 13.2 0M12 17.8V21.4M8.6 21.4h6.8"
+              stroke="url(#mic-goud)" strokeWidth="1.3" strokeLinecap="round" />
+      </svg>
+    </GlasKnop>
   );
 }
