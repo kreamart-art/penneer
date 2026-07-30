@@ -5,7 +5,7 @@ import { ArtIcoon, STAT_ART } from "../components/ArtIcoon";
 import { CloseIcon } from "../components/CloseIcon";
 import { KnopPlaat } from "../components/KnopPlaat";
 import { ReferralAd } from "../components/ReferralAd";
-import { ArrowLeft, BookOpen, CalendarDays, Camera, Check, ChevronDown, ChevronUp, Copy, Crown, Flame, Gem, Lock, LogOut, Medal, MessageCircle, MoreVertical, Pencil, Percent, Plus, Rocket, Search, Send, Settings as SettingsIcon, Share2, Shield, ShoppingCart, Smile, Sparkles, Star, Swords, Target, Trash2, Trophy, UserPlus, Users, X, Zap, ZoomIn, ZoomOut } from "lucide-react";
+import { ArrowLeft, BookOpen, CalendarDays, Camera, Check, ChevronDown, Copy, Crown, Flame, Gem, Lock, LogOut, Medal, MessageCircle, MoreVertical, Pencil, Percent, Plus, Rocket, Search, Send, Settings as SettingsIcon, Share2, Shield, ShoppingCart, Smile, Sparkles, Star, Swords, Target, Trash2, Trophy, UserPlus, Users, X, Zap, ZoomIn, ZoomOut } from "lucide-react";
 import { Avatar, SCHILD_RAND } from "../components/Avatar";
 import { Plek } from "../components/ProfileShowcase";
 import { HexArt } from "../components/HexArt";
@@ -3884,13 +3884,16 @@ export function LeaderboardTab({ game }: { game: GameApi }) {
               dat je stil stond. */}
           {lb?.climb != null ? (
             <Cijfer
-              art="stijging"
+              // Zak je, dan hoort er ook een DALENDE pijl te staan. De groene
+              // pijl omhoog met een rood getal ernaast vertelt twee dingen
+              // tegelijk die elkaar tegenspreken, en het pictogram wint: dat
+              // zie je eerder dan het minteken.
+              art={lb.climb < 0 ? "daling" : "stijging"}
               waarde={`${lb.climb > 0 ? "+" : ""}${lb.climb}`}
               label={t("lbClimb")}
-              // Ook op NUL groen: het cijfer hoort bij het groene pictogram
-              // ernaast, en een grijze nul leest als "uit" terwijl er niets uit
-              // staat. Alleen een daling wijkt af, want dat is een ander bericht.
-              kleur={lb.climb < 0 ? colors.red : undefined}
+              // Ook op NUL groen: het cijfer hoort bij het pictogram ernaast, en
+              // een grijze nul leest als "uit" terwijl er niets uit staat. Bij
+              // een daling neemt het cijfer de kleur van de rode pijl over.
             />
           ) : (
             <Cijfer art="games" waarde={`${ik.games}`} label={t("lbGames")} />
@@ -4071,16 +4074,19 @@ function Klim({ n }: { n?: number | null }) {
     // sprong van drie plekken.
     return <span aria-label="geen verandering" style={{ width: 7, height: 1.5, borderRadius: 1, background: withAlpha(colors.faint, 0.55) }} />;
   }
+  // Dezelfde getekende pijlen als in het kaartje eronder, niet een lijnpijltje:
+  // naast art van goud leest een lijnpictogram als een tekening naast een
+  // voorwerp. Klein, dus zonder halo, want een gloed van vier pixels om een
+  // pijl van vijftien is een vlekje.
   const op = n > 0;
-  const kleur = op ? colors.green : colors.red;
-  const Pijl = op ? ChevronUp : ChevronDown;
+  const art = op ? "stijging" : "daling";
   return (
     <span
       aria-label={`${op ? "gestegen" : "gedaald"} ${Math.abs(n)}`}
-      style={{ display: "inline-flex", alignItems: "center", gap: 0, color: kleur, lineHeight: 1 }}
+      style={{ display: "inline-flex", alignItems: "center", gap: 1, color: ART_KLEUR[art].tekst, lineHeight: 1 }}
     >
-      <Pijl size={11} strokeWidth={3} />
-      <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 10.5, marginLeft: -1 }}>{Math.abs(n)}</span>
+      <img src={`/ui/stat/${art}.webp?v=${STAT_ART}`} alt="" aria-hidden style={{ width: 15, height: 15, display: "block" }} />
+      <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 10.5 }}>{Math.abs(n)}</span>
     </span>
   );
 }
@@ -4097,6 +4103,9 @@ const BEKER_ART = 2;
  *  voorwerp; `gloed` is het vlak zelf, want daar gloeit het voorwerp mee. */
 const ART_KLEUR: Record<string, { tekst: string; gloed: string }> = {
   stijging: { tekst: "#95DC0E", gloed: "#7CCB0A" },
+  // Gemeten aan daling.webp op dezelfde manier als de andere: het verzadigde
+  // vlak van de pijl, en de gloed een slag dieper.
+  daling:   { tekst: "#E4173A", gloed: "#C40D26" },
   vlam:     { tekst: "#E8A317", gloed: "#D68011" },
   krans:    { tekst: "#AC7BE9", gloed: "#9969DE" },
   games:    { tekst: "#E7A821", gloed: "#D58B17" },
