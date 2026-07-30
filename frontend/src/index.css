@@ -739,7 +739,7 @@ body.soepspel::after {
   background-color: #0B0518;
   background-repeat: repeat, no-repeat, no-repeat, no-repeat;
   background-position: bottom left, bottom, bottom center, bottom;
-  background-size: 160px 160px, 100% 100%, 100% 100%, 100% 100%;
+  background-size: 160px 160px, 100% 100%, cover, 100% 100%;
 }
 /* Geen vignet meer, en de zaal helemaal in beeld.
 
@@ -748,18 +748,17 @@ body.soepspel::after {
    een zaal met pilaren links en rechts, een boog erboven en een vloercirkel
    eronder bleef precies het lege midden over. Vandaar dat de achtergrond leek
    te ontbreken.
-   Nu staat de HELE plaat in beeld: bovenkant van de foto op de bovenkant van
-   het scherm, onderkant op de onderkant, en de volle breedte ertussen. Dat kan
-   op een staand scherm maar op één manier, en dat is hem op beide assen
-   optrekken. Hij wordt daar verticaal van uitgerekt, en dat is geen fout maar
-   de prijs: elke andere maat betekent snijden, en snijden betekent bij deze
-   plaat dat de pilaren of de boog buiten beeld vallen. Het onderwerp is
-   architectuur, dus langere pilaren lezen als een hogere zaal.
+   `cover` dus: proportioneel schalen tot hij het scherm vult en de overmaat
+   afsnijden. De plaat is liggend en het scherm staand, dus hij schaalt op de
+   HOOGTE: van boven tot onder staat de hele foto in beeld en de zijkanten
+   vallen weg. Dat is een keuze tussen twee verliezen, en snijden is de goede:
+   een uitgerekte plaat ziet er op ELKE pixel verkeerd uit, een gesneden plaat
+   is overal nog zichzelf.
 
-   (Geprobeerd en weer weggegooid: een versie waarin alleen de middenband met
-   de schachten werd opgerekt en boog en vloer op ware grootte bleven. Die was
-   meetkundig netter, maar hij moest op `cover` en sneed dan juist de bovenkant
-   van de boog af. Precies wat je wél wilt zien.)
+   (Twee routes hiervoor geprobeerd en allebei weer weggegooid: op beide assen
+   optrekken vervormde de boog en de vloercirkel, en een versie waarin alleen
+   de pilaarschachten werden opgerekt viel af omdat die op `cover` juist de
+   bovenkant van de boog afsneed.)
 
    De donkere sluier eroverheen stond op 0,4 tot 0,58 en dat is waarom de plaat
    op het scherm veel doffer was dan in het bestand: er lag simpelweg een half
@@ -774,7 +773,7 @@ body.soephal::after {
     linear-gradient(180deg, #150e2e 0%, #100a24 50%, #06040e 100%);
   background-repeat: repeat, no-repeat, no-repeat, no-repeat;
   background-position: bottom left, bottom, bottom center, bottom;
-  background-size: 160px 160px, 100% 100%, 100% 100%, 100% 100%;
+  background-size: 160px 160px, 100% 100%, cover, 100% 100%;
 }
 body.soepspel::after {
   background-image:
@@ -784,7 +783,7 @@ body.soepspel::after {
     linear-gradient(180deg, #150e2e 0%, #100a24 50%, #06040e 100%);
   background-repeat: repeat, no-repeat, no-repeat, no-repeat;
   background-position: bottom left, bottom, bottom center, bottom;
-  background-size: 160px 160px, 100% 100%, 100% 100%, 100% 100%;
+  background-size: 160px 160px, 100% 100%, cover, 100% 100%;
 }
 
 /* De lijn om een gevonden woord leeft: een licht dat er traag langs strijkt.
