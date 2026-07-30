@@ -22,7 +22,7 @@ import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { Screen } from "../components/Layout";
 import { NeonText } from "../components/NeonText";
-import { GOUD, KADER_LIJN_ROOD, NeonKader, Paneel, PlekWapen } from "../components/ProfileHero";
+import { ArtSchaduw, GOUD, KADER_LIJN_ROOD, NeonKader, Paneel, PlekWapen } from "../components/ProfileHero";
 import { GlasRij, Lijst } from "./Hub";
 import type { GameApi } from "../net/socket";
 import { useT } from "../i18n/i18n";
@@ -110,6 +110,7 @@ function Bord({ aanNu, uit, onTik }: { aanNu: number | null; uit: boolean; onTik
   const { t } = useT();
   return (
     <div style={{ position: "relative", width: VAK, height: `calc(${VAK} / ${KAST})`, flexShrink: 0 }}>
+      <ArtSchaduw art="/ui/flits/machine.webp?v=5" />
       <img src="/ui/flits/machine.webp?v=5" alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} />
       <img src="/ui/flits/knoppen-dof.webp?v=4" alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} />
       {KNOPPEN.map((k, i) => {
@@ -209,6 +210,7 @@ export const BALK = `calc(${VAK} * ${KAST_VUL})`;
 export function Ruit({ art, maat, breedte = VAK, binnen, style, children }: { art: string; maat: Maten; breedte?: string; binnen?: React.CSSProperties; style?: React.CSSProperties; children: React.ReactNode }) {
   return (
     <div style={{ position: "relative", width: breedte, height: `calc(${breedte} / ${maat.verhouding})`, flexShrink: 0, ...style }}>
+      <ArtSchaduw art={art} />
       <img
         src={art}
         alt=""

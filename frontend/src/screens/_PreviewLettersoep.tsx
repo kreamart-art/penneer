@@ -1,100 +1,171 @@
-// PREVIEW van Lettersoep, het arenaspel van vrijdag. Nog niet aangesloten op een
-// spel: een underscore ervoor, en hij hangt achter ?soep in de url als eigen
-// brok. Bedoeld om over het ontwerp te praten met de echte art in beeld.
+// LETTERSOEP, het arenaspel van vrijdag. Speelbare testversie achter ?soep in
+// de url (eigen brok, dus wie hem niet opent downloadt hem ook niet).
 //
-// Alle secties komen uit de UI-map en zijn op hun eigen inhoud gesneden. Het
-// BORD en de twee letterlagen delen een doek van 4096 bij 4954, dus die gaan op
-// dezelfde uitsnede: daarmee is de opmaak de uitlijning en valt er niets te
-// plaatsen. De maten hieronder zijn in die art gemeten, als breuk, zodat ze
-// meeschalen zodra het vak smaller wordt.
+// HET SPEL: zestien letters, twee minuten. Woorden leg je door aangrenzende
+// letters te tikken (ook diagonaal); vanaf drie letters telt hij, en de punten
+// VERDUBBELEN per letter (3=100, 4=200, 5=400 ...). Haal je het doel van het
+// level, dan vallen de letters van het bord en regent er een nieuw bord in:
+// level twee, een hoger doel, dezelfde klok. Zo is er geen einde en geldt de
+// no-ceiling-regel van de arena vanzelf.
 //
-// Wat hier in CODE bij komt en niet in de art zit:
-//  - de neonlijn om het letterraster;
-//  - de letters zelf, want die wisselen per dag;
-//  - het pad dat je legt, als lijn achter de letters;
-//  - de vakjes van de gevonden woorden, in de vorm van de glasrijen maar met
-//    een gouden lijn zoals op de mockup.
-import { useEffect } from "react";
+// WAT NOG NIET ECHT IS (testversie):
+//  - de woordenlijst is een meegestuurde lijst met gangbare Nederlandse
+//    woorden van drie tot zes letters, niet de volledige lijst van de server;
+//  - er wordt niets ingeleverd: de score telt alleen op dit scherm.
+//
+// De borden komen uit een seed (dag + level), dus iedereen die vandaag test
+// speelt exact dezelfde borden. De generator vult het bord VOLLEDIG met vier
+// lijstwoorden (5+4+4+3 = 16 vakjes), dus er zit altijd wat in; door overlap
+// van paden ontstaan er vanzelf meer.
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LogOut } from "lucide-react";
 import { Screen } from "../components/Layout";
 import { KADER_LIJN_LOOP, KADER_LIJN_ROOD, NeonKader } from "../components/ProfileHero";
 import { VAK } from "./Arena";
+import { sound } from "../sound/sound";
 import { colors, font, withAlpha } from "../theme/tokens";
 
-// ---- de maten van de art ----------------------------------------------------
-const BORD_V = 0.8349;      // verhouding van de bordsectie
-const SCORE_V = 3.7805;     // van de scorebordsectie
-const ONDER_V = 2.9589;     // van de ondersectie
-
-// De vier kolommen en rijen van het letterraster, als breuk van het bord.
+// ---- de maten van de art (gemeten in de bestanden) --------------------------
+const BORD_V = 0.8349;
+const SCORE_V = 3.7805;
+const ONDER_V = 2.9589;
 const KOL = [0.0561, 0.2803, 0.5051, 0.7297];
 const RIJ = [0.1636, 0.359, 0.5497, 0.7451];
 const VAK_B = 0.213;
 const VAK_H = 0.1791;
-// Waar het donkere paneel binnen de lijst begint. Boven de eerste rij letters
-// zit daardoor een open vak, en daar hoort de opdracht in het midden van.
 const PANEEL_TOP = 0.024;
-
-// De twee ruiten van het scorebord, links de tijd en rechts de punten.
 const SCORE_RUIT = { t: 0.2238, h: 0.6643, links: { l: 0.0407, b: 0.3213 }, rechts: { l: 0.637, b: 0.3213 } };
-// De ondersectie heeft twee banden met een streep ertussen: het woord dat je
-// legt boven, de woorden die je al hebt eronder.
 const ONDER_RUIT = { l: 0.0148, b: 0.9704, woord: { t: 0.1315, h: 0.4192 }, lijst: { t: 0.5589, h: 0.2849 } };
 
 const pct = (f: number) => `${(f * 100).toFixed(3)}%`;
-
-/** De vorm van de glasrijen: een achthoek, dus ALLE VIER de hoeken afgesneden.
- *  Twee afgeschuinde hoeken leest als een fout in plaats van als een vorm. */
 const ACHT = (c: number) =>
   `polygon(${c}px 0, calc(100% - ${c}px) 0, 100% ${c}px, 100% calc(100% - ${c}px), calc(100% - ${c}px) 100%, ${c}px 100%, 0 calc(100% - ${c}px), 0 ${c}px)`;
 
-// Hoeveel de gloed buiten een vakje uitwaaiert, als deel van dat vakje. Kort
-// houden: waaiert hij verder dan de kier tussen twee vakjes, dan loopt hij die
-// kier vol en verdwijnt de streep die het raster maakt.
+// De gloed van een gekozen vakje. Kort: verder dan de kier tussen twee vakjes
+// en de streep van het raster loopt vol.
 const HALO = 0.11;
 const GLOED = withAlpha("#FFA524", 0.7);
-// De kleur van het paneel in de ondersectie, uit de art gemeten. Zo kan een
-// vakje daar 'doorzichtig' lijken zonder dat er echt een gat in zit.
+// De kleur van het paneel in de ondersectie, uit de art gemeten.
 const PANEEL = "#1D0C29";
 
-// ---- de voorbeelddag --------------------------------------------------------
-const BORD = [
-  ["S", "T", "E", "R"],
-  ["A", "K", "L", "O"],
-  ["N", "I", "E", "D"],
-  ["M", "B", "A", "U"],
-];
-// Het pad dat nu gelegd wordt: K-L-E-I-N, allemaal aangrenzend.
-const PAD: [number, number][] = [[1, 1], [1, 2], [2, 2], [2, 1], [2, 0]];
-// Verdubbelen per letter vanaf drie: 3 = 100, 4 = 200, 5 = 400, 6 = 800 ...
+// ---- de regels --------------------------------------------------------------
+const SPEELTIJD_S = 120;
 const punten = (lengte: number) => (lengte < 3 ? 0 : 100 * 2 ** (lengte - 3));
-const GEVONDEN = [
-  { woord: "ROL", n: 3 },
-  { woord: "LEK", n: 3 },
-  { woord: "STAK", n: 4 },
-];
+/** Het doel van een level: wat je BINNEN dat level moet scoren om door te
+ *  mogen. Oplopend, want de borden blijven even groot maar jij wordt warmer. */
+const doelVan = (level: number) => 200 + level * 100;
 
-/** Een ruit in een stuk sectie-art: dezelfde rekenwijze als bij de arena-kast.
- *  Alles als breuk van de BREEDTE, want de hoogte komt uit een verhouding en
- *  een procent op een kind rekent daar niet betrouwbaar naar terug. */
+// ---- de woordenlijst --------------------------------------------------------
+// Gangbare Nederlandse woorden van drie tot zes letters. Dit is de TESTlijst;
+// de echte versie valideert tegen de lijsten van de server.
+const WOORDEN = [
+  "AAP", "ARM", "BAD", "BAK", "BAL", "BED", "BEEN", "BEER", "BERG", "BIER", "BLAD", "BLOEM",
+  "BOEK", "BOOM", "BOOT", "BORD", "BOS", "BRIL", "BROOD", "BRUG", "BUS", "DAG", "DAK", "DAS",
+  "DEUR", "DIER", "DING", "DOEK", "DOEL", "DORP", "DROOM", "DRUIF", "DUIF", "EEND", "EI", "END",
+  "FEEST", "FIETS", "FILM", "GANS", "GAT", "GELD", "GLAS", "GOUD", "GRAS", "GROEN", "HAAI",
+  "HAAN", "HAAR", "HAND", "HART", "HEK", "HEMD", "HERT", "HOED", "HOND", "HOOI", "HOORN",
+  "HUID", "HUIS", "IJS", "JAS", "JUF", "KAAS", "KAM", "KAN", "KAT", "KERK", "KERS", "KEUKEN",
+  "KIP", "KIST", "KLEIN", "KLOK", "KNIE", "KOE", "KOEK", "KOP", "KRANT", "KROON", "KRUK",
+  "LAMP", "LAND", "LEK", "LENTE", "LEPEL", "LICHT", "LIED", "LIJN", "LIP", "LUCHT", "MAAN",
+  "MAAND", "MAP", "MELK", "MES", "MIST", "MOND", "MUIS", "MUUR", "NACHT", "NEK", "NEST",
+  "NET", "NEUS", "NOOT", "OOG", "OOR", "OVEN", "PAARD", "PAD", "PAN", "PEER", "PEN", "PIT",
+  "PLANT", "POES", "POORT", "POT", "PRINS", "RAAM", "REGEN", "RIJST", "RING", "RIVIER",
+  "ROK", "ROL", "ROOS", "ROTS", "RUG", "SCHIP", "SCHOEN", "SLA", "SLANG", "SLEE", "SLOT",
+  "SNEEUW", "SOEP", "SOK", "SPIN", "STAD", "STAK", "STAL", "STER", "STOEL", "STORM",
+  "STRAND", "TAART", "TAK", "TAND", "TAS", "TENT", "THEE", "TIJD", "TOREN", "TREIN", "TROM",
+  "TUIN", "UIL", "UUR", "VAAS", "VELD", "VIS", "VLAG", "VLOER", "VOET", "VOGEL", "VUUR",
+  "WAND", "WEG", "WIEL", "WIND", "WOLK", "WOORD", "WORTEL", "ZAND", "ZEE", "ZEEP", "ZON",
+  "ZOUT", "ZWAAN", "KAART", "KANS", "KOSTEN", "KRACHT", "MARKT", "PLEIN", "PRIJS", "SPEL",
+  "START", "STEEN", "STROOM", "TEKST", "VERF", "VORK", "WINST", "ZAAL", "ZIN", "REEKS",
+  "LOT", "PIL", "RIL", "KIL", "KIN", "LIST", "NIET", "LIEF", "RIET", "TIEN", "ELK", "ELF",
+  "EIK", "EIS", "AAS", "AAL", "AAR", "NAT", "NAP", "RAT", "RAAK", "TAAI", "MAT", "MAL",
+  "KALM", "KAAL", "TAAL", "ZAAL", "BAAN", "MAAT", "STRAAT", "PLAAT", "KLAAR", "PAAR",
+] as const;
+const LIJST = new Set<string>(WOORDEN);
+
+// ---- seed en generator ------------------------------------------------------
+function maakRng(seed: string): () => number {
+  let a = 0;
+  for (let i = 0; i < seed.length; i++) a = (Math.imul(a, 31) + seed.charCodeAt(i)) | 0;
+  return () => {
+    a |= 0; a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const buur = (a: number, b: number) => {
+  const [r1, k1] = [Math.floor(a / 4), a % 4];
+  const [r2, k2] = [Math.floor(b / 4), b % 4];
+  return a !== b && Math.abs(r1 - r2) <= 1 && Math.abs(k1 - k2) <= 1;
+};
+
+/** Bouw een bord dat VOLLEDIG uit vier lijstwoorden bestaat: 5+4+4+3 = 16.
+ *  Elk woord wordt als kronkelpad over ongebruikte vakjes gelegd; lukt een
+ *  greep niet binnen de pogingen, dan een nieuwe greep. Deterministisch uit de
+ *  seed, dus iedereen speelt vandaag hetzelfde bord. */
+function maakBord(seed: string): string[] {
+  const rng = maakRng(seed);
+  const van = (n: number) => WOORDEN.filter((w) => w.length === n);
+  for (let poging = 0; poging < 200; poging++) {
+    const kies = (n: number, verboden: Set<string>) => {
+      const opties = van(n).filter((w) => !verboden.has(w));
+      return opties[Math.floor(rng() * opties.length)];
+    };
+    const gekozen = new Set<string>();
+    const woorden: string[] = [];
+    for (const n of [5, 4, 4, 3]) {
+      const w = kies(n, gekozen);
+      if (!w) break;
+      gekozen.add(w);
+      woorden.push(w);
+    }
+    if (woorden.length < 4) continue;
+
+    const cel: string[] = Array(16).fill("");
+    const leg = (w: string): boolean => {
+      // kronkelpad met terugkeer: vanaf een losse startcel steeds een vrije buur
+      const probeer = (pad: number[], i: number): boolean => {
+        if (i === w.length) { pad.forEach((c, j) => { cel[c] = w[j]; }); return true; }
+        const laatst = pad[pad.length - 1];
+        const vrij = [];
+        for (let c = 0; c < 16; c++) if (!cel[c] && !pad.includes(c) && buur(laatst, c)) vrij.push(c);
+        // door elkaar, zodat het pad per seed anders kronkelt
+        for (let j = vrij.length - 1; j > 0; j--) {
+          const k = Math.floor(rng() * (j + 1));
+          [vrij[j], vrij[k]] = [vrij[k], vrij[j]];
+        }
+        for (const c of vrij) if (probeer([...pad, c], i + 1)) return true;
+        return false;
+      };
+      const starts = [];
+      for (let c = 0; c < 16; c++) if (!cel[c]) starts.push(c);
+      for (let j = starts.length - 1; j > 0; j--) {
+        const k = Math.floor(rng() * (j + 1));
+        [starts[j], starts[k]] = [starts[k], starts[j]];
+      }
+      return starts.some((c) => probeer([c], 1));
+    };
+    if (woorden.every(leg)) return cel;
+  }
+  // Kan wiskundig bijna niet, maar een leeg bord mag nooit: vul dan plat.
+  return "STERAKLONIEDMBAU".split("");
+}
+
+const dagSeed = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Amsterdam" }).format(new Date());
+
+// ---- bouwstenen -------------------------------------------------------------
 function Sectie({ art, verhouding, breedte = VAK, children }: { art: string; verhouding: number; breedte?: string; children?: React.ReactNode }) {
   return (
     <div style={{ position: "relative", width: breedte, height: `calc(${breedte} / ${verhouding})`, flexShrink: 0 }}>
-      {/* De schaduw waarop de sectie zweeft. Een TWEEDE kopie van dezelfde art,
-          helemaal zwart gemaakt en vervaagd, en niet `filter: drop-shadow`: die
-          rastert op iOS de doos van de laag mee en dan zie je zwarte hoekjes
-          rond elke afschuining. `brightness(0)` maakt elke pixel zwart en laat
-          het alfakanaal staan, dus de schaduw volgt de VORM. Recht naar beneden,
-          want het licht komt van boven. */}
+      {/* Schaduw als kopie van de art: brightness(0) houdt het alfakanaal, dus
+          hij volgt de vorm. Drop-shadow rastert op iOS de doos mee. */}
       <img
         src={art}
         alt=""
         aria-hidden
-        style={{
-          position: "absolute", inset: 0, width: "100%", height: "100%", display: "block",
-          filter: "brightness(0) blur(11px)", opacity: 0.55, transform: "translateY(9px)",
-          pointerEvents: "none",
-        }}
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block", filter: "brightness(0) blur(11px)", opacity: 0.55, transform: "translateY(9px)", pointerEvents: "none" }}
       />
       <img src={art} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} />
       {children}
@@ -102,8 +173,7 @@ function Sectie({ art, verhouding, breedte = VAK, children }: { art: string; ver
   );
 }
 
-/** Een waarde met zijn opschrift, zoals in de twee ruiten van het scorebord. */
-function Meter({ kop, waarde, breuk }: { kop: string; waarde: string; breuk: { l: number; b: number } }) {
+function Meter({ kop, waarde, kleur = "#FFF3D0", breuk }: { kop: string; waarde: string; kleur?: string; breuk: { l: number; b: number } }) {
   return (
     <div
       style={{
@@ -114,67 +184,151 @@ function Meter({ kop, waarde, breuk }: { kop: string; waarde: string; breuk: { l
       }}
     >
       <span style={{ fontFamily: font.wide, fontSize: 10, letterSpacing: 1.6, color: withAlpha("#FFE7A8", 0.72) }}>{kop}</span>
-      <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 22, lineHeight: 1, color: "#FFF3D0", textShadow: "0 0 12px rgba(255,190,60,.5)" }}>{waarde}</span>
+      <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 22, lineHeight: 1, color: kleur, fontVariantNumeric: "tabular-nums", textShadow: "0 0 12px rgba(255,190,60,.5)" }}>{waarde}</span>
     </div>
   );
 }
 
+const klok = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+
+// ---- het spel ---------------------------------------------------------------
 export function PreviewLettersoep() {
-  // De zaal van dit spel. Het voorportaal krijgt straks `soephal`, dezelfde
-  // plek maar dan voor de poort in plaats van erin.
   useEffect(() => {
     document.body.classList.add("soepspel");
     return () => document.body.classList.remove("soepspel");
   }, []);
 
-  const stand = GEVONDEN.reduce((t, g) => t + punten(g.n), 0);
-  const woord = PAD.map(([r, k]) => BORD[r][k]).join("");
-  const inPad = (r: number, k: number) => PAD.findIndex(([pr, pk]) => pr === r && pk === k);
-  // Het midden van een vakje, voor de lijn die je pad verbindt.
-  const midX = (k: number) => (KOL[k] + VAK_B / 2) * 100;
-  const midY = (r: number) => (RIJ[r] + VAK_H / 2) * 100;
+  const [level, setLevel] = useState(1);
+  const [totaal, setTotaal] = useState(0);
+  const [levelScore, setLevelScore] = useState(0);
+  const [pad, setPad] = useState<number[]>([]);
+  const [gevonden, setGevonden] = useState<{ woord: string; n: number }[]>([]);
+  const [fout, setFout] = useState(false);
+  // Het oordeel over je laatste legpoging: de vakjes van dat pad kleuren even
+  // GROEN (goed) of ROOD (fout) op het moment dat je de laatste letter legt.
+  const [oordeel, setOordeel] = useState<{ cellen: number[]; goed: boolean } | null>(null);
+  const [over, setOver] = useState(SPEELTIJD_S);
+  // "spel" is spelen; "val" is de wissel (letters vallen, nieuwe komen);
+  // "klaar" is de tijd om.
+  const [fase, setFase] = useState<"spel" | "val" | "klaar">("spel");
+  const timers = useRef<number[]>([]);
+  const na = (ms: number, fn: () => void) => { timers.current.push(window.setTimeout(fn, ms)); };
+  useEffect(() => () => timers.current.forEach((t) => window.clearTimeout(t)), []);
+
+  const bord = useMemo(() => maakBord(`soep:${dagSeed()}:${level}`), [level]);
+
+  // De klok telt over levels heen door: het doel van een level haal je door
+  // SNEL te zijn, niet door de tijd stil te zetten.
+  useEffect(() => {
+    if (fase === "klaar") return;
+    const id = window.setInterval(() => {
+      setOver((s) => {
+        if (s <= 1) { setFase("klaar"); sound.win(); return 0; }
+        return s - 1;
+      });
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [fase]);
+
+  const woord = pad.map((c) => bord[c]).join("");
+  const geldig = woord.length >= 3 && LIJST.has(woord) && !gevonden.some((g) => g.woord === woord);
+
+  // De tik-afhandeling staat BUITEN de state-updater. Eerder zat het inleveren
+  // in setPad(oud => ...), en React voert zo'n updater in ontwikkelmodus twee
+  // keer uit om bijwerkingen te betrappen: elk woord telde dubbel. Een updater
+  // hoort puur te zijn; hier wordt eerst gerekend en daarna pas gezet.
+  const padRef = useRef<number[]>([]);
+  padRef.current = pad;
+
+  const leg = useCallback((cellen: number[]) => {
+    const w = cellen.map((x) => bord[x]).join("");
+    const goed = w.length >= 3 && LIJST.has(w) && !gevonden.some((g) => g.woord === w);
+    setOordeel({ cellen, goed });
+    na(560, () => setOordeel(null));
+    setPad([]);
+    if (!goed) {
+      sound.uiTap();
+      setFout(true);
+      return;
+    }
+    const erbij = punten(w.length);
+    sound.approve();
+    setGevonden((g) => [...g, { woord: w, n: w.length }]);
+    setTotaal((t) => t + erbij);
+    const nieuw = levelScore + erbij;
+    setLevelScore(nieuw);
+    if (nieuw >= doelVan(level)) {
+      // Level gehaald: de letters vallen, en na de val begint het volgende
+      // level met een vers bord en een hoger doel.
+      setFase("val");
+      sound.win();
+      na(760, () => {
+        setLevel((l) => l + 1);
+        setLevelScore(0);
+        setFase("spel");
+      });
+    }
+  }, [bord, gevonden, level, levelScore]);
+
+  const tik = useCallback((c: number) => {
+    if (fase !== "spel") return;
+    setFout(false);
+    const oud = padRef.current;
+    const i = oud.indexOf(c);
+    if (i >= 0 && i < oud.length - 1) { setPad(oud.slice(0, i + 1)); return; } // terugsnoeien
+    if (i === oud.length - 1 && oud.length > 0) { leg(oud); return; }          // zelfde vakje: inleveren
+    sound.uiTap();
+    if (oud.length === 0) { setPad([c]); return; }
+    if (buur(oud[oud.length - 1], c)) { setPad([...oud, c]); return; }
+    setPad([c]); // niet aangrenzend: nieuw pad vanaf hier
+  }, [fase, leg]);
+
+  const stop = () => { setFase("klaar"); };
+  const opnieuw = () => {
+    setLevel(1); setTotaal(0); setLevelScore(0); setPad([]);
+    setGevonden([]); setOver(SPEELTIJD_S); setFase("spel"); setFout(false);
+  };
+
+  const inPad = (c: number) => pad.indexOf(c);
+  const midX = (c: number) => (KOL[c % 4] + VAK_B / 2) * 100;
+  const midY = (c: number) => (RIJ[Math.floor(c / 4)] + VAK_H / 2) * 100;
+  const doel = doelVan(level);
 
   return (
     <Screen
       top={
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", paddingTop: "calc(14px + env(safe-area-inset-top))" }}>
           <span style={{ flex: 1, fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>Arena</span>
-          <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 13, color: colors.gold, fontVariantNumeric: "tabular-nums" }}>7:41:12</span>
+          <span style={{ fontFamily: font.ui, fontSize: 11.5, color: colors.faint }}>testversie</span>
         </div>
       }
     >
       <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 9, paddingBottom: 24 }}>
-        {/* Tijd links, punten rechts, het wapen ertussen. Het wapen zit in de
-            art, dus de twee ruiten hoeven alleen hun cijfers te dragen. */}
         <Sectie art="/ui/soep/scorebord.webp?v=1" verhouding={SCORE_V}>
-          <Meter kop="TIJD" waarde="1:24" breuk={SCORE_RUIT.links} />
-          <Meter kop="PUNTEN" waarde={String(stand)} breuk={SCORE_RUIT.rechts} />
+          <Meter kop="TIJD" waarde={klok(over)} kleur={over <= 15 ? "#FF6A5A" : "#FFF3D0"} breuk={SCORE_RUIT.links} />
+          <Meter kop="PUNTEN" waarde={String(totaal)} breuk={SCORE_RUIT.rechts} />
         </Sectie>
 
-        {/* Het bord: lijst, doffe vakjes, en daarbovenop wat oplicht. */}
         <Sectie art="/ui/soep/bord.webp?v=1" verhouding={BORD_V}>
           <img src="/ui/soep/letters-dof.webp?v=1" alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} />
 
-          {/* De opdracht, in de lucht boven het raster die de art daarvoor
-              vrijhoudt. */}
-          {/* Gecentreerd in het OPEN VAK, dus tussen de binnenkant van de lijst
-              en de bovenste rij letters. Op een vaste afstand van boven hangt
-              hij te hoog: het vak is hoger dan de tekst en dan zie je dat. */}
+          {/* Level en doel, gecentreerd in het open vak boven het raster. */}
           <div
             style={{
               position: "absolute", left: 0, right: 0,
               top: pct(PANEEL_TOP), height: pct(RIJ[0] - PANEEL_TOP),
-              display: "flex", alignItems: "center", justifyContent: "center",
+              display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2,
             }}
           >
-            <span style={{ fontFamily: font.wide, fontSize: 17, letterSpacing: 3, color: "#FFD98A", textShadow: "0 0 10px rgba(255,180,50,.55)" }}>
-              VIND WOORDEN
+            <span style={{ fontFamily: font.wide, fontSize: 16, letterSpacing: 2.8, color: "#FFD98A", textShadow: "0 0 10px rgba(255,180,50,.55)" }}>
+              LEVEL {level}
+            </span>
+            <span style={{ fontFamily: font.ui, fontSize: 10.5, fontWeight: 600, color: withAlpha("#FFE7A8", 0.72) }}>
+              nog {Math.max(0, doel - levelScore)} punten
             </span>
           </div>
 
-          {/* De neonlijn OM het raster. Hij zit niet in de art, want hij hoort
-              te leven: hij loopt rond zolang je zoekt. Vulling leeg, want het
-              paneel eronder is de art zelf. */}
+          {/* De neonlijn om het raster: hij leeft zolang je zoekt. */}
           <div
             aria-hidden
             style={{
@@ -189,132 +343,141 @@ export function PreviewLettersoep() {
             </NeonKader>
           </div>
 
+          {/* De gloed van gekozen vakjes, achter de art. */}
+          {bord.map((_, c) => {
+            const aan = inPad(c) >= 0;
+            return (
+              <span
+                key={`gloed-${c}`}
+                aria-hidden
+                style={{
+                  position: "absolute",
+                  left: pct(KOL[c % 4] - VAK_B * HALO), top: pct(RIJ[Math.floor(c / 4)] - VAK_H * HALO),
+                  width: pct(VAK_B * (1 + HALO * 2)), height: pct(VAK_H * (1 + HALO * 2)),
+                  borderRadius: "28%",
+                  background: `radial-gradient(circle, ${GLOED} 0%, ${GLOED} 46%, ${withAlpha("#FFB43C", 0.38)} 58%, ${withAlpha("#FFB43C", 0.14)} 68%, transparent 76%)`,
+                  filter: "blur(6px)",
+                  opacity: aan ? 1 : 0,
+                  transition: aan ? "opacity .1s linear" : "opacity .25s ease-out",
+                  pointerEvents: "none",
+                  zIndex: 1,
+                }}
+              />
+            );
+          })}
 
-          {/* De gloed die een opgelicht vakje op het paneel werpt. De art houdt
-              zijn licht binnen zijn eigen omranding; dit is wat er buiten valt,
-              en het is wat een gekozen letter AAN laat voelen in plaats van
-              alleen anders gekleurd. Als eigen vervaagde laag en niet als
-              drop-shadow-filter: die rastert op iOS de doos van de laag mee en
-              dan zie je een rechthoek om je letter.
-
-              De kracht staat BUITEN het vakje: het dekkende vakje bedekt dit
-              verloop tot ruim de helft, dus alles voor dat punt zie je toch
-              niet. */}
-          {BORD.map((rij, r) =>
-            rij.map((_, k) => {
-              const aan = inPad(r, k) >= 0;
-              return (
-                <span
-                  key={`gloed-${r}${k}`}
-                  aria-hidden
-                  style={{
-                    position: "absolute",
-                    left: pct(KOL[k] - VAK_B * HALO), top: pct(RIJ[r] - VAK_H * HALO),
-                    width: pct(VAK_B * (1 + HALO * 2)), height: pct(VAK_H * (1 + HALO * 2)),
-                    borderRadius: "28%",
-                    background: `radial-gradient(circle, ${GLOED} 0%, ${GLOED} 46%, ${withAlpha("#FFB43C", 0.38)} 58%, ${withAlpha("#FFB43C", 0.14)} 68%, transparent 76%)`,
-                    filter: "blur(6px)",
-                    opacity: aan ? 1 : 0,
-                    transition: aan ? "opacity .1s linear" : "opacity .25s ease-out",
-                    pointerEvents: "none",
-                    zIndex: 1,
-                  }}
-                />
-              );
-            })
-          )}
-
-          {/* De opgelichte vakjes als art, elk op zijn eigen plek. */}
-          {BORD.map((rij, r) =>
-            rij.map((_, k) => {
-              const aan = inPad(r, k) >= 0;
-              return (
-                <img
-                  key={`aan-${r}${k}`}
-                  src={`/ui/soep/letter-aan-${r}${k}.webp?v=1`}
-                  alt=""
-                  aria-hidden
-                  style={{
-                    position: "absolute",
-                    left: pct(KOL[k] - 0.0015), top: pct(RIJ[r] + 0.0015),
-                    width: pct(VAK_B + 0.003), height: "auto",
-                    display: "block", zIndex: 2,
-                    opacity: aan ? 1 : 0,
-                    transition: aan ? "opacity .08s linear" : "opacity .2s ease-out",
-                  }}
-                />
-              );
-            })
-          )}
-
-          {/* De lijn die je woord verbindt, ACHTER de vakjes: hij duikt onder
-              een vakje door en komt in de kier weer boven, dus je ziet precies
-              dat twee vakjes aan elkaar vast zitten zonder dat er iets over de
-              letters heen loopt. Fel genoeg om in de kier te winnen van de
-              gloed: een brede warme onderlaag met een bijna witte kern erop. */}
+          {/* De verbindingslijn, ACHTER de vakjes: hij duikt eronderdoor en komt
+              in de kieren boven. */}
           <svg
             aria-hidden
             viewBox="0 0 100 100"
             preserveAspectRatio="none"
             style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 1 }}
           >
-            <polyline
-              points={PAD.map(([r, k]) => `${midX(k)},${midY(r)}`).join(" ")}
-              fill="none" stroke={withAlpha("#FFC85A", 0.95)} strokeWidth={5.6}
-              strokeLinecap="round" strokeLinejoin="round"
-            />
-            <polyline
-              points={PAD.map(([r, k]) => `${midX(k)},${midY(r)}`).join(" ")}
-              fill="none" stroke="#FFFFFF" strokeWidth={2.6}
-              strokeLinecap="round" strokeLinejoin="round"
-            />
+            {pad.length > 1 && (
+              <>
+                <polyline points={pad.map((c) => `${midX(c)},${midY(c)}`).join(" ")} fill="none" stroke={withAlpha("#FFC85A", 0.95)} strokeWidth={5.6} strokeLinecap="round" strokeLinejoin="round" />
+                <polyline points={pad.map((c) => `${midX(c)},${midY(c)}`).join(" ")} fill="none" stroke="#FFFFFF" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" />
+              </>
+            )}
           </svg>
 
-          {/* De letters en de tikvlakken bovenop. */}
-          {BORD.map((rij, r) =>
-            rij.map((letter, k) => {
-              const i = inPad(r, k);
-              const aan = i >= 0;
+          {/* De opgelichte vakjes als art. */}
+          {bord.map((_, c) => {
+            const aan = inPad(c) >= 0;
+            const r = Math.floor(c / 4), k = c % 4;
+            return (
+              <img
+                key={`aan-${c}`}
+                src={`/ui/soep/letter-aan-${r}${k}.webp?v=1`}
+                alt=""
+                aria-hidden
+                style={{
+                  position: "absolute",
+                  left: pct(KOL[k] - 0.0015), top: pct(RIJ[r] + 0.0015),
+                  width: pct(VAK_B + 0.003), height: "auto",
+                  display: "block", zIndex: 2,
+                  opacity: aan ? 1 : 0,
+                  transition: aan ? "opacity .08s linear" : "opacity .2s ease-out",
+                }}
+              />
+            );
+          })}
+
+          {/* Het oordeel: de vakjes van je gelegde pad kleuren even groen of
+              rood. Als tint OVER de gouden art (zIndex 3, boven de aan-laag,
+              onder de letters), zodat het dezelfde knop blijft met ander licht
+              erin, en niet een andere knop. */}
+          {oordeel &&
+            oordeel.cellen.map((c) => {
+              const r = Math.floor(c / 4), k = c % 4;
+              const tint = oordeel.goed ? "82,220,140" : "255,84,74";
               return (
-                <button
-                  key={`tik-${r}${k}`}
+                <span
+                  key={`oordeel-${c}`}
+                  aria-hidden
                   style={{
                     position: "absolute",
                     left: pct(KOL[k]), top: pct(RIJ[r]),
                     width: pct(VAK_B), height: pct(VAK_H),
-                    zIndex: 4,
-                    display: "grid", placeItems: "center",
-                    background: "transparent", border: "none", padding: 0, cursor: "pointer",
-                    WebkitTapHighlightColor: "transparent",
+                    zIndex: 3,
+                    borderRadius: "16%",
+                    background: `radial-gradient(circle, rgba(${tint},.62) 0%, rgba(${tint},.44) 55%, rgba(${tint},.18) 82%, transparent 100%)`,
+                    boxShadow: `0 0 16px rgba(${tint},.55)`,
+                    mixBlendMode: "screen",
+                    pointerEvents: "none",
+                  }}
+                />
+              );
+            })}
+
+          {/* De letters en tikvlakken. Bij de levelwissel VALLEN de letters van
+              het bord (de vakjes zijn het bord zelf, dus die blijven staan) en
+              regent het nieuwe stel erin: sleutel op het level, dus elke wissel
+              start de val- en kom-animaties opnieuw. */}
+          {bord.map((letter, c) => {
+            const i = inPad(c);
+            const aan = i >= 0;
+            const r = Math.floor(c / 4), k = c % 4;
+            return (
+              <button
+                key={`tik-${level}-${c}`}
+                onClick={() => tik(c)}
+                disabled={fase !== "spel"}
+                aria-label={`letter ${letter}`}
+                style={{
+                  position: "absolute",
+                  left: pct(KOL[k]), top: pct(RIJ[r]),
+                  width: pct(VAK_B), height: pct(VAK_H),
+                  zIndex: 4,
+                  display: "grid", placeItems: "center",
+                  background: "transparent", border: "none", padding: 0,
+                  cursor: fase === "spel" ? "pointer" : "default",
+                  WebkitTapHighlightColor: "transparent",
+                }}
+              >
+                <span
+                  className={fase === "val" ? "soep-val" : "soep-kom"}
+                  style={{
+                    // De val golft over het bord: elk vakje een tikje later.
+                    animationDelay: `${(fase === "val" ? c : r * 4 + k) * 30}ms`,
+                    fontFamily: font.wide, fontSize: 24, letterSpacing: 1,
+                    color: aan ? "#FFF6DC" : "#FFD98A",
+                    textShadow: aan ? "0 1px 2px rgba(74,38,0,.7)" : "0 0 9px rgba(255,170,40,.45)",
                   }}
                 >
-                  <span
-                    style={{
-                      fontFamily: font.wide, fontSize: 24, letterSpacing: 1,
-                      color: aan ? "#FFF6DC" : "#FFD98A",
-                      // Op goud heeft room een donkere zoom nodig, anders
-                      // vervaagt de letter in het vlak waar hij op staat.
-                      textShadow: aan ? "0 1px 2px rgba(74,38,0,.7)" : "0 0 9px rgba(255,170,40,.45)",
-                    }}
-                  >
-                    {letter}
+                  {letter}
+                </span>
+                {aan && (
+                  <span style={{ position: "absolute", top: "8%", right: "12%", fontFamily: font.ui, fontSize: 9, fontWeight: 800, color: "#FFE7A8" }}>
+                    {i + 1}
                   </span>
-                  {/* Het volgnummer: bij een woord dat over zichzelf heen loopt
-                      weet je zonder cijfer niet meer waar het begon. */}
-                  {aan && (
-                    <span style={{ position: "absolute", top: "8%", right: "12%", fontFamily: font.ui, fontSize: 9, fontWeight: 800, color: "#4A2C00" }}>
-                      {i + 1}
-                    </span>
-                  )}
-                </button>
-              );
-            })
-          )}
+                )}
+              </button>
+            );
+          })}
         </Sectie>
 
-        {/* Het woord dat je legt met wat het NU waard is, en daaronder wat je al
-            hebt. De waarde erbij is het hele spel: je ziet leven dat een letter
-            erbij verdubbelt. */}
         <Sectie art="/ui/soep/onder.webp?v=1" verhouding={ONDER_V}>
           <div
             style={{
@@ -323,45 +486,47 @@ export function PreviewLettersoep() {
               top: pct(ONDER_RUIT.woord.t), height: pct(ONDER_RUIT.woord.h),
               display: "flex", alignItems: "center", justifyContent: "center", gap: 9,
             }}
+            className={fout ? "soep-fout" : undefined}
           >
-            <span style={{ fontFamily: font.wide, fontSize: 23, letterSpacing: 3, color: "#FFF3D0", textShadow: "0 0 12px rgba(255,190,60,.5)" }}>{woord}</span>
-            <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 15, color: colors.green }}>+{punten(PAD.length)}</span>
+            {fase === "klaar" ? (
+              <span style={{ fontFamily: font.wide, fontSize: 21, letterSpacing: 2.4, color: "#FFF3D0" }}>
+                KLAAR · {totaal} PUNTEN
+              </span>
+            ) : woord ? (
+              <>
+                <span style={{ fontFamily: font.wide, fontSize: 23, letterSpacing: 3, color: "#FFF3D0", textShadow: "0 0 12px rgba(255,190,60,.5)" }}>{woord}</span>
+                {geldig ? (
+                  <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 15, color: colors.green }}>+{punten(woord.length)}</span>
+                ) : woord.length >= 3 ? (
+                  <span style={{ fontFamily: font.ui, fontSize: 11, color: colors.faint }}>nog geen woord</span>
+                ) : null}
+              </>
+            ) : (
+              <span style={{ fontFamily: font.ui, fontSize: 11.5, color: withAlpha("#FFE7A8", 0.6) }}>
+                tik letters naast elkaar; tik de laatste nog eens om te leggen
+              </span>
+            )}
           </div>
 
-          {/* De gevonden woorden in de vorm van de glasrijen, maar met de gouden
-              lijn van deze sectie: hetzelfde vakje, ander materiaal. De lijn is
-              een tweede geknipte laag en geen border, want een border volgt de
-              rechthoek en niet de afgeschuinde vorm. */}
           <div
             style={{
               position: "absolute",
               left: pct(ONDER_RUIT.l), width: pct(ONDER_RUIT.b),
               top: pct(ONDER_RUIT.lijst.t), height: pct(ONDER_RUIT.lijst.h),
-              display: "flex", alignItems: "center", justifyContent: "center", gap: 7, paddingInline: 10,
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 7, paddingInline: 10, overflow: "hidden",
             }}
           >
-            {GEVONDEN.map((g) => (
+            {gevonden.slice(-3).map((g) => (
               <span
                 key={g.woord}
+                className="soep-lijn soep-vak"
                 style={{
                   display: "inline-flex", height: "84%", padding: 1,
                   clipPath: ACHT(6),
-                  // Het verloop is twee keer zo breed als het vakje, dus als het
-                  // opschuift loopt er een licht de lijn rond.
                   background: `linear-gradient(100deg, ${withAlpha("#B0710E", 0.85)} 0%, ${withAlpha("#FFD98A", 0.95)} 22%, ${withAlpha("#FFF6DC", 1)} 34%, ${withAlpha("#FFD98A", 0.95)} 46%, ${withAlpha("#B0710E", 0.85)} 70%, ${withAlpha("#B0710E", 0.85)} 100%)`,
                   backgroundSize: "200% 100%",
                 }}
-                className="soep-lijn soep-vak"
               >
-                {/* De lijn is de rand die tussen twee geknipte lagen uitsteekt.
-                    Eerst probeerde ik hem als masker dat zijn eigen binnenkant
-                    wegsnijdt, maar op anderhalve pixel valt zo'n masker op de
-                    schuine hoeken onder een beeldpunt en dan breekt de lijn.
-
-                    De binnenkant is dus niet doorzichtig maar heeft de kleur van
-                    het paneel waar hij op ligt, gemeten in de art zelf. Op het
-                    oog is dat hetzelfde: geen glas, geen tweede vlak, alleen de
-                    gouden lijn. En hij blijft heel. */}
                 <span
                   style={{
                     display: "inline-flex", alignItems: "center", gap: 5, paddingInline: 10,
@@ -375,16 +540,20 @@ export function PreviewLettersoep() {
                 </span>
               </span>
             ))}
+            {gevonden.length === 0 && (
+              <span style={{ fontFamily: font.ui, fontSize: 11, color: withAlpha("#FFE7A8", 0.45) }}>je woorden komen hier</span>
+            )}
           </div>
         </Sectie>
 
         <div style={{ display: "flex", justifyContent: "center" }}>
           <NeonKader radius={999} dik={0.5} vulling="geen" animeer lijn={KADER_LIJN_ROOD} gloed={`0 0 12px ${withAlpha(colors.red, 0.35)}`} binnen={{ padding: 0 }}>
             <button
+              onClick={fase === "klaar" ? opnieuw : stop}
               className="pressable"
               style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, background: "transparent", border: "none", cursor: "pointer", color: colors.redHi, fontFamily: font.ui, fontSize: 13, fontWeight: 600, padding: "7px 16px" }}
             >
-              <LogOut size={14} /> Stoppen
+              <LogOut size={14} /> {fase === "klaar" ? "Opnieuw" : "Stoppen"}
             </button>
           </NeonKader>
         </div>

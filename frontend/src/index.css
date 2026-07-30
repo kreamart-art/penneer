@@ -776,6 +776,32 @@ body.soepspel::after {
 }
 .soep-lijn { animation: soep-lijn 3.4s linear infinite; }
 
+/* De letters vallen van het bord bij een levelwissel. De vakjes zijn het bord
+   zelf, dus die blijven staan; wat valt zijn de letters. Elk vakje een tikje
+   later (animation-delay in de code), dus de val golft over het bord. */
+@keyframes soep-val {
+  0%   { transform: translateY(0) rotate(0); opacity: 1; }
+  100% { transform: translateY(58vh) rotate(46deg); opacity: 0; }
+}
+.soep-val { animation: soep-val .6s cubic-bezier(.5,0,.85,.4) both; }
+
+/* En de nieuwe letters regenen erin: van boven, met een kleine stuit. */
+@keyframes soep-kom {
+  0%   { transform: translateY(-34px); opacity: 0; }
+  62%  { transform: translateY(3px); opacity: 1; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+.soep-kom { animation: soep-kom .4s cubic-bezier(.2,1.2,.4,1) both; }
+
+/* Een afgekeurd woord schudt kort: nee. */
+@keyframes soep-fout {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  55% { transform: translateX(4px); }
+  80% { transform: translateX(-2px); }
+}
+.soep-fout { animation: soep-fout .32s ease-in-out; }
+
 /* Een gevonden woord komt op: kort opzwellen en meteen weer op maat. */
 @keyframes soep-vak {
   0%   { transform: scale(.7); opacity: 0; }
@@ -785,7 +811,7 @@ body.soepspel::after {
 .soep-vak { animation: soep-vak .34s cubic-bezier(.2,1.4,.4,1) both; }
 
 @media (prefers-reduced-motion: reduce) {
-  .soep-lijn, .soep-vak { animation: none; }
+  .soep-lijn, .soep-vak, .soep-val, .soep-kom, .soep-fout { animation: none; }
 }
 
 /* De klop van de LED-stand in de Flitsreeks: bij elke score-verhoging komt het

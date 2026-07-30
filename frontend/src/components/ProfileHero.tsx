@@ -35,19 +35,50 @@ const goudVlak = `linear-gradient(160deg, ${GOUD[3]} 0%, ${GOUD[2]} 38%, ${GOUD[
  *  onderaan. Er zit wat lucht bij opgeteld zodat tekst niet tegen goud plakt. */
 export const PANEEL_VERHOUDING = 3835 / 2289;
 
+/** De schaduw waarop een art-sectie zweeft.
+ *
+ *  Een TWEEDE kopie van dezelfde art, zwart gemaakt en vervaagd, en niet
+ *  `filter: drop-shadow`: die rastert op iOS de doos van de laag mee en dan
+ *  zie je zwarte hoekjes rond elke afschuining. `brightness(0)` maakt elke
+ *  pixel zwart en laat het alfakanaal staan, dus de schaduw volgt de VORM.
+ *  Recht naar beneden, want het licht komt van boven.
+ *
+ *  Alleen voor SECTIES met eigen art (profiel, main page, kast, LED-balk,
+ *  scorebord). Niet voor glasrijen of neonkaders: die zijn doorzichtig, en een
+ *  schaduw achter glas maakt er een donker vlak van. */
+export function ArtSchaduw({ art }: { art: string }) {
+  return (
+    <img
+      src={art}
+      alt=""
+      aria-hidden
+      style={{
+        position: "absolute", inset: 0, width: "100%", height: "100%", display: "block",
+        filter: "brightness(0) blur(11px)", opacity: 0.55, transform: "translateY(9px)",
+        pointerEvents: "none",
+      }}
+    />
+  );
+}
+
 export function Paneel({ children, style }: { children: ReactNode; style?: CSSProperties }) {
   return (
     <div
       style={{
         position: "relative",
         aspectRatio: `${3835} / ${2289}`,
-        backgroundImage: "url(/ui/profile-frame.webp)",
-        backgroundSize: "100% 100%",
-        backgroundRepeat: "no-repeat",
-        filter: "drop-shadow(0 12px 26px rgba(0,0,0,.5))",
         ...style,
       }}
     >
+      {/* Schaduw onder de art, als kopie en niet als drop-shadow: zie
+          ArtSchaduw. De art zelf is daardoor een eigen laag geworden. */}
+      <ArtSchaduw art="/ui/profile-frame.webp" />
+      <img
+        src="/ui/profile-frame.webp"
+        alt=""
+        aria-hidden
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }}
+      />
       {/* De inhoud ligt er als LOSSE laag overheen en zit niet in de doos.
           Twee redenen, allebei een keer misgegaan:
           1. Met padding groeit het paneel mee zodra de inhoud een haar te hoog

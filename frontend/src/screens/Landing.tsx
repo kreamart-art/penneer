@@ -17,7 +17,7 @@ import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { NeonText } from "../components/NeonText";
 import { neonSkin } from "../theme/neon";
-import { TILE_ART, plateShadow, shadowSrc, useTileSkin } from "../theme/tileSkin";
+import { TILE_ART, useTileSkin } from "../theme/tileSkin";
 import { CashPlate, CoinPlate } from "../components/CoinPlate";
 import { HexPlate } from "../components/HexPlate";
 import { HexArt } from "../components/HexArt";
@@ -729,7 +729,12 @@ function FriendsSheet({
         }
       >
         {skin && (
-          <img aria-hidden alt="" src="/tiles/frame-popup.webp" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", zIndex: -1, pointerEvents: "none", filter: "drop-shadow(0 18px 40px rgba(0,0,0,.55))" }} />
+          <>
+            {/* Schaduw als kopie, niet als drop-shadow: die rastert op iOS de
+                doos mee en gaf zwarte hoekjes rond de afschuiningen. */}
+            <img aria-hidden alt="" src="/tiles/frame-popup.webp" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", zIndex: -2, pointerEvents: "none", filter: "brightness(0) blur(12px)", opacity: 0.55, transform: "translateY(10px)" }} />
+            <img aria-hidden alt="" src="/tiles/frame-popup.webp" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", zIndex: -1, pointerEvents: "none" }} />
+          </>
         )}
         {/* De lijst-art heeft zijn eigen hoekbeslag, dus het kruis moet net wat
             verder naar binnen dan de doosrand om in de hoek te vallen in plaats
@@ -882,8 +887,16 @@ function Tile({
           lineHeight: 0,
         }}
       >
-        {/* De schaduw is een eigen plaatje, geen CSS-effect. Zie `plateShadow`. */}
-        <img aria-hidden src={shadowSrc(tile.src)} alt="" style={plateShadow} />
+        {/* De schaduw is een KOPIE van de plaat zelf: brightness(0) maakt elke
+            pixel zwart en laat het alfakanaal staan, dus hij volgt de vorm.
+            Dezelfde schaduw als onder de secties, zodat alles op dezelfde
+            manier op het decor ligt. */}
+        <img
+          aria-hidden
+          src={tile.src}
+          alt=""
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", filter: "brightness(0) blur(10px)", opacity: 0.5, transform: "translateY(8px)", pointerEvents: "none" }}
+        />
         {/* Vaste verhouding, zodat alle tegels even groot zijn ook voordat de
             plaat geladen is. De vier vierkante platen staan op een gedeeld doek
             (zie public/tiles); de Duel-balk heeft zijn eigen, bredere maat. */}
