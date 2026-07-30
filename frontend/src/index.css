@@ -744,16 +744,26 @@ body.soepspel::after {
 body.soephal::after {
   background-image:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
+    radial-gradient(115% 72% at 50% 42%, rgba(4, 2, 12, 0) 32%, rgba(4, 2, 12, 0.42) 68%, rgba(4, 2, 12, 0.85) 100%),
     linear-gradient(180deg, rgba(6, 3, 16, 0.5) 0%, rgba(6, 3, 16, 0.4) 46%, rgba(6, 3, 16, 0.62) 100%),
     url("/ui/soep/bg-lobby.webp?v=1"),
     linear-gradient(180deg, #150e2e 0%, #100a24 50%, #06040e 100%);
+  background-repeat: repeat, no-repeat, no-repeat, no-repeat, no-repeat;
+  background-position: bottom left, center, bottom, bottom center, bottom;
+  background-size: 160px 160px, 100% 100%, 100% 100%, cover, 100% 100%;
 }
 body.soepspel::after {
   background-image:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
+    /* Het vignet: de randen zakken naar zwart zodat de zaal om het bord heen
+       dichtvouwt en het licht in het midden blijft, waar het spel staat. */
+    radial-gradient(115% 72% at 50% 42%, rgba(4, 2, 12, 0) 32%, rgba(4, 2, 12, 0.42) 68%, rgba(4, 2, 12, 0.85) 100%),
     linear-gradient(180deg, rgba(6, 3, 16, 0.62) 0%, rgba(6, 3, 16, 0.5) 46%, rgba(6, 3, 16, 0.7) 100%),
     url("/ui/soep/bg-spel.webp?v=1"),
     linear-gradient(180deg, #150e2e 0%, #100a24 50%, #06040e 100%);
+  background-repeat: repeat, no-repeat, no-repeat, no-repeat, no-repeat;
+  background-position: bottom left, center, bottom, bottom center, bottom;
+  background-size: 160px 160px, 100% 100%, 100% 100%, cover, 100% 100%;
 }
 
 /* De lijn om een gevonden woord leeft: een licht dat er traag langs strijkt.
