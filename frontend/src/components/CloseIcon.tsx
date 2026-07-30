@@ -11,12 +11,17 @@ export function CloseIcon({ size = 24 }: { size?: number }) {
       src="/ui/close.webp"
       alt=""
       aria-hidden
-      // De art is 220x232, dus width EN height op dezelfde maat drukte hem 5%
-      // te breed. size is de HOOGTE en de breedte wordt hier UITGEREKEND, niet
-      // op auto gezet: in een absoluut geplaatste knop tegen de rand mag een
-      // auto-breedte niet breder worden dan de resterende ruimte, en dan werd
-      // het kruis tot de helft samengeknepen.
-      style={{ height: size, width: size * (220 / 232), display: "block", flexShrink: 0 }}
+      // Een VIERKANTE doos met object-fit: contain. Dat is de enige vorm die
+      // niet kan uitrekken, wat er ook met de doos gebeurt: contain schaalt de
+      // art altijd gelijkmatig en zet hem in het midden.
+      //
+      // De twee eerdere pogingen leunden allebei op de doos: width en height
+      // gelijk (drukte de 220x232-art 5% te breed) en daarna een uitgerekende
+      // breedte (klopt alleen zolang niemand aan die breedte komt). In een
+      // absoluut geplaatste knop tegen de rand IS er iets dat eraan komt: de
+      // krimp-naar-inhoud rekent met de ruimte tot de rand, en dat is daar
+      // maar een paar pixels. Met contain doet die ruimte niet meer mee.
+      style={{ width: size, height: size, objectFit: "contain", display: "block", flexShrink: 0 }}
     />
   );
 }

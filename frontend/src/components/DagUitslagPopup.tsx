@@ -266,9 +266,13 @@ export function DagUitslagPopup({ game, onClose }: { game: GameApi; onClose: () 
           className="pressable"
           style={{
             position: "absolute",
-            left: `${HOEK.x * 100}%`,
+            // Vanaf RECHTS gemeten, niet met een left van 96,8%: bij een
+            // left zo dicht tegen de rand houdt de krimp-naar-inhoud maar een
+            // paar pixels over als beschikbare breedte, en dat knijpt het
+            // kruis samen op browsers die de min-inhoud niet respecteren.
+            right: `${(1 - HOEK.x) * 100}%`,
             top: `${HOEK.y * 100}%`,
-            transform: "translate(-50%, -50%)",
+            transform: "translate(50%, -50%)",
             zIndex: 4,
             background: "transparent",
             border: "none",

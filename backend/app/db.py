@@ -2075,22 +2075,34 @@ class Database:
     # dat deel; je hoeft niet allebei te spelen om in de uitslag te staan, je
     # laat dan wel punten liggen.
 
+    # De arena telt mee met zijn BESTE afgeronde poging van de dag: onbeperkt
+    # spelen mag, maar één keer meetellen. Daarom een subquery met MAX en niet
+    # een join op de tabel zelf, want die zou elke poging apart optellen.
     _TOTAAL_SQL = """
-        WITH deelnemers AS (
+        WITH arena_best AS (
+            SELECT user_id, MAX(score) AS score, MIN(time_ms) AS time_ms, MIN(finished_at) AS created_at
+            FROM arena_attempts WHERE day = :dag AND finished_at IS NOT NULL
+            GROUP BY user_id
+        ),
+        deelnemers AS (
             SELECT user_id FROM daily_scores WHERE day = :dag
             UNION
             SELECT user_id FROM topo_scores  WHERE day = :dag
+            UNION
+            SELECT user_id FROM arena_best
         )
         SELECT u.id, u.name, u.color, u.avatar_ver, u.divisie,
                u.avatar IS NOT NULL AS has_avatar,
-               COALESCE(ds.score, 0) + COALESCE(ts.score, 0)     AS score,
-               COALESCE(ds.time_ms, 0) + COALESCE(ts.time_ms, 0) AS time_ms,
+               COALESCE(ds.score, 0) + COALESCE(ts.score, 0) + COALESCE(ab.score, 0)       AS score,
+               COALESCE(ds.time_ms, 0) + COALESCE(ts.time_ms, 0) + COALESCE(ab.time_ms, 0) AS time_ms,
                MIN(COALESCE(ds.created_at, 1e18),
-                   COALESCE(ts.created_at, 1e18))                AS created_at
+                   COALESCE(ts.created_at, 1e18),
+                   COALESCE(ab.created_at, 1e18))                                          AS created_at
         FROM deelnemers d
         JOIN users u ON u.id = d.user_id
         LEFT JOIN daily_scores ds ON ds.user_id = d.user_id AND ds.day = :dag
         LEFT JOIN topo_scores  ts ON ts.user_id = d.user_id AND ts.day = :dag
+        LEFT JOIN arena_best   ab ON ab.user_id = d.user_id
     """
     # Hoogste totaal eerst; bij gelijk totaal wie sneller was, en daarna wie
     # eerder klaar was. Dezelfde volgorde als bij de losse delen, zodat een
@@ -2121,9 +2133,11 @@ class Database:
                     SELECT user_id FROM daily_scores WHERE day=?
                     UNION
                     SELECT user_id FROM topo_scores  WHERE day=?
+                    UNION
+                    SELECT user_id FROM arena_attempts WHERE day=? AND finished_at IS NOT NULL
                 )
                 """,
-                (day, day),
+                (day, day, day),
             )[0]["n"])
 
     def topo_days_of(self, user_id: str, limit: int = 400) -> list[str]:
