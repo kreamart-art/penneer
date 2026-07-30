@@ -224,7 +224,10 @@ export function Landing({
       .then((d) => {
         const woorden = !!d.played || lokaal("penneer.dailyResult", d.day);
         const topo = !!d.topo_played || lokaal("penneer.topoResult", d.day);
-        setDailyLeft((woorden ? 0 : 1) + (topo ? 0 : 1));
+        // Drie onderdelen sinds de arena erbij kwam. De arena kent geen
+        // "af": één afgeronde poging is genoeg om hem niet meer te tellen.
+        const arena = !!d.arena_played;
+        setDailyLeft((woorden ? 0 : 1) + (topo ? 0 : 1) + (arena ? 0 : 1));
       })
       .catch(() => {});
   }, []);

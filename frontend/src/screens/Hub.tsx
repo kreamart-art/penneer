@@ -22,7 +22,6 @@ import { VoiceNote } from "../components/VoiceNote";
 import { EmotePicker } from "../components/EmotePicker";
 import { EMOTE_SRC, FREE_EMOTE_PACKS } from "../components/emotes";
 import { HexPlate } from "../components/HexPlate";
-import { MusicToggle } from "../components/MusicToggle";
 import { Toggle } from "../components/Toggle";
 import { Screen, Card } from "../components/Layout";
 import type { AccountStats, Friend, GameApi, InboxItem, LeaderboardRow, LevelInfo } from "../net/socket";
@@ -165,7 +164,6 @@ export function Hub({ game, section, onBack, onShowShop, onOpenInbox, onChalleng
           )}
           {/* De muziekknop alleen waar hij iets toevoegt: op de inbox en bij
               vrienden/club is hij chroom dat de balk vult zonder reden. */}
-          {section !== "inbox" && section !== "friends" && <MusicToggle plate plateSize={HEX} size={16} padding={0} />}
         </div>
       }
     >

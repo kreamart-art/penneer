@@ -7,7 +7,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ArrowLeft, Check, ChevronLeft, ChevronRight, ListChecks, Lock } from "lucide-react";
 import { Screen, Card } from "../components/Layout";
-import { MusicToggle } from "../components/MusicToggle";
 import { sound } from "../sound/sound";
 import type { GameApi } from "../net/socket";
 import { SchermTip } from "../components/SchermTip";
@@ -522,7 +521,6 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
               )}
             </span>
           )}
-          <div style={{ marginLeft: account ? 6 : "auto" }}><MusicToggle plate plateSize={34} size={15} padding={0} /></div>
         </div>
       }
     >

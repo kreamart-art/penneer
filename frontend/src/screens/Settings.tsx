@@ -1,7 +1,7 @@
 // Settings + About — reachable from the Landing gear. Language, sound, how-to,
 // install-as-app, and an About card with the version and studio credit.
 import { useEffect, useState } from "react";
-import { ArrowLeft, Compass, Download, Globe, HelpCircle, Mail, Music, Share, Trash2, Volume2 } from "lucide-react";
+import { ArrowLeft, ChevronRight, Compass, Download, Globe, HelpCircle, Mail, Music, Share, Trash2, Volume2 } from "lucide-react";
 import { Logo } from "../components/Logo";
 import { Paneel, SierKop } from "../components/ProfileHero";
 import { PilKeuze } from "./Hub";
@@ -24,6 +24,46 @@ import { colors, font, withAlpha } from "../theme/tokens";
  *  niet uit hoort te zien in een spel dat verderop overal gouden sierkoppen
  *  heeft. Dezelfde `SierKop` als op het profiel, dus dit scherm hoort er weer
  *  bij in plaats van eronder te hangen. */
+/** Een kaart die dichtklapt.
+ *
+ *  Instellingen groeide door tot een scherm waar je doorheen moest scrollen om
+ *  iets terug te vinden. De delen die je zelden nodig hebt (contact, installeren,
+ *  admin) staan nu dicht, met alleen hun kop zichtbaar: het scherm past weer in
+ *  een oogopslag en wat je zoekt is één tik weg.
+ *
+ *  De inhoud wordt pas GEMONTEERD als hij open is. Dat scheelt niet alleen werk
+ *  bij het tekenen, het voorkomt ook dat een dicht paneel op de achtergrond
+ *  netwerkverkeer doet: het admin-dashboard vraagt zijn cijfers op bij het
+ *  monteren, en dat hoeft niet zolang niemand kijkt. */
+function Inklapbaar({ titel, icoon, open, onWissel, children }: {
+  titel: string;
+  icoon?: React.ReactNode;
+  open: boolean;
+  onWissel: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <Card style={{ display: "flex", flexDirection: "column", gap: open ? 12 : 0, padding: open ? 18 : 14 }}>
+      <button
+        onClick={() => { sound.uiTap(); onWissel(); }}
+        aria-expanded={open}
+        style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", background: "transparent", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }}
+      >
+        {icoon}
+        <span style={{ flex: 1, fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink }}>{titel}</span>
+        {/* De pijl draait mee: open is naar beneden, dicht is naar rechts. Een
+            pijl die van vorm wisselt leest als twee knoppen. */}
+        <ChevronRight
+          size={18}
+          color={colors.faint}
+          style={{ transform: open ? "rotate(90deg)" : "none", transition: "transform .2s ease" }}
+        />
+      </button>
+      {open && children}
+    </Card>
+  );
+}
+
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: 10 }}>
@@ -185,6 +225,11 @@ export function Settings({ game, onBack, onShowRules, onShowTour, onShowLegal }:
   const standalone = isStandalone();
   const ios = isIos();
   const iosInApp = isIosInAppBrowser();
+  // Welke panelen open staan. Alle drie dicht bij binnenkomst: dat is precies
+  // het punt van dit scherm korter maken.
+  const [openPaneel, setOpenPaneel] = useState<"contact" | "install" | "admin" | null>(null);
+  const wissel = (welk: "contact" | "install" | "admin") =>
+    setOpenPaneel((oud) => (oud === welk ? null : welk));
   const [adminCode, setAdminCode] = useState("");
   const { isAdmin, adminAi, recoveryCodes, aiCodes, avatarCodes, buzzerCodes } = game.state;
 
@@ -280,8 +325,7 @@ export function Settings({ game, onBack, onShowRules, onShowTour, onShowLegal }:
 
         {/* Contact en het juridische. Eén kaart, want het is hetzelfde soort
             informatie: hoe je ons bereikt en waar je aan toe bent. */}
-        <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <SectionLabel>{t("contactTitle")}</SectionLabel>
+        <Inklapbaar titel={t("contactTitle")} icoon={<Mail size={18} color={colors.gold} />} open={openPaneel === "contact"} onWissel={() => wissel("contact")}>
           <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, lineHeight: 1.5, color: colors.faint }}>{t("contactHint")}</p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             <a
@@ -307,17 +351,13 @@ export function Settings({ game, onBack, onShowRules, onShowTour, onShowLegal }:
               {t("termsTitle")}
             </button>
           </div>
-        </Card>
+        </Inklapbaar>
 
         {/* iOS has no beforeinstallprompt (Apple ships no install API in WebKit, and
             every iOS browser is WebKit), so the button can never fire there. Show the
             manual Share > Zet op beginscherm steps instead of a dead disabled button. */}
         {!standalone && ios && (
-          <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <Download size={18} color={colors.gold} />
-              <span style={{ fontFamily: font.ui, fontSize: 14.5, fontWeight: 700, color: colors.ink }}>{t("installIosTitle")}</span>
-            </div>
+          <Inklapbaar titel={t("installIosTitle")} icoon={<Download size={18} color={colors.gold} />} open={openPaneel === "install"} onWissel={() => wissel("install")}>
             {iosInApp ? (
               <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13, lineHeight: 1.55, color: colors.sub }}>{t("installIosSafari")}</p>
             ) : (
@@ -357,7 +397,7 @@ export function Settings({ game, onBack, onShowRules, onShowTour, onShowLegal }:
                 <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12, lineHeight: 1.5, color: colors.faint }}>{t("installIosWhy")}</p>
               </>
             )}
-          </Card>
+          </Inklapbaar>
         )}
         {!standalone && !ios && (
           <div>
@@ -374,11 +414,7 @@ export function Settings({ game, onBack, onShowRules, onShowTour, onShowLegal }:
         )}
 
         {/* Admin (owner) */}
-        <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <ArtIcoon naam="schild" size={20} />
-            <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink }}>{t("adminTitle")}</span>
-          </div>
+        <Inklapbaar titel={t("adminTitle")} icoon={<ArtIcoon naam="schild" size={20} />} open={openPaneel === "admin"} onWissel={() => wissel("admin")}>
           <p style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint, margin: 0 }}>{t("adminHint")}</p>
 
           {!isAdmin ? (
@@ -528,7 +564,7 @@ export function Settings({ game, onBack, onShowRules, onShowTour, onShowLegal }:
               <AdminCategories game={game} />
             </>
           )}
-        </Card>
+        </Inklapbaar>
 
         {/* Over. In de sierlijst van het profiel: dit is het naamplaatje van de
             app, en dat verdient dezelfde lijst als het naamplaatje van een

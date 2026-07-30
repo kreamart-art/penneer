@@ -421,6 +421,11 @@ async def daily_info(request: Request) -> JSONResponse:
         # Het topografiedeel is een eigen potje met een eigen ranglijst; je kunt
         # er los van het woordendeel aan meedoen.
         "topo_played": bool(uid and db.topo_entry(uid, day)),
+        # De arena telt mee voor het knopje op de dagronde-tegel: drie
+        # onderdelen, dus drie dingen die nog open kunnen staan. Hij heeft geen
+        # "gedaan"-toestand zoals de andere twee (je mag onbeperkt spelen), dus
+        # hier is de vraag simpelweg: heb je vandaag al een poging afgerond?
+        "arena_played": bool(uid and db.arena_mijn(uid, day)["pogingen"] > 0),
         "topo_players": db.topo_players_count(day),
         # De STAND van vandaag, voor de uitslag-popup op de main page. EEN
         # lijst: de twee delen zijn twee potjes, maar de dagwinnaar is degene

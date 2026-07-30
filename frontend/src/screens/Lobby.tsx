@@ -8,7 +8,6 @@ import { NeonText } from "../components/NeonText";
 import { Button } from "../components/Button";
 import { Chip } from "../components/Chip";
 import { InfoDot } from "../components/InfoDot";
-import { MusicToggle } from "../components/MusicToggle";
 import { Toggle } from "../components/Toggle";
 import { Screen, Card } from "../components/Layout";
 import { TopBar } from "../components/TopBar";
@@ -254,7 +253,6 @@ export function Lobby({ game }: { game: GameApi }) {
               { key: "en" as const, label: "EN" },
             ]}
           />
-          <MusicToggle plate plateSize={34} size={15} padding={0} />
         </div>
 
         {/* De roomcode is het enige op dit scherm dat je aan een ander geeft,
