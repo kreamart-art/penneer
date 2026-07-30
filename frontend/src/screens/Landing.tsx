@@ -432,7 +432,7 @@ export function Landing({
             <img
               src="/ui/missie-dag.webp?v=1"
               alt=""
-              style={{ height: 42, width: "auto", display: "block", filter: "drop-shadow(0 3px 8px rgba(0,0,0,.5))" }}
+              style={{ height: 46, width: "auto", display: "block", filter: "drop-shadow(0 3px 8px rgba(0,0,0,.5))" }}
             />
             {missionsOpen > 0 && (
               <CountBadge n={missionsOpen} x="calc(100% - 6px)" y="2px" size={16} />
