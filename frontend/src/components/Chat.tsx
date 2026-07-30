@@ -6,6 +6,7 @@ import { CloseIcon } from "./CloseIcon";
 import { Send } from "lucide-react";
 import { TelHex } from "./TelHex";
 import { ChatIcoon } from "./ChatIcoon";
+import { WALLPAPERS, wallpaperKlasse, wallpaperStijl, wallpaperVan, wallpaperZet, type WallpaperId } from "./Wallpaper";
 import type { GameApi } from "../net/socket";
 import { MicButton } from "./MicButton";
 import { VoiceNote } from "./VoiceNote";
@@ -63,6 +64,11 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
   const [emotesOpen, setEmotesOpen] = useState(false);
   const chat = game.state.chat;
   const myId = game.state.playerId;
+  // Het behang. Dezelfde voorkeur als in je gesprekken (hij staat in
+  // localStorage), en hier ook te WISSELEN: dan hoef je de room niet uit om je
+  // achtergrond te veranderen, en wat je hier kiest geldt meteen ook daar.
+  const [behang, setBehang] = useState<WallpaperId>(wallpaperVan);
+  const [behangOpen, setBehangOpen] = useState(false);
   const roomCode = game.state.room?.code ?? "";
 
   // Upload a memo to this room, then post it as a chat message.
@@ -188,6 +194,15 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
             {t("chat")}
           </span>
           <button
+            onClick={() => { sound.uiTap(); setBehangOpen((v) => !v); }}
+            aria-label={t("wallpaperTitle")}
+            title={t("wallpaperTitle")}
+            className="pressable"
+            style={{ background: "transparent", border: "none", cursor: "pointer", display: "flex", padding: 4, marginLeft: "auto" }}
+          >
+            <img src="/ui/wallpaper.webp" alt="" aria-hidden style={{ width: 22, height: 22, objectFit: "contain", display: "block", opacity: behangOpen ? 1 : 0.75 }} />
+          </button>
+          <button
             onClick={onClose}
             aria-label={t("back")}
             style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 2 }}
@@ -196,8 +211,54 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
           </button>
         </div>
 
+        {/* Dezelfde behangknop als in een gesprek: de kiezer is een strook van
+            staaltjes die opzij schuift, geen raster, want dat duwt de berichten
+            weg zodra je hem opent. */}
+        {behangOpen && (
+          <div
+            style={{
+              display: "flex", alignItems: "center", gap: 10,
+              padding: "10px 14px", overflowX: "auto", overflowY: "hidden",
+              WebkitOverflowScrolling: "touch", scrollbarWidth: "none",
+              flexShrink: 0,
+            }}
+          >
+            {WALLPAPERS.map((w) => {
+              const aan = behang === w.id;
+              return (
+                <button
+                  key={w.id}
+                  onClick={() => { sound.uiTap(); setBehang(w.id); wallpaperZet(w.id); }}
+                  aria-label={w.naam}
+                  title={w.naam}
+                  aria-pressed={aan}
+                  className="pressable"
+                  style={{
+                    flexShrink: 0, width: 34, height: 34, borderRadius: 11,
+                    border: "none", padding: 0, cursor: "pointer",
+                    // De ring ligt OM het staaltje, niet erop, dus je ziet het
+                    // behang zelf helemaal.
+                    boxShadow: aan
+                      ? `0 0 0 2px #160D30, 0 0 0 4px #FFC23D, 0 0 14px ${withAlpha("#FFC23D", 0.5)}`
+                      : `0 0 0 1.5px ${withAlpha("#C8A0FF", 0.28)}`,
+                    ...wallpaperStijl(w.id),
+                    backgroundAttachment: "scroll",
+                  }}
+                />
+              );
+            })}
+          </div>
+        )}
+
         {/* messages */}
-        <div ref={listRef} style={{ flex: 1, overflowY: "auto", padding: "12px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
+        {/* Hetzelfde behang als in je gesprekken: de keuze staat in
+            localStorage, dus het is EEN voorkeur voor allebei en niet twee
+            instellingen die uit elkaar kunnen lopen. */}
+        <div
+          ref={listRef}
+          className={`zachtscroll ${wallpaperKlasse(behang)}`}
+          style={{ flex: 1, overflowY: "auto", padding: "12px 14px", display: "flex", flexDirection: "column", gap: 8, ...wallpaperStijl(behang) }}
+        >
           {chat.length === 0 ? (
             <div style={{ margin: "auto", textAlign: "center", color: colors.faint, fontFamily: font.ui, fontSize: 14, maxWidth: 260, lineHeight: 1.5 }}>
               {t("chatEmpty")}
