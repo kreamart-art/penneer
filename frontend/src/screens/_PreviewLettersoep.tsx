@@ -405,7 +405,7 @@ export function PreviewLettersoep() {
         ) : (
           // ---- het bord ------------------------------------------------------
           <Sectie art="/ui/soep/bord.webp?v=1" verhouding={BORD_V} kind={bordRef}>
-            <img src="/ui/soep/letters-dof.webp?v=1" alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} />
+            <img src="/ui/soep/letters-dof.webp?v=2" alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} />
 
             <div
               style={{
