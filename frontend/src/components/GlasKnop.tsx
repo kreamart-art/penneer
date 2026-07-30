@@ -81,6 +81,7 @@ export function GlasKnop({
           inset: 0,
           borderRadius: "50%",
           background: `linear-gradient(155deg, ${GOUD_LICHT} 0%, ${GOUD_LIJN} 34%, ${GOUD_DONKER} 68%, ${GOUD_LIJN} 100%)`,
+          opacity: 0.85,
         }}
       />
       {/* Het glas. Donker en doorschijnend, met een lichte bovenhelft: een bol
@@ -93,7 +94,7 @@ export function GlasKnop({
           background:
             "radial-gradient(120% 100% at 30% 0%, rgba(255,222,138,.20) 0%, rgba(255,222,138,.05) 38%, rgba(0,0,0,0) 62%)," +
             "linear-gradient(180deg, rgba(52,34,86,.92) 0%, rgba(18,9,38,.95) 100%)",
-          boxShadow: "inset 0 1px 1px rgba(255,222,138,.30), inset 0 -3px 8px rgba(0,0,0,.55)",
+          boxShadow: "inset 0 -3px 8px rgba(0,0,0,.55)",
         }}
       />
       {/* De glans: een kort streepje bovenaan, niet een halve ring. Licht is
