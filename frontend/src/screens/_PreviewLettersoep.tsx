@@ -404,28 +404,24 @@ export function PreviewLettersoep() {
             );
           })}
 
-          {/* Het oordeel: de vakjes van je gelegde pad kleuren even groen of
-              rood. Als tint OVER de gouden art (zIndex 3, boven de aan-laag,
-              onder de letters), zodat het dezelfde knop blijft met ander licht
-              erin, en niet een andere knop. */}
+          {/* Het oordeel: leg je de laatste letter, dan wisselen de vakjes van
+              je pad naar hun GROENE (goed) of RODE (fout) stand. Dat is art, in
+              dezelfde reeks als de gouden aan-stand en op dezelfde uitsnede
+              geknipt, dus hij valt er pixelvast overheen. */}
           {oordeel &&
             oordeel.cellen.map((c) => {
               const r = Math.floor(c / 4), k = c % 4;
-              const tint = oordeel.goed ? "82,220,140" : "255,84,74";
               return (
-                <span
+                <img
                   key={`oordeel-${c}`}
+                  src={`/ui/soep/letter-${oordeel.goed ? "groen" : "rood"}-${r}${k}.webp?v=1`}
+                  alt=""
                   aria-hidden
                   style={{
                     position: "absolute",
-                    left: pct(KOL[k]), top: pct(RIJ[r]),
-                    width: pct(VAK_B), height: pct(VAK_H),
-                    zIndex: 3,
-                    borderRadius: "16%",
-                    background: `radial-gradient(circle, rgba(${tint},.62) 0%, rgba(${tint},.44) 55%, rgba(${tint},.18) 82%, transparent 100%)`,
-                    boxShadow: `0 0 16px rgba(${tint},.55)`,
-                    mixBlendMode: "screen",
-                    pointerEvents: "none",
+                    left: pct(KOL[k] - 0.0015), top: pct(RIJ[r] + 0.0015),
+                    width: pct(VAK_B + 0.003), height: "auto",
+                    display: "block", zIndex: 3, pointerEvents: "none",
                   }}
                 />
               );
@@ -461,9 +457,10 @@ export function PreviewLettersoep() {
                   style={{
                     // De val golft over het bord: elk vakje een tikje later.
                     animationDelay: `${(fase === "val" ? c : r * 4 + k) * 30}ms`,
+                    position: "relative", zIndex: 5,
                     fontFamily: font.wide, fontSize: 24, letterSpacing: 1,
-                    color: aan ? "#FFF6DC" : "#FFD98A",
-                    textShadow: aan ? "0 1px 2px rgba(74,38,0,.7)" : "0 0 9px rgba(255,170,40,.45)",
+                    color: aan || oordeel?.cellen.includes(c) ? "#FFF6DC" : "#FFD98A",
+                    textShadow: aan || oordeel?.cellen.includes(c) ? "0 1px 2px rgba(20,16,10,.75)" : "0 0 9px rgba(255,170,40,.45)",
                   }}
                 >
                   {letter}
