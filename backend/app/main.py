@@ -18,7 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import ai_referee, daily, dagprijzen, duel, game, missies_lang, missions, paypal, push
+from . import ai_referee, arena, daily, dagprijzen, duel, game, missies_lang, missions, paypal, push
 from . import topo
 from .db import AVATAR_MAX_BYTES, get_db
 from .social import accounts, _level_of
@@ -1289,6 +1289,87 @@ async def missions_claim(request: Request) -> JSONResponse:
         return JSONResponse({"error": "already"}, status_code=409)
     await accounts.push_account(uid)
     return JSONResponse({"ok": True, "reward": spec["reward"], "coins": spec.get("coins", 0), "cash": spec["cash"]})
+
+
+def _resterend_kort(s: int) -> str:
+    """Restduur als korte NL-tekst voor in een pushbericht: 5u12m, 43m."""
+    u, m = s // 3600, (s % 3600) // 60
+    return f"{u}u{m:02d}m" if u else f"{m}m"
+
+
+@app.get("/api/arena/info")
+async def arena_info(request: Request) -> JSONResponse:
+    """De arena van vandaag: welk spel, de stand, en waar jij staat."""
+    db = get_db()
+    day = daily.today()
+    uid = db.auth(_bearer(request))
+    spel = arena.spel_voor(day)
+    mijn = db.arena_mijn(uid, day) if uid else {"pogingen": 0, "beste": 0}
+    return JSONResponse({
+        "day": day,
+        "game": spel["key"],
+        "af": spel["af"],
+        "seconds_left": daily.seconds_to_next_day(),
+        "players": db.arena_players_count(day),
+        "board": db.arena_board(day, 25),
+        "rank": (db.arena_rank(uid, day)[0] if uid else 0),
+        "beste": int(mijn["beste"]),
+        "pogingen": int(mijn["pogingen"]),
+    })
+
+
+@app.post("/api/arena/start")
+async def arena_start(request: Request) -> JSONResponse:
+    """Begin een poging. Gratis en onbeperkt: de 24 uur zijn de grens en de
+    beste poging telt, dus elke extra poging is druk op het bord, geen kosten."""
+    db = get_db()
+    uid = db.auth(_bearer(request))
+    if not uid:
+        return JSONResponse({"error": "auth"}, status_code=401)
+    day = daily.today()
+    spel = arena.spel_voor(day)
+    if not spel["af"]:
+        return JSONResponse({"error": "not_ready"}, status_code=409)
+    attempt = db.arena_start(uid, day, spel["key"], time.time())
+    return JSONResponse({"attempt_id": attempt, "day": day, "game": spel["key"],
+                         "seed": arena.seed_voor(day)})
+
+
+@app.post("/api/arena/submit")
+async def arena_submit(request: Request) -> JSONResponse:
+    """Lever een poging in. De server controleert wat hij kan weten zonder mee
+    te spelen; daarna kan de verdringingspush vallen: wie plek 1 kwijtraakt
+    hoort dat meteen, met de tijd die nog rest."""
+    db = get_db()
+    uid = db.auth(_bearer(request))
+    if not uid:
+        return JSONResponse({"error": "auth"}, status_code=401)
+    body = await request.json()
+    day = daily.today()
+    spel = arena.spel_voor(day)
+    try:
+        attempt_id = int(body.get("attempt_id") or 0)
+        score = int(body.get("score") or 0)
+        level = int(body.get("level") or 0)
+        time_ms = int(body.get("time_ms") or 0)
+    except (TypeError, ValueError):
+        return JSONResponse({"error": "bad"}, status_code=400)
+    if not arena.plausibel(spel["key"], score, level, time_ms):
+        return JSONResponse({"error": "implausible"}, status_code=422)
+    leider_voor = db.arena_leider(day)
+    if not db.arena_finish(uid, attempt_id, day, score, level, time_ms, time.time()):
+        return JSONResponse({"error": "geen_poging"}, status_code=404)
+    leider_na = db.arena_leider(day)
+    # De push is het hart van de arena: alleen bij een ECHTE wissel, nooit naar
+    # jezelf, en met de resterende tijd erin zodat hij als uitnodiging leest.
+    if leider_voor and leider_na == uid and leider_voor != uid:
+        naam = (db.get_user(uid) or {}).get("name") or "Iemand"
+        await accounts.stuur(leider_voor, "arena_gestoten", naam=naam,
+                             tijd=_resterend_kort(daily.seconds_to_next_day()))
+    mijn = db.arena_mijn(uid, day)
+    rank, total = db.arena_rank(uid, day)
+    return JSONResponse({"ok": True, "beste": int(mijn["beste"]), "pogingen": int(mijn["pogingen"]),
+                         "rank": rank, "players": total, "board": db.arena_board(day, 25)})
 
 
 @app.post("/api/kist/open")

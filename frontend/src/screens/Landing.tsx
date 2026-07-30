@@ -336,8 +336,10 @@ export function Landing({
         {/* De uitslag aan de LINKERkant, gespiegeld: de spiegel laat de art
             het scherm in kijken in plaats van eruit. Alleen het plaatje is
             gespiegeld; de cijfers eronder natuurlijk niet. */}
-        {/* Onder de kleine ad (die eindigt rond y 132), niet erachter. */}
-        <div style={{ position: "absolute", top: 140, left: 0, zIndex: 2, display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+        {/* Strak onder de kleine ad (die eindigt rond y 113) en tegen de
+            schermrand: het Screen-vak heeft 16px padding, dus -12 zet de art
+            op 4px van de rand in plaats van tegen het logo aan. */}
+        <div style={{ position: "absolute", top: 118, left: -12, zIndex: 2, display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
           <button
             onClick={() => { sound.uiTap(); setUitslagOpen(true); }}
             aria-label={t("dagUitslagTitel")}

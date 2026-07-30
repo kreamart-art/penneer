@@ -277,7 +277,7 @@ export function DagUitslagPopup({ game, onClose }: { game: GameApi; onClose: () 
             display: "flex",
           }}
         >
-          <CloseIcon size={22} />
+          <CloseIcon size={26} />
         </button>
 
         {/* LIJF: klok, uitleg, streep en dan de lijst. */}

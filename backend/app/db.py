@@ -223,6 +223,22 @@ CREATE TABLE IF NOT EXISTS mission_progress (
 -- potjes, dagrondes en duels die er toch al staan (zie missies_lang.py). Het
 -- enige dat een gebeurtenis is en dus bewaard moet blijven, is of je je
 -- beloning hebt opgehaald. De primaire sleutel maakt dubbel ophalen onmogelijk.
+-- Arena: een rij per POGING. Onbeperkt en gratis binnen de dag; het bord kijkt
+-- alleen naar de beste afgeronde poging per speler. started_at is van de
+-- server, zodat de tijdscontrole bij het inleveren niet op de klok van de
+-- telefoon leunt.
+CREATE TABLE IF NOT EXISTS arena_attempts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    day TEXT NOT NULL,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    game TEXT NOT NULL,
+    started_at REAL NOT NULL,
+    finished_at REAL,
+    score INTEGER,
+    level INTEGER,
+    time_ms INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_arena_dag ON arena_attempts (day, user_id);
 -- Kisten: elke rij is EEN kist die iemand heeft gekregen. De inhoud wordt pas
 -- bij het OPENEN bepaald en vastgelegd, zodat de onthulling de waarheid is en
 -- een herladen popup niets anders kan laten zien.
@@ -1499,6 +1515,84 @@ class Database:
             "per_dag_14d": per_dag,
             "economie": economie,
         }
+
+    # ---- arena ---------------------------------------------------------------
+
+    # De beste afgeronde poging per speler, met dezelfde beslisregels overal:
+    # hoogste score, dan snelste tijd, dan wie er het eerst was.
+    _ARENA_BESTE = """
+        FROM arena_attempts a JOIN users u ON u.id = a.user_id
+        WHERE a.day = ? AND a.finished_at IS NOT NULL
+          AND a.id = (
+            SELECT b.id FROM arena_attempts b
+            WHERE b.day = a.day AND b.user_id = a.user_id AND b.finished_at IS NOT NULL
+            ORDER BY b.score DESC, b.time_ms ASC, b.finished_at ASC LIMIT 1
+          )
+    """
+    _ARENA_ORDER = " ORDER BY a.score DESC, a.time_ms ASC, a.finished_at ASC "
+
+    def arena_start(self, user_id: str, day: str, game: str, now: float) -> int:
+        with self._lock:
+            cur = self._conn.execute(
+                "INSERT INTO arena_attempts (day, user_id, game, started_at) VALUES (?,?,?,?)",
+                (day, user_id, game, now),
+            )
+            self._conn.commit()
+            return int(cur.lastrowid)
+
+    def arena_finish(self, user_id: str, attempt_id: int, day: str,
+                     score: int, level: int, time_ms: int, now: float) -> bool:
+        """Rond een poging af. True alleen als DEZE aanroep hem afrondde: het
+        filter op finished_at IS NULL maakt dubbel inleveren onmogelijk, en het
+        filter op day laat een poging van gisteren niet in vandaag lekken."""
+        with self._lock:
+            cur = self._conn.execute(
+                """UPDATE arena_attempts SET finished_at=?, score=?, level=?, time_ms=?
+                   WHERE id=? AND user_id=? AND day=? AND finished_at IS NULL""",
+                (now, int(score), int(level), int(time_ms), attempt_id, user_id, day),
+            )
+            self._conn.commit()
+            return bool(cur.rowcount)
+
+    def arena_board(self, day: str, limit: int = 25) -> list[dict]:
+        with self._lock:
+            rows = self._q(
+                "SELECT u.id, u.name, u.color, u.avatar_ver, u.divisie, "
+                "u.avatar IS NOT NULL AS has_avatar, a.score, a.time_ms "
+                + self._ARENA_BESTE + self._ARENA_ORDER + " LIMIT ?",
+                (day, limit),
+            )
+        return [dict(r) for r in rows]
+
+    def arena_rank(self, user_id: str, day: str) -> tuple[int, int]:
+        """(plek, deelnemers); plek 0 zonder afgeronde poging."""
+        with self._lock:
+            rows = self._q("SELECT u.id " + self._ARENA_BESTE + self._ARENA_ORDER, (day,))
+        for i, r in enumerate(rows):
+            if r["id"] == user_id:
+                return i + 1, len(rows)
+        return 0, len(rows)
+
+    def arena_leider(self, day: str) -> Optional[str]:
+        with self._lock:
+            rows = self._q("SELECT u.id " + self._ARENA_BESTE + self._ARENA_ORDER + " LIMIT 1", (day,))
+        return rows[0]["id"] if rows else None
+
+    def arena_mijn(self, user_id: str, day: str) -> dict:
+        with self._lock:
+            rows = self._q(
+                """SELECT COUNT(*) AS pogingen, COALESCE(MAX(score), 0) AS beste
+                   FROM arena_attempts WHERE day=? AND user_id=? AND finished_at IS NOT NULL""",
+                (day, user_id),
+            )
+        return dict(rows[0])
+
+    def arena_players_count(self, day: str) -> int:
+        with self._lock:
+            return int(self._q(
+                "SELECT COUNT(DISTINCT user_id) AS n FROM arena_attempts WHERE day=? AND finished_at IS NOT NULL",
+                (day,),
+            )[0]["n"])
 
     # ---- kisten --------------------------------------------------------------
     # Wat er in een kist zit, per soort. Munten, bewust bescheiden: de kist is

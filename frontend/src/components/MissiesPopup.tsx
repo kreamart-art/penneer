@@ -240,7 +240,7 @@ export function MissiesPopup({ onClose }: { onClose: () => void }) {
             display: "flex",
           }}
         >
-          <CloseIcon size={22} />
+          <CloseIcon size={26} />
         </button>
 
         {/* KOPBALK: de drie schilden. Het actieve staat vol en iets groter, de

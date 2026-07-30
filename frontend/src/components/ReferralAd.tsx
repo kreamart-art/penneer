@@ -91,7 +91,8 @@ export function ReferralAd({ sectie = false }: { sectie?: boolean } = {}) {
       const munten = document.querySelector('[aria-label="Coins"]') as HTMLElement | null;
       if (!munten) return;
       const r = munten.getBoundingClientRect();
-      if (r.height) setPilTop(Math.round(r.bottom + 16));
+      // In documentcoordinaten (plus scrollY): de pil is absoluut geplaatst.
+      if (r.height) setPilTop(Math.round(r.bottom + window.scrollY + 16));
     };
     meet();
     const id = window.setTimeout(meet, 400); // na het laden van de art
@@ -594,7 +595,9 @@ function Pil({
     // hetzelfde element weg, dus die twee kunnen niet op een element staan.
     <div
       className={uitgeklapt ? undefined : "ad-peek"}
-      style={{ position: "fixed", left: 0, top: top ?? "12%", zIndex: 90, lineHeight: 0 }}
+      // Absoluut, niet fixed: de pil hoort BIJ de pagina en scrolt mee weg.
+      // Fixed liet hem boven alles zweven, ook wanneer je naar beneden ging.
+      style={{ position: "absolute", left: 0, top: top ?? "12%", zIndex: 90, lineHeight: 0 }}
     >
       <button
         onClick={onTik}

@@ -28,6 +28,15 @@ from typing import Optional
 # Zo kan de art verhuizen zonder dat de server het weet.
 SOORTEN: dict[str, dict] = {
     # ---- sociaal -----------------------------------------------------------
+    # ---- arena -------------------------------------------------------------
+    "arena_gestoten": {
+        "titel": "Van plek 1 gestoten",
+        "body": "{naam} heeft je van plek 1 gestoten. Nog {tijd} om terug te slaan.",
+        "tag": "arena",
+        "icoon": "vlam",
+        "naar": "dagronde",
+        "push": True,
+    },
     "vriend_verzoek": {
         "titel": "Nieuw vriendschapsverzoek",
         "body": "{naam} wil je vriend worden.",

@@ -17,7 +17,7 @@ const CACHE = "penneer-v85"; // v85: art-cache overleeft releases
 // waarom de app "zwaar" aanvoelde. Art die op dezelfde URL wordt overschreven
 // draagt al een ?v=-parameter, en een andere query is een andere cache-regel,
 // dus verse art komt gewoon binnen zonder de rest te lozen.
-const ART = "penneer-art-v10"; // v10: DEF-kisten (dicht+open), scherf, herkansing
+const ART = "penneer-art-v11"; // v11: arena-icoon
 // Gehashte brokken onder /assets/. Ze zijn inhoud-geadresseerd en daarmee
 // onveranderlijk, dus ze mogen een release overleven: een scherm dat al
 // opgehaald was blijft werken als er intussen gedeployd is. De schil

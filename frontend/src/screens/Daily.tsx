@@ -9,6 +9,7 @@ import { Button } from "../components/Button";
 import { Screen, Card } from "../components/Layout";
 import { NeonText } from "../components/NeonText";
 import { Topo } from "./Topo";
+import { ArenaDeel } from "./Arena";
 import type { GameApi } from "../net/socket";
 import { ArtIcoon } from "../components/ArtIcoon";
 import { GlasVeld } from "../components/GlasVeld";
@@ -80,7 +81,7 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
   const [phase, setPhase] = useState<"intro" | "play" | "result">("intro");
   const [info, setInfo] = useState<{ players: number; played: boolean; streak: number; day: string; seconds_left: number; topo_played: boolean; topo_players: number } | null>(null);
   // De Dagronde bestaat uit twee losse onderdelen. Null = de keuze staat open.
-  const [part, setPart] = useState<"words" | "topo" | null>(null);
+  const [part, setPart] = useState<"words" | "topo" | "arena" | null>(null);
   const [letter, setLetter] = useState("");
   const [cats, setCats] = useState<string[]>([]);
   const [duration, setDuration] = useState(60);
@@ -268,6 +269,9 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
   if (part === "topo") {
     return <Topo game={game} onProfile={onProfile} played={!!info?.topo_played} onBack={() => { setPart(null); void refreshInfo(); }} />;
   }
+  if (part === "arena") {
+    return <ArenaDeel game={game} onBack={() => { setPart(null); void refreshInfo(); }} />;
+  }
 
   const header = (
     <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", paddingTop: "calc(14px + env(safe-area-inset-top))" }}>
@@ -331,6 +335,18 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
             done={!!info?.topo_played}
             doneLabel={t("partDone")}
             onClick={() => { sound.uiTap(); setPart("topo"); }}
+          />
+          {/* Het derde deel: elke weekdag een ander spel, ceilingloos scoren en
+              zoveel pogingen als je wil binnen de dag. Daarom geen "gedaan"-
+              vinkje zoals bij de andere twee: hier ben je nooit klaar. */}
+          <PartTile
+            icon={<img src="/ui/arena.webp?v=1" alt="" aria-hidden style={{ width: 50, height: 50, objectFit: "contain", display: "block" }} />}
+            title={t("arenaTitel")}
+            desc={t("arenaDagDesc")}
+            meta=""
+            done={false}
+            doneLabel=""
+            onClick={() => { sound.uiTap(); setPart("arena"); }}
           />
         </div>
       </Screen>
