@@ -828,26 +828,34 @@ class AccountManager:
             since, until = 0.0, None
         rows = self.db.leaderboard(since=since, until=until)
 
-        # Hoeveel plekken je de laatste 24 uur bent gestegen. Daar is GEEN
-        # opslag voor nodig: de ranglijst wordt toch al uit de potjes zelf
-        # gerekend, dus reken hem ook een keer met een venster dat een dag eerder
-        # ophoudt en vergelijk je plek. Momentopnames wegschrijven zou een tabel
-        # plus een taak vragen die op tijd draait, en dan is de uitkomst nog
-        # afhankelijk van of die taak gelopen heeft.
+        # Hoeveel plekken er de laatste 24 uur geklommen is, voor IEDEREEN op de
+        # lijst en niet alleen voor jezelf. Daar is GEEN opslag voor nodig: de
+        # ranglijst wordt toch al uit de potjes zelf gerekend, dus reken hem ook
+        # een keer met een venster dat een dag eerder ophoudt en vergelijk de
+        # plekken. Momentopnames wegschrijven zou een tabel plus een taak vragen
+        # die op tijd draait, en dan is de uitkomst nog afhankelijk van of die
+        # taak gelopen heeft; deze manier klopt altijd en heeft geen geheugen
+        # nodig dat kan ontbreken.
+        #
+        # Wie een dag geleden nog niet op de lijst stond krijgt None en geen nul:
+        # nul betekent "stond stil", en dat is iets anders dan "was er nog niet".
+        toen = time.time() - DAY
+        eerder = {r["id"]: i for i, r in enumerate(self.db.leaderboard(since=since, until=toen, limit=500))}
+        klim = {
+            r["id"]: (eerder[r["id"]] - i if r["id"] in eerder else None)
+            for i, r in enumerate(rows)      # lager rijnummer = hoger op de lijst
+        }
+
         uid = self.user_of(ws)
-        stijging = None
-        if uid:
-            toen = time.time() - DAY
-            eerder = self.db.leaderboard(since=since, until=toen, limit=500)
-            nu_rij = next((i for i, r in enumerate(rows) if r["id"] == uid), None)
-            toen_rij = next((i for i, r in enumerate(eerder) if r["id"] == uid), None)
-            if nu_rij is not None and toen_rij is not None:
-                stijging = toen_rij - nu_rij   # lager rijnummer = hoger op de lijst
         await self._send(ws, {
             "type": "leaderboard",
             "period": period,
-            "climb": stijging,
-            "rows": [{**self._public(r), "points": r["points"], "games": r["games"], "wins": r["wins"]} for r in rows],
+            "climb": klim.get(uid) if uid else None,
+            "rows": [
+                {**self._public(r), "points": r["points"], "games": r["games"], "wins": r["wins"],
+                 "climb": klim.get(r["id"])}
+                for r in rows
+            ],
         })
 
     # ---- realtime pushes ------------------------------------------------------

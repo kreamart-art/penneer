@@ -1919,6 +1919,15 @@ class Database:
         return out
 
     def leaderboard(self, since: float = 0.0, until: Optional[float] = None, limit: int = 25) -> list[dict]:
+        """De ranglijst over een venster, uit de potjes zelf gerekend.
+
+        De volgorde eindigt op de NAAM, en dat is geen opsmuk. Zonder een derde
+        sleutel mag SQLite twee spelers met evenveel punten en evenveel winsten
+        in willekeurige volgorde teruggeven, en dan verschilt die volgorde ook
+        tussen twee aanroepen. Wie de lijst van vandaag met die van gisteren
+        vergelijkt om te zien wie er gestegen is, ziet dan spookbewegingen bij
+        iedereen die gelijk staat.
+        """
         with self._lock:
             rows = self._q(
                 """
@@ -1929,7 +1938,7 @@ class Database:
                 JOIN games g ON g.id=gp.game_id
                 JOIN users u ON u.id=gp.user_id
                 WHERE g.finished_at >= ? AND g.finished_at < ?
-                GROUP BY u.id ORDER BY points DESC, wins DESC LIMIT ?
+                GROUP BY u.id ORDER BY points DESC, wins DESC, u.name ASC LIMIT ?
                 """,
                 (since, until if until is not None else float("inf"), limit),
             )

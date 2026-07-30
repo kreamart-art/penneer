@@ -251,6 +251,10 @@ export interface LeaderboardRow extends PublicUser {
   points: number;
   games: number;
   wins: number;
+  /** Plekken gestegen in de laatste 24 uur. Positief is omhoog, negatief
+   *  omlaag, nul is stil blijven staan. `null` betekent iets anders dan nul:
+   *  deze speler stond een dag geleden nog niet op de lijst. */
+  climb?: number | null;
 }
 
 export interface PublicProfile extends PublicUser {

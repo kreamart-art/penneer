@@ -5,7 +5,7 @@ import { ArtIcoon, STAT_ART } from "../components/ArtIcoon";
 import { CloseIcon } from "../components/CloseIcon";
 import { KnopPlaat } from "../components/KnopPlaat";
 import { ReferralAd } from "../components/ReferralAd";
-import { ArrowLeft, BookOpen, CalendarDays, Camera, Check, ChevronDown, Copy, Crown, Flame, Gem, Lock, LogOut, Medal, MessageCircle, MoreVertical, Pencil, Percent, Plus, Rocket, Search, Send, Settings as SettingsIcon, Share2, Shield, ShoppingCart, Smile, Sparkles, Star, Swords, Target, Trash2, Trophy, UserPlus, Users, X, Zap, ZoomIn, ZoomOut } from "lucide-react";
+import { ArrowLeft, BookOpen, CalendarDays, Camera, Check, ChevronDown, ChevronUp, Copy, Crown, Flame, Gem, Lock, LogOut, Medal, MessageCircle, MoreVertical, Pencil, Percent, Plus, Rocket, Search, Send, Settings as SettingsIcon, Share2, Shield, ShoppingCart, Smile, Sparkles, Star, Swords, Target, Trash2, Trophy, UserPlus, Users, X, Zap, ZoomIn, ZoomOut } from "lucide-react";
 import { Avatar, SCHILD_RAND } from "../components/Avatar";
 import { Plek } from "../components/ProfileShowcase";
 import { HexArt } from "../components/HexArt";
@@ -3990,8 +3990,12 @@ function RangRij({ r, plek, deel }: { r: LeaderboardRow; plek: number; deel: num
       style={{ marginInline: 7 }}
       binnen={{ display: "flex", alignItems: "center", gap: 6, minHeight: eerste ? 66 : 60, padding: "6px 7px 6px 44px" }}
     >
-      <span style={{ position: "absolute", left: 11, top: 0, display: "flex" }}>
+      {/* Het plaatsnummer, met eronder hoeveel plekken deze speler de laatste
+          24 uur op of neer ging. In dezelfde kolom, want het hoort bij de
+          PLEK en niet bij de speler: het zegt waar hij vandaan komt. */}
+      <span style={{ position: "absolute", left: 11, top: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
         <PlekWapen plek={plek} maat={26} />
+        <Klim n={r.climb} />
       </span>
       {/* Streepjes scheiden wat NIET bij elkaar hoort. Portret, naam en balk
           gaan samen: dat is een speler. Daarna elk cijfer op zichzelf. */}
@@ -4040,6 +4044,44 @@ function RangRij({ r, plek, deel }: { r: LeaderboardRow; plek: number; deel: num
         />
       </span>
     </NeonKader>
+  );
+}
+
+/** Hoeveel plekken iemand in 24 uur op of neer ging.
+ *
+ *  Vier gevallen, en ze zijn echt vier: omhoog, omlaag, stil blijven staan, en
+ *  een dag geleden nog niet op de lijst staan. Dat laatste is GEEN nul. Een nul
+ *  zegt "je stond stil" tegen iemand die er gisteren nog niet was, en dat is
+ *  onzin; die krijgt daarom "nieuw".
+ *
+ *  Het pijltje en het getal delen hun kleur, want ze zeggen hetzelfde: een
+ *  groen pijltje met een neutraal getal ernaast leest als twee berichten. */
+function Klim({ n }: { n?: number | null }) {
+  if (n === undefined) return null;
+  if (n === null) {
+    return (
+      <span style={{ fontFamily: font.ui, fontSize: 8, fontWeight: 700, letterSpacing: 0.2, color: withAlpha(GOUD[3], 0.72), lineHeight: 1 }}>
+        nieuw
+      </span>
+    );
+  }
+  if (n === 0) {
+    // Een streepje en geen "0": stilstaan is een niet-gebeurtenis en hoort er
+    // ook zo uit te zien, anders trekt het net zo hard de aandacht als een
+    // sprong van drie plekken.
+    return <span aria-label="geen verandering" style={{ width: 7, height: 1.5, borderRadius: 1, background: withAlpha(colors.faint, 0.55) }} />;
+  }
+  const op = n > 0;
+  const kleur = op ? colors.green : colors.red;
+  const Pijl = op ? ChevronUp : ChevronDown;
+  return (
+    <span
+      aria-label={`${op ? "gestegen" : "gedaald"} ${Math.abs(n)}`}
+      style={{ display: "inline-flex", alignItems: "center", gap: 0, color: kleur, lineHeight: 1 }}
+    >
+      <Pijl size={11} strokeWidth={3} />
+      <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 10.5, marginLeft: -1 }}>{Math.abs(n)}</span>
+    </span>
   );
 }
 
