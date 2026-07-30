@@ -7,7 +7,42 @@
 //
 // Alles rekent met `height`, zodat hetzelfde vak op de main page en in de
 // winkel op hun eigen maat kunnen staan zonder dat de verhoudingen verschuiven.
+import { useEffect, useRef, useState } from "react";
 import { font } from "../theme/tokens";
+
+/** Het saldo TELT naar zijn nieuwe waarde in plaats van te verspringen.
+ *
+ *  Bij de eerste render staat het getal er meteen: het oplopen is er om een
+ *  VERANDERING te laten voelen, en het openen van de pagina is geen verandering.
+ *  Daarna telt elke wijziging in ~0,9s naar de nieuwe stand, met een uitloop
+ *  (snel eerst, traag op het eind), want dat is hoe een teller "tot rust komt".
+ *  Omlaag telt hij ook, na een uitgave; een teller die alleen omhoog kan lijkt
+ *  op een teller die stuk is. */
+export function useTelOp(doel: number): number {
+  const [toon, setToon] = useState(doel);
+  const van = useRef(doel);
+  const eerste = useRef(true);
+  useEffect(() => {
+    if (eerste.current) { eerste.current = false; van.current = doel; return; }
+    const start = van.current;
+    if (start === doel) return;
+    const t0 = performance.now();
+    const duur = 900;
+    let raf = 0;
+    const stap = () => {
+      const t = Math.min(1, (performance.now() - t0) / duur);
+      const e = 1 - (1 - t) ** 3;
+      const nu = Math.round(start + (doel - start) * e);
+      setToon(nu);
+      if (t < 1) raf = requestAnimationFrame(stap);
+      else van.current = doel;
+    };
+    raf = requestAnimationFrame(stap);
+    return () => { cancelAnimationFrame(raf); van.current = doel; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [doel]);
+  return toon;
+}
 
 const SIZES = [
   { max: 3, src: "/tiles/coinbar-xs.webp", ratio: 753 / 300 },
@@ -25,7 +60,7 @@ export function CashPlate({ cash, height = 33 }: { cash: number; height?: number
 }
 
 export function CoinPlate({ coins, height = 33, munt = "coin" }: { coins: number; height?: number; munt?: "coin" | "cash" }) {
-  const label = String(coins);
+  const label = String(useTelOp(coins));
   const size = SIZES.find((s) => label.length <= s.max) ?? SIZES[SIZES.length - 1];
   const width = Math.round(height * size.ratio);
   return (

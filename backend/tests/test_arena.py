@@ -38,3 +38,25 @@ def test_flitsreeks_scorecontract():
 def test_onaffe_spellen_weigeren_inzendingen():
     assert not arena.plausibel("woordketen", 100, 1, 60000)
     assert not arena.plausibel("kleurenklem", 100, 1, 60000)
+
+
+def test_lettersoep_scorecontract():
+    """De grens is ruim maar bestaat: hij vangt scriptjes, geen snelle spelers."""
+    # Poging die in level 1 eindigt zonder een woord: mag, ook snel.
+    assert arena.plausibel("lettersoep", 0, 1, 2000)
+    # Level 3 bereikt = doelen 3+4 uitgespeeld, in level 3 hooguit 3 woorden:
+    # max (3+4+3) * 3200 = 32000, minimumtijd (3+4) * 250 = 1750 ms.
+    assert arena.plausibel("lettersoep", 2400, 3, 60000)
+    assert arena.plausibel("lettersoep", 32000, 3, 60000)
+    assert not arena.plausibel("lettersoep", 32001, 3, 60000)   # meer dan er past
+    assert not arena.plausibel("lettersoep", 2400, 3, 1000)     # onmogelijk snel
+    # Boven de klok: 3 levels van 55s plus 30s marge = 195s.
+    assert not arena.plausibel("lettersoep", 2400, 3, 196000)
+    assert not arena.plausibel("lettersoep", -1, 1, 1000)
+
+
+def test_lettersoep_doelen_lopen_op():
+    doelen = [arena.LETTERSOEP_DOEL(i) for i in range(1, 14)]
+    assert doelen[0] == 3 and doelen[9] == 8
+    assert doelen == sorted(doelen)              # nooit omlaag
+    assert arena.LETTERSOEP_DOEL(99) == 8        # voorbij de ladder blijft hij staan

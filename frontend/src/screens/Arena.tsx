@@ -24,6 +24,7 @@ import { Screen } from "../components/Layout";
 import { NeonText } from "../components/NeonText";
 import { ArtSchaduw, GOUD, KADER_LIJN_ROOD, NeonKader, Paneel, PlekWapen } from "../components/ProfileHero";
 import { GlasRij, Lijst } from "./Hub";
+import { Lettersoep } from "./_PreviewLettersoep";
 import type { GameApi } from "../net/socket";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
@@ -481,14 +482,15 @@ export function ArenaDeel({ game, onBack }: { game: GameApi; onBack: () => void 
       .catch(() => {});
   }, []);
   useEffect(haal, [haal]);
-  // De hal om de kast heen. Alleen op het voorportaal en de uitslag: tijdens het
-  // spel neemt de Flitsreeks zijn eigen decor over, en twee lagen tegelijk zou
-  // twee panelen door elkaar tekenen.
+  // De hal om de kast heen, passend bij het spel van de dag. Alleen op het
+  // voorportaal en de uitslag: tijdens het spel neemt het spel zijn eigen
+  // decor over, en twee lagen tegelijk zou twee panelen door elkaar tekenen.
   useEffect(() => {
     if (fase === "spel") return;
-    document.body.classList.add("flitshal");
-    return () => document.body.classList.remove("flitshal");
-  }, [fase]);
+    const hal = info?.game === "lettersoep" ? "soephal" : "flitshal";
+    document.body.classList.add(hal);
+    return () => document.body.classList.remove(hal);
+  }, [fase, info?.game]);
   useEffect(() => {
     const id = window.setInterval(() => setOver((s) => Math.max(0, s - 1)), 1000);
     return () => window.clearInterval(id);
@@ -567,7 +569,15 @@ export function ArenaDeel({ game, onBack }: { game: GameApi; onBack: () => void 
     return (
       <Screen top={header}>
         <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", paddingBottom: 40 }}>
-          <Flitsreeks seed={poging.seed} onKlaar={klaar} />
+          {info?.game === "lettersoep" ? (
+            // De seed van de dag GEMENGD met het pogingsnummer: bij Lettersoep
+            // hoort elke poging een vers bord te geven (twee keer spelen met
+            // dezelfde letters is een geheugenspel, geen zoekspel). De server
+            // kent beide helften, dus de reeks blijft controleerbaar.
+            <Lettersoep seed={`${poging.seed}:${poging.attempt_id}`} onKlaar={klaar} />
+          ) : (
+            <Flitsreeks seed={poging.seed} onKlaar={klaar} />
+          )}
         </div>
       </Screen>
     );

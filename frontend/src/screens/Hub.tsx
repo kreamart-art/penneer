@@ -3882,22 +3882,26 @@ export function LeaderboardTab({ game }: { game: GameApi }) {
               deze lijst, dan is er niets te vergelijken en staat er hoeveel
               potjes je speelde: liever iets dat klopt dan een nul die suggereert
               dat je stil stond. */}
-          {lb?.climb != null ? (
-            <Cijfer
-              // Zak je, dan hoort er ook een DALENDE pijl te staan. De groene
-              // pijl omhoog met een rood getal ernaast vertelt twee dingen
-              // tegelijk die elkaar tegenspreken, en het pictogram wint: dat
-              // zie je eerder dan het minteken.
-              art={lb.climb < 0 ? "daling" : "stijging"}
-              waarde={`${lb.climb > 0 ? "+" : ""}${lb.climb}`}
-              label={t("lbClimb")}
-              // Ook op NUL groen: het cijfer hoort bij het pictogram ernaast, en
-              // een grijze nul leest als "uit" terwijl er niets uit staat. Bij
-              // een daling neemt het cijfer de kleur van de rode pijl over.
-            />
-          ) : (
-            <Cijfer art="games" waarde={`${ik.games}`} label={t("lbGames")} />
-          )}
+          {(() => {
+            // JOUW klim, uit je EIGEN rij. Niet uit het losse `climb`-veld: dat
+            // hangt eraan wie de server op dat moment aan de socket gekoppeld
+            // had, en vlak na een herverbinding is dat nog niemand; dan was de
+            // klim stil null en viel dit kaartje terug op het aantal potjes.
+            // Dat is de "niet gelinkt aan mijn account" die je zag. De rij komt
+            // uit dezelfde berekening maar hangt aan je id, niet aan de socket.
+            const klim = ik.climb ?? lb?.climb ?? null;
+            return klim != null ? (
+              <Cijfer
+                // Zak je, dan hoort er ook een DALENDE pijl te staan: het
+                // pictogram zie je eerder dan het minteken.
+                art={klim < 0 ? "daling" : "stijging"}
+                waarde={`${klim > 0 ? "+" : ""}${klim}`}
+                label={t("lbClimb")}
+              />
+            ) : (
+              <Cijfer art="games" waarde={`${ik.games}`} label={t("lbGames")} />
+            );
+          })()}
           <Scheiding />
           <Cijfer art="vlam" waarde={`${account?.stats.streak ?? 0}`} label={t("statStreak")} />
           <Scheiding />
@@ -3993,12 +3997,13 @@ function RangRij({ r, plek, deel }: { r: LeaderboardRow; plek: number; deel: num
       style={{ marginInline: 7 }}
       binnen={{ display: "flex", alignItems: "center", gap: 6, minHeight: eerste ? 66 : 60, padding: "6px 7px 6px 44px" }}
     >
-      {/* Het plaatsnummer, met eronder hoeveel plekken deze speler de laatste
-          24 uur op of neer ging. In dezelfde kolom, want het hoort bij de
-          PLEK en niet bij de speler: het zegt waar hij vandaan komt. */}
-      <span style={{ position: "absolute", left: 11, top: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
+      {/* Alleen het plaatsnummer. De klim per rij heeft hier gestaan en is er
+          bewust weer uit: zestien pijltjes maken de lijst druk, en wat de
+          speler wil weten is zijn EIGEN beweging; die staat in het kaartje
+          onder de lijst. De data reist wel mee in de rij (r.climb), zodat dat
+          kaartje hem uit de eigen rij kan lezen. */}
+      <span style={{ position: "absolute", left: 11, top: 0, display: "flex" }}>
         <PlekWapen plek={plek} maat={26} />
-        <Klim n={r.climb} />
       </span>
       {/* Streepjes scheiden wat NIET bij elkaar hoort. Portret, naam en balk
           gaan samen: dat is een speler. Daarna elk cijfer op zichzelf. */}
@@ -4047,47 +4052,6 @@ function RangRij({ r, plek, deel }: { r: LeaderboardRow; plek: number; deel: num
         />
       </span>
     </NeonKader>
-  );
-}
-
-/** Hoeveel plekken iemand in 24 uur op of neer ging.
- *
- *  Vier gevallen, en ze zijn echt vier: omhoog, omlaag, stil blijven staan, en
- *  een dag geleden nog niet op de lijst staan. Dat laatste is GEEN nul. Een nul
- *  zegt "je stond stil" tegen iemand die er gisteren nog niet was, en dat is
- *  onzin; die krijgt daarom "nieuw".
- *
- *  Het pijltje en het getal delen hun kleur, want ze zeggen hetzelfde: een
- *  groen pijltje met een neutraal getal ernaast leest als twee berichten. */
-function Klim({ n }: { n?: number | null }) {
-  if (n === undefined) return null;
-  if (n === null) {
-    return (
-      <span style={{ fontFamily: font.ui, fontSize: 8, fontWeight: 700, letterSpacing: 0.2, color: withAlpha(GOUD[3], 0.72), lineHeight: 1 }}>
-        nieuw
-      </span>
-    );
-  }
-  if (n === 0) {
-    // Een streepje en geen "0": stilstaan is een niet-gebeurtenis en hoort er
-    // ook zo uit te zien, anders trekt het net zo hard de aandacht als een
-    // sprong van drie plekken.
-    return <span aria-label="geen verandering" style={{ width: 7, height: 1.5, borderRadius: 1, background: withAlpha(colors.faint, 0.55) }} />;
-  }
-  // Dezelfde getekende pijlen als in het kaartje eronder, niet een lijnpijltje:
-  // naast art van goud leest een lijnpictogram als een tekening naast een
-  // voorwerp. Klein, dus zonder halo, want een gloed van vier pixels om een
-  // pijl van vijftien is een vlekje.
-  const op = n > 0;
-  const art = op ? "stijging" : "daling";
-  return (
-    <span
-      aria-label={`${op ? "gestegen" : "gedaald"} ${Math.abs(n)}`}
-      style={{ display: "inline-flex", alignItems: "center", gap: 1, color: ART_KLEUR[art].tekst, lineHeight: 1 }}
-    >
-      <img src={`/ui/stat/${art}.webp?v=${STAT_ART}`} alt="" aria-hidden style={{ width: 15, height: 15, display: "block" }} />
-      <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 10.5 }}>{Math.abs(n)}</span>
-    </span>
   );
 }
 

@@ -39,10 +39,17 @@ import { colors, font, withAlpha } from "../theme/tokens";
 const BORD_V = 0.8349;
 const SCORE_V = 3.7805;
 const ONDER_V = 2.9589;
-const KOL = [0.0561, 0.2803, 0.5051, 0.7297];
-const RIJ = [0.1636, 0.359, 0.5497, 0.7451];
-const VAK_B = 0.213;
-const VAK_H = 0.1791;
+// De knoppen staan sinds v2.75 op 86% in hun vak: in de oude maat was de kier
+// tussen twee knoppen ~1% van de sectiebreedte (4px op een telefoon) en pakte
+// een veeg geregeld de buurletter. Het DOF-vel is met dezelfde factor om de
+// vakmiddens geschaald, de aan-lagen zijn losse bestanden per vak en volgen
+// deze constanten vanzelf. De middens zijn ongewijzigd (schalen om het midden
+// verplaatst het midden niet), dus de verbindingslijn klopt nog.
+const KRIMP = 0.86;
+const KOL = [0.0561, 0.2803, 0.5051, 0.7297].map((k) => k + (0.213 * (1 - KRIMP)) / 2);
+const RIJ = [0.1636, 0.359, 0.5497, 0.7451].map((r) => r + (0.1791 * (1 - KRIMP)) / 2);
+const VAK_B = 0.213 * KRIMP;
+const VAK_H = 0.1791 * KRIMP;
 const PANEEL_TOP = 0.024;
 const SCORE_RUIT = { t: 0.2238, h: 0.6643, links: { l: 0.0407, b: 0.3213 }, rechts: { l: 0.637, b: 0.3213 } };
 const ONDER_RUIT = { l: 0.0148, b: 0.9704, woord: { t: 0.1315, h: 0.4192 }, lijst: { t: 0.5589, h: 0.2849 } };
@@ -306,17 +313,32 @@ function WoordVak({ woord, n, weg }: { woord: string; n: number; weg?: boolean }
 const klok = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
 // ---- het spel ---------------------------------------------------------------
-export function PreviewLettersoep() {
+//
+// EEN component, twee jassen. Als het spel van vrijdag draait hij in de
+// arena-schil: die geeft de seed van de poging mee en krijgt via `onKlaar` de
+// uitslag terug, precies het contract van Flitsreeks. Achter ?soep draait
+// dezelfde component los, met een verse sleutel per potje en zijn eigen
+// Opnieuw-knop. Het verschil zit alleen in wie er om het spel heen staat.
+export function Lettersoep({ seed, onKlaar, onOpnieuw }: {
+  seed: string;
+  /** Arena-schil: de uitslag inleveren zodra de poging voorbij is. */
+  onKlaar?: (score: number, level: number, timeMs: number) => void;
+  /** Testversie: een nieuw potje. Door de `key` op de parent herstart alles. */
+  onOpnieuw?: () => void;
+}) {
   useEffect(() => {
     document.body.classList.add("soepspel");
     return () => document.body.classList.remove("soepspel");
   }, []);
 
-  const [potje, setPotje] = useState(versSleutel);
+  const potje = seed;
   // In de testversie mag je met ?soep=7 halverwege de ladder beginnen. Anders
   // moet je zes levels uitspelen voor je ziet of de zevende trap klopt, en dat
   // is precies de trap waar de regels veranderen.
   const [level, setLevel] = useState(startLevel);
+  // De verstreken tijd van de HELE poging, voor de plausibiliteitscheck op de
+  // server. Een ref en geen state: hij verandert elk frame en niemand kijkt.
+  const t0 = useRef(performance.now());
   const [totaal, setTotaal] = useState(0);
   const [pad, setPad] = useState<number[]>([]);
   const [gevonden, setGevonden] = useState<{ woord: string; n: number }[]>([]);
@@ -347,6 +369,18 @@ export function PreviewLettersoep() {
       });
     }, 1000);
     return () => window.clearInterval(id);
+  }, [fase]);
+
+  // Het inleveren bij de arena-schil. In een EFFECT en niet op de plekken waar
+  // de fase op "klaar" gezet wordt: dat gebeurt onder meer binnen een
+  // state-updater, en een updater met bijwerkingen vuurt in StrictMode dubbel.
+  // Die les is hier al een keer geleerd bij het dubbel getelde woord.
+  const ingeleverd = useRef(false);
+  useEffect(() => {
+    if (fase !== "klaar" || !onKlaar || ingeleverd.current) return;
+    ingeleverd.current = true;
+    onKlaar(totaal, level, Math.round(performance.now() - t0.current));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fase]);
 
   const padRef = useRef<number[]>([]);
@@ -468,11 +502,6 @@ export function PreviewLettersoep() {
   };
 
   const stop = () => setFase("klaar");
-  const opnieuw = () => {
-    setPotje(versSleutel());
-    setLevel(startLevel()); setTotaal(0); setPad([]); setGevonden([]); setDezeLevel(0);
-    setOver(LEVEL_TIJD_S); setFase("spel"); setFout(false); setReden(null); setOordeel(null); setWeg(null);
-  };
 
   const woord = pad.map((c) => bord[c]).join("");
   const geldig = woord.length >= trap.min && NL_WOORDEN.has(woord) && !gevonden.some((g) => g.woord === woord);
@@ -482,14 +511,6 @@ export function PreviewLettersoep() {
   const zichtbaar = gevonden.slice(-TOON_WOORDEN);
 
   return (
-    <Screen
-      top={
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", paddingTop: "calc(14px + env(safe-area-inset-top))" }}>
-          <span style={{ flex: 1, fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>Arena</span>
-          <span style={{ fontFamily: font.ui, fontSize: 11.5, color: colors.faint }}>testversie</span>
-        </div>
-      }
-    >
       <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 9, paddingBottom: 24 }}>
         <Sectie art="/ui/soep/scorebord.webp?v=1" verhouding={SCORE_V}>
           <Meter kop="TIJD" waarde={klok(over)} kleur={over <= 15 ? "#FF6A5A" : "#FFF3D0"} breuk={SCORE_RUIT.links} />
@@ -539,7 +560,7 @@ export function PreviewLettersoep() {
         ) : (
           // ---- het bord ------------------------------------------------------
           <Sectie art="/ui/soep/bord.webp?v=1" verhouding={BORD_V} kind={bordRef}>
-            <img src="/ui/soep/letters-dof.webp?v=3" alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} />
+            <img src="/ui/soep/letters-dof.webp?v=4" alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} />
 
             <div
               style={{
@@ -689,7 +710,7 @@ export function PreviewLettersoep() {
                       /* Een vakje is ongeveer 77px breed; op 24px vulde de letter
                          daar maar een vijfde van. 32 laat hem de knop dragen en
                          past ook nog voor de brede letters (W, M). */
-                      fontFamily: font.wide, fontSize: 32, letterSpacing: 0.5,
+                      fontFamily: font.wide, fontSize: 29, letterSpacing: 0.5,
                       /* De rustende knop is goud, dus daar is de letter juist het
                          donkere deel: diep paars uit de kast, met een dun lichtrandje
                          eronder alsof hij in het metaal is gestempeld. Zodra hij
@@ -774,18 +795,44 @@ export function PreviewLettersoep() {
           </div>
         </Sectie>
 
-        <div style={{ display: "flex", justifyContent: "center" }}>
-          <NeonKader radius={999} dik={0.5} vulling="zwart" animeer lijn={KADER_LIJN_ROOD} gloed={`0 0 12px ${withAlpha(colors.red, 0.35)}`} binnen={{ padding: 0 }}>
-            <button
-              onClick={fase === "klaar" ? opnieuw : stop}
-              className="pressable"
-              style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, background: "transparent", border: "none", cursor: "pointer", color: colors.redHi, fontFamily: font.ui, fontSize: 13, fontWeight: 600, padding: "7px 16px" }}
-            >
-              <LogOut size={14} /> {fase === "klaar" ? "Opnieuw" : "Stoppen"}
-            </button>
-          </NeonKader>
-        </div>
+        {/* Onder de arena-schil geen eigen knop op het eindscherm: zodra de
+            fase op klaar staat is de poging al ingeleverd en neemt de schil
+            het over met zijn eigen uitslag en Opnieuw. */}
+        {(fase !== "klaar" || onOpnieuw) && (
+          <div style={{ display: "flex", justifyContent: "center" }}>
+            <NeonKader radius={999} dik={0.5} vulling="zwart" animeer lijn={KADER_LIJN_ROOD} gloed={`0 0 12px ${withAlpha(colors.red, 0.35)}`} binnen={{ padding: 0 }}>
+              <button
+                onClick={fase === "klaar" ? onOpnieuw : stop}
+                className="pressable"
+                style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, background: "transparent", border: "none", cursor: "pointer", color: colors.redHi, fontFamily: font.ui, fontSize: 13, fontWeight: 600, padding: "7px 16px" }}
+              >
+                <LogOut size={14} /> {fase === "klaar" ? "Opnieuw" : "Stoppen"}
+              </button>
+            </NeonKader>
+          </div>
+        )}
       </div>
+  );
+}
+
+// ---- de losse testversie achter ?soep ---------------------------------------
+export function PreviewLettersoep() {
+  const [potje, setPotje] = useState(versSleutel);
+  return (
+    <Screen
+      top={
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", paddingTop: "calc(14px + env(safe-area-inset-top))" }}>
+          <span style={{ flex: 1, fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>Arena</span>
+          {/* Onmisverstaanbaar, want dit is precies waar het een keer misging:
+              iemand speelde hier een mooie score en die kwam nergens terecht.
+              Deze route levert NIETS in; het echte spel zit in de dagronde. */}
+          <span style={{ fontFamily: font.ui, fontSize: 11.5, fontWeight: 600, color: colors.redHi }}>oefenen, telt niet mee</span>
+        </div>
+      }
+    >
+      {/* De key is de herstart: een nieuw potje remount alles, dus er bestaat
+          geen half opgeruimde staat die kan blijven hangen. */}
+      <Lettersoep key={potje} seed={potje} onOpnieuw={() => setPotje(versSleutel())} />
     </Screen>
   );
 }

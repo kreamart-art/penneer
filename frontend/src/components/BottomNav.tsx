@@ -72,7 +72,29 @@ export function BottomNav({
   //  - home: verdiende beloningen waar hun victory-popup nog van wacht
   // Mijn ring volgt mijn schild, ook hier op de balk.
   const eigenDivisie = account ? Math.max(0, SCHILDEN.indexOf(account.shield || "paars")) : undefined;
-  const vriendenTeller = account ? (game.state.inbox.length || account.inbox_count || 0) + (account.dm_unread || 0) : 0;
+  // De vriendenbadge is een GEZIEN-teller, geen openstaand-teller. De ruwe som
+  // telt uitnodigingen en ongelezen DM's, maar die staan niet op de
+  // vriendenpagina zelf (de inbox is een eigen scherm achter het icoon
+  // bovenin), dus een openstaand verzoek van iemand die nooit reageert liet de
+  // badge EEUWIG branden: je kwam kijken, zag niets nieuws, en de stip bleef.
+  // Nu onthoudt de balk hoeveel je er zag toen je er voor het laatst was, en
+  // brandt hij alleen voor wat er sindsdien bij kwam. Zakt de som (afgehandeld
+  // verzoek), dan zakt het anker mee, anders zou de eerstvolgende nieuwe
+  // uitnodiging onzichtbaar zijn.
+  const ruweVrienden = account ? (game.state.inbox.length || account.inbox_count || 0) + (account.dm_unread || 0) : 0;
+  let vriendenTeller = 0;
+  try {
+    const sleutel = "penneer.vriendenGezien";
+    const gezien = Number(localStorage.getItem(sleutel) || 0);
+    if (active === "friends" || ruweVrienden < gezien) {
+      localStorage.setItem(sleutel, String(ruweVrienden));
+      vriendenTeller = 0;
+    } else {
+      vriendenTeller = Math.max(0, ruweVrienden - gezien);
+    }
+  } catch {
+    vriendenTeller = ruweVrienden;
+  }
   const meldTeller = account ? game.state.meldingenOngelezen : 0;
   const shopTeller = account && Number(localStorage.getItem("penneer.shopDrop") || 0) < SHOP_DROP ? 1 : 0;
   const rangTeller = account?.divisie_change ? 1 : 0;

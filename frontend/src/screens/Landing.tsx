@@ -18,11 +18,10 @@ import { sound } from "../sound/sound";
 import { NeonText } from "../components/NeonText";
 import { neonSkin } from "../theme/neon";
 import { TILE_ART, useTileSkin } from "../theme/tileSkin";
-import { CashPlate, CoinPlate } from "../components/CoinPlate";
+import { CashPlate, CoinPlate, useTelOp } from "../components/CoinPlate";
 import { HexPlate } from "../components/HexPlate";
 import { HexArt } from "../components/HexArt";
 import { EmblemLight, EmblemLightFront } from "../components/EmblemLight";
-import { ReferralAd } from "../components/ReferralAd";
 import { colors, font, radius, withAlpha, GROEN } from "../theme/tokens";
 
 // De lijst-art van de skin, in de drie maten uit `section main page.svg`:
@@ -101,6 +100,10 @@ export function Landing({
   const [mode, setMode] = useState<"none" | "join">("none");
   const [showFriends, setShowFriends] = useState(false);
   const account = game.state.account;
+  // De saldi tellen naar hun nieuwe stand (zie useTelOp). Voor de skin-platen
+  // zit de teller in CoinPlate zelf; deze twee zijn voor de kale pillen.
+  const coinsTel = useTelOp(account?.coins ?? 0);
+  const cashTel = useTelOp(account?.cash ?? 0);
 
   // First-visit guests (no account, no stored token) get a prominent prompt to
   // make a profile. Returning users with a token skip it (avoids a flash).
@@ -296,7 +299,7 @@ export function Landing({
             ) : (
               <>
                 <img src="/coin.webp" alt="" width={24} height={24} style={{ display: "block" }} />
-                <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15, color: colors.gold }}>{account?.coins ?? 0}</span>
+                <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15, color: colors.gold }}>{coinsTel}</span>
               </>
             )}
           </button>
@@ -316,7 +319,7 @@ export function Landing({
               ) : (
                 <>
                   <img src="/ui/valuta/cash.webp?v=1" alt="" width={22} height={22} style={{ display: "block" }} />
-                  <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15, color: GROEN[3] }}>{account.cash ?? 0}</span>
+                  <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15, color: GROEN[3] }}>{cashTel}</span>
                 </>
               )}
             </button>
@@ -325,10 +328,10 @@ export function Landing({
         {/* De uitslag aan de LINKERkant, gespiegeld: de spiegel laat de art
             het scherm in kijken in plaats van eruit. Alleen het plaatje is
             gespiegeld; de cijfers eronder natuurlijk niet. */}
-        {/* Strak onder de kleine ad (die eindigt rond y 113) en tegen de
-            schermrand: het Screen-vak heeft 16px padding, dus -12 zet de art
-            op 4px van de rand in plaats van tegen het logo aan. */}
-        <div style={{ position: "absolute", top: 118, left: -12, zIndex: 2, display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+        {/* Op de plek waar de advertentie-pil zat, tegen de schermrand: het
+            Screen-vak heeft 16px padding, dus -12 zet de art op 4px van de
+            rand in plaats van tegen het logo aan. */}
+        <div style={{ position: "absolute", top: 62, left: -12, zIndex: 2, display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
           <button
             onClick={() => { sound.uiTap(); setUitslagOpen(true); }}
             aria-label={t("dagUitslagTitel")}
@@ -667,13 +670,10 @@ export function Landing({
           )}
         </Card>
 
-        {/* De werf-advertentie. Voorlopig ALLEEN op het account waarmee getest
-          wordt: hij is af, maar hij gaat pas voor iedereen aan als hij op een
-          echt toestel goed staat. Een naam-vergelijking is genoeg, want er kan
-          maar een account met die naam bestaan. */}
-      {/* De werf-advertentie staat open voor iedereen met een profiel: gasten
-          hebben geen werfcode om te delen. */}
-      {account && <ReferralAd />}
+        {/* De werf-advertentie is hier bewust WEG (popup en pil allebei): op
+          Android liet de popup het scherm flikkeren en de pil nam de linkerrand
+          in. De advertentie leeft nog wel als sectie op de vriendenpagina; de
+          dagronde-uitslag heeft de plek van de pil overgenomen. */}
 
       {game.state.error && (
           <p style={{ textAlign: "center", color: colors.red, fontFamily: font.ui, fontSize: 14, margin: 0 }}>{game.state.error}</p>

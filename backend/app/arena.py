@@ -35,7 +35,7 @@ GAMES: dict[int, dict] = {
     1: {"key": "wereldprik", "af": False},
     2: {"key": "waaghet", "af": False},
     3: {"key": "flitsreeks", "af": True},
-    4: {"key": "lettersoep", "af": False},
+    4: {"key": "lettersoep", "af": True},
     5: {"key": "kleurenklem", "af": False},
     6: {"key": "rekenladder", "af": False},
 }
@@ -76,5 +76,33 @@ def plausibel(game: str, score: int, level: int, time_ms: int) -> bool:
         # helft, want de laatste (gefaalde) reeks telt niet mee in level.
         minimum = sum(k * 160 for k in range(1, level + 1))
         return time_ms >= minimum
+    if game == "lettersoep":
+        # Score-contract met de client: een woord van n letters is 100 * 2^(n-3),
+        # dus 100 voor drie letters en 3200 voor acht, en langer bestaat niet.
+        # `level` is het level waarin de poging eindigde, dus level-1 levels zijn
+        # UITGESPEELD en in het laatste kunnen er hooguit doel-1 woorden liggen
+        # (bij doel was hij doorgegaan).
+        doelen = [LETTERSOEP_DOEL(i) for i in range(1, max(1, level) + 1)]
+        woorden_max = sum(doelen[:-1]) + max(0, doelen[-1] - 1) if doelen else 0
+        if score > woorden_max * 3200:
+            return False
+        # Tijd. Elk uitgespeeld level kostte minstens zijn doel aantal woorden,
+        # en een woord leggen kost een mens minstens een halve seconde: vinden,
+        # vegen, loslaten. Ruim de helft daarvan aangehouden, want dit moet
+        # scriptjes vangen en geen snelle spelers.
+        minimum = sum(doelen[:-1]) * 250
+        if time_ms < minimum:
+            return False
+        # En van boven: de klok geeft 55 seconden per level en meer levels dan
+        # gespeeld kan niet. Een royale marge voor het laden en de valanimatie.
+        return time_ms <= (max(1, level) * 55 + 30) * 1000
     # Spellen die nog niet af zijn accepteren geen inzendingen.
     return False
+
+
+def LETTERSOEP_DOEL(level: int) -> int:
+    """Hoeveel woorden een level vraagt. Moet gelijk lopen met de LADDER in
+    frontend/src/screens/_PreviewLettersoep.tsx; staat het hier anders, dan keurt
+    de server een eerlijke poging af."""
+    ladder = [3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 8]
+    return ladder[min(len(ladder), max(1, level)) - 1]
