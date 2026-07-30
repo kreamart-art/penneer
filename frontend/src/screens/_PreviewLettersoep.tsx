@@ -50,6 +50,9 @@ const ACHT = (c: number) =>
 // kier vol en verdwijnt de streep die het raster maakt.
 const HALO = 0.11;
 const GLOED = withAlpha("#FFA524", 0.7);
+// De kleur van het paneel in de ondersectie, uit de art gemeten. Zo kan een
+// vakje daar 'doorzichtig' lijken zonder dat er echt een gat in zit.
+const PANEEL = "#1D0C29";
 
 // ---- de voorbeelddag --------------------------------------------------------
 const BORD = [
@@ -307,37 +310,31 @@ export function PreviewLettersoep() {
               <span
                 key={g.woord}
                 style={{
-                  position: "relative",
-                  display: "inline-flex", alignItems: "center", gap: 5,
-                  height: "84%", paddingInline: 11,
-                  fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: withAlpha("#FFE7A8", 0.92),
+                  display: "inline-flex", height: "84%", padding: 1.5,
+                  clipPath: ACHT(6),
+                  background: `linear-gradient(180deg, ${withAlpha("#FFD98A", 0.95)}, ${withAlpha("#B0710E", 0.85)})`,
                 }}
               >
-                {/* Alleen de LIJN, geen vulling: de ondersectie heeft zijn eigen
-                    vlak en een tweede vlak daarop maakt er een vakje in een
-                    vakje van.
+                {/* De lijn is de rand die tussen twee geknipte lagen uitsteekt.
+                    Eerst probeerde ik hem als masker dat zijn eigen binnenkant
+                    wegsnijdt, maar op anderhalve pixel valt zo'n masker op de
+                    schuine hoeken onder een beeldpunt en dan breekt de lijn.
 
-                    De ring is een eigen laag met een masker dat zijn binnenkant
-                    wegsnijdt. De padding-truc kan hier niet: die vult het midden
-                    met een tweede kleur, en juist dat midden moet doorzichtig
-                    blijven. En het masker moet op een laag ZONDER inhoud staan,
-                    want een masker geldt ook voor alles wat erin zit. */}
+                    De binnenkant is dus niet doorzichtig maar heeft de kleur van
+                    het paneel waar hij op ligt, gemeten in de art zelf. Op het
+                    oog is dat hetzelfde: geen glas, geen tweede vlak, alleen de
+                    gouden lijn. En hij blijft heel. */}
                 <span
-                  aria-hidden
                   style={{
-                    position: "absolute", inset: 0,
-                    clipPath: ACHT(6),
-                    padding: 1.5,
-                    background: `linear-gradient(180deg, ${withAlpha("#FFD98A", 0.95)}, ${withAlpha("#B0710E", 0.8)})`,
-                    WebkitMask: "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
-                    WebkitMaskComposite: "xor",
-                    mask: "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
-                    maskComposite: "exclude",
-                    pointerEvents: "none",
+                    display: "inline-flex", alignItems: "center", gap: 5, paddingInline: 10,
+                    clipPath: ACHT(5),
+                    background: PANEEL,
+                    fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: withAlpha("#FFE7A8", 0.92),
                   }}
-                />
-                {g.woord}
-                <span style={{ fontFamily: font.display, fontWeight: 800, color: "#FFC23D" }}>{punten(g.n)}</span>
+                >
+                  {g.woord}
+                  <span style={{ fontFamily: font.display, fontWeight: 800, color: "#FFC23D" }}>{punten(g.n)}</span>
+                </span>
               </span>
             ))}
           </div>
