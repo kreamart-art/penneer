@@ -739,7 +739,7 @@ body.soepspel::after {
   background-color: #0B0518;
   background-repeat: repeat, no-repeat, no-repeat, no-repeat;
   background-position: bottom left, bottom, bottom center, bottom;
-  background-size: 160px 160px, 100% 100%, cover, 100% 100%;
+  background-size: 160px 160px, 100% 100%, auto 100lvh, 100% 100%;
 }
 /* Geen vignet meer, en de zaal helemaal in beeld.
 
@@ -748,17 +748,25 @@ body.soepspel::after {
    een zaal met pilaren links en rechts, een boog erboven en een vloercirkel
    eronder bleef precies het lege midden over. Vandaar dat de achtergrond leek
    te ontbreken.
-   `cover` dus: proportioneel schalen tot hij het scherm vult en de overmaat
-   afsnijden. De plaat is liggend en het scherm staand, dus hij schaalt op de
-   HOOGTE: van boven tot onder staat de hele foto in beeld en de zijkanten
-   vallen weg. Dat is een keuze tussen twee verliezen, en snijden is de goede:
-   een uitgerekte plaat ziet er op ELKE pixel verkeerd uit, een gesneden plaat
-   is overal nog zichzelf.
+   `auto 100lvh` dus, onderaan verankerd: de plaat wordt op de hoogte van het
+   SCHERM gezet, houdt zijn eigen verhouding en loopt aan de zijkanten uit
+   beeld. Van boven tot onder zie je de hele foto, niets is uitgerekt.
 
-   (Twee routes hiervoor geprobeerd en allebei weer weggegooid: op beide assen
-   optrekken vervormde de boog en de vloercirkel, en een versie waarin alleen
-   de pilaarschachten werden opgerekt viel af omdat die op `cover` juist de
-   bovenkant van de boog afsneed.)
+   Twee dingen zaten hier eerder fout en het is de moeite ze te onthouden.
+
+   1. NIET `cover`, want deze laag is 240px HOGER dan het scherm (die marge
+      dekt het gat dat op iOS valt als de adresbalk wegschuift). Cover vult de
+      LAAG, dus de bovenste 240px van de foto stonden boven de schermrand: je
+      zag de bovenkant van de boog niet. `100lvh` is de schermhoogte zelf, dus
+      daar heeft de marge geen invloed op.
+   2. De platen stonden op 1000px breed geëxporteerd terwijl het origineel
+      4096 is. Op een telefoon van 393 punten bij DPR 3 wordt deze laag ruim
+      4500 fysieke pixels breed getekend; uit 1000 pixels is dat vijf keer
+      opblazen, en DAT was de waas. Nu 2600 breed, dus nog 1,7x.
+
+   (Ook geprobeerd en weggegooid: op beide assen optrekken vervormde de boog en
+   de vloercirkel, en een versie waarin alleen de pilaarschachten werden
+   opgerekt sneed op cover juist de bovenkant van de boog af.)
 
    De donkere sluier eroverheen stond op 0,4 tot 0,58 en dat is waarom de plaat
    op het scherm veel doffer was dan in het bestand: er lag simpelweg een half
@@ -769,21 +777,21 @@ body.soephal::after {
   background-image:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
     linear-gradient(180deg, rgba(6, 3, 16, 0.22) 0%, rgba(6, 3, 16, 0.06) 46%, rgba(6, 3, 16, 0.2) 100%),
-    url("/ui/soep/bg-lobby.webp?v=2"),
+    url("/ui/soep/bg-lobby.webp?v=3"),
     linear-gradient(180deg, #150e2e 0%, #100a24 50%, #06040e 100%);
   background-repeat: repeat, no-repeat, no-repeat, no-repeat;
   background-position: bottom left, bottom, bottom center, bottom;
-  background-size: 160px 160px, 100% 100%, cover, 100% 100%;
+  background-size: 160px 160px, 100% 100%, auto 100lvh, 100% 100%;
 }
 body.soepspel::after {
   background-image:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
     linear-gradient(180deg, rgba(6, 3, 16, 0.22) 0%, rgba(6, 3, 16, 0.06) 46%, rgba(6, 3, 16, 0.2) 100%),
-    url("/ui/soep/bg-spel.webp?v=2"),
+    url("/ui/soep/bg-spel.webp?v=3"),
     linear-gradient(180deg, #150e2e 0%, #100a24 50%, #06040e 100%);
   background-repeat: repeat, no-repeat, no-repeat, no-repeat;
   background-position: bottom left, bottom, bottom center, bottom;
-  background-size: 160px 160px, 100% 100%, cover, 100% 100%;
+  background-size: 160px 160px, 100% 100%, auto 100lvh, 100% 100%;
 }
 
 /* De lijn om een gevonden woord leeft: een licht dat er traag langs strijkt.
