@@ -3,12 +3,13 @@
 // the TopBar, so it's reachable on every in-room screen.
 import { useEffect, useRef, useState } from "react";
 import { CloseIcon } from "./CloseIcon";
-import { Send } from "lucide-react";
 import { TelHex } from "./TelHex";
 import { ChatIcoon } from "./ChatIcoon";
 import { WALLPAPERS, wallpaperKlasse, wallpaperStijl, wallpaperVan, wallpaperZet, type WallpaperId } from "./Wallpaper";
 import type { GameApi } from "../net/socket";
 import { MicButton } from "./MicButton";
+import { BeeldKnop } from "./BeeldKnop";
+import { VerstuurKnop } from "./VerstuurKnop";
 import { VoiceNote } from "./VoiceNote";
 import { EmotePicker } from "./EmotePicker";
 import { EMOTE_SRC, FREE_EMOTE_PACKS } from "./emotes";
@@ -75,6 +76,21 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
   const uploadVoice = async (blob: Blob, mime: string): Promise<string | null> => {
     try {
       const res = await fetch(`/api/voice/${roomCode}?player=${encodeURIComponent(myId ?? "")}`, {
+        method: "POST",
+        headers: { "Content-Type": mime },
+        body: blob,
+      });
+      if (!res.ok) return null;
+      return (await res.json()).id as string;
+    } catch {
+      return null;
+    }
+  };
+  // En hetzelfde voor een foto of sticker. Het plaatje leeft in de room, dus
+  // hij verdwijnt met de room; dat is precies goed voor een potje.
+  const uploadBeeld = async (blob: Blob, mime: string): Promise<string | null> => {
+    try {
+      const res = await fetch(`/api/image/${roomCode}?player=${encodeURIComponent(myId ?? "")}`, {
         method: "POST",
         headers: { "Content-Type": mime },
         body: blob,
@@ -284,18 +300,18 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
                   <div
                     style={{
                       maxWidth: "82%",
-                      padding: m.emote ? 4 : m.voice_id ? "8px 12px" : "9px 14px",
+                      padding: m.emote || m.image_id ? 4 : m.voice_id ? "8px 12px" : "9px 14px",
                       // Dezelfde pil als in de privéberichten, zodat een bericht
                       // er overal in de app hetzelfde uitziet.
-                      borderRadius: m.emote ? 14 : 20,
-                      borderTopRightRadius: m.emote ? 14 : mine ? 6 : 20,
-                      borderTopLeftRadius: m.emote ? 14 : mine ? 20 : 6,
-                      background: m.emote
+                      borderRadius: m.emote || m.image_id ? 14 : 20,
+                      borderTopRightRadius: m.emote || m.image_id ? 14 : mine ? 6 : 20,
+                      borderTopLeftRadius: m.emote || m.image_id ? 14 : mine ? 20 : 6,
+                      background: m.emote || m.image_id
                         ? "transparent"
                         : mine
                           ? `linear-gradient(180deg, ${withAlpha(colors.gold, 0.22)}, ${withAlpha(colors.gold, 0.12)})`
                           : "linear-gradient(180deg, rgba(24,12,50,.88), rgba(14,7,34,.88))",
-                      boxShadow: m.emote
+                      boxShadow: m.emote || m.image_id
                         ? undefined
                         : mine
                           ? `inset 0 0 0 1.4px ${withAlpha("#FFC23D", 0.75)}, 0 0 12px ${withAlpha("#FFC23D", 0.22)}`
@@ -310,6 +326,14 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
                   >
                     {m.emote ? (
                       <img src={EMOTE_SRC(m.emote)} alt="" width={84} height={84} style={{ width: 84, height: 84, display: "block", objectFit: "contain" }} />
+                    ) : m.image_id ? (
+                      // Kaal, zoals een sticker: een stickerknipsel in een pil
+                      // met een rand eromheen ziet eruit als een fout.
+                      <img
+                        src={`/api/image/${roomCode}/${m.image_id}`}
+                        alt=""
+                        style={{ maxWidth: "100%", maxHeight: 220, width: "auto", height: "auto", display: "block", borderRadius: 12 }}
+                      />
                     ) : m.voice_id ? (
                       <VoiceNote src={`/api/voice/${roomCode}/${m.voice_id}`} duration={m.voice_dur ?? 0} mine={mine} />
                     ) : (
@@ -400,28 +424,12 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
             }}
           />
           {draft.trim() ? (
-            <button
-              type="submit"
-              aria-label={t("chatSend")}
-              style={{
-                flexShrink: 0,
-                width: 44,
-                height: 44,
-                borderRadius: "50%",
-                border: "none",
-                cursor: "pointer",
-                background: colors.gold,
-                color: colors.bg0,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                transition: "background .15s",
-              }}
-            >
-              <Send size={18} />
-            </button>
+            <VerstuurKnop submit label={t("chatSend")} />
           ) : (
-            <MicButton upload={uploadVoice} onSent={(id, dur) => game.sendChat("", { id, dur })} />
+            <>
+              <BeeldKnop upload={uploadBeeld} onSent={(id) => game.sendChat("", undefined, undefined, id)} />
+              <MicButton upload={uploadVoice} onSent={(id, dur) => game.sendChat("", { id, dur })} />
+            </>
           )}
         </form>
       </div>

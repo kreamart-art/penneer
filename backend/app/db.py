@@ -163,6 +163,16 @@ CREATE TABLE IF NOT EXISTS dm_voice (
     data BLOB NOT NULL,
     created_at REAL NOT NULL
 );
+-- Foto's en stickers in privéberichten, zelfde model als dm_voice: de blob
+-- staat apart en het bericht draagt alleen het id, opgehaald via een
+-- onraadbare link.
+CREATE TABLE IF NOT EXISTS dm_image (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    mime TEXT NOT NULL,
+    data BLOB NOT NULL,
+    created_at REAL NOT NULL
+);
 -- Tiny key-value store for server config that must survive restarts without
 -- env changes (e.g. auto-generated VAPID keys on the persistent volume).
 CREATE TABLE IF NOT EXISTS meta (
@@ -700,6 +710,10 @@ class Database:
         dcols2 = {r["name"] for r in self._conn.execute("PRAGMA table_info(dms)").fetchall()}
         if dcols2 and "emote" not in dcols2:
             self._conn.execute("ALTER TABLE dms ADD COLUMN emote TEXT")
+            self._conn.commit()
+        # Foto's en stickers in DM's.
+        if dcols2 and "image_id" not in dcols2:
+            self._conn.execute("ALTER TABLE dms ADD COLUMN image_id TEXT")
             self._conn.commit()
         # Wie in een club WAT mag. Standaard mag iedereen uitnodigen (een club
         # groeit door zijn leden, niet door zijn eigenaar) maar alleen de
@@ -2726,13 +2740,47 @@ class Database:
             return None
         return row[0]["mime"], row[0]["data"]
 
+    # Plaatjes zijn zwaarder dan spraak, dus de staart is korter: vijftig per
+    # speler is ruim een gesprek lang en houdt het volume op de schijf in toom.
+    def dm_image_store(self, user_id: str, mime: str, data: bytes) -> str:
+        iid = _new_id()
+        with self._lock:
+            self._exec(
+                "INSERT INTO dm_image (id, user_id, mime, data, created_at) VALUES (?,?,?,?,?)",
+                (iid, user_id, mime, data, time.time()),
+            )
+            self._exec(
+                "DELETE FROM dm_image WHERE user_id=? AND id NOT IN "
+                "(SELECT id FROM dm_image WHERE user_id=? ORDER BY created_at DESC LIMIT 50)",
+                (user_id, user_id),
+            )
+        return iid
+
+    def dm_image_get(self, iid: str) -> Optional[tuple[str, bytes]]:
+        with self._lock:
+            row = self._q("SELECT mime, data FROM dm_image WHERE id=?", (iid,))
+        if not row:
+            return None
+        return row[0]["mime"], row[0]["data"]
+
     def dm_send(self, from_user: str, to_user: str, text: str,
                 voice_id: Optional[str] = None, voice_dur: int = 0,
-                emote: Optional[str] = None) -> Optional[dict]:
+                emote: Optional[str] = None, image_id: Optional[str] = None) -> Optional[dict]:
         text = (text or "").strip()[: self.DM_MAX_LEN]
         if emote:
             # The caller has already checked the sender owns this emote's pack.
             if emote not in EMOTE_IDS:
+                return None
+            text = ""
+            voice_id = None
+            voice_dur = 0
+            image_id = None
+        elif image_id:
+            # Het plaatje moet een eigen upload zijn. Zonder die controle kon je
+            # met een gegokt id andermans foto in je eigen gesprek plakken.
+            with self._lock:
+                eigen = self._q("SELECT 1 FROM dm_image WHERE id=? AND user_id=?", (image_id, from_user))
+            if not eigen:
                 return None
             text = ""
             voice_id = None
@@ -2745,6 +2793,7 @@ class Database:
                 return None
             text = ""
             voice_dur = max(0, min(120, int(voice_dur or 0)))
+            image_id = None
         elif not text:
             return None
         if from_user == to_user:
@@ -2753,19 +2802,19 @@ class Database:
         now = time.time()
         with self._lock:
             self._exec(
-                "INSERT INTO dms (id, from_user, to_user, text, created_at, voice_id, voice_dur, emote) VALUES (?,?,?,?,?,?,?,?)",
-                (mid, from_user, to_user, text, now, voice_id, voice_dur if voice_id else 0, emote),
+                "INSERT INTO dms (id, from_user, to_user, text, created_at, voice_id, voice_dur, emote, image_id) VALUES (?,?,?,?,?,?,?,?,?)",
+                (mid, from_user, to_user, text, now, voice_id, voice_dur if voice_id else 0, emote, image_id),
             )
         return {"id": mid, "from_user": from_user, "to_user": to_user, "text": text,
                 "created_at": now, "voice_id": voice_id, "voice_dur": voice_dur if voice_id else 0,
-                "emote": emote}
+                "emote": emote, "image_id": image_id}
 
     def dm_thread(self, user_id: str, other_id: str, limit: int = 60) -> list[dict]:
         """Conversation between two users, oldest first. Marks the incoming
         half as read."""
         with self._lock:
             rows = self._q(
-                "SELECT id, from_user, to_user, text, created_at, voice_id, voice_dur, emote FROM dms "
+                "SELECT id, from_user, to_user, text, created_at, voice_id, voice_dur, emote, image_id FROM dms "
                 "WHERE (from_user=? AND to_user=?) OR (from_user=? AND to_user=?) "
                 "ORDER BY created_at DESC LIMIT ?",
                 (user_id, other_id, other_id, user_id, limit),
@@ -2789,7 +2838,7 @@ class Database:
             out = []
             for r in rows:
                 last = self._q(
-                    "SELECT from_user, text, created_at, voice_id, emote FROM dms "
+                    "SELECT from_user, text, created_at, voice_id, emote, image_id FROM dms "
                     "WHERE (from_user=? AND to_user=?) OR (from_user=? AND to_user=?) "
                     "ORDER BY created_at DESC LIMIT 1",
                     (user_id, r["partner"], r["partner"], user_id),
@@ -2803,6 +2852,7 @@ class Database:
                     "last_text": last["text"],
                     "last_voice": bool(last["voice_id"]),
                     "last_emote": bool(last["emote"]),
+                    "last_image": bool(last["image_id"]),
                     "last_from_me": last["from_user"] == user_id,
                     "last_at": last["created_at"],
                     "unread": unread,

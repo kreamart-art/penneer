@@ -288,6 +288,7 @@ class RoomManager:
         # here by id so the blob never travels over the socket), or an emote.
         emote = payload.get("emote")
         voice_id = payload.get("voice_id")
+        image_id = payload.get("image_id")
         text = payload.get("text")
         if not isinstance(text, str):
             text = ""
@@ -302,14 +303,23 @@ class RoomManager:
             text = ""
             voice_id = None
             voice_dur = 0
+            image_id = None
+        elif isinstance(image_id, str) and image_id in room.beeld:
+            # Het id moet in DEZE room bestaan; anders is het geen upload van
+            # iemand die hier zit.
+            text = ""
+            voice_id = None
+            voice_dur = 0
         elif isinstance(voice_id, str) and voice_id in room.voice:
             voice_dur = payload.get("voice_dur")
             voice_dur = int(voice_dur) if isinstance(voice_dur, (int, float)) else 0
             voice_dur = max(0, min(120, voice_dur))
             text = ""
+            image_id = None
         else:
             voice_id = None
             voice_dur = 0
+            image_id = None
             if not text:
                 return
         room.chat_seq += 1
@@ -326,6 +336,8 @@ class RoomManager:
             msg["voice_dur"] = voice_dur
         if emote_id:
             msg["emote"] = emote_id
+        if image_id:
+            msg["image_id"] = image_id
         room.chat.append(msg)
         if len(room.chat) > 60:
             room.chat = room.chat[-60:]

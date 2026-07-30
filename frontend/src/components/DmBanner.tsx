@@ -111,6 +111,12 @@ export function DmBanner({
             <div style={{ marginTop: 3 }}>
               <img src={EMOTE_SRC(dm.emote)} alt="" width={44} height={44} style={{ width: 44, height: 44, display: "block", objectFit: "contain" }} />
             </div>
+          ) : dm.image_id ? (
+            // Klein: de balk moet leesbaar blijven en zegt alleen DAT er een
+            // foto is; hem bekijken doe je in het gesprek.
+            <div style={{ marginTop: 3 }}>
+              <img src={`/api/dm/image/${dm.image_id}`} alt="" style={{ width: 44, height: 44, display: "block", objectFit: "cover", borderRadius: 8 }} />
+            </div>
           ) : dm.voice_id ? (
             <div style={{ marginTop: 3 }}>
               <VoiceNote src={`/api/dm/voice/${dm.voice_id}`} duration={dm.voice_dur ?? 0} />

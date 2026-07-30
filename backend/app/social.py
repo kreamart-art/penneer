@@ -607,6 +607,7 @@ class AccountManager:
             voice_id=data.get("voice_id") or None,
             voice_dur=int(data.get("voice_dur") or 0),
             emote=emote,
+            image_id=data.get("image_id") or None,
         )
         if msg is None:
             return
@@ -617,7 +618,8 @@ class AccountManager:
         await self._push(uid, payload)
         await self._push(to, payload)
         sender = self.db.get_user(uid)
-        preview = "Sticker" if msg.get("emote") else "Spraakbericht" if msg.get("voice_id") else msg["text"][:120]
+        preview = ("Sticker" if msg.get("emote") else "Afbeelding" if msg.get("image_id")
+                   else "Spraakbericht" if msg.get("voice_id") else msg["text"][:120])
         # De melding gaat door de catalogus heen, ook als de ontvanger in de app
         # zit: daar wordt hij een balk in plaats van een push, en hij blijft in
         # de meldingenlijst staan.

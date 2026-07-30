@@ -230,6 +230,77 @@ async def get_dm_voice(vid: str) -> Response:
     return Response(body, media_type=mime, headers={"Cache-Control": "private, max-age=31536000, immutable"})
 
 
+# ---- foto's en stickers (chat + DM). Zelfde model als de spraakberichten:
+# eerst over HTTP omhoog, daarna reist alleen het id over de socket.
+#
+# Waarom een lijst met toegestane typen en niet gewoon "image/": een SVG is een
+# afbeelding met een script erin, en die zou hier in andermans gesprek
+# uitgevoerd worden. Deze vier zijn beeld en verder niets. WebP staat vooraan
+# omdat stickers uit WhatsApp precies dat zijn.
+BEELD_TYPEN = {"image/webp", "image/png", "image/jpeg", "image/gif"}
+BEELD_MAX_BYTES = 3_000_000
+BEELD_KEEP_PER_ROOM = 24
+
+
+def _beeld_mime(request: Request) -> str | None:
+    mime = (request.headers.get("content-type") or "").split(";")[0].strip().lower()
+    return mime if mime in BEELD_TYPEN else None
+
+
+@app.post("/api/image/{code}")
+async def upload_room_image(code: str, request: Request):
+    """Een speler in de room zet een plaatje neer; het id gaat in chat_send."""
+    room = manager.rooms.get(code.upper())
+    player_id = request.query_params.get("player") or ""
+    if room is None or room.get_player(player_id) is None:
+        return Response(status_code=403)
+    mime = _beeld_mime(request)
+    if mime is None:
+        return Response(status_code=400)
+    body = await request.body()
+    if not body or len(body) > BEELD_MAX_BYTES:
+        return Response("Afbeelding is te groot.", status_code=413)
+    iid = uuid.uuid4().hex
+    room.beeld[iid] = (mime, body)
+    while len(room.beeld) > BEELD_KEEP_PER_ROOM:
+        room.beeld.pop(next(iter(room.beeld)))
+    return JSONResponse({"id": iid})
+
+
+@app.get("/api/image/{code}/{iid}")
+async def get_room_image(code: str, iid: str) -> Response:
+    room = manager.rooms.get(code.upper())
+    entry = room.beeld.get(iid) if room else None
+    if entry is None:
+        return Response(status_code=404)
+    mime, body = entry
+    return Response(body, media_type=mime, headers={"Cache-Control": "private, max-age=3600"})
+
+
+@app.post("/api/dm/image")
+async def upload_dm_image(request: Request):
+    db = get_db()
+    uid = db.auth(_bearer(request))
+    if uid is None:
+        return Response(status_code=401)
+    mime = _beeld_mime(request)
+    if mime is None:
+        return Response(status_code=400)
+    body = await request.body()
+    if not body or len(body) > BEELD_MAX_BYTES:
+        return Response("Afbeelding is te groot.", status_code=413)
+    return JSONResponse({"id": db.dm_image_store(uid, mime, body)})
+
+
+@app.get("/api/dm/image/{iid}")
+async def get_dm_image(iid: str) -> Response:
+    entry = get_db().dm_image_get(iid)
+    if entry is None:
+        return Response(status_code=404)
+    mime, body = entry
+    return Response(body, media_type=mime, headers={"Cache-Control": "private, max-age=31536000, immutable"})
+
+
 @app.delete("/api/avatar")
 async def delete_avatar(request: Request) -> Response:
     db = get_db()

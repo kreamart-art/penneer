@@ -74,6 +74,7 @@ export interface DmMessage {
   voice_id?: string | null;
   voice_dur?: number;
   emote?: string | null;   // chat-emote id; replaces text when set
+  image_id?: string | null; // foto of sticker; vervangt de tekst net als een emote
 }
 
 export interface DmThreadSummary {
@@ -81,6 +82,7 @@ export interface DmThreadSummary {
   last_text: string;
   last_voice?: boolean;
   last_emote?: boolean;
+  last_image?: boolean;
   last_from_me: boolean;
   last_at: number;
   unread: number;
@@ -367,6 +369,7 @@ export interface ChatMessage {
   voice_id?: string;
   voice_dur?: number;
   emote?: string;   // chat-emote id (ceNN); replaces text when set
+  image_id?: string; // foto of sticker, opgehaald via /api/image/<code>/<id>
 }
 
 export interface ClientState {
@@ -779,6 +782,7 @@ function reducer(state: ClientState, action: Action): ClientState {
           ...t,
           last_text: m.text,
           last_voice: !!m.voice_id,
+          last_image: !!m.image_id,
           last_from_me: !incoming,
           last_at: m.created_at,
           unread: incoming && !openMatches ? t.unread + 1 : openMatches ? 0 : t.unread,
@@ -892,7 +896,7 @@ export interface GameApi {
   adminCatDelete: (id: string) => void;
   redeemAiCode: (code: string) => void;
   clearShopResult: () => void;
-  sendChat: (text: string, voice?: { id: string; dur: number }, emote?: string) => void;
+  sendChat: (text: string, voice?: { id: string; dur: number }, emote?: string, imageId?: string) => void;
   sendChatTyping: (typing: boolean) => void;
   openChat: () => void;
   closeChat: () => void;
@@ -910,7 +914,7 @@ export interface GameApi {
   searchUsers: (query: string) => void;
   viewProfile: (user_id: string) => void;
   historyGet: () => void;
-  dmSend: (user_id: string, text: string, voice?: { id: string; dur: number }, emote?: string) => void;
+  dmSend: (user_id: string, text: string, voice?: { id: string; dur: number }, emote?: string, imageId?: string) => void;
   dmOpen: (user_id: string) => void;
   dmClose: () => void;
   clearDmBanner: () => void;
@@ -1129,9 +1133,12 @@ export function useGame(): GameApi {
       if (c) send({ type: "shop_redeem", code: c });
     },
     clearShopResult: () => dispatch({ type: "clearShopResult" }),
-    sendChat: (text, voice, emote) => {
+    sendChat: (text, voice, emote, imageId) => {
       const t = text.trim().slice(0, 280);
+      // Dezelfde volgorde als op de server: een bericht is precies EEN soort,
+      // dus wie meerdere velden meestuurt krijgt de eerste die past.
       if (emote) send({ type: "chat_send", emote });
+      else if (imageId) send({ type: "chat_send", image_id: imageId });
       else if (voice) send({ type: "chat_send", text: t, voice_id: voice.id, voice_dur: voice.dur });
       else if (t) send({ type: "chat_send", text: t });
     },
@@ -1162,9 +1169,10 @@ export function useGame(): GameApi {
     searchUsers: (query) => send({ type: "user_search", query }),
     viewProfile: (user_id) => send({ type: "profile_view", user_id }),
     historyGet: () => send({ type: "history_get" }),
-    dmSend: (user_id, text, voice, emote) => {
+    dmSend: (user_id, text, voice, emote, imageId) => {
       const t = text.trim().slice(0, 500);
       if (emote) send({ type: "dm_send", user_id, emote });
+      else if (imageId) send({ type: "dm_send", user_id, image_id: imageId });
       else if (voice) send({ type: "dm_send", user_id, text: t, voice_id: voice.id, voice_dur: voice.dur });
       else if (t) send({ type: "dm_send", user_id, text: t });
     },

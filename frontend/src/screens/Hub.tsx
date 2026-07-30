@@ -20,6 +20,8 @@ import { ensurePushSubscription } from "../pwa/push";
 import { AvatarZoom } from "../components/AvatarZoom";
 import { Button } from "../components/Button";
 import { MicButton } from "../components/MicButton";
+import { BeeldKnop } from "../components/BeeldKnop";
+import { VerstuurKnop } from "../components/VerstuurKnop";
 import { VoiceNote } from "../components/VoiceNote";
 import { EmotePicker } from "../components/EmotePicker";
 import { EMOTE_SRC, FREE_EMOTE_PACKS } from "../components/emotes";
@@ -813,6 +815,23 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
     }
   };
 
+  // En hetzelfde voor een foto of sticker. Anders dan in de room blijft dit
+  // staan: een privégesprek loop je later terug, een potje niet.
+  const uploadBeeld = async (blob: Blob, mime: string): Promise<string | null> => {
+    try {
+      const token = localStorage.getItem("penneer.accountToken") || "";
+      const res = await fetch("/api/dm/image", {
+        method: "POST",
+        headers: { "Content-Type": mime, Authorization: `Bearer ${token}` },
+        body: blob,
+      });
+      if (!res.ok) return null;
+      return (await res.json()).id as string;
+    } catch {
+      return null;
+    }
+  };
+
   const fmt = (ts: number) => {
     const d = new Date(ts * 1000);
     return `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
@@ -923,16 +942,16 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
                     kant waar hij vandaan komt, en met een lijn die je ziet:
                     tegen behang verdwijnt een fluistering. */}
                 <div style={{
-                  padding: m.emote ? 4 : m.voice_id ? "8px 12px" : "10px 15px",
-                  borderRadius: m.emote ? 14 : 20,
-                  borderBottomRightRadius: m.emote ? 14 : mine ? 6 : 20,
-                  borderBottomLeftRadius: m.emote ? 14 : mine ? 20 : 6,
-                  background: m.emote
+                  padding: m.emote || m.image_id ? 4 : m.voice_id ? "8px 12px" : "10px 15px",
+                  borderRadius: m.emote || m.image_id ? 14 : 20,
+                  borderBottomRightRadius: m.emote || m.image_id ? 14 : mine ? 6 : 20,
+                  borderBottomLeftRadius: m.emote || m.image_id ? 14 : mine ? 20 : 6,
+                  background: m.emote || m.image_id
                     ? "transparent"
                     : mine
                       ? `linear-gradient(180deg, ${withAlpha(colors.gold, 0.22)}, ${withAlpha(colors.gold, 0.12)})`
                       : "linear-gradient(180deg, rgba(24,12,50,.88), rgba(14,7,34,.88))",
-                  boxShadow: m.emote
+                  boxShadow: m.emote || m.image_id
                     ? undefined
                     : mine
                       ? `inset 0 0 0 1.4px ${withAlpha(GOUD[2], 0.75)}, 0 0 12px ${withAlpha(GOUD[2], 0.24)}`
@@ -941,6 +960,12 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
                 }}>
                   {m.emote ? (
                     <img src={EMOTE_SRC(m.emote)} alt="" width={84} height={84} style={{ width: 84, height: 84, display: "block", objectFit: "contain" }} />
+                  ) : m.image_id ? (
+                    <img
+                      src={`/api/dm/image/${m.image_id}`}
+                      alt=""
+                      style={{ maxWidth: "100%", maxHeight: 260, width: "auto", height: "auto", display: "block", borderRadius: 12 }}
+                    />
                   ) : m.voice_id ? (
                     <VoiceNote src={`/api/dm/voice/${m.voice_id}`} duration={m.voice_dur ?? 0} mine={mine} />
                   ) : (
@@ -998,9 +1023,12 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
             />
           </NeonKader>
           {text.trim() ? (
-            <KnopPlaat breed={76} onClick={sendNow} label={t("chatSend")} />
+            <VerstuurKnop onClick={sendNow} label={t("chatSend")} />
           ) : (
-            <MicButton upload={uploadVoice} onSent={(id, dur) => game.dmSend(partnerId, "", { id, dur })} />
+            <>
+              <BeeldKnop upload={uploadBeeld} onSent={(id) => game.dmSend(partnerId, "", undefined, undefined, id)} />
+              <MicButton upload={uploadVoice} onSent={(id, dur) => game.dmSend(partnerId, "", { id, dur })} />
+            </>
           )}
         </div>
       </NeonKader>
@@ -3576,7 +3604,7 @@ function InboxTab({ game, onGaNaar }: { game: GameApi; onGaNaar: (naar: string) 
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontFamily: font.ui, fontWeight: 600, fontSize: 14, color: colors.ink }}>{th.user.name}</div>
               <div style={{ fontFamily: font.ui, fontSize: 12.5, color: th.unread > 0 ? colors.ink : colors.faint, fontWeight: th.unread > 0 ? 600 : 400, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {th.last_from_me ? `${t("chatYou")}: ` : ""}{th.last_emote ? t("stickerOne") : th.last_voice ? t("voiceMemo") : th.last_text}
+                {th.last_from_me ? `${t("chatYou")}: ` : ""}{th.last_emote ? t("stickerOne") : th.last_image ? t("beeldEen") : th.last_voice ? t("voiceMemo") : th.last_text}
               </div>
             </div>
             {/* Zelfde badge als overal: de zwarte zeshoek met het gouden
