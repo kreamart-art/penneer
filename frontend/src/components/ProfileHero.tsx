@@ -394,7 +394,7 @@ export const schuin = (cut: number) =>
 /** De gemeenschappelijke opmaak van een ring-laag: een doos met opvulling,
  *  waarvan het midden met een masker wordt weggehaald. Wat overblijft is de
  *  rand. */
-const ringLaag = (r: number, dik: number): CSSProperties => ({
+const ringLaag = (r: number | string, dik: number): CSSProperties => ({
   position: "absolute",
   inset: 0,
   borderRadius: r,
@@ -435,7 +435,7 @@ export function NeonKader({
   binnen?: CSSProperties;
   /** De hoekronding. Een lijst OM andere lijsten krijgt er een paar bij, zodat
    *  de binnenste er netjes in valt in plaats van ertegenaan te botsen. */
-  radius?: number;
+  radius?: number | string;
   /** Het verloop van de lijn. */
   lijn?: string;
   /** De buitengloed. Een box-shadow, of het woord "verloop": dan wordt het een
@@ -550,7 +550,7 @@ export function NeonKader({
           style={{
             position: "absolute",
             inset: -3,
-            ...(hoek ? { clipPath: schuin(hoek) } : { borderRadius: KADER_R + 3 }),
+            ...(hoek ? { clipPath: schuin(hoek) } : { borderRadius: typeof KADER_R === "number" ? KADER_R + 3 : KADER_R }),
             backgroundImage: lijn,
             filter: "blur(7px)",
             opacity: 0.5,

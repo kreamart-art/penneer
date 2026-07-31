@@ -844,7 +844,7 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
           de lijn loopt door tot onder het scherm: hij komt van beneden en zit
           daar vast, dus een lijst helemaal rondom zou hem los laten zweven. */}
       <NeonKader
-        radius={22}
+        radius="22px 22px 0 0"
         dik={0.75}
         lijn={KNOP_GOUD_VERLOOP}
         gloed="0 -14px 50px rgba(0,0,0,.45)"
