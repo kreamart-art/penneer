@@ -872,7 +872,7 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
           ].join(", "),
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", ...goudHaarlijn("bottom") }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: vak.gekrompen ? "calc(10px + env(safe-area-inset-top)) 16px 10px" : "14px 16px", ...goudHaarlijn("bottom") }}>
           {partner ? (
             <Avatar name={partner.name} color={partner.color} size={34} userId={partner.id} hasAvatar={partner.has_avatar} avatarVer={partner.avatar_ver} divisie={partner.divisie} />
           ) : null}

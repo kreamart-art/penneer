@@ -231,7 +231,10 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            padding: "14px 16px 10px",
+            // Zie de privéberichten: met toetsenbord staat de kop tegen de
+            // statusbalk van de telefoon aan, dus dan schuift de inhoud daar
+            // onderuit.
+            padding: vak.gekrompen ? "calc(10px + env(safe-area-inset-top)) 16px 10px" : "14px 16px 10px",
             ...goudHaarlijn("bottom"),
           }}
         >
