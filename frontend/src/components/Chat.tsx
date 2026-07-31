@@ -79,7 +79,7 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
   // die verdelen de lade, ze omlijsten hem niet.
   const [typt, setTypt] = useState(false);
   const vak = useZichtbaarVak();
-  const laag = useVakLaag();
+  const { laag, onder } = useVakLaag();
   const roomCode = game.state.room?.code ?? "";
 
   // Upload a memo to this room, then post it as a chat message.
@@ -189,6 +189,10 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
         WebkitBackdropFilter: "blur(3px)",
       }}
     >
+    {/* De strook onder het zichtbare vak, in de kleur van de invulbalk: het
+        toetsenbord van iOS is doorschijnend en je keek er dwars doorheen naar
+        de lobby. Nu loopt de balk optisch door tot onderaan de telefoon. */}
+    <div ref={onder} aria-hidden style={{ position: "absolute", left: 0, right: 0, bottom: 0, backgroundColor: "#271A4A" }} />
     <div
       ref={laag}
       style={{

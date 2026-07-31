@@ -80,8 +80,18 @@ export function useZichtbaarVak(): ZichtbaarVak {
  *  scherm vult: deze laag is per definitie kleiner dan het scherm, en zonder
  *  bodem eronder kijk je in dat verschil naar de pagina die eronder ligt.
  */
-export function useVakLaag(): React.RefObject<HTMLDivElement | null> {
+export function useVakLaag(): {
+  laag: React.RefObject<HTMLDivElement | null>;
+  onder: React.RefObject<HTMLDivElement | null>;
+} {
   const laag = useRef<HTMLDivElement | null>(null);
+  // De strook ONDER het zichtbare vak: precies het stuk dat het toetsenbord
+  // afdekt. Nodig omdat het toetsenbord van iOS doorschijnend is: je kijkt er
+  // dwars doorheen naar wat eronder ligt, en dat was het scherm achter de chat.
+  // Vul je die strook met de kleur van de invulbalk, dan loopt de balk optisch
+  // door tot onderaan de telefoon en zie je door het toetsenbord heen niets
+  // anders meer dan de chat zelf.
+  const onder = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     const vv = window.visualViewport;
     const el = laag.current;
@@ -89,6 +99,11 @@ export function useVakLaag(): React.RefObject<HTMLDivElement | null> {
     const sync = () => {
       el.style.height = `${vv.height}px`;
       el.style.transform = `translateY(${vv.offsetTop}px)`;
+      const strook = onder.current;
+      if (strook) {
+        const layout = document.documentElement.clientHeight || window.innerHeight;
+        strook.style.height = `${Math.max(0, layout - vv.height - vv.offsetTop)}px`;
+      }
     };
     sync();
     vv.addEventListener("resize", sync);
@@ -98,5 +113,5 @@ export function useVakLaag(): React.RefObject<HTMLDivElement | null> {
       vv.removeEventListener("scroll", sync);
     };
   }, []);
-  return laag;
+  return { laag, onder };
 }

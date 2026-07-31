@@ -785,7 +785,7 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
   const [behang, setBehang] = useState<WallpaperId>(wallpaperVan);
   const [behangOpen, setBehangOpen] = useState(false);
   const vak = useZichtbaarVak();
-  const laag = useVakLaag();
+  const { laag, onder } = useVakLaag();
   const listRef = useRef<HTMLDivElement | null>(null);
   // Partner identity: from threads, friends, or the viewed profile.
   const partner =
@@ -874,6 +874,9 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
         ].join(", "),
       }}
     >
+    {/* Zie de room-chat: onder het zichtbare vak dezelfde kleur als de
+        invulbalk, zodat die optisch doorloopt tot onderaan de telefoon. */}
+    <div ref={onder} aria-hidden style={{ position: "absolute", left: 0, right: 0, bottom: 0, backgroundColor: BALK_VULLING }} />
     <div
       ref={laag}
       style={{
