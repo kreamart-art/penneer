@@ -194,6 +194,23 @@ function startTrede(): number {
 const LADDER_B = 1100;  // de maat waarop alles is opgemeten
 const LADDER_H = 733;
 
+// WAAR DE LADDER STAAT. In de zaal-art zitten twee paarse meetpuntjes die de
+// bovenhoeken van de ladder markeren, opgemeten op (1150,9, 2070,9) en
+// (2927,1, 2070,3) van een doek van 4096. Daaruit volgt alles:
+//   breedte = 1776,2 / 4096 = 43,36% van de zaalbreedte
+//   bovenkant = 2070,6 / 4096 = 50,55% van de zaalhoogte
+// Controle: met die maat lopen de poten tot y 3254, en het schaduwvlak dat in de
+// art is bijgetekend ligt op y 3155-3325. De ladder staat dus precies in zijn
+// eigen schaduw.
+//
+// De zaal ligt als `cover` op een staand scherm, en omdat hij vierkant is wordt
+// hij op HOOGTE geschaald. Een percentage van de zaal is daarom een percentage
+// van de schermhoogte, niet van de breedte: vandaar lvh en niet vw. De vw-rem is
+// er alleen voor een liggend scherm, waar cover omslaat naar de breedte.
+const LADDER_TOP = 50.55;   // % van de schermhoogte
+const LADDER_BREED = 43.36; // idem
+// De puntjes zelf zijn gereedschap en geen decor; die zijn uit de zaal gepoetst.
+
 /** Per trede: waar de strook zit in de ladder, en waar het VLAK van de plaat
  *  zit in die strook. Het vlak is het tikbare deel en de plek van het getal;
  *  daarbuiten liggen de stijlen en de gloed, waar een tik niet hoort te tellen.
@@ -303,7 +320,19 @@ function Ladder({ keuzes, antwoord, oordeel, onKies, slapend, klaar }: {
   klaar?: boolean;
 }) {
   return (
-    <div style={{ position: "relative", width: VAK, aspectRatio: `${LADDER_B} / ${LADDER_H}` }}>
+    // Vast aan het scherm en niet in de kolom: de zaal zit ook vast aan het
+    // scherm, dus alleen zo blijft de ladder op elk toestel in zijn schaduw
+    // staan. Wat er in de kolom overblijft is een even hoge lege plek.
+    <div
+      style={{
+        position: "fixed",
+        left: "50%",
+        top: `${LADDER_TOP}lvh`,
+        width: `min(${LADDER_BREED}lvh, 96vw)`,
+        transform: "translateX(-50%)",
+        aspectRatio: `${LADDER_B} / ${LADDER_H}`,
+      }}
+    >
       {keuzes.map((w, i) => (
         <Trede
           key={i}
@@ -751,6 +780,10 @@ export function Rekenladder({ seed, onKlaar, onOpnieuw }: {
           slapend={fase === "tel"}
           klaar={fase === "klaar"}
         />
+        {/* De plek die de ladder in de kolom zou innemen. Hij staat er zelf niet
+            meer in (die hangt aan het scherm), maar de knop eronder moet wel
+            weten hoe hoog hij is. */}
+        <div style={{ height: `calc(min(${LADDER_BREED}lvh, 96vw) * ${LADDER_H} / ${LADDER_B})`, flexShrink: 0 }} aria-hidden />
 
         {(fase !== "klaar" || onOpnieuw) && (
         <NeonKader radius={999} dik={0.5} vulling="zwart" animeer lijn={KADER_LIJN_ROOD} gloed={`0 0 12px ${withAlpha(colors.red, 0.35)}`} binnen={{ padding: 0 }}>
