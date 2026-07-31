@@ -192,7 +192,8 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
           width: "100%",
           maxWidth: 560,
           margin: "0 auto",
-          height: vak.toetsen ? vak.hoogte : "min(72vh, 620px)",
+          height: "min(72vh, 620px)",
+          maxHeight: vak.hoogte,
           display: "flex",
           flexDirection: "column",
           background: "linear-gradient(180deg, #1B1245 0%, #140C33 100%)",
@@ -397,8 +398,8 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
           style={{
             display: "flex",
             gap: 8,
-            padding: "10px 12px",
-            paddingBottom: "calc(10px + env(safe-area-inset-bottom))",
+            padding: "8px 12px",
+            paddingBottom: vak.gekrompen ? 8 : "calc(8px + env(safe-area-inset-bottom))",
             ...goudHaarlijn("top"),
           }}
         >

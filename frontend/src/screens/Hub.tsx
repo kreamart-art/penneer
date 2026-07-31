@@ -858,10 +858,11 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
         vulling="geen"
         style={{ width: "100%", maxWidth: 430 }}
         binnen={{
-          // Met toetsenbord: alles wat er nog is, als echte lengte. Een
-          // percentage zou tegen de NeonKader eromheen oplossen, en die heeft
-          // zelf geen hoogte, dus dan valt het terug op auto.
-          height: vak.toetsen ? vak.hoogte : "78dvh",
+          height: "78dvh",
+          // Nooit hoger dan wat je ziet. Komt het toetsenbord op, dan snijdt dit
+          // de lade terug tot het gekrompen vak: de kop blijft bovenaan en de
+          // berichtenlijst (flex: 1) is wat er kleiner van wordt.
+          maxHeight: vak.hoogte,
           display: "flex",
           flexDirection: "column",
           padding: 0,
@@ -997,7 +998,10 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
           />
         )}
 
-        <div style={{ display: "flex", gap: 8, padding: "10px 14px calc(12px + env(safe-area-inset-bottom))", ...goudHaarlijn("top") }}>
+        {/* De onderrand van de telefoon hoeft alleen vrijgehouden te worden als
+            je hem ziet. Ligt het toetsenbord eroverheen, dan is die marge een
+            lege strook onder je invulveld. */}
+        <div style={{ display: "flex", gap: 8, padding: vak.gekrompen ? "8px 14px 8px" : "8px 14px calc(8px + env(safe-area-inset-bottom))", ...goudHaarlijn("top") }}>
           <button
             type="button"
             onClick={() => { sound.uiTap(); setDmEmotesOpen((v) => !v); }}

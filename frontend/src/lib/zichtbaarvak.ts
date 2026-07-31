@@ -16,21 +16,31 @@ export type ZichtbaarVak = {
   top: number;
   /** De hoogte van dat zichtbare deel. */
   hoogte: number;
-  /** Staat er een toetsenbord (of iets anders groots) voor het scherm? */
-  toetsen: boolean;
+  /** Is er een flink stuk scherm afgedekt? Vrijwel altijd het toetsenbord. */
+  gekrompen: boolean;
 };
 
-/** Onder deze inkorting is het geen toetsenbord maar de adresbalk die wegvalt. */
-const TOETSENBORD_DREMPEL = 120;
+// Bewust GEEN "staat het toetsenbord open"-vlag. De eerste versie had er een,
+// afgeleid uit window.innerHeight min de zichtbare hoogte, en die klopte niet:
+// in de geinstalleerde app op iOS krimpt window.innerHeight MEE met het
+// toetsenbord, dus het verschil bleef nul. Wie deze hoogte als MAXIMUM gebruikt
+// heeft die vlag ook niet nodig, en dat is meteen een maat minder om fout te
+// hebben.
+
+/** Onder deze inkorting is het geen toetsenbord maar een adresbalk die wegrolt. */
+const DREMPEL = 80;
 
 function meet(): ZichtbaarVak {
   const vv = window.visualViewport;
-  if (!vv) return { top: 0, hoogte: window.innerHeight, toetsen: false };
-  return {
-    top: vv.offsetTop,
-    hoogte: vv.height,
-    toetsen: window.innerHeight - vv.height > TOETSENBORD_DREMPEL,
-  };
+  if (!vv) return { top: 0, hoogte: window.innerHeight, gekrompen: false };
+  // De maat om tegen af te zetten is `clientHeight` van het document: dat IS de
+  // layout-viewport en die blijft staan als het toetsenbord opkomt. De eerste
+  // versie gebruikte hiervoor window.innerHeight, en die krimpt in de
+  // geinstalleerde app op iOS wel degelijk mee; toen was het verschil altijd
+  // nul. Wat hiervan afhangt blijft daarom klein (een marge, geen layout): gaat
+  // het ooit toch mis op een toestel, dan kost het een randje en geen scherm.
+  const layout = document.documentElement.clientHeight || window.innerHeight;
+  return { top: vv.offsetTop, hoogte: vv.height, gekrompen: layout - vv.height > DREMPEL };
 }
 
 export function useZichtbaarVak(): ZichtbaarVak {
