@@ -17,6 +17,7 @@ import { Check } from "lucide-react";
 import { ARENA } from "./Arena";
 import { ArtIcoon } from "./ArtIcoon";
 import { Avatar } from "./Avatar";
+import { Schild } from "./Divisie";
 import { Reel } from "./Reel";
 import type { GameApi } from "../net/socket";
 import { hoogtepunten, prestaties, woordVanDeRonde } from "../lib/hoogtepunten";
@@ -292,14 +293,19 @@ function Eindstand({ game }: { game: GameApi }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, width: "100%", padding: "0 16px", minWidth: 0 }}>
-      <div className="stream-links-in" style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0 }}>
-        <Avatar name={kampioen.p.name} color={kampioen.p.color} size={34} userId={kampioen.p.user_id} hasAvatar={kampioen.p.has_avatar} avatarVer={kampioen.p.avatar_ver} divisie={kampioen.p.divisie} />
+      <div className="stream-links-in" style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+        {/* De eerste plaats krijgt wat hij op zijn profiel ook krijgt: de ring
+            van zijn divisie om de avatar, met het schild ernaast. De naam
+            groeit mee, zodat de drie samen één ding zijn en niet een plaatje
+            met een bijschrift. */}
+        <Avatar name={kampioen.p.name} color={kampioen.p.color} size={46} userId={kampioen.p.user_id} hasAvatar={kampioen.p.has_avatar} avatarVer={kampioen.p.avatar_ver} frame={kampioen.p.frame} divisie={kampioen.p.divisie} glow />
+        <Schild divisie={kampioen.p.divisie ?? 0} maat={26} />
         <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
           <span style={{ fontFamily: font.ui, fontSize: 8.5, fontWeight: 800, letterSpacing: 1.1, textTransform: "uppercase", color: withAlpha(colors.gold, 0.85) }}>
             {t("streamKampioen")}
           </span>
-          <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 17, color: colors.gold, textShadow: "0 2px 10px rgba(0,0,0,.7)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {kampioen.p.name} <span style={{ fontSize: 13, color: colors.ink }}>{kampioen.punten}</span>
+          <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 22, lineHeight: 1.15, color: colors.gold, textShadow: "0 2px 10px rgba(0,0,0,.7)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {kampioen.p.name} <span style={{ fontSize: 17, color: colors.ink }}>{kampioen.punten}</span>
           </span>
         </div>
       </div>
@@ -394,19 +400,17 @@ export function Livestream({ game }: { game: GameApi }) {
     return () => window.clearTimeout(id);
   }, [eindeTeken]);
 
-  // Elke pagina komt op met een infade en gaat weg met een uitfade. De ROL en
-  // het INVULLEN delen hun beeld (daar schuift de rol van plek), dus die twee
-  // gelden als één pagina; anders zou die beweging worden onderbroken door een
-  // fade. Het merkje en de achtergrond doen niet mee: die zijn de zender en
-  // blijven staan.
+  // Elke pagina komt op met een infade en gaat weg met een uitfade, ook de rol
+  // naar het invullen: de letter verdwijnt op zijn oude plek en komt op zijn
+  // nieuwe terug. Het merkje en de achtergrond doen niet mee, dat is de zender
+  // en die blijft staan.
   const nu = room?.phase ?? "lobby";
-  const groep = nu === "reveal" || nu === "fill" ? "spel" : nu;
+  const groep = nu;
   const [getoond, setGetoond] = useState(nu);
   const [dof, setDof] = useState(false);
   const vorigeGroep = useRef(groep);
   useEffect(() => {
     if (groep === vorigeGroep.current) {
-      // Binnen dezelfde pagina (rollen -> invullen) meteen door.
       setGetoond(nu);
       return;
     }
@@ -484,7 +488,10 @@ export function Livestream({ game }: { game: GameApi }) {
           <div style={{ flex: 1.15, minWidth: 0 }}>
             <Hoogtepunten game={game} />
           </div>
-          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "flex-end", alignSelf: "stretch" }}>
+          {/* Op de hoogte van het woord van de ronde: twee kolommen die
+              onderaan uitlijnen lezen als twee losse blokken, bovenaan als
+              twee kolommen van hetzelfde bericht. */}
+          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "flex-start", paddingTop: 14 }}>
             <KlaarStroom game={game} max={3} />
           </div>
         </div>
@@ -498,10 +505,7 @@ export function Livestream({ game }: { game: GameApi }) {
         // zouden hier onvermijdelijk knipperen.
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: vult ? 12 : 0, width: "100%", padding: "0 12px", minHeight: 0, transition: "gap .42s cubic-bezier(.2,1,.3,1)" }}>
           <div
-            style={{
-              ...rolVak(vult ? ROL_KLEIN : ROL_GROOT),
-              transition: "transform .42s cubic-bezier(.2,1,.3,1), margin .42s cubic-bezier(.2,1,.3,1)",
-            }}
+            style={rolVak(vult ? ROL_KLEIN : ROL_GROOT)}
           >
             <Reel state={rolStand} letter={letter} exclude={room.used_letters} hard={room.settings.hard_letters} skin={leider?.reel_skin ?? null} />
           </div>
