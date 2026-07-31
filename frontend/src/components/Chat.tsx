@@ -13,6 +13,7 @@ import { BeeldKnop } from "./BeeldKnop";
 import { VerstuurKnop } from "./VerstuurKnop";
 import { KNOP_GOUD_VERLOOP, goudHaarlijn } from "./GlasKnop";
 import { useVakLaag, useZichtbaarVak } from "../lib/zichtbaarvak";
+import { ARENA } from "./Arena";
 import { Reel } from "./Reel";
 import { VoiceNote } from "./VoiceNote";
 import { EmotePicker } from "./EmotePicker";
@@ -236,22 +237,49 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
             placeItems: "center",
             pointerEvents: "none",
             padding: "14px 0",
-            // Een EIGEN laag met dezelfde achtergrond als het spel eronder, in
-            // plaats van een vervaagd doorkijkje. Dezelfde nevel, dezelfde
-            // korrel, dezelfde randval als de app zelf; de rol staat daarop
-            // zoals hij op de rol-pagina op de achtergrond staat.
-            backgroundColor: "#06040e",
-            backgroundImage: [
-              "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E\")",
-              "radial-gradient(118% 74% at 50% 30%, transparent 34%, rgba(2,1,7,.72) 100%)",
-              "url(/bg-sub.webp)",
-              "linear-gradient(180deg, #100c24 0%, #14102c 30%, #0e0b20 60%, #090714 82%, #06040e 100%)",
-            ].join(", "),
-            backgroundRepeat: "repeat, no-repeat, no-repeat, no-repeat",
-            backgroundPosition: "top left, top, center, top",
-            backgroundSize: "160px 160px, 100% 100%, cover, 100% 100%",
+            position: "relative",
+            // Precies de achtergrond van de speelpagina: dezelfde plaat, op
+            // dezelfde ondergrondkleur. Geen vervaagd doorkijkje naar het
+            // scherm eronder maar een eigen laag, zodat er niets over de chat
+            // heen kan vallen.
+            backgroundColor: ARENA.base,
+            backgroundImage: "url(/game-bg.webp)",
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            backgroundRepeat: "no-repeat",
           }}
         >
+          {/* Het merkje linksonder: dit is geen plaatje van de rol maar de rol
+              zelf, live. Een knipperend rood stipje zegt dat in één oogopslag,
+              zoals elke uitzending dat doet. */}
+          <span
+            style={{
+              position: "absolute",
+              left: 14,
+              bottom: 12,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 7,
+              padding: "5px 11px 5px 9px",
+              borderRadius: 999,
+              background: "linear-gradient(180deg, #C0142B 0%, #8E0C1F 100%)",
+              boxShadow: "0 2px 8px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.22)",
+            }}
+          >
+            <span
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                background: "#FFF",
+                boxShadow: "0 0 6px rgba(255,255,255,.85)",
+                animation: "fill-pulse 1.1s ease-in-out infinite",
+              }}
+            />
+            <span style={{ fontFamily: font.ui, fontWeight: 800, fontSize: 10.5, letterSpacing: 0.9, color: "#FFF", textTransform: "uppercase" }}>
+              livestream
+            </span>
+          </span>
           <div style={{ transform: `scale(${ROL_SCHAAL})`, transformOrigin: "center", lineHeight: 0 }}>
             <Reel
               state={rolStand}
