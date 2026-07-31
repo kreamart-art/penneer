@@ -28,7 +28,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LogOut, Timer } from "lucide-react";
 import { Screen } from "../components/Layout";
-import { KADER_LIJN_GOUD, KADER_LIJN_ROOD, NeonKader } from "../components/ProfileHero";
+import { KADER_LIJN_ROOD, NeonKader } from "../components/ProfileHero";
 import { colors, font, withAlpha } from "../theme/tokens";
 import { sound } from "../sound/sound";
 import { VAK } from "./Arena";
@@ -205,26 +205,144 @@ function AntwoordKnop({ waarde, staat, onKies }: { waarde: number; staat: "rust"
 const VIOLET = "#B36BFF";
 const VIOLET_LICHT = "#E3B8FF";
 
-/** De tab die over de bovenrand van het kader valt. Een kleiner kader met
- *  dezelfde lijn, zodat het één stuk metaal lijkt in plaats van een etiket. */
-function Tab({ tekst }: { tekst: string }) {
+/** De verven voor de lijnen. Eén keer per svg neerzetten; wie ze twee keer
+ *  neerzet krijgt dubbele id's en dan pakt de browser er willekeurig een. */
+function Verven() {
   return (
-    <div style={{ position: "absolute", top: -13, left: 0, right: 0, display: "flex", justifyContent: "center", zIndex: 2, pointerEvents: "none" }}>
-      <NeonKader
-        radius={7}
-        hoek={9}
-        dik={0.3}
-        vulling="zwart"
-        lijn={KADER_LIJN_GOUD}
-        gloed="0 0 12px rgba(255,190,60,.3)"
-        animeer
-        eindkap="kort"
-        binnen={{ padding: "4px 22px" }}
+    <defs>
+      {/* Hetzelfde goud als KADER_LIJN_GOUD, maar als svg-verloop, zodat het
+          een streek kan volgen die geen rechthoek is. */}
+      <linearGradient id="rl-goud" x1="0" y1="0" x2="1" y2="0.8">
+        <stop offset="0%" stopColor="#FFEBB8" />
+        <stop offset="14%" stopColor="#FFCF4A" />
+        <stop offset="32%" stopColor="#C58F1C" />
+        <stop offset="50%" stopColor="#FFE08A" />
+        <stop offset="68%" stopColor="#E2A33C" />
+        <stop offset="84%" stopColor="#9C6B1F" />
+        <stop offset="100%" stopColor="#FFEBB8" />
+      </linearGradient>
+      {/* De blauwe kern. Aan de uiteinden doorzichtig en in het MIDDEN op zijn
+          felst: zo is het een highlight op de lijn en niet een tweede lijn
+          ernaast. Een kern die overal even hard staat leest als twee gestapelde
+          randen in twee kleuren. */}
+      <linearGradient id="rl-kern" x1="0" y1="0" x2="1" y2="0.8">
+        <stop offset="0%" stopColor="#7BD8FF" stopOpacity="0" />
+        <stop offset="28%" stopColor="#7BD8FF" stopOpacity="0.55" />
+        <stop offset="50%" stopColor="#E8FBFF" stopOpacity="0.95" />
+        <stop offset="72%" stopColor="#7BD8FF" stopOpacity="0.55" />
+        <stop offset="100%" stopColor="#7BD8FF" stopOpacity="0" />
+      </linearGradient>
+      <linearGradient id="rl-vul" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor="#1E0E34" stopOpacity="0.94" />
+        <stop offset="55%" stopColor="#120822" stopOpacity="0.96" />
+        <stop offset="100%" stopColor="#0A0416" stopOpacity="0.97" />
+      </linearGradient>
+      <linearGradient id="rl-vul-diep" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor="#101A30" />
+        <stop offset="60%" stopColor="#0A1220" />
+        <stop offset="100%" stopColor="#070C16" />
+      </linearGradient>
+      <filter id="rl-gloed" x="-14%" y="-16%" width="128%" height="132%">
+        <feGaussianBlur stdDeviation="4" />
+      </filter>
+      <filter id="rl-kerngloed" x="-14%" y="-16%" width="128%" height="132%">
+        <feGaussianBlur stdDeviation="2.4" />
+      </filter>
+    </defs>
+  );
+}
+
+/** Eén omtrek, vier keer getekend: de vervaagde gouden gloed, de gouden body,
+ *  een vervaagde blauwe kern en daarbovenop de scherpe blauwe kern. Van buiten
+ *  naar binnen dus goud met een blauw hart, wat op afstand leest als één lijn
+ *  die van binnenuit brandt. */
+function NeonPad({ pad, vulling, breed = 1.1 }: { pad: string; vulling?: string; breed?: number }) {
+  return (
+    <>
+      <path d={pad} fill="none" stroke="url(#rl-goud)" strokeWidth={breed + 2} opacity="0.45" filter="url(#rl-gloed)" />
+      <path d={pad} fill={vulling ?? "none"} stroke="url(#rl-goud)" strokeWidth={breed} strokeLinejoin="round" />
+      <path d={pad} fill="none" stroke="url(#rl-kern)" strokeWidth={breed + 1.6} opacity="0.5" filter="url(#rl-kerngloed)" />
+      <path d={pad} fill="none" stroke="url(#rl-kern)" strokeWidth={breed * 0.42} strokeLinejoin="round" />
+    </>
+  );
+}
+
+/** Een achthoek in echte pixels: dezelfde afsnijding als het kader, zodat de
+ *  twee vakken familie zijn. */
+function achthoek(b: number, h: number, c: number): string {
+  return `M ${c} 0 L ${b - c} 0 L ${b} ${c} L ${b} ${h - c} L ${b - c} ${h} L ${c} ${h} L 0 ${h - c} L 0 ${c} Z`;
+}
+
+/** Het kader MET de tab erin: één doorlopende gouden lijn die bovenaan in het
+ *  midden omhoog stapt, over de naam heen loopt en weer afdaalt. De naam zit dus
+ *  IN de rand en ligt er niet als een etiket op.
+ *
+ *  Waarom een eigen pad en niet twee NeonKaders op elkaar: een kader kan alleen
+ *  een gesloten rechthoek tekenen, en dan krijg je een pil BOVENOP een lijn, met
+ *  het stuk lijn er nog achter. Hier is het één omtrek, dus er is geen "achter".
+ *
+ *  Het pad wordt in ECHTE pixels getekend, niet in een uitgerekte viewBox: dan
+ *  blijven de afsnijdingen 45 graden en de lijn overal even dik, hoe breed het
+ *  vak ook wordt. Vandaar dat het vak zichzelf opmeet.
+ */
+function TabKader({ titel, children }: { titel: string; children: React.ReactNode }) {
+  const doos = useRef<HTMLDivElement | null>(null);
+  const [maat, setMaat] = useState({ b: 0, h: 0 });
+  useEffect(() => {
+    const el = doos.current;
+    if (!el) return;
+    const meet = () => setMaat({ b: el.clientWidth, h: el.clientHeight });
+    meet();
+    const ro = new ResizeObserver(meet);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const TH = 26;   // hoogte van de tab
+  const TB = 158;  // breedte van de tab
+  const HELLING = 15; // de schuine kant waarmee de lijn omhoog stapt
+  const C = 16;    // afsnijding van de hoeken
+
+  const { b, h } = maat;
+  const x1 = Math.round((b - TB) / 2);
+  const x2 = Math.round((b + TB) / 2);
+  const pad = b > 0 ? [
+    `M ${C} ${TH}`,
+    `L ${x1} ${TH}`,
+    `L ${x1 + HELLING} 0`,
+    `L ${x2 - HELLING} 0`,
+    `L ${x2} ${TH}`,
+    `L ${b - C} ${TH}`,
+    `L ${b} ${TH + C}`,
+    `L ${b} ${h - C}`,
+    `L ${b - C} ${h}`,
+    `L ${C} ${h}`,
+    `L 0 ${h - C}`,
+    `L 0 ${TH + C}`,
+    "Z",
+  ].join(" ") : "";
+
+  return (
+    <div ref={doos} style={{ position: "relative", width: "100%" }}>
+      {b > 0 && (
+        <svg width={b} height={h} style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "visible" }} aria-hidden>
+          <Verven />
+          <NeonPad pad={pad} vulling="url(#rl-vul)" />
+        </svg>
+      )}
+      <span
+        style={{
+          position: "absolute", top: 0, left: 0, right: 0, height: TH,
+          display: "grid", placeItems: "center", pointerEvents: "none",
+          fontFamily: font.wide, fontSize: 11.5, letterSpacing: 2.4, textTransform: "uppercase",
+          color: "#FFD98A", textShadow: "0 0 10px rgba(255,180,50,.55)",
+        }}
       >
-        <span style={{ fontFamily: font.wide, fontSize: 11.5, letterSpacing: 2.4, textTransform: "uppercase", color: "#FFD98A", textShadow: "0 0 10px rgba(255,180,50,.55)" }}>
-          {tekst}
-        </span>
-      </NeonKader>
+        {titel}
+      </span>
+      <div style={{ position: "relative", padding: `${TH + 14}px 16px 16px`, display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
+        {children}
+      </div>
     </div>
   );
 }
@@ -268,32 +386,31 @@ function Klokbalk({ rest, seconden }: { rest: number; seconden: number }) {
   );
 }
 
-/** Het vak met de som erin: dezelfde vorm als het kader eromheen, een slag
- *  kleiner en een slag donkerder, zodat het erin ligt in plaats van erop. */
+/** Het vak met de som erin: dezelfde omtrek en dezelfde lijn als het kader
+ *  eromheen, een slag kleiner en een slag donkerder, zodat het erin ligt in
+ *  plaats van erop. */
 function SomVenster({ children }: { children: React.ReactNode }) {
+  const doos = useRef<HTMLDivElement | null>(null);
+  const [maat, setMaat] = useState({ b: 0, h: 0 });
+  useEffect(() => {
+    const el = doos.current;
+    if (!el) return;
+    const meet = () => setMaat({ b: el.clientWidth, h: el.clientHeight });
+    meet();
+    const ro = new ResizeObserver(meet);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   return (
-    <NeonKader
-      radius={10}
-      hoek={13}
-      // De dunste van de drie: hij ligt het diepst, en een lijn die verder weg
-      // is hoort fijner te zijn.
-      dik={0.28}
-      vulling="geen"
-      lijn={KADER_LIJN_GOUD}
-      gloed="0 0 10px rgba(255,190,60,.22)"
-      eindkap="kort"
-      adem={0.8}
-      style={{ width: "100%" }}
-      binnen={{
-        padding: "18px 14px",
-        display: "grid",
-        placeItems: "center",
-        background: "linear-gradient(180deg, #101A30 0%, #0A1220 60%, #070C16 100%)",
-        boxShadow: "inset 0 2px 14px rgba(0,0,0,.6)",
-      }}
-    >
-      {children}
-    </NeonKader>
+    <div ref={doos} style={{ position: "relative", width: "100%" }}>
+      {maat.b > 0 && (
+        <svg width={maat.b} height={maat.h} style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "visible" }} aria-hidden>
+          <Verven />
+          <NeonPad pad={achthoek(maat.b, maat.h, 13)} vulling="url(#rl-vul-diep)" breed={0.9} />
+        </svg>
+      )}
+      <div style={{ position: "relative", padding: "18px 14px", display: "grid", placeItems: "center" }}>{children}</div>
+    </div>
   );
 }
 
@@ -410,34 +527,8 @@ export function Rekenladder({ seed, onKlaar, onOpnieuw }: {
             afsnijding op de hoeken, de naam op een tab die over de bovenrand
             valt, het somvak erin met zijn eigen dunnere lijn, en onderin de
             klok als balk plus ring. */}
-        <div style={{ position: "relative", width: VAK }}>
-          <Tab tekst="REKENLADDER" />
-          <NeonKader
-            radius={14}
-            hoek={18}
-            // Dun. Op een scherm van drie keer is 0,35 nog altijd een volle
-            // beeldpunt, en een haarlijn leest als metaal waar een dikke lijn
-            // als een rand leest.
-            dik={0.35}
-            vulling="geen"
-            lijn={KADER_LIJN_GOUD}
-            gloed="verloop"
-            // Het licht zit IN de lijn: de kleuren lopen rond (`animeer`), de
-            // afgesneden hoeken vangen een kap op (`eindkap`), en het piekpunt
-            // glijdt af en toe langs de bovenrand (`veeg`). Eén rij met een veeg
-            // tegelijk, meer wordt onrustig; hier is dit de enige.
-            animeer
-            eindkap="kort"
-            veeg
-            binnen={{
-              padding: "22px 16px 16px",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: 14,
-              background: "linear-gradient(180deg, rgba(30,14,52,.92) 0%, rgba(18,8,34,.94) 55%, rgba(10,4,22,.96) 100%)",
-            }}
-          >
+        <div style={{ width: VAK }}>
+          <TabKader titel="REKENLADDER">
             <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 17, letterSpacing: 0.4, color: "#FFFFFF", textShadow: "0 2px 6px rgba(0,0,0,.6)" }}>
               {fase === "klaar" ? `GEVALLEN OP TREDE ${trede}` : "WAT IS HET ANTWOORD?"}
             </span>
@@ -464,7 +555,7 @@ export function Rekenladder({ seed, onKlaar, onOpnieuw }: {
                 {fase === "tel" ? "maak je klaar" : "punten"}
               </span>
             )}
-          </NeonKader>
+          </TabKader>
         </div>
 
         {/* De teller staat onder het paneel tot de ladder-art er is. */}
