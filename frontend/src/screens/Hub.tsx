@@ -861,7 +861,7 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
         inset: 0,
         paddingTop: vak.top,
         paddingBottom: vak.bedekt,
-        transition: "padding .2s cubic-bezier(.2,1,.3,1)",
+        transition: "padding-bottom .2s cubic-bezier(.2,1,.3,1)",
         zIndex: 85,
         display: "flex",
         flexDirection: "column",
