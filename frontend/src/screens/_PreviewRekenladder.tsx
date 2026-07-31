@@ -178,32 +178,31 @@ function startTrede(): number {
 // ladder hier in vier stroken geknipt, op dezelfde coordinaten uit alle drie de
 // bestanden, en heeft elke trede zijn eigen paarse, groene en rode versie.
 //
-// De KNIPLIJNEN zijn opgemeten en niet gegokt: er is per rij gekeken waar geen
-// van de drie ook maar een zichtbare pixel verschilt. Precies daar ligt de knip.
-// Dat is nodig omdat de gloed van een plaat op de gouden stijlen valt, en die
-// gloed kleurt mee; snijd je daar doorheen, dan zie je een streep waar het groen
-// ophoudt. Uit de bron: stille stroken op y 911-916, 1057-1062 en 1202-1205.
+// De KNIPLIJNEN zijn opgemeten en niet gegokt: er is per rij geteld hoeveel
+// pixels er tussen de vier ladders verschillen, en de knip ligt op de RUSTIGSTE
+// rij. Dat is nodig omdat de gloed van een plaat op de gouden stijlen valt en
+// die gloed meekleurt; snijd je daar doorheen, dan zie je een streep waar het
+// groen ophoudt. Uit de bron: y 675 en y 1202 verschillen 5 pixels (praktisch
+// stil), y 1822 is met 165 het minimum van zijn strook en die zitten op de
+// stijlen.
 //
 // Elke trede stapelt zijn drie versies en laat er ALTIJD maar een zien. Een
 // halfdoorzichtige gloed over een andere halfdoorzichtige gloed geeft namelijk
 // niet dezelfde kleur als de tekenaar bedoelde: het groen komt dan over het
 // paars te liggen in plaats van ervoor in de plaats. Alleen TIJDENS de overgang
 // is dat mengen precies wat je wil, want dat is wat een crossfade is.
-const LADDER_B = 788;   // de maat waarop alles is opgemeten
-// De ladder is 626 hoog: de twee BUITENSTE poten staan er nog (dat zijn de
-// stijlen), alleen de twee binnenste stompjes zijn uit de art gegumd. Dat kon
-// niet met een horizontale knip, want die haalt alle vier weg.
-const LADDER_H = 626;
+const LADDER_B = 1100;  // de maat waarop alles is opgemeten
+const LADDER_H = 733;
 
 /** Per trede: waar de strook zit in de ladder, en waar het VLAK van de plaat
  *  zit in die strook. Het vlak is het tikbare deel en de plek van het getal;
  *  daarbuiten liggen de stijlen en de gloed, waar een tik niet hoort te tellen.
  *  Alles in procenten, want de ladder schaalt mee met de schermbreedte. */
 const TREDEN = [
-  { band: [0, 145], vlak: [76, 33, 712, 139] },
-  { band: [145, 292], vlak: [74, 167, 709, 282] },
-  { band: [292, 436], vlak: [72, 312, 715, 428] },
-  { band: [436, 626], vlak: [69, 459, 718, 576] },
+  { band: [0, 174], vlak: [71, 27, 1028, 166] },
+  { band: [174, 337], vlak: [60, 195, 996, 336] },
+  { band: [337, 528], vlak: [97, 364, 1001, 508] },
+  { band: [528, 733], vlak: [93, 538, 1007, 677] },
 ].map(({ band, vlak }) => ({
   top: (band[0] / LADDER_H) * 100,
   bodem: ((LADDER_H - band[1]) / LADDER_H) * 100,
@@ -338,6 +337,10 @@ function Ladder({ keuzes, antwoord, oordeel, onKies, slapend, klaar }: {
 // eigen dunnere lijn. De klok ligt onderin als balk met een tellertje ernaast,
 // want een balk zegt HOEVER en een getal zegt HOEVEEL, en met een klok van drie
 // seconden wil je allebei weten.
+// De sectie is smaller dan de ladder: die twee zijn niet even breed in de
+// mockup, en een vraagpaneel dat even breed is als het speelveld trekt de
+// aandacht naar de verkeerde helft van het scherm.
+const SECTIE = "min(310px, 84vw)";
 const VIOLET = "#B36BFF";
 const VIOLET_LICHT = "#E3B8FF";
 
@@ -383,14 +386,14 @@ function Verven() {
         <stop offset="72%" stopColor="#7BD8FF" stopOpacity="0.55" />
         <stop offset="100%" stopColor="#7BD8FF" stopOpacity="0" />
       </linearGradient>
-      {/* Het paars van het bovenpaneel staat op 30%: je kijkt er doorheen naar
-          de arena erachter. De kleurtrap blijft staan (licht bovenin, diep
-          onderin), anders leest het vlak als een egale waas in plaats van als
-          een belicht oppervlak. */}
+      {/* Het paars van het bovenpaneel staat rond de 70%: op 30 viel het weg
+          tegen de zaal. Nog steeds niet dicht, want je moet de zaal erachter
+          kunnen zien, maar wel genoeg om als een paneel te lezen. Naar onderen
+          een tikje zwaarder, zodat het vlak belicht blijft ogen. */}
       <linearGradient id="rl-vul" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor="#2A1449" stopOpacity="0.3" />
-        <stop offset="55%" stopColor="#180B2C" stopOpacity="0.3" />
-        <stop offset="100%" stopColor="#0C0519" stopOpacity="0.3" />
+        <stop offset="0%" stopColor="#2A1449" stopOpacity="0.66" />
+        <stop offset="55%" stopColor="#180B2C" stopOpacity="0.7" />
+        <stop offset="100%" stopColor="#0C0519" stopOpacity="0.74" />
       </linearGradient>
       <linearGradient id="rl-vul-diep" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0%" stopColor="#101A30" />
@@ -701,7 +704,7 @@ export function Rekenladder({ seed, onKlaar, onOpnieuw }: {
             afsnijding op de hoeken, de naam op een tab die IN de bovenrand valt,
             het somvak erin met zijn eigen dunnere lijn, en onderin de klok als
             balk plus ring. */}
-        <div style={{ width: VAK }}>
+        <div style={{ width: SECTIE }}>
           <TabKader titel="REKENLADDER">
             <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 17, letterSpacing: 0.4, color: "#FFFFFF", textShadow: "0 2px 6px rgba(0,0,0,.6)" }}>
               {fase === "klaar" ? `GEVALLEN OP TREDE ${trede}` : "WAT IS HET ANTWOORD?"}
@@ -725,8 +728,11 @@ export function Rekenladder({ seed, onKlaar, onOpnieuw }: {
             {fase === "spel" ? (
               <Klokbalk rest={rest} seconden={Math.max(0, Math.ceil((rest * trap.venster) / 1000))} />
             ) : (
+              // De hoogte blijft staan ook als er niets staat: de klok zit hier
+              // tijdens het spel, en een vak dat leegloopt zou de ladder omhoog
+              // trekken.
               <span style={{ height: 38, display: "grid", placeItems: "center", fontFamily: font.ui, fontSize: 12, color: withAlpha("#FFE7A8", 0.7) }}>
-                {fase === "tel" ? "maak je klaar" : "punten"}
+                {fase === "tel" ? "maak je klaar" : ""}
               </span>
             )}
           </TabKader>
