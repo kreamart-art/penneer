@@ -288,7 +288,7 @@ function Trede({ i, waarde, staat, onKies }: { i: number; waarde: number; staat:
  *  worden met top EN bodem vastgezet en niet met een hoogte, want dan rekent de
  *  browser de onderrand van de ene en de bovenrand van de volgende uit hetzelfde
  *  getal en valt er nooit een haarlijn tussen. */
-function Ladder({ keuzes, antwoord, oordeel, onKies, slapend }: {
+function Ladder({ keuzes, antwoord, oordeel, onKies, slapend, klaar }: {
   keuzes: number[];
   antwoord: number;
   oordeel: Oordeel;
@@ -297,6 +297,8 @@ function Ladder({ keuzes, antwoord, oordeel, onKies, slapend }: {
    *  Je ziet waar het gaat gebeuren zonder alvast te kunnen rekenen, en het
    *  scherm springt niet in elkaar op het moment dat de eerste som komt. */
   slapend?: boolean;
+  /** Na afloop: blijft staan zoals hij eindigde, maar niets doet nog wat. */
+  klaar?: boolean;
 }) {
   return (
     <div style={{ position: "relative", width: VAK, aspectRatio: `${LADDER_B} / ${LADDER_H}` }}>
@@ -307,7 +309,7 @@ function Ladder({ keuzes, antwoord, oordeel, onKies, slapend }: {
           waarde={w}
           staat={
             slapend ? "uit"
-            : !oordeel ? "rust"
+            : !oordeel ? (klaar ? "dood" : "rust")
             // Het JUISTE antwoord wordt altijd groen, ook als je het niet koos:
             // je moet kunnen zien wat het was, anders leer je niets van je
             // laatste trede. Rood is alleen voor de trede die JIJ aantikte, en
@@ -681,10 +683,21 @@ export function Rekenladder({ seed, onKlaar, onOpnieuw }: {
   return (
     <>
       <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 9, paddingBottom: 24 }}>
+        {/* De volgorde ligt vast: scorebord, de sectie, de ladder. En alle drie
+            staan er in ELKE fase, ook als het spel al voorbij is. Onderdelen die
+            per fase verschijnen en verdwijnen laten de rest verspringen, en op
+            een spel waar je in drie tellen moet tikken is een scherm dat onder je
+            duim opschuift geen detail maar een gemiste trede. */}
+        <Scorebord
+          breedte={VAK}
+          links={{ kop: t("rekenTrede"), waarde: String(trede) }}
+          rechts={{ kop: t("soepPunten"), waarde: String(totaal) }}
+        />
+
         {/* Het vraagpaneel. Alles in code: een gouden verlooprand met een
-            afsnijding op de hoeken, de naam op een tab die over de bovenrand
-            valt, het somvak erin met zijn eigen dunnere lijn, en onderin de
-            klok als balk plus ring. */}
+            afsnijding op de hoeken, de naam op een tab die IN de bovenrand valt,
+            het somvak erin met zijn eigen dunnere lijn, en onderin de klok als
+            balk plus ring. */}
         <div style={{ width: VAK }}>
           <TabKader titel="REKENLADDER">
             <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 17, letterSpacing: 0.4, color: "#FFFFFF", textShadow: "0 2px 6px rgba(0,0,0,.6)" }}>
@@ -716,27 +729,19 @@ export function Rekenladder({ seed, onKlaar, onOpnieuw }: {
           </TabKader>
         </div>
 
-        {/* Dezelfde gouden plaat als bij Lettersoep, met andere koppen. */}
-        {fase !== "klaar" && (
-          <Scorebord
-            breedte={VAK}
-            links={{ kop: t("rekenTrede"), waarde: String(trede) }}
-            rechts={{ kop: t("soepPunten"), waarde: String(totaal) }}
-          />
-        )}
-
         {/* De vier antwoorden ZIJN de treden van de ladder. Tijdens het aftellen
             staat diezelfde ladder er al, maar dan uit: je ziet waar het gaat
-            gebeuren zonder de getallen alvast te kunnen lezen. */}
-        {fase !== "klaar" && (
-          <Ladder
-            keuzes={som.keuzes}
-            antwoord={som.antwoord}
-            oordeel={oordeel}
-            onKies={kies}
-            slapend={fase === "tel"}
-          />
-        )}
+            gebeuren zonder de getallen alvast te kunnen lezen. En na afloop
+            blijft hij staan zoals hij eindigde, met je misgreep in het rood en
+            het juiste antwoord in het groen. */}
+        <Ladder
+          keuzes={som.keuzes}
+          antwoord={som.antwoord}
+          oordeel={oordeel}
+          onKies={kies}
+          slapend={fase === "tel"}
+          klaar={fase === "klaar"}
+        />
 
         {(fase !== "klaar" || onOpnieuw) && (
         <NeonKader radius={999} dik={0.5} vulling="zwart" animeer lijn={KADER_LIJN_ROOD} gloed={`0 0 12px ${withAlpha(colors.red, 0.35)}`} binnen={{ padding: 0 }}>

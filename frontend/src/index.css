@@ -1324,15 +1324,14 @@ html.klassiek body.lijst::after {
    Eigen zaal in plaats van de geleende soephal, in het paars en goud van de
    ladder.
 
-   De art is VIERKANT en een telefoon is 393 bij 852. Op volle hoogte zie je dan
-   alleen de middelste 46 procent, en dat is precies het lege midden van de zaal:
-   de pilaren en de banieren vallen er allebei buiten. Vandaar 150% van de
-   schermbreedte en onderaan verankerd, zo staan de banieren links en rechts in
-   beeld en ligt de vloer waar de vloer hoort.
+   De art is VIERKANT en een telefoon is 393 bij 852. Op ware verhouding zie je
+   dus alleen de middelste helft: het rustige midden van de zaal met de gloed en
+   de vloerboog, en de banieren erbuiten. Dat is precies de bedoeling, want het
+   scherm staat vol met gouden secties en een achtergrond die daar doorheen
+   schreeuwt maakt het onleesbaar.
 
-   De bovenrand loopt weg in het verloop, en die fade zit IN het bestand. Een
-   donkere laag eroverheen zou ook werken, maar die maakt de hele zaal doffer
-   terwijl je alleen de rand wil laten verdwijnen. */
+   Vandaar `cover` en niet `100% 100%`: dat laatste vult ook, maar rekt de zaal
+   ruim twee keer uit en dan klopt de vloerboog niet meer met de pilaren. */
 body.rekenzaal::after,
 body.rekenspel::after {
   content: "";
@@ -1347,7 +1346,7 @@ body.rekenspel::after {
   background-color: #07040F;
   background-repeat: repeat, no-repeat, no-repeat;
   background-position: bottom left, bottom center, bottom;
-  background-size: 160px 160px, 150% auto, 100% 100%;
+  background-size: 160px 160px, cover, 100% 100%;
 }
 body.rekenzaal::after {
   background-image:
