@@ -1022,7 +1022,7 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
             dik={0.9}
             sterkte={text.trim() ? 0.55 : 0.42}
             lijn={KADER_LIJN_PAARS}
-            gloed="verloop"
+            gloed="0 0 4px rgba(139,69,232,.25)"
             vulling="geen"
             style={{ flex: 1, minWidth: 0 }}
             binnen={{ display: "flex", alignItems: "center", padding: 0, background: "rgba(6,3,18,.55)" }}
