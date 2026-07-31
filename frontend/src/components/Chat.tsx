@@ -220,6 +220,11 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
           background: "linear-gradient(180deg, #1B1245 0%, #140C33 100%)",
           borderTopLeftRadius: 22,
           borderTopRightRadius: 22,
+          // Knippen op de ronding: de kopbalk kreeg in v2.84.3 een eigen
+          // dekkende kleur, en die schilderde als rechthoek OVER de afgeronde
+          // hoeken heen. Wat je overhield waren twee scherpe puntjes bovenaan
+          // waar de ronding hoorde te zitten.
+          overflow: "hidden",
           boxShadow: "0 -18px 60px rgba(0,0,0,.5)",
           position: "relative",
         }}
