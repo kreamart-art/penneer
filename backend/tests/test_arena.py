@@ -37,7 +37,42 @@ def test_flitsreeks_scorecontract():
 
 def test_onaffe_spellen_weigeren_inzendingen():
     assert not arena.plausibel("woordketen", 100, 1, 60000)
-    assert not arena.plausibel("kleurenklem", 100, 1, 60000)
+    assert not arena.plausibel("rekenladder", 100, 1, 60000)
+
+
+def test_kleurenklem_scorecontract():
+    """Elke goede opgave is 100 tot 200 punten, en er zijn nooit meer goede
+    opgaven dan gespeelde rondes. Zaterdag draait hierop."""
+    # Meteen alle levens kwijt in ronde 1: nul punten, mag.
+    assert arena.plausibel("kleurenklem", 0, 1, 1500)
+    # Tien rondes: hoogstens 2000 punten. Tijd tussen de 2,7s (9 x 300ms
+    # animatie) en 5000 + som van de vensters + 900 per ronde.
+    ruimte = sum(arena.KLEURENKLEM_VENSTER(r) for r in range(1, 11))
+    assert arena.plausibel("kleurenklem", 1400, 10, 20000)
+    assert arena.plausibel("kleurenklem", 2000, 10, 20000)
+    assert not arena.plausibel("kleurenklem", 2001, 10, 20000)      # meer dan er past
+    assert not arena.plausibel("kleurenklem", 1400, 10, 2600)       # onmogelijk snel
+    assert arena.plausibel("kleurenklem", 1400, 10, 5000 + ruimte + 9000)
+    assert not arena.plausibel("kleurenklem", 1400, 10, 5000 + ruimte + 9001)
+    assert not arena.plausibel("kleurenklem", -1, 1, 1000)
+
+
+def test_kleurenklem_venster_loopt_dicht_en_stopt():
+    """De klem sluit steeds sneller, maar nooit sneller dan zeven tienden;
+    daaronder is het geen reactietest meer maar een gokje. Deze getallen moeten
+    gelijk zijn aan trapVoor() op de client."""
+    assert arena.KLEURENKLEM_VENSTER(1) == 2300
+    assert arena.KLEURENKLEM_VENSTER(2) == 2210
+    assert arena.KLEURENKLEM_VENSTER(18) == 770
+    assert arena.KLEURENKLEM_VENSTER(19) == 700
+    assert arena.KLEURENKLEM_VENSTER(40) == 700
+
+
+def test_zaterdag_is_kleurenklem_en_speelbaar():
+    """2026-08-01 is een zaterdag: de eerste dagronde waarin dit spel draait."""
+    spel = arena.spel_voor("2026-08-01")
+    assert spel["key"] == "kleurenklem"
+    assert spel["af"] is True
 
 
 def test_lettersoep_scorecontract():

@@ -36,7 +36,7 @@ GAMES: dict[int, dict] = {
     2: {"key": "waaghet", "af": False},
     3: {"key": "flitsreeks", "af": True},
     4: {"key": "lettersoep", "af": True},
-    5: {"key": "kleurenklem", "af": False},
+    5: {"key": "kleurenklem", "af": True},
     6: {"key": "rekenladder", "af": False},
 }
 
@@ -96,8 +96,32 @@ def plausibel(game: str, score: int, level: int, time_ms: int) -> bool:
         # En van boven: de klok geeft 55 seconden per level en meer levels dan
         # gespeeld kan niet. Een royale marge voor het laden en de valanimatie.
         return time_ms <= (max(1, level) * 55 + 30) * 1000
+    if game == "kleurenklem":
+        # Score-contract met de client: elke GOEDE opgave levert 100 punten plus
+        # hooguit 100 naar rato van de tijd die overbleef, dus nooit meer dan
+        # 200. `level` is de ronde waarin de poging eindigde, en er zijn nooit
+        # meer goede opgaven geweest dan gespeelde rondes.
+        if score > 200 * level:
+            return False
+        # Tijd van onderen. Tussen twee opgaven zit een vaste animatie van 360ms
+        # (het oordeel dat oplicht voor de volgende komt), dus zoveel rondes
+        # kosten minstens zoveel tijd. Ruim onder de 360 gerekend, want dit moet
+        # scriptjes vangen en geen snelle spelers met een trage telefoon.
+        if time_ms < 300 * max(0, level - 1):
+            return False
+        # En van boven: langer dan alle vensters bij elkaar plus een royale
+        # marge per ronde kan niet, want dan was de klem allang dichtgeslagen.
+        ruimte = sum(KLEURENKLEM_VENSTER(r) for r in range(1, level + 1))
+        return time_ms <= 5000 + ruimte + 900 * level
     # Spellen die nog niet af zijn accepteren geen inzendingen.
     return False
+
+
+def KLEURENKLEM_VENSTER(ronde: int) -> int:
+    """Hoeveel milliseconden je voor opgave `ronde` krijgt. Moet gelijk lopen
+    met trapVoor() in frontend/src/screens/_PreviewKleurenklem.tsx; staat het
+    hier anders, dan keurt de server een eerlijke poging af."""
+    return max(700, 2300 - (max(1, ronde) - 1) * 90)
 
 
 def LETTERSOEP_DOEL(level: int) -> int:

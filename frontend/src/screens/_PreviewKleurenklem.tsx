@@ -287,14 +287,26 @@ function Klem({ rest, alarm }: { rest: number; alarm: boolean }) {
 }
 
 // ---- het spel ---------------------------------------------------------------
-export function PreviewKleurenklem() {
+//
+// Twee schillen om dezelfde motor, net als bij Lettersoep. De arena geeft de
+// seed van de poging mee en krijgt via `onKlaar` de uitslag terug; de
+// testversie hieronder geeft een eigen sleutel en levert NIETS in.
+export function Kleurenklem({ seed, onKlaar, onOpnieuw }: {
+  seed: string;
+  /** Arena-schil: de uitslag inleveren zodra de levens op zijn. */
+  onKlaar?: (score: number, level: number, timeMs: number) => void;
+  /** Testversie: een nieuw potje. Door de `key` op de ouder herstart alles. */
+  onOpnieuw?: () => void;
+}) {
   useEffect(() => {
     document.body.classList.add("soepspel");
     return () => document.body.classList.remove("soepspel");
   }, []);
 
-  const [potje, setPotje] = useState(versSleutel);
-  const [ronde, setRonde] = useState(startRonde);
+  const potje = seed;
+  // `?klem=12` alleen in de TESTVERSIE. In de arena zou het je op een hogere
+  // ronde laten beginnen en dus een level opleveren dat je niet gespeeld hebt.
+  const [ronde, setRonde] = useState(() => (onKlaar ? 1 : startRonde()));
   const [totaal, setTotaal] = useState(0);
   const [levens, setLevens] = useState(LEVENS);
   const [rest, setRest] = useState(1);
@@ -305,6 +317,23 @@ export function PreviewKleurenklem() {
   const [tel, setTel] = useState(3);
   const [reeks, setReeks] = useState(0);
   const [beste, setBeste] = useState(0);
+
+  // De speeltijd loopt vanaf het eerste beeldje van het spel. Het aftellen
+  // hoort er niet bij: dat is drie tellen waarin je niets kan doen, en de
+  // server rekent met deze tijd of het level echt gehaald kan zijn.
+  const t0 = useRef(performance.now());
+  const ingeleverd = useRef(false);
+  useEffect(() => {
+    if (fase !== "klaar" || !onKlaar || ingeleverd.current) return;
+    ingeleverd.current = true;
+    onKlaar(totaal, ronde, Math.round(performance.now() - t0.current));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fase]);
+  useEffect(() => {
+    if (fase === "spel") t0.current = performance.now();
+    // Alleen bij de OVERGANG naar spelen, dus niet elke ronde opnieuw.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fase === "spel"]);
 
   const trap = useMemo(() => trapVoor(ronde), [ronde]);
   const vorigeRegel = useMemo(() => trapVoor(Math.max(1, ronde - 1)).regel, [ronde]);
@@ -387,11 +416,6 @@ export function PreviewKleurenklem() {
   }, [fase, opgave, rest, mis, volgende]);
 
   const stop = () => setFase("klaar");
-  const opnieuw = () => {
-    setPotje(versSleutel());
-    setRonde(startRonde()); setTotaal(0); setLevens(LEVENS); setRest(1);
-    setOordeel(null); setReeks(0); setBeste(0); setTel(3); setFase("tel");
-  };
 
   const alarm = rest < 0.34;
   const regelTekst = trap.regel === "inkt" ? "KIES DE INKTKLEUR" : "KIES HET WOORD";
@@ -399,14 +423,7 @@ export function PreviewKleurenklem() {
   const inktNu = fase === "tel" ? "#FFD98A" : opgave.inkt.inkt;
 
   return (
-    <Screen
-      top={
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", paddingTop: "calc(14px + env(safe-area-inset-top))" }}>
-          <span style={{ flex: 1, fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>Arena</span>
-          <span style={{ fontFamily: font.ui, fontSize: 11.5, color: colors.faint }}>testversie</span>
-        </div>
-      }
-    >
+    <>
       <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 9, paddingBottom: 24 }}>
         <Sectie art="/ui/soep/scorebord.webp?v=1" verhouding={SCORE_V}>
           <Meter kop="RONDE" waarde={String(ronde)} breuk={SCORE_RUIT.links} />
@@ -574,16 +591,37 @@ export function PreviewKleurenklem() {
 
         {/* Dezelfde pil als in de arena: zwarte vulling, want hij ligt op de
             zaal en zonder vulling loopt die er dwars doorheen. */}
+        {(fase !== "klaar" || onOpnieuw) && (
         <NeonKader radius={999} dik={0.5} vulling="zwart" animeer lijn={KADER_LIJN_ROOD} gloed={`0 0 12px ${withAlpha(colors.red, 0.35)}`} binnen={{ padding: 0 }}>
           <button
-            onClick={fase === "klaar" ? opnieuw : stop}
+            onClick={fase === "klaar" ? onOpnieuw : stop}
             className="pressable"
             style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, background: "transparent", border: "none", cursor: "pointer", color: colors.redHi, fontFamily: font.ui, fontSize: 13, fontWeight: 600, padding: "7px 16px" }}
           >
             <LogOut size={14} /> {fase === "klaar" ? "Opnieuw" : "Stoppen"}
           </button>
         </NeonKader>
+        )}
       </div>
+    </>
+  );
+}
+
+/** De testversie achter `?klem`: eigen kop, eigen sleutel, levert niets in. */
+export function PreviewKleurenklem() {
+  const [potje, setPotje] = useState(versSleutel);
+  return (
+    <Screen
+      top={
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", paddingTop: "calc(14px + env(safe-area-inset-top))" }}>
+          <span style={{ flex: 1, fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>Arena</span>
+          <span style={{ fontFamily: font.ui, fontSize: 11.5, fontWeight: 600, color: colors.redHi }}>testversie, telt niet mee</span>
+        </div>
+      }
+    >
+      {/* De key is de herstart: een nieuw potje remount alles, dus er blijft
+          geen half opgeruimde staat hangen. */}
+      <Kleurenklem key={potje} seed={potje} onOpnieuw={() => setPotje(versSleutel())} />
     </Screen>
   );
 }
