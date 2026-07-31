@@ -1302,3 +1302,20 @@ html.klassiek body.lijst::after {
 }
 .kist-knal { animation: kist-knal .5s cubic-bezier(.2,1.4,.4,1) both; }
 
+
+/* De klap op een trede van de Rekenladder. Een kruisfade van paars naar groen
+   gaat onvermijdelijk door een modderige middenkleur; deze flits ligt er precies
+   overheen op het moment dat het mengt, dus je leest een klap in plaats van een
+   overgang. Kort en met een lange staart: het licht is er meteen en dooft
+   langzamer uit, zoals licht doet. */
+@keyframes reken-flits {
+  0% { opacity: 0; transform: scale(0.86); }
+  18% { opacity: 0.95; transform: scale(1.02); }
+  100% { opacity: 0; transform: scale(1.12); }
+}
+.reken-flits {
+  animation: reken-flits 360ms ease-out forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .reken-flits { animation: none; opacity: 0; }
+}

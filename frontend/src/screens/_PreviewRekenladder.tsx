@@ -33,8 +33,6 @@ import { colors, font, withAlpha } from "../theme/tokens";
 import { sound } from "../sound/sound";
 import { VAK } from "./Arena";
 
-const LICHT = "#7BD8FF";
-
 // ---- de ladder --------------------------------------------------------------
 //
 // Drie knoppen lopen op: WELKE bewerkingen er mogen komen, hoe GROOT de
@@ -167,29 +165,155 @@ function startTrede(): number {
   return Number.isFinite(n) && n >= 1 ? Math.floor(n) : 1;
 }
 
-// ---- bouwstenen -------------------------------------------------------------
-function AntwoordKnop({ waarde, staat, onKies }: { waarde: number; staat: "rust" | "goed" | "fout" | "dood"; onKies: () => void }) {
-  const rand = staat === "goed" ? "#2FE06E" : staat === "fout" ? "#FF5A4E" : withAlpha(LICHT, 0.45);
+// ---- de ladder --------------------------------------------------------------
+//
+// DRIE LADDERS, EEN LADDER. De art kwam als drie hele ladders: paars, groen en
+// rood. Die kun je niet als drie plaatjes wisselen, want dan kleurt de hele
+// ladder mee terwijl er maar EEN trede is aangetikt.
+//
+// Ze zijn gelukkig pixel voor pixel dezelfde tekening: het alfakanaal van de
+// drie verschilt exact 0, alleen de kleuren eronder lopen uiteen. Daarom is de
+// ladder hier in vier stroken geknipt, op dezelfde coordinaten uit alle drie de
+// bestanden, en heeft elke trede zijn eigen paarse, groene en rode versie.
+//
+// De KNIPLIJNEN zijn opgemeten en niet gegokt: er is per rij gekeken waar geen
+// van de drie ook maar een zichtbare pixel verschilt. Precies daar ligt de knip.
+// Dat is nodig omdat de gloed van een plaat op de gouden stijlen valt, en die
+// gloed kleurt mee; snijd je daar doorheen, dan zie je een streep waar het groen
+// ophoudt. Uit de bron: stille stroken op y 911-916, 1057-1062 en 1202-1205.
+//
+// Elke trede stapelt zijn drie versies en laat er ALTIJD maar een zien. Een
+// halfdoorzichtige gloed over een andere halfdoorzichtige gloed geeft namelijk
+// niet dezelfde kleur als de tekenaar bedoelde: het groen komt dan over het
+// paars te liggen in plaats van ervoor in de plaats. Alleen TIJDENS de overgang
+// is dat mengen precies wat je wil, want dat is wat een crossfade is.
+const LADDER_B = 788;   // de maat waarop alles is opgemeten
+const LADDER_H = 626;
+
+/** Per trede: waar de strook zit in de ladder, en waar het VLAK van de plaat
+ *  zit in die strook. Het vlak is het tikbare deel en de plek van het getal;
+ *  daarbuiten liggen de stijlen en de gloed, waar een tik niet hoort te tellen.
+ *  Alles in procenten, want de ladder schaalt mee met de schermbreedte. */
+const TREDEN = [
+  { band: [0, 145], vlak: [76, 33, 712, 139] },
+  { band: [145, 292], vlak: [74, 167, 709, 282] },
+  { band: [292, 436], vlak: [72, 312, 715, 428] },
+  { band: [436, 626], vlak: [69, 459, 718, 576] },
+].map(({ band, vlak }) => ({
+  top: (band[0] / LADDER_H) * 100,
+  bodem: ((LADDER_H - band[1]) / LADDER_H) * 100,
+  // Het vlak zit in de STROOK, dus de hoogtes gaan door de bandhoogte.
+  vlak: {
+    left: (vlak[0] / LADDER_B) * 100,
+    breed: ((vlak[2] - vlak[0]) / LADDER_B) * 100,
+    top: ((vlak[1] - band[0]) / (band[1] - band[0])) * 100,
+    hoog: ((vlak[3] - vlak[1]) / (band[1] - band[0])) * 100,
+  },
+}));
+
+type Staat = "rust" | "goed" | "fout" | "dood";
+/** Wat er van een beurt bekend is. `gekozen` is null als de klok het deed en
+ *  niet de speler: dan is er geen trede die rood hoort te worden. */
+type Oordeel = { gekozen: number | null; goed: boolean } | null;
+
+/** Een trede. De drie versies liggen op elkaar en alleen de huidige staat op
+ *  vol; de andere twee staan op nul en faden mee. Zo is de overgang een echte
+ *  kruisfade en niet een sprong, en zie je in rust nooit twee kleuren door
+ *  elkaar. */
+function Trede({ i, waarde, staat, onKies }: { i: number; waarde: number; staat: Staat; onKies: () => void }) {
+  const t = TREDEN[i];
+  const kleur = staat === "goed" ? "goed" : staat === "fout" ? "fout" : "rust";
   return (
-    <button
-      onPointerDown={(e) => { e.preventDefault(); if (staat === "rust") onKies(); }}
-      disabled={staat === "dood"}
-      className={staat === "fout" ? "klem-mis" : undefined}
-      style={{
-        position: "relative", border: "none", padding: 0, cursor: staat === "rust" ? "pointer" : "default",
-        WebkitTapHighlightColor: "transparent", touchAction: "manipulation",
-        width: "100%", aspectRatio: "2.1 / 1", borderRadius: 12,
-        background: "linear-gradient(180deg, rgba(24,42,70,.95) 0%, rgba(12,22,40,.95) 100%)",
-        boxShadow: `inset 0 0 0 1.5px ${rand}, 0 0 ${staat === "rust" ? 0 : 14}px ${withAlpha(rand, 0.5)}`,
-        opacity: staat === "dood" ? 0.35 : 1,
-        transform: staat === "goed" ? "scale(1.05)" : "scale(1)",
-        transition: "transform .12s ease-out, opacity .12s ease-out, box-shadow .12s ease-out",
-        fontFamily: font.display, fontWeight: 800, fontSize: 26,
-        color: staat === "fout" ? "#FF9A92" : "#EAF6FF",
-      }}
-    >
-      {waarde}
-    </button>
+    <div style={{ position: "absolute", left: 0, right: 0, top: `${t.top}%`, bottom: `${t.bodem}%` }}>
+      {(["rust", "goed", "fout"] as const).map((k) => (
+        <img
+          key={k}
+          src={`/ui/reken/trede${i + 1}-${k}.webp`}
+          alt=""
+          draggable={false}
+          style={{
+            position: "absolute", inset: 0, width: "100%", height: "100%", display: "block",
+            opacity: k === kleur ? 1 : 0,
+            transition: "opacity .22s ease-out",
+            pointerEvents: "none",
+          }}
+        />
+      ))}
+      {/* De flits. Een kruisfade tussen paars en groen gaat door een modderige
+          middenkleur; een korte lichtflits op datzelfde moment dekt dat toe, en
+          je leest een klap in plaats van een menging. */}
+      {(staat === "goed" || staat === "fout") && (
+        <span
+          key={staat}
+          className="reken-flits"
+          style={{
+            position: "absolute",
+            left: `${t.vlak.left}%`, width: `${t.vlak.breed}%`,
+            top: `${t.vlak.top}%`, height: `${t.vlak.hoog}%`,
+            borderRadius: 14, pointerEvents: "none",
+            background: staat === "goed"
+              ? "radial-gradient(60% 120% at 50% 50%, rgba(190,255,205,.85), rgba(60,230,120,0) 70%)"
+              : "radial-gradient(60% 120% at 50% 50%, rgba(255,205,195,.85), rgba(255,80,60,0) 70%)",
+          }}
+        />
+      )}
+      <button
+        onPointerDown={(e) => { e.preventDefault(); if (staat === "rust") onKies(); }}
+        disabled={staat !== "rust"}
+        style={{
+          position: "absolute",
+          left: `${t.vlak.left}%`, width: `${t.vlak.breed}%`,
+          top: `${t.vlak.top}%`, height: `${t.vlak.hoog}%`,
+          border: "none", background: "transparent", padding: 0,
+          cursor: staat === "rust" ? "pointer" : "default",
+          WebkitTapHighlightColor: "transparent", touchAction: "manipulation",
+          display: "grid", placeItems: "center",
+          fontFamily: font.display, fontWeight: 800, fontSize: 30, letterSpacing: 1,
+          color: "#FFF6DC",
+          textShadow: "0 2px 6px rgba(0,0,0,.75), 0 0 14px rgba(0,0,0,.5)",
+          opacity: staat === "dood" ? 0.4 : 1,
+          transform: staat === "goed" ? "scale(1.06)" : "scale(1)",
+          transition: "opacity .22s ease-out, transform .22s ease-out",
+        }}
+      >
+        {waarde}
+      </button>
+    </div>
+  );
+}
+
+/** De hele ladder: vier stroken die precies op elkaar aansluiten. De stroken
+ *  worden met top EN bodem vastgezet en niet met een hoogte, want dan rekent de
+ *  browser de onderrand van de ene en de bovenrand van de volgende uit hetzelfde
+ *  getal en valt er nooit een haarlijn tussen. */
+function Ladder({ keuzes, antwoord, oordeel, onKies }: {
+  keuzes: number[];
+  antwoord: number;
+  oordeel: Oordeel;
+  onKies: (w: number) => void;
+}) {
+  return (
+    <div style={{ position: "relative", width: VAK, aspectRatio: `${LADDER_B} / ${LADDER_H}` }}>
+      {keuzes.map((w, i) => (
+        <Trede
+          key={i}
+          i={i}
+          waarde={w}
+          staat={
+            !oordeel ? "rust"
+            // Het JUISTE antwoord wordt altijd groen, ook als je het niet koos:
+            // je moet kunnen zien wat het was, anders leer je niets van je
+            // laatste trede. Rood is alleen voor de trede die JIJ aantikte, en
+            // bij een tijdopname is dat er geen: dan blijft alles dof op het
+            // groene antwoord na.
+            : w === antwoord ? "goed"
+            : w === oordeel.gekozen ? "fout"
+            : "dood"
+          }
+          onKies={() => onKies(w)}
+        />
+      ))}
+    </div>
   );
 }
 
@@ -462,7 +586,7 @@ export function Rekenladder({ seed, onKlaar, onOpnieuw }: {
   const [trede, setTrede] = useState(() => (onKlaar ? 1 : startTrede()));
   const [totaal, setTotaal] = useState(0);
   const [rest, setRest] = useState(1);
-  const [oordeel, setOordeel] = useState<{ waarde: number; goed: boolean } | null>(null);
+  const [oordeel, setOordeel] = useState<Oordeel>(null);
   const [fase, setFase] = useState<"tel" | "spel" | "klaar">("tel");
   const [tel, setTel] = useState(3);
 
@@ -501,14 +625,13 @@ export function Rekenladder({ seed, onKlaar, onOpnieuw }: {
   // hem in een animatielus en die mag daar niet op herstarten.
   const beslist = useRef(false);
 
-  const mis = useCallback(() => {
+  const mis = useCallback((gekozen: number | null) => {
     if (beslist.current) return;
     beslist.current = true;
     sound.klemFout();
-    setOordeel({ waarde: som.antwoord, goed: false });
-    na(700, () => setFase("klaar"));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [som]);
+    setOordeel({ gekozen, goed: false });
+    na(1100, () => setFase("klaar"));
+  }, []);
 
   // De klok, op requestAnimationFrame en niet op een interval: bij drie seconden
   // is een stap van 1/60 het verschil tussen een balk die loopt en een die
@@ -522,7 +645,7 @@ export function Rekenladder({ seed, onKlaar, onOpnieuw }: {
     const stap = () => {
       const over = 1 - (performance.now() - start) / trap.venster;
       if (beslist.current) return;
-      if (over <= 0) { setRest(0); mis(); return; }
+      if (over <= 0) { setRest(0); mis(null); return; }
       setRest(over);
       vraag = requestAnimationFrame(stap);
     };
@@ -533,10 +656,10 @@ export function Rekenladder({ seed, onKlaar, onOpnieuw }: {
 
   const kies = useCallback((w: number) => {
     if (beslist.current || fase !== "spel") return;
-    if (w !== som.antwoord) { setOordeel({ waarde: w, goed: false }); mis(); return; }
+    if (w !== som.antwoord) { mis(w); return; }
     beslist.current = true;
     sound.klemGoed();
-    setOordeel({ waarde: w, goed: true });
+    setOordeel({ gekozen: w, goed: true });
     setTotaal((t) => t + puntenVoor(trede, rest));
     // Elke vijfde trede een eigen klank: een mijlpaal, geen tweede geluid bij
     // elke goede som.
@@ -585,7 +708,7 @@ export function Rekenladder({ seed, onKlaar, onOpnieuw }: {
           </TabKader>
         </div>
 
-        {/* De teller staat onder het paneel tot de ladder-art er is. */}
+        {/* De teller staat onder het paneel tot de scorebalk er is. */}
         {fase !== "klaar" && (
           <div style={{ display: "flex", gap: 18, fontFamily: font.ui, fontSize: 12, color: withAlpha("#FFE7A8", 0.75) }}>
             <span>TREDE <b style={{ fontFamily: font.display, fontSize: 15, color: "#FFF3D0" }}>{trede}</b></span>
@@ -593,24 +716,9 @@ export function Rekenladder({ seed, onKlaar, onOpnieuw }: {
           </div>
         )}
 
-        {/* De vier antwoorden. Zolang de ladder-art er nog niet is staan ze in
-            een raster; ze worden de treden zodra die er is. */}
+        {/* De vier antwoorden ZIJN de treden van de ladder. */}
         {fase !== "tel" && fase !== "klaar" && (
-          <div style={{ width: VAK, display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
-            {som.keuzes.map((w) => (
-              <AntwoordKnop
-                key={w}
-                waarde={w}
-                staat={
-                  !oordeel ? "rust"
-                  : oordeel.waarde === w ? (oordeel.goed ? "goed" : "fout")
-                  : w === som.antwoord && !oordeel.goed ? "goed"
-                  : "dood"
-                }
-                onKies={() => kies(w)}
-              />
-            ))}
-          </div>
+          <Ladder keuzes={som.keuzes} antwoord={som.antwoord} oordeel={oordeel} onKies={kies} />
         )}
 
         {(fase !== "klaar" || onOpnieuw) && (
