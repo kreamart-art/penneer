@@ -11,6 +11,7 @@ import { MicButton } from "./MicButton";
 import { BeeldKnop } from "./BeeldKnop";
 import { VerstuurKnop } from "./VerstuurKnop";
 import { KNOP_GOUD_VERLOOP, goudHaarlijn } from "./GlasKnop";
+import { useZichtbaarVak } from "../lib/zichtbaarvak";
 import { VoiceNote } from "./VoiceNote";
 import { EmotePicker } from "./EmotePicker";
 import { EMOTE_SRC, FREE_EMOTE_PACKS } from "./emotes";
@@ -71,6 +72,7 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
   // achtergrond te veranderen, en wat je hier kiest geldt meteen ook daar.
   const [behang, setBehang] = useState<WallpaperId>(wallpaperVan);
   const [behangOpen, setBehangOpen] = useState(false);
+  const vak = useZichtbaarVak();
   const roomCode = game.state.room?.code ?? "";
 
   // Upload a memo to this room, then post it as a chat message.
@@ -168,8 +170,13 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
     <div
       onClick={onClose}
       style={{
+        // Zie de privéberichten: de lade hangt aan het zichtbare vak, zodat de
+        // kop bovenaan blijft staan als het toetsenbord opkomt.
         position: "fixed",
-        inset: 0,
+        left: 0,
+        right: 0,
+        top: vak.top,
+        height: vak.hoogte,
         zIndex: 60,
         background: "rgba(6,3,18,.55)",
         backdropFilter: "blur(3px)",
@@ -185,7 +192,7 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
           width: "100%",
           maxWidth: 560,
           margin: "0 auto",
-          height: "min(72vh, 620px)",
+          height: vak.toetsen ? vak.hoogte : "min(72vh, 620px)",
           display: "flex",
           flexDirection: "column",
           background: "linear-gradient(180deg, #1B1245 0%, #140C33 100%)",

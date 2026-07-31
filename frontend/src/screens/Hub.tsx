@@ -22,6 +22,7 @@ import { Button } from "../components/Button";
 import { MicButton } from "../components/MicButton";
 import { BeeldKnop } from "../components/BeeldKnop";
 import { KNOP_GOUD_VERLOOP, goudHaarlijn } from "../components/GlasKnop";
+import { useZichtbaarVak } from "../lib/zichtbaarvak";
 import { VerstuurKnop } from "../components/VerstuurKnop";
 import { VoiceNote } from "../components/VoiceNote";
 import { EmotePicker } from "../components/EmotePicker";
@@ -776,6 +777,7 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
   // gesprekken wilt zien, niet iets wat de ander hoort te merken.
   const [behang, setBehang] = useState<WallpaperId>(wallpaperVan);
   const [behangOpen, setBehangOpen] = useState(false);
+  const vak = useZichtbaarVak();
   const listRef = useRef<HTMLDivElement | null>(null);
   // Partner identity: from threads, friends, or the viewed profile.
   const partner =
@@ -839,7 +841,12 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
   };
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 85, background: "rgba(6,3,18,.7)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+    // Aan het ZICHTBARE vak en niet aan de pagina: komt het toetsenbord op,
+    // dan krimpt dit vak en groeit de lade mee naar de bovenkant ervan. De kop
+    // met de avatar blijft zo bovenaan staan en de berichtenlijst (die `flex:
+    // 1` heeft) is wat er kleiner van wordt. Zonder toetsenbord is dit precies
+    // het hele scherm en verandert er niets.
+    <div style={{ position: "fixed", left: 0, right: 0, top: vak.top, height: vak.hoogte, zIndex: 85, background: "rgba(6,3,18,.7)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
       {/* De lade in de neonlijst van de app. Alleen de BOVENhoeken zijn rond en
           de lijn loopt door tot onder het scherm: hij komt van beneden en zit
           daar vast, dus een lijst helemaal rondom zou hem los laten zweven. */}
@@ -851,7 +858,10 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
         vulling="geen"
         style={{ width: "100%", maxWidth: 430 }}
         binnen={{
-          height: "78dvh",
+          // Met toetsenbord: alles wat er nog is, als echte lengte. Een
+          // percentage zou tegen de NeonKader eromheen oplossen, en die heeft
+          // zelf geen hoogte, dus dan valt het terug op auto.
+          height: vak.toetsen ? vak.hoogte : "78dvh",
           display: "flex",
           flexDirection: "column",
           padding: 0,
