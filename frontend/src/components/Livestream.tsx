@@ -83,6 +83,40 @@ function SpelerRij({ game, klaarIds }: { game: GameApi; klaarIds: string[] }) {
   );
 }
 
+/** Wie klaar is, als een stroom regels naast de letter. De laatste onderaan,
+ *  zoals in een chat: wat er net gebeurde staat het dichtst bij je oog. */
+function KlaarStroom({ game }: { game: GameApi }) {
+  const { t } = useT();
+  const room = game.state.room;
+  if (!room) return null;
+  const klaar = room.ready_ids
+    .map((id) => room.players.find((p) => p.id === id))
+    .filter((p): p is NonNullable<typeof p> => !!p && !p.is_spectator)
+    .slice(-5);
+
+  return (
+    <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "flex-end", gap: 5, maxHeight: 140, overflow: "hidden" }}>
+      {klaar.length === 0 ? (
+        <span style={{ fontFamily: font.ui, fontSize: 11, color: withAlpha(colors.ink, 0.55), textShadow: "0 1px 4px rgba(0,0,0,.8)" }}>
+          {t("streamNiemandKlaar")}
+        </span>
+      ) : (
+        klaar.map((p) => (
+          <span key={p.id} style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+            <Avatar name={p.name} color={p.color} size={20} userId={p.user_id} hasAvatar={p.has_avatar} avatarVer={p.avatar_ver} />
+            <span style={{ fontFamily: font.ui, fontSize: 11.5, fontWeight: 800, color: p.color, textShadow: "0 1px 4px rgba(0,0,0,.9)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "52%" }}>
+              {p.name}
+            </span>
+            <span style={{ fontFamily: font.ui, fontSize: 11, color: colors.ink, textShadow: "0 1px 4px rgba(0,0,0,.9)", whiteSpace: "nowrap" }}>
+              {t("streamIsKlaar")}
+            </span>
+          </span>
+        ))
+      )}
+    </div>
+  );
+}
+
 export function Livestream({ game }: { game: GameApi }) {
   const { t } = useT();
   const room = game.state.room;
@@ -131,12 +165,16 @@ export function Livestream({ game }: { game: GameApi }) {
       )}
 
       {vult && (
-        <>
+        // De letter links, en rechts ernaast druppelt binnen wie klaar is. Als
+        // een chat: één regel per speler, met zijn avatar en zijn naam in zijn
+        // eigen kleur. Een rij avatars onder elkaar zegt hetzelfde, maar deze
+        // vorm laat het GEBEUREN: er komt iemand bij terwijl je kijkt.
+        <div style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "0 12px", minHeight: 0 }}>
           <div style={rolVak(ROL_KLEIN)}>
             <Reel state="locked" letter={letter} exclude={room.used_letters} hard={room.settings.hard_letters} skin={leider?.reel_skin ?? null} />
           </div>
-          <SpelerRij game={game} klaarIds={room.ready_ids} />
-        </>
+          <KlaarStroom game={game} />
+        </div>
       )}
 
       {!rolt && !vult && (
