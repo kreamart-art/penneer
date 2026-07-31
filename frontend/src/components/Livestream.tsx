@@ -292,43 +292,47 @@ function Eindstand({ game }: { game: GameApi }) {
   const kampioen = rangen[0];
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, width: "100%", padding: "0 16px", minWidth: 0 }}>
-      <div className="stream-links-in" style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-        {/* Precies het portret van het profiel: de gouden ring met de
-            lauwertak, en het rangschild dat er onderop hangt, half over de foto
-            en half over de gouden band. Eén onderdeel, geen losse onderdelen
-            naast elkaar. */}
-        <RingPortret maat={72} level={kampioen.p.level ?? 0} kleur={divisieKleur(kampioen.p.divisie)}>
-          {/* Altijd RingFoto, ook zonder foto: die vult het ronde gat en heeft
-              zelf geen rand. De gewone Avatar zou zijn eigen rangring meebrengen
-              en dan zie je een vierkant kadertje binnen de gouden ring. */}
-          <RingFoto
-            userId={kampioen.p.user_id ?? ""}
-            versie={kampioen.p.avatar_ver}
-            heeftFoto={!!kampioen.p.user_id && kampioen.p.has_avatar}
-            naam={kampioen.p.name}
-            kleur={kampioen.p.color}
-          />
-        </RingPortret>
-        <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
-          <span style={{ fontFamily: font.ui, fontSize: 8.5, fontWeight: 800, letterSpacing: 1.1, textTransform: "uppercase", color: withAlpha(colors.gold, 0.85) }}>
-            {t("streamKampioen")}
-          </span>
-          <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 22, lineHeight: 1.15, color: colors.gold, textShadow: "0 2px 10px rgba(0,0,0,.7)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {kampioen.p.name} <span style={{ fontSize: 17, color: colors.ink }}>{kampioen.punten}</span>
-          </span>
+    // De kampioen boven, de achtervolgers eronder. De kolom is precies zo breed
+    // als de kampioensrij (inline-flex met stretch), dus de rijen eronder lijnen
+    // links uit met de ring en rechts met zijn score: één blok in plaats van
+    // twee losse dingen.
+    <div style={{ display: "flex", justifyContent: "center", width: "100%", padding: "0 14px", minWidth: 0 }}>
+      <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "stretch", gap: 3, minWidth: 0, maxWidth: "100%" }}>
+        <div className="stream-links-in" style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+          {/* Precies het portret van het profiel: de gouden lauwerring met het
+              rangschild dat er onderop hangt, half over de foto en half over de
+              band. Binnen de ring altijd RingFoto, ook zonder foto: die vult het
+              ronde gat en heeft zelf geen rand. De gewone Avatar zou zijn eigen
+              rangring meebrengen, en dan zie je een vierkant kadertje binnen de
+              gouden ring. */}
+          <RingPortret maat={72} level={kampioen.p.level ?? 0} kleur={divisieKleur(kampioen.p.divisie)}>
+            <RingFoto
+              userId={kampioen.p.user_id ?? ""}
+              versie={kampioen.p.avatar_ver}
+              heeftFoto={!!kampioen.p.user_id && kampioen.p.has_avatar}
+              naam={kampioen.p.name}
+              kleur={kampioen.p.color}
+            />
+          </RingPortret>
+          <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+            <span style={{ fontFamily: font.ui, fontSize: 8.5, fontWeight: 800, letterSpacing: 1.1, textTransform: "uppercase", color: withAlpha(colors.gold, 0.85) }}>
+              {t("streamKampioen")}
+            </span>
+            <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 22, lineHeight: 1.15, color: colors.gold, textShadow: "0 2px 10px rgba(0,0,0,.7)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {kampioen.p.name} <span style={{ fontSize: 17, color: colors.ink }}>{kampioen.punten}</span>
+            </span>
+          </div>
         </div>
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 3, width: "100%", maxWidth: 240 }}>
-        {rangen.slice(1, 4).map((r, i) => (
+
+        {rangen.slice(1, 3).map((r, i) => (
           <div
             key={r.p.id}
             className="stream-links-in"
-            style={{ animationDelay: `${0.16 + i * 0.14}s`, display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}
+            style={{ animationDelay: `${0.16 + i * 0.14}s`, display: "flex", alignItems: "center", gap: 6, minWidth: 0, marginTop: i === 0 ? 10 : 0 }}
           >
-            <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 10, color: colors.faint, width: 12, flexShrink: 0 }}>{i + 2}</span>
+            <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 10, color: colors.faint, width: 10, flexShrink: 0 }}>{i + 2}</span>
             <Avatar name={r.p.name} color={r.p.color} size={18} userId={r.p.user_id} hasAvatar={r.p.has_avatar} avatarVer={r.p.avatar_ver} />
-            <span style={{ flex: 1, minWidth: 0, fontFamily: font.ui, fontSize: 10.5, fontWeight: 600, color: colors.ink, textShadow: "0 1px 4px rgba(0,0,0,.9)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <span style={{ minWidth: 0, fontFamily: font.ui, fontSize: 10.5, fontWeight: 600, color: colors.ink, textShadow: "0 1px 4px rgba(0,0,0,.9)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {r.p.name}
             </span>
             <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 11, color: colors.gold }}>{r.punten}</span>
