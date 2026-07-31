@@ -15,9 +15,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Check } from "lucide-react";
 import { ARENA } from "./Arena";
+import { ArtIcoon } from "./ArtIcoon";
 import { Avatar } from "./Avatar";
 import { Reel } from "./Reel";
 import type { GameApi } from "../net/socket";
+import { hoogtepunten, woordVanDeRonde } from "../lib/hoogtepunten";
 import { useT } from "../i18n/i18n";
 import { colors, font, withAlpha } from "../theme/tokens";
 
@@ -122,54 +124,70 @@ function TypRegel({ naam, kleur, staart, avatar }: { naam: string; kleur: string
   );
 }
 
-/** De hoogtepunten van de ronde: per categorie het antwoord dat de meeste
- *  punten pakte. Dat is wat een uitzending na een ronde laat zien, en het is
- *  ook het enige uit de uitslag dat je in vier regels kwijt kunt: de hele
- *  scorelijst staat toch al op de pagina eronder. */
-function Hoogtepunten({ game, max = 4 }: { game: GameApi; max?: number }) {
-  const { t } = useT();
+/** Dezelfde hoogtepuntensectie als op de uitslagpagina: het woord van de ronde
+ *  in zijn gouden lijst, en daaronder één regel per categorie. Uit dezelfde
+ *  bron (lib/hoogtepunten.ts), zodat de kijker en de speler hetzelfde verhaal
+ *  lezen. Compacter gezet, want dit vak is een derde van een pagina. */
+function Hoogtepunten({ game }: { game: GameApi }) {
+  const { t, tCat } = useT();
   const room = game.state.room;
-  const ronde = room?.round;
-  if (!room || !ronde) return null;
+  if (!room) return null;
+  const spelers = room.players.filter((p) => !p.is_spectator);
+  const woord = woordVanDeRonde(room, spelers);
+  const regels = hoogtepunten(room, spelers, t);
+  if (!woord && regels.length === 0) return null;
 
-  const beste: { cat: string; speler: (typeof room.players)[number]; woord: string; punten: number }[] = [];
-  for (const cat of room.settings.categories) {
-    let top: { speler: (typeof room.players)[number]; woord: string; punten: number } | null = null;
-    for (const speler of room.players) {
-      const punten = ronde.points[speler.id]?.[cat] ?? 0;
-      const woord = ronde.answers[speler.id]?.[cat]?.text ?? "";
-      if (!woord || punten <= 0) continue;
-      if (!top || punten > top.punten) top = { speler, woord, punten };
-    }
-    if (top) beste.push({ cat, ...top });
-  }
-  // De dikste vangst bovenaan, en niet meer dan er past.
-  beste.sort((a, b) => b.punten - a.punten);
-
-  if (beste.length === 0) return null;
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 5,
-        padding: "7px 10px 8px",
-        borderRadius: 12,
-        background: "linear-gradient(180deg, rgba(10,4,20,.72) 0%, rgba(6,3,14,.78) 100%)",
-        boxShadow: `inset 0 0 0 1px ${withAlpha(colors.gold, 0.45)}`,
-      }}
-    >
+    <div style={{ display: "flex", flexDirection: "column", gap: 5, minWidth: 0 }}>
       <span style={{ fontFamily: font.ui, fontSize: 8.5, fontWeight: 800, letterSpacing: 1.1, textTransform: "uppercase", color: withAlpha(colors.gold, 0.85) }}>
-        {t("streamHoogtepunten")}
+        {t("revealHighlights")}
       </span>
-      {beste.slice(0, max).map((h) => (
-        <TypRegel
-          key={h.cat}
-          naam={h.speler.name}
-          kleur={h.speler.color}
-          staart={`${h.woord} +${h.punten}`}
-          avatar={<Avatar name={h.speler.name} color={h.speler.color} size={20} userId={h.speler.user_id} hasAvatar={h.speler.has_avatar} avatarVer={h.speler.avatar_ver} />}
-        />
+      {woord && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 7,
+            padding: "5px 8px",
+            borderRadius: 9,
+            background: "linear-gradient(180deg, rgba(10,4,20,.7) 0%, rgba(6,3,14,.78) 100%)",
+            boxShadow: `inset 0 0 0 1px ${withAlpha(colors.gold, 0.5)}`,
+            minWidth: 0,
+          }}
+        >
+          <ArtIcoon naam="sterren" size={13} />
+          <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+            <span style={{ fontFamily: font.ui, fontSize: 7.5, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", color: colors.faint }}>
+              {t("wordOfRound")}
+            </span>
+            <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 11.5, color: colors.gold, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {woord.word.toUpperCase()}
+              <span style={{ fontFamily: font.ui, fontWeight: 500, fontSize: 9.5, color: colors.sub }}> · {woord.name}</span>
+            </span>
+          </div>
+        </div>
+      )}
+      {regels.slice(0, 4).map((h) => (
+        <div key={h.cat} style={{ display: "flex", alignItems: "baseline", gap: 7, minWidth: 0 }}>
+          <span style={{ fontFamily: font.ui, fontSize: 8.5, color: colors.faint, width: 38, flexShrink: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {tCat(h.cat)}
+          </span>
+          <span
+            style={{
+              fontFamily: font.ui,
+              fontSize: 10,
+              fontWeight: 600,
+              color: h.tone === "gold" ? colors.gold : h.tone === "ink" ? colors.ink : colors.faint,
+              textShadow: "0 1px 4px rgba(0,0,0,.85)",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              minWidth: 0,
+            }}
+          >
+            {h.text}
+          </span>
+        </div>
       ))}
     </div>
   );
@@ -239,8 +257,10 @@ function LedBalk({ game }: { game: GameApi }) {
           fontWeight: 800,
           letterSpacing: 0.6,
           textTransform: "uppercase",
-          color: colors.gold,
-          textShadow: `0 0 8px ${withAlpha(colors.gold, 0.55)}`,
+          // Wit: een lichtkrant onder in beeld is een omroep, geen prijs. Goud
+          // zou hem laten wedijveren met het merkje en de letter.
+          color: colors.ink,
+          textShadow: "0 1px 5px rgba(0,0,0,.9)",
         }}
       >
         {tekst}
@@ -313,9 +333,11 @@ export function Livestream({ game }: { game: GameApi }) {
       {uitslag && (
         // De uitslag heeft geen rol nodig: die is gevallen. Links wat de ronde
         // opleverde, rechts wie er klaar staat voor de volgende.
-        <div style={{ display: "flex", alignItems: "flex-start", gap: 10, width: "100%", padding: "0 12px", minHeight: 0 }}>
+        // De hoogtepunten staan niet tegen de linkerrand: een uitzending laat
+        // links wat lucht, anders plakt de tekst aan de kader.
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 10, width: "100%", padding: "0 12px 0 26px", minHeight: 0 }}>
           <div style={{ flex: 1.15, minWidth: 0 }}>
-            <Hoogtepunten game={game} max={3} />
+            <Hoogtepunten game={game} />
           </div>
           <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "flex-end", alignSelf: "stretch" }}>
             <KlaarStroom game={game} max={3} />
@@ -400,7 +422,7 @@ export function Livestream({ game }: { game: GameApi }) {
         style={{
           position: "absolute",
           left: 12,
-          bottom: 30,
+          bottom: uitslag ? 30 : 10,
           display: "inline-flex",
           alignItems: "center",
           gap: 5,
@@ -433,7 +455,7 @@ export function Livestream({ game }: { game: GameApi }) {
           style={{
             position: "absolute",
             right: 12,
-            bottom: 31,
+            bottom: 11,
             maxWidth: "62%",
             fontFamily: font.ui,
             fontSize: 11,
@@ -460,7 +482,7 @@ export function Livestream({ game }: { game: GameApi }) {
           style={{
             position: "absolute",
             right: 12,
-            bottom: 30,
+            bottom: uitslag ? 30 : 10,
             padding: "3px 10px",
             borderRadius: 999,
             background: "linear-gradient(180deg, rgba(10,4,20,.92) 0%, rgba(6,3,14,.95) 100%)",

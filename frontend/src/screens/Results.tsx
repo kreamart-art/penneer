@@ -14,6 +14,7 @@ import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { neonSkin } from "../theme/neon";
 import { colors, font, withAlpha } from "../theme/tokens";
+import { hoogtepunten, normWoord, woordVanDeRonde } from "../lib/hoogtepunten";
 
 export function Results({ game }: { game: GameApi }) {
   const { t, tCat } = useT();
@@ -54,55 +55,13 @@ export function Results({ game }: { game: GameApi }) {
   const roundTotal = (pid: string) => cats.reduce((sum, c) => sum + (round?.points[pid]?.[c] ?? 0), 0);
   const uniqueCount = (pid: string) => cats.filter((c) => (round?.points[pid]?.[c] ?? 0) === 10).length;
 
-  // Mirror of the server's normalize(): detects a manually paired answer
-  // (canon differs from the word itself).
-  const norm = (s: string) =>
-    s.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  // Het verhaal van de ronde komt uit lib/hoogtepunten.ts, want de uitzending in
+  // de chat toont exact dezelfde sectie. Twee plekken die hetzelfde vertellen
+  // horen het uit dezelfde bron te halen.
+  const norm = normWoord;
+  const wordOfRound = woordVanDeRonde(room, players);
 
-  // "Woord van de ronde": the longest valid word anyone played this round, a
-  // little spotlight. Only shown when it's actually long (>= 6 letters).
-  let wotr: { word: string; name: string; len: number } | null = null;
-  for (const p of players) {
-    for (const cat of cats) {
-      const a = round?.answers[p.id]?.[cat];
-      if (a && a.valid && a.text) {
-        const len = norm(a.text).length;
-        if (!wotr || len > wotr.len) wotr = { word: a.text, name: p.name, len };
-      }
-    }
-  }
-  const wordOfRound = wotr && wotr.len >= 6 ? wotr : null;
-
-  // One highlight line per category: the story of the round ("iedereen had
-  // ZEBRA", "alleen Karim had iets"). Recomputed on corrections; the entrance
-  // animation itself only plays when the results first appear (mount).
-  const highlights = cats.map((cat) => {
-    const entries = players
-      .map((p) => ({ p, a: round?.answers[p.id]?.[cat] }))
-      .filter((x) => x.a && x.a.valid && x.a.text);
-    if (players.length < 2) return null;
-    if (entries.length === 0) return { cat, text: t("revealNobody"), tone: "faint" as const };
-    const groups = new Map<string, { word: string; names: string[] }>();
-    for (const { p, a } of entries) {
-      const k = a!.canon || norm(a!.text);
-      const g = groups.get(k) || { word: a!.text, names: [] };
-      g.names.push(p.name);
-      groups.set(k, g);
-    }
-    if (groups.size === 1 && entries.length === players.length) {
-      const g = [...groups.values()][0];
-      return { cat, text: t("revealAllSame", { word: g.word.toUpperCase() }), tone: "gold" as const };
-    }
-    if (entries.length === 1) {
-      const only = entries[0];
-      return { cat, text: t("revealOnlyOne", { name: only.p.name, word: only.a!.text.toUpperCase() }), tone: "gold" as const };
-    }
-    const biggest = [...groups.values()].sort((x, y) => y.names.length - x.names.length)[0];
-    if (biggest.names.length >= 2) {
-      return { cat, text: t("revealNSame", { n: biggest.names.length, word: biggest.word.toUpperCase() }), tone: "ink" as const };
-    }
-    return { cat, text: t("revealAllUnique", { n: groups.size }), tone: "faint" as const };
-  }).filter((h): h is { cat: string; text: string; tone: "gold" | "ink" | "faint" } => h !== null);
+  const highlights = hoogtepunten(room, players, t);
 
   // Stagger plan: highlight lines first (one per beat), then the player cards.
   const lineDelay = (i: number) => 0.25 + i * 0.4;
