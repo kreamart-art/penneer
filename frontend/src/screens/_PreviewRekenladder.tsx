@@ -211,9 +211,7 @@ const LADDER_H = 733;
 // de tekening, dus het puntje zit (442 + 2070,6)/2092 = 120,11vw onder de
 // schermrand.
 const LADDER_BREED = 84.90;      // vw
-const LADDER_TOP = "120.11vw";
-// De onderkant volgt eruit: 120,11 + 84,90 * 733/1100 = 176,69.
-const LADDER_ONDER = "176.69vw";
+// Waar hij verticaal landt bepaalt de kolom; de MAAT komt uit de puntjes.
 // De puntjes zelf zijn gereedschap en geen decor; die zijn uit de zaal gepoetst.
 
 /** Per trede: waar de strook zit in de ladder, en waar het VLAK van de plaat
@@ -348,19 +346,12 @@ function Ladder({ keuzes, antwoord, oordeel, onKies, slapend, klaar }: {
   klaar?: boolean;
 }) {
   return (
-    // Vast aan het scherm en niet in de kolom: de zaal zit ook vast aan het
-    // scherm, dus alleen zo blijft de ladder op elk toestel in zijn schaduw
-    // staan. Wat er in de kolom overblijft is een even hoge lege plek.
-    <div
-      style={{
-        position: "fixed",
-        left: "50%",
-        top: LADDER_TOP,
-        width: `${LADDER_BREED}vw`,
-        transform: "translateX(-50%)",
-        aspectRatio: `${LADDER_B} / ${LADDER_H}`,
-      }}
-    >
+    // In de KOLOM en niet vast aan het scherm. Vast leek logisch omdat de zaal
+    // ook vastzit, maar dan hangt de ladder aan de layout-viewport terwijl je
+    // hem ziet in de visuele: zodra de adresbalk meedoet staat hij ergens waar
+    // je niet bij kunt, en dan kun je het spel niet spelen. De maat blijft wel
+    // uit de meetpuntjes komen.
+    <div style={{ position: "relative", width: `${LADDER_BREED}vw`, aspectRatio: `${LADDER_B} / ${LADDER_H}`, flexShrink: 0 }}>
       {keuzes.map((w, i) => (
         <Trede
           key={i}
@@ -969,16 +960,9 @@ export function Rekenladder({ seed, onKlaar, onOpnieuw }: {
           slapend={fase === "tel"}
           klaar={fase === "klaar"}
         />
-        {/* De plek die de ladder in de kolom zou innemen. Hij staat er zelf niet
-            meer in (die hangt aan het scherm), maar de knop eronder moet wel
-            weten hoe hoog hij is. */}
-        <div style={{ height: `calc(${LADDER_BREED}vw * ${LADDER_H} / ${LADDER_B})`, flexShrink: 0 }} aria-hidden />
 
-        {/* De knop hangt onder de ladder en dus ook aan het scherm: de ladder
-            staat op een vaste plek in de zaal, dus een knop die in de kolom mee
-            zou schuiven komt er vroeg of laat overheen. */}
         {(fase !== "klaar" || onOpnieuw) && (
-        <div style={{ position: "fixed", left: "50%", top: `calc(${LADDER_ONDER} + 10px)`, transform: "translateX(-50%)" }}>
+        <div style={{ marginTop: 10 }}>
         <NeonKader radius={999} dik={0.5} vulling="zwart" animeer lijn={KADER_LIJN_ROOD} gloed={`0 0 12px ${withAlpha(colors.red, 0.35)}`} binnen={{ padding: 0 }}>
           <button
             onClick={fase === "klaar" ? onOpnieuw : stop}

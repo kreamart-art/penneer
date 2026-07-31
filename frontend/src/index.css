@@ -1364,7 +1364,11 @@ body.rekenspel::after {
   pointer-events: none;
   background-color: #03000A;
   background-repeat: no-repeat;
-  background-position: top center;
+  /* 39 punten opgetild. Gemeten: de poten van de ladder stonden op 652,3 en het
+     midden van het schaduwvlak op 691,2, dus de schaduw lag onder de ladder
+     langs in plaats van eronder. Wat er onderaan onbedekt blijft valt achter de
+     onderbalk. */
+  background-position: left 50% bottom 39px;
   background-size: 195.8% auto;
 }
 body.rekenzaal::after {
