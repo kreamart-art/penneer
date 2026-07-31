@@ -13,18 +13,13 @@ import { BeeldKnop } from "./BeeldKnop";
 import { VerstuurKnop } from "./VerstuurKnop";
 import { KNOP_GOUD_VERLOOP, goudHaarlijn } from "./GlasKnop";
 import { useVakLaag, useZichtbaarVak } from "../lib/zichtbaarvak";
-import { ARENA } from "./Arena";
-import { Reel } from "./Reel";
+import { Livestream } from "./Livestream";
 import { VoiceNote } from "./VoiceNote";
 import { EmotePicker } from "./EmotePicker";
 import { EMOTE_SRC, FREE_EMOTE_PACKS } from "./emotes";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { colors, font, withAlpha } from "../theme/tokens";
-
-// De rol boven de chat. Hij staat in de vrije ruimte boven de lade, dus hij mag
-// wat groter dan in een strook: 0.8 van 172x200 wordt 138x160.
-const ROL_SCHAAL = 0.8;
 
 export function ChatButton({ game }: { game: GameApi }) {
   const { t } = useT();
@@ -98,9 +93,6 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
   // en valt er ook niets te repareren aan wat voor of achter hoort.
   const kamer = game.state.room;
   const rolt = kamer?.phase === "reveal";
-  const rolLetter = kamer?.round?.letter ?? "";
-  const rolSpeler = kamer?.players.find((p) => p.id === kamer.active_player_id);
-  const rolStand = rolLetter ? "locked" : game.state.spinning ? "spinning" : "idle";
   const roomCode = game.state.room?.code ?? "";
 
   // Upload a memo to this room, then post it as a chat message.
@@ -223,81 +215,10 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
         overflow: "hidden",
       }}
     >
-      {/* De rol, in de ruimte BOVEN de lade: dat vlak is toch al vervaagd en
-          doet verder niets. Niet als doorkijkje naar het scherm eronder maar
-          als een tweede, kleinere weergave van dezelfde toestand: dezelfde
-          skin, dezelfde letters, dezelfde beweging, alleen op zijn eigen
-          schaal. Er ligt dus niets over de chat heen en er valt niets te
-          repareren aan wat voor of achter hoort. */}
-      {rolt && (
-        <div
-          style={{
-            flex: 1,
-            display: "grid",
-            placeItems: "center",
-            pointerEvents: "none",
-            padding: "14px 0",
-            position: "relative",
-            // Precies de achtergrond van de speelpagina: dezelfde plaat, op
-            // dezelfde ondergrondkleur. Geen vervaagd doorkijkje naar het
-            // scherm eronder maar een eigen laag, zodat er niets over de chat
-            // heen kan vallen.
-            backgroundColor: ARENA.base,
-            backgroundImage: "url(/game-bg.webp)",
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-            backgroundRepeat: "no-repeat",
-          }}
-        >
-          {/* Het merkje linksonder: dit is geen plaatje van de rol maar de rol
-              zelf, live. Een knipperend stipje zegt dat in één oogopslag, zoals
-              elke uitzending dat doet. Dezelfde pil als "Stoppen" in de arena:
-              rode neonlijn op een zwarte vulling, want dat is in deze app de
-              vorm van een rode pil. */}
-          <span
-            style={{
-              position: "absolute",
-              left: 12,
-              bottom: 10,
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 5,
-              padding: "3px 9px 3px 7px",
-              borderRadius: 999,
-              // De lijn als INSET-schaduw en niet als eigen laag eromheen. De
-              // neonlijst van de arena tekent zijn rand in een aparte doos, en
-              // op een merkje van zestien pixels hoog liep die rand net niet
-              // meer om de zwarte vulling heen: je zag de lijn en de vulling
-              // uit elkaar lopen. Een inset-schaduw volgt de vorm per definitie.
-              background: "linear-gradient(180deg, rgba(10,4,20,.92) 0%, rgba(6,3,14,.95) 100%)",
-              boxShadow: `inset 0 0 0 1px ${withAlpha(colors.red, 0.85)}, 0 0 10px ${withAlpha(colors.red, 0.3)}`,
-            }}
-          >
-            <span
-              style={{
-                width: 6,
-                height: 6,
-                borderRadius: "50%",
-                background: colors.red,
-                boxShadow: `0 0 6px ${colors.red}`,
-                animation: "fill-pulse 1.1s ease-in-out infinite",
-              }}
-            />
-            <span style={{ fontFamily: font.ui, fontWeight: 700, fontSize: 9, letterSpacing: 0.7, color: colors.redHi, textTransform: "uppercase" }}>
-              livestream
-            </span>
-          </span>
-          <div style={{ transform: `scale(${ROL_SCHAAL})`, transformOrigin: "center", lineHeight: 0 }}>
-            <Reel
-              state={rolStand}
-              letter={rolLetter}
-              exclude={kamer?.used_letters ?? []}
-              hard={!!kamer?.settings.hard_letters}
-              skin={rolSpeler?.reel_skin ?? null}
-            />
-          </div>
-        </div>
-      )}
+      {/* De uitzending: alles wat er in het spel gebeurt, in de ruimte boven de
+          lade. Zie components/Livestream.tsx. */}
+      <Livestream game={game} />
+
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
