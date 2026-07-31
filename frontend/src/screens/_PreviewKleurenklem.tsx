@@ -268,10 +268,16 @@ function WoordVak({ kleur, id }: { kleur: string; id: string }) {
 
 /** De klem: twee kaken die op het woord dichtlopen. Ze staan in dezelfde doos
  *  als het woord, en hun breedte IS de resterende tijd; er is dus geen aparte
- *  balk nodig die hetzelfde nog eens vertelt. */
-function Klem({ rest, alarm }: { rest: number; alarm: boolean }) {
+ *  balk nodig die hetzelfde nog eens vertelt.
+ *
+ *  Altijd DEZELFDE kleur. De kaken sprongen vlak voor tijd van goud naar rood,
+ *  en dat is nou juist het enige wat in dit spel niet mag: je zit te beoordelen
+ *  welke kleur je ziet, en dan gaat de kader zelf van kleur wisselen. Dat er
+ *  weinig tijd over is lees je al aan hoe ver ze dicht staan, en dat is een
+ *  maat en geen kleur. */
+function Klem({ rest }: { rest: number }) {
   const dicht = (1 - rest) * 0.5;
-  const kleur = alarm ? "#FF5A4E" : "#FFC23D";
+  const kleur = "#FFC23D";
   const kaak = (kant: "left" | "right"): React.CSSProperties => ({
     position: "absolute", top: 0, bottom: 0, [kant]: 0, width: pct(dicht),
     background: `linear-gradient(${kant === "left" ? "90deg" : "270deg"}, ${withAlpha(kleur, 0.02)} 0%, ${withAlpha(kleur, 0.14)} 62%, ${withAlpha(kleur, 0.42)} 92%, ${withAlpha(kleur, 0.95)} 100%)`,
@@ -417,7 +423,6 @@ export function Kleurenklem({ seed, onKlaar, onOpnieuw }: {
 
   const stop = () => setFase("klaar");
 
-  const alarm = rest < 0.34;
   const regelTekst = trap.regel === "inkt" ? "KIES DE INKTKLEUR" : "KIES HET WOORD";
   // Tijdens het aftellen is er nog geen opgave, dus dan is de lijn gewoon goud.
   const inktNu = fase === "tel" ? "#FFD98A" : opgave.inkt.inkt;
@@ -503,7 +508,7 @@ export function Kleurenklem({ seed, onKlaar, onOpnieuw }: {
                   background: `radial-gradient(120% 150% at 50% 12%, ${withAlpha(inktNu, 0.14)} 0%, ${withAlpha("#3A1B52", 0.5)} 42%, ${withAlpha(PANEEL, 0.68)} 100%)`,
                 }}
               >
-                {fase === "spel" && <Klem rest={rest} alarm={alarm} />}
+                {fase === "spel" && <Klem rest={rest} />}
                 <span
                   key={fase === "tel" ? `tel-${tel}` : `woord-${ronde}`}
                   className="klem-kom"
