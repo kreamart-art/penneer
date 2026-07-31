@@ -136,6 +136,19 @@ const FILES: Record<string, string> = {
   // typed character and a carriage bell at the end of the line.
   twKey: "tw-key",
   twBell: "tw-bell",
+  // Kleurenklem. Goed en fout zijn kort genoeg om elkaar niet in de weg te
+  // zitten bij zeven tienden seconde per opgave; de riser hoort bij het
+  // dichtlopen van de klem en speelt alleen als het venster lang genoeg is.
+  klemGoed: "klem-goed",
+  klemFout: "klem-fout",
+  klemRiser: "klem-riser",
+  reeks: "reeks",
+  // Belonen.
+  munten: "munten",
+  kist: "kist",
+  levelUp: "level-up",
+  rangUp: "rang-up",
+  woosh: "woosh",
 };
 const buffers: Record<string, AudioBuffer | null | undefined> = {};
 
@@ -401,6 +414,15 @@ export const sound = {
   }),
   error: () => sfx("error", () => sweep(220, 110, 0, 0.2, "sawtooth", 0.16)),
   uiTap: () => sfx("uiTap", () => tone(1000, 0, 0.025, "square", 0.05)),
+  klemGoed: () => sfx("klemGoed", () => tone(1046, 0, 0.09, "triangle", 0.14)),
+  klemFout: () => sfx("klemFout", () => sweep(300, 140, 0, 0.16, "sawtooth", 0.14)),
+  klemRiser: () => sfx("klemRiser", () => sweep(220, 560, 0, 0.5, "sawtooth", 0.08)),
+  reeks: () => sfx("reeks", () => [784, 988, 1318].forEach((f, i) => tone(f, i * 0.06, 0.18, "triangle", 0.14))),
+  munten: () => sfx("munten", () => [1318, 1568, 1975].forEach((f, i) => tone(f, i * 0.05, 0.2, "triangle", 0.13))),
+  kist: () => sfx("kist", () => sweep(200, 1200, 0, 0.6, "triangle", 0.14)),
+  levelUp: () => sfx("levelUp", () => [523, 784, 1046].forEach((f, i) => tone(f, i * 0.09, 0.28, "triangle", 0.16))),
+  rangUp: () => sfx("rangUp", () => [392, 523, 784, 1046].forEach((f, i) => tone(f, i * 0.1, 0.34, "triangle", 0.17))),
+  woosh: () => sfx("woosh", () => sweep(900, 300, 0, 0.14, "sine", 0.1)),
   twKey: () => sfx("twKey", () => tone(1400, 0, 0.02, "square", 0.07)),
   twBell: () => sfx("twBell", () => tone(1568, 0, 0.35, "triangle", 0.14)),
   tick: () => sfx("tick", () => tone(1200, 0, 0.05, "square", 0.08)),

@@ -345,10 +345,12 @@ function meng(van: Rgb, naar: Rgb, deel: number): string {
 }
 
 /** Waar de klem naartoe kleurt als de tijd opraakt, en vanaf hoeveel resterende
- *  tijd hij daaraan begint. Ruim over de helft, zodat het een aanzwellende
- *  waarschuwing is en geen schrik op het laatste moment. */
+ *  tijd hij daaraan begint. Pas op zeventig procent van de beweging: de eerste
+ *  twee derde hoort de klem gewoon de kleur van het vak te zijn, en het rood is
+ *  het laatste stuk. Stond op 0,55 en dat kleurde te vroeg, waardoor de helft
+ *  van elke ronde al rood was en de waarschuwing niets meer zei. */
 const KLEM_ROOD: Rgb = [255, 90, 78];
-const KLEM_VERKLEURT_VANAF = 0.55;
+const KLEM_VERKLEURT_VANAF = 0.3;
 
 /** De klem: twee kaken die op het woord dichtlopen. Ze staan in dezelfde doos
  *  als het woord, en hun breedte IS de resterende tijd; er is dus geen aparte
@@ -499,7 +501,7 @@ export function Kleurenklem({ seed, onKlaar, onOpnieuw }: {
   const mis = useCallback(() => {
     if (beslist.current) return;
     beslist.current = true;
-    sound.uiTap();
+    sound.klemFout();
     setOordeel({ key: opgave.goed.key, goed: false });
     setReeks(0);
     setLevens((l) => {
@@ -514,10 +516,12 @@ export function Kleurenklem({ seed, onKlaar, onOpnieuw }: {
     if (beslist.current || fase !== "spel") return;
     if (k.key !== opgave.goed.key) { setOordeel({ key: k.key, goed: false }); mis(); return; }
     beslist.current = true;
-    sound.approve();
+    sound.klemGoed();
     setOordeel({ key: k.key, goed: true });
     setTotaal((t) => t + punten(rest));
-    setReeks((s) => { const n = s + 1; setBeste((b) => Math.max(b, n)); return n; });
+    // Elke vijfde op rij krijgt zijn eigen klank. Elke goede opgave belonen met
+    // twee geluiden tegelijk wordt lawaai; om de vijf is het een mijlpaal.
+    setReeks((s) => { const n = s + 1; if (n % 5 === 0) sound.reeks(); setBeste((b) => Math.max(b, n)); return n; });
     volgende();
   }, [fase, opgave, rest, mis, volgende]);
 

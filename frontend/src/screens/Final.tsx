@@ -224,13 +224,13 @@ function Ceremony({ summary }: { summary: MatchSummary }) {
       at(1000, () => {
         setStage(1);
         setLevel(after.level);
-        sound.badge();
+        sound.levelUp();
         setBarPct(0);
       });
       at(1250, () => setBarPct(frac(after) * 100));
     }
     const base = leveledUp ? 1600 : 1100;
-    if (rankedUp) at(base, () => { setStage(2); sound.badge(); });
+    if (rankedUp) at(base, () => { setStage(2); sound.rangUp(); });
     if (summary.badges.length > 0) at(base + (rankedUp ? 400 : 0), () => setStage(3));
     if (summary.missions_done.length > 0) at(base + (rankedUp ? 400 : 0) + (summary.badges.length ? 350 : 0), () => setStage(4));
     return () => {
