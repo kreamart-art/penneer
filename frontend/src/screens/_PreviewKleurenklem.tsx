@@ -516,19 +516,6 @@ export function Kleurenklem({ seed, onKlaar, onOpnieuw }: {
                 >
                   {fase === "tel" ? tel : opgave.woord.naam}
                 </span>
-                {/* De veeg ligt BOVEN de letters en licht ze op als hij passeert.
-                    `screen` en niet `overlay`: overlay maakt donkere letters nog
-                    donkerder, en dan flikkert het woord in plaats van te glanzen. */}
-                <span
-                  aria-hidden
-                  className="klem-veeg"
-                  style={{
-                    position: "absolute", inset: 0, zIndex: 4, pointerEvents: "none",
-                    mixBlendMode: "screen",
-                    background: `linear-gradient(104deg, transparent 34%, ${withAlpha(inktNu, 0.28)} 44%, ${withAlpha("#FFF6DC", 0.62)} 50%, ${withAlpha(inktNu, 0.28)} 56%, transparent 66%)`,
-                    backgroundSize: "260% 100%",
-                  }}
-                />
                 <WoordVak kleur={inktNu} id={fase === "tel" ? "tel" : opgave.inkt.key} />
               </div>
 
