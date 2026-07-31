@@ -318,19 +318,26 @@ function TabKader({ titel, children }: { titel: string; children: React.ReactNod
     return () => ro.disconnect();
   }, []);
 
-  const TH = 26;   // hoogte van de tab
-  const TB = 158;  // breedte van de tab
-  const HELLING = 15; // de schuine kant waarmee de lijn omhoog stapt
+  const TH = 30;   // hoogte van de tab
+  const TB = 180;  // breedte van de tab, schouders meegerekend
+  const HELLING = 17; // de schuine kant waarmee de lijn omhoog stapt
+  const TC = 11;   // de facetten op de top, waarmee de tab een kristal wordt
   const C = 16;    // afsnijding van de hoeken
 
   const { b, h } = maat;
   const x1 = Math.round((b - TB) / 2);
   const x2 = Math.round((b + TB) / 2);
+  // Vier knikken per kant in plaats van een: de lijn stapt schuin omhoog en
+  // breekt vlak onder de top nog een keer. Dat tweede facet maakt het verschil
+  // tussen een bult in de rand en een geslepen kristal; met een enkele helling
+  // leest de tab als een hoekje dat is opgetild.
   const pad = b > 0 ? [
     `M ${C} ${TH}`,
     `L ${x1} ${TH}`,
-    `L ${x1 + HELLING} 0`,
-    `L ${x2 - HELLING} 0`,
+    `L ${x1 + HELLING} ${TC}`,
+    `L ${x1 + HELLING + TC} 0`,
+    `L ${x2 - HELLING - TC} 0`,
+    `L ${x2 - HELLING} ${TC}`,
     `L ${x2} ${TH}`,
     `L ${b - C} ${TH}`,
     `L ${b} ${TH + C}`,
