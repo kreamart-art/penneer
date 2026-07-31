@@ -21,6 +21,7 @@ import { AvatarZoom } from "../components/AvatarZoom";
 import { Button } from "../components/Button";
 import { MicButton } from "../components/MicButton";
 import { BeeldKnop } from "../components/BeeldKnop";
+import { KNOP_GOUD_VERLOOP } from "../components/GlasKnop";
 import { VerstuurKnop } from "../components/VerstuurKnop";
 import { VoiceNote } from "../components/VoiceNote";
 import { EmotePicker } from "../components/EmotePicker";
@@ -845,9 +846,8 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
       <NeonKader
         radius={22}
         dik={0.75}
-        lijn={KADER_LIJN_GOUD}
+        lijn={KNOP_GOUD_VERLOOP}
         gloed="verloop"
-        animeer
         vulling="geen"
         style={{ width: "100%", maxWidth: 430 }}
         binnen={{

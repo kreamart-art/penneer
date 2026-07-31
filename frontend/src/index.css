@@ -474,6 +474,11 @@ textarea:focus {
 .glowhover:hover {
   filter: drop-shadow(0 0 9px rgba(255, 194, 61, 0.4));
 }
+/* Voor kleine ronde knoppen die al een eigen gouden rand hebben: op 9px slokt
+   de gloed de knop op, hier is hij een randje licht. */
+.glowhover-klein:hover {
+  filter: drop-shadow(0 0 4px rgba(255, 194, 61, 0.3));
+}
 
 /* De opgelichte zeshoek ligt altijd al klaar op nul en vervaagt erin bij aanraken
    of zweven. Op een telefoon is er geen hover, dus `:active` doet daar het werk;

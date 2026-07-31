@@ -14,6 +14,10 @@ export const GOUD_DONKER = "#8A5A12";
 export const GOUD_LIJN = "#E8B33C";
 export const GOUD_LICHT = "#FFDE8A";
 
+/** Hetzelfde goud als de knopranden, als lijnverloop voor een NeonKader: de
+ *  popup en de knoppen erin horen uit een stuk metaal te komen. */
+export const KNOP_GOUD_VERLOOP = `linear-gradient(155deg, ${GOUD_LICHT} 0%, ${GOUD_LIJN} 34%, ${GOUD_DONKER} 68%, ${GOUD_LIJN} 100%)`;
+
 /** Het verloop voor een teken in dezelfde gouden lijn als de rand. */
 export function GoudLijnDefs({ id }: { id: string }) {
   return (
@@ -55,7 +59,7 @@ export function GlasKnop({
       disabled={uit}
       aria-label={label}
       title={label}
-      className="pressable glowhover"
+      className="pressable glowhover-klein"
       style={{
         position: "relative",
         flexShrink: 0,

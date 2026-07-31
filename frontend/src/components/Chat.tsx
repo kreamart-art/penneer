@@ -10,6 +10,7 @@ import type { GameApi } from "../net/socket";
 import { MicButton } from "./MicButton";
 import { BeeldKnop } from "./BeeldKnop";
 import { VerstuurKnop } from "./VerstuurKnop";
+import { KNOP_GOUD_VERLOOP } from "./GlasKnop";
 import { VoiceNote } from "./VoiceNote";
 import { EmotePicker } from "./EmotePicker";
 import { EMOTE_SRC, FREE_EMOTE_PACKS } from "./emotes";
@@ -188,14 +189,34 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
           display: "flex",
           flexDirection: "column",
           background: "linear-gradient(180deg, #1B1245 0%, #140C33 100%)",
-          borderTop: `1px solid ${colors.panelBorder}`,
-          borderLeft: `1px solid ${colors.panelBorder}`,
-          borderRight: `1px solid ${colors.panelBorder}`,
           borderTopLeftRadius: 22,
           borderTopRightRadius: 22,
           boxShadow: "0 -18px 60px rgba(0,0,0,.5)",
+          position: "relative",
         }}
       >
+        {/* Dezelfde gouden lijn als op de glazen knoppen erin: de lade en zijn
+            knoppen komen uit een stuk metaal. Als eigen laag met het masker,
+            want een border kan geen verloop volgen. Alleen boven en opzij:
+            onderaan zit de lade aan het scherm vast. */}
+        <span
+          aria-hidden
+          style={{
+            position: "absolute",
+            inset: 0,
+            borderTopLeftRadius: 22,
+            borderTopRightRadius: 22,
+            padding: "1px 1px 0",
+            background: KNOP_GOUD_VERLOOP,
+            opacity: 0.85,
+            WebkitMask: "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
+            WebkitMaskComposite: "xor",
+            mask: "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
+            maskComposite: "exclude",
+            pointerEvents: "none",
+            zIndex: 3,
+          }}
+        />
         {/* header */}
         <div
           style={{
@@ -414,7 +435,7 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
               // lijn die je ziet. Overal waar je iets zegt hoort hetzelfde vak.
               background: "rgba(6,3,18,.55)",
               border: "none",
-              boxShadow: `inset 0 0 0 1px ${withAlpha("#A868F5", draft.trim() ? 0.6 : 0.42)}, 0 0 4px ${withAlpha("#8B45E8", 0.1)}`,
+              boxShadow: `inset 0 0 0 1px ${withAlpha("#A868F5", draft.trim() ? 0.6 : 0.42)}, 0 0 4px ${withAlpha("#8B45E8", 0.3)}`,
               borderRadius: 999,
               padding: "11px 16px",
               color: colors.ink,
