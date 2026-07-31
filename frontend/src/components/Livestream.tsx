@@ -17,7 +17,6 @@ import { Check } from "lucide-react";
 import { ARENA } from "./Arena";
 import { ArtIcoon } from "./ArtIcoon";
 import { Avatar } from "./Avatar";
-import { Schild } from "./Divisie";
 import { Reel } from "./Reel";
 import type { GameApi } from "../net/socket";
 import { hoogtepunten, prestaties, woordVanDeRonde } from "../lib/hoogtepunten";
@@ -294,12 +293,13 @@ function Eindstand({ game }: { game: GameApi }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, width: "100%", padding: "0 16px", minWidth: 0 }}>
       <div className="stream-links-in" style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-        {/* De eerste plaats krijgt wat hij op zijn profiel ook krijgt: de ring
-            van zijn divisie om de avatar, met het schild ernaast. De naam
-            groeit mee, zodat de drie samen één ding zijn en niet een plaatje
-            met een bijschrift. */}
-        <Avatar name={kampioen.p.name} color={kampioen.p.color} size={46} userId={kampioen.p.user_id} hasAvatar={kampioen.p.has_avatar} avatarVer={kampioen.p.avatar_ver} frame={kampioen.p.frame} divisie={kampioen.p.divisie} glow />
-        <Schild divisie={kampioen.p.divisie ?? 0} maat={26} />
+        {/* De eerste plaats krijgt de GOUDEN RING van het profiel om zijn
+            avatar: de lijst die je daar als beloning draagt, hier als lauwer om
+            de winnaar. Geen schild ernaast; dat is een rang en geen prijs, en
+            twee sieraden om hetzelfde hoofd vechten met elkaar.
+            Ruimer bemeten dan een gewone avatar, want een art-lijst vult zijn
+            doos en de avatar zakt daarbinnen terug tot zeventig procent. */}
+        <Avatar name={kampioen.p.name} color={kampioen.p.color} size={58} userId={kampioen.p.user_id} hasAvatar={kampioen.p.has_avatar} avatarVer={kampioen.p.avatar_ver} frame="fr01" glow />
         <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
           <span style={{ fontFamily: font.ui, fontSize: 8.5, fontWeight: 800, letterSpacing: 1.1, textTransform: "uppercase", color: withAlpha(colors.gold, 0.85) }}>
             {t("streamKampioen")}
