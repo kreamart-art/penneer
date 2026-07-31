@@ -37,7 +37,7 @@ GAMES: dict[int, dict] = {
     3: {"key": "flitsreeks", "af": True},
     4: {"key": "lettersoep", "af": True},
     5: {"key": "kleurenklem", "af": True},
-    6: {"key": "rekenladder", "af": False},
+    6: {"key": "rekenladder", "af": True},
 }
 
 
@@ -113,15 +113,39 @@ def plausibel(game: str, score: int, level: int, time_ms: int) -> bool:
         # marge per ronde kan niet, want dan was de klem allang dichtgeslagen.
         ruimte = sum(KLEURENKLEM_VENSTER(r) for r in range(1, level + 1))
         return time_ms <= 5000 + ruimte + 900 * level
+    if game == "rekenladder":
+        # Score-contract met de client: trede k levert 100*k punten plus hooguit
+        # 50*k naar rato van de overgehouden tijd, dus ten hoogste 150*k. `level`
+        # is de trede waarop de poging EINDIGDE, en die is per definitie niet
+        # gehaald; goed gegaan zijn de treden 1 tot en met level-1.
+        #   som van 150*k voor k=1..level-1  =  75 * level * (level-1)
+        if score > 75 * level * max(0, level - 1):
+            return False
+        # Tijd van onderen: na elk goed antwoord licht het even op voordat de
+        # volgende som komt (420ms). Ruim eronder gerekend, want dit moet
+        # scriptjes vangen en geen snelle rekenaars op een trage telefoon.
+        if time_ms < 350 * max(0, level - 1):
+            return False
+        # En van boven: alle klokken bij elkaar plus marge. Langer kan niet, want
+        # dan was de balk allang leeg.
+        ruimte = sum(REKENLADDER_VENSTER(k) for k in range(1, level + 1))
+        return time_ms <= 5000 + ruimte + 900 * level
     # Spellen die nog niet af zijn accepteren geen inzendingen.
     return False
+
+
+def REKENLADDER_VENSTER(trede: int) -> int:
+    """Hoeveel milliseconden je voor trede `trede` krijgt. Moet gelijk lopen met
+    vensterVoor() in frontend/src/screens/_PreviewRekenladder.tsx; staat het hier
+    anders, dan keurt de server een eerlijke poging af."""
+    return max(3000, 9000 - (max(1, trede) - 1) * 400)
 
 
 def KLEURENKLEM_VENSTER(ronde: int) -> int:
     """Hoeveel milliseconden je voor opgave `ronde` krijgt. Moet gelijk lopen
     met trapVoor() in frontend/src/screens/_PreviewKleurenklem.tsx; staat het
     hier anders, dan keurt de server een eerlijke poging af."""
-    return max(700, 2300 - (max(1, ronde) - 1) * 90)
+    return max(800, 2400 - (max(1, ronde) - 1) * 65)
 
 
 def LETTERSOEP_DOEL(level: int) -> int:

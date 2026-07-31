@@ -37,7 +37,42 @@ def test_flitsreeks_scorecontract():
 
 def test_onaffe_spellen_weigeren_inzendingen():
     assert not arena.plausibel("woordketen", 100, 1, 60000)
-    assert not arena.plausibel("rekenladder", 100, 1, 60000)
+    assert not arena.plausibel("wereldprik", 100, 1, 60000)
+    assert not arena.plausibel("waaghet", 100, 1, 60000)
+
+
+def test_rekenladder_scorecontract():
+    """Trede k is 100*k tot 150*k waard, en de trede waarop je VALT telt niet
+    mee. Op trede 10 gevallen betekent dus negen goede sommen."""
+    # Meteen fout op trede 1: nul punten, mag.
+    assert arena.plausibel("rekenladder", 0, 1, 2000)
+    # Trede 10 = 9 goede sommen, hoogstens 150*(1+..+9) = 6750.
+    assert arena.plausibel("rekenladder", 4200, 10, 30000)
+    assert arena.plausibel("rekenladder", 6750, 10, 30000)
+    assert not arena.plausibel("rekenladder", 6751, 10, 30000)   # meer dan er kan
+    assert not arena.plausibel("rekenladder", 4200, 10, 3000)    # onmogelijk snel
+    ruimte = sum(arena.REKENLADDER_VENSTER(k) for k in range(1, 11))
+    assert arena.plausibel("rekenladder", 4200, 10, 5000 + ruimte + 9000)
+    assert not arena.plausibel("rekenladder", 4200, 10, 5000 + ruimte + 9001)
+    assert not arena.plausibel("rekenladder", -1, 1, 1000)
+
+
+def test_rekenladder_klok_zakt_en_stopt():
+    """De klok zakt per trede en blijft op drie seconden staan; daaronder is een
+    som van twee bewerkingen geen rekenwerk meer maar een gok. Deze getallen
+    moeten gelijk zijn aan vensterVoor() op de client."""
+    assert arena.REKENLADDER_VENSTER(1) == 9000
+    assert arena.REKENLADDER_VENSTER(8) == 6200
+    assert arena.REKENLADDER_VENSTER(15) == 3400
+    assert arena.REKENLADDER_VENSTER(16) == 3000
+    assert arena.REKENLADDER_VENSTER(40) == 3000
+
+
+def test_zondag_is_rekenladder_en_speelbaar():
+    """2026-08-02 is een zondag: de eerste dagronde met dit spel."""
+    spel = arena.spel_voor("2026-08-02")
+    assert spel["key"] == "rekenladder"
+    assert spel["af"] is True
 
 
 def test_kleurenklem_scorecontract():
@@ -61,11 +96,11 @@ def test_kleurenklem_venster_loopt_dicht_en_stopt():
     """De klem sluit steeds sneller, maar nooit sneller dan zeven tienden;
     daaronder is het geen reactietest meer maar een gokje. Deze getallen moeten
     gelijk zijn aan trapVoor() op de client."""
-    assert arena.KLEURENKLEM_VENSTER(1) == 2300
-    assert arena.KLEURENKLEM_VENSTER(2) == 2210
-    assert arena.KLEURENKLEM_VENSTER(18) == 770
-    assert arena.KLEURENKLEM_VENSTER(19) == 700
-    assert arena.KLEURENKLEM_VENSTER(40) == 700
+    assert arena.KLEURENKLEM_VENSTER(1) == 2400
+    assert arena.KLEURENKLEM_VENSTER(2) == 2335
+    assert arena.KLEURENKLEM_VENSTER(25) == 840
+    assert arena.KLEURENKLEM_VENSTER(26) == 800
+    assert arena.KLEURENKLEM_VENSTER(40) == 800
 
 
 def test_zaterdag_is_kleurenklem_en_speelbaar():

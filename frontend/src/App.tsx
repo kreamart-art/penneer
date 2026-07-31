@@ -40,6 +40,7 @@ const Juridisch = lazy(() => import("./screens/Juridisch").then((m) => ({ defaul
 const PreviewLettersoep = lazy(() => import("./screens/_PreviewLettersoep"));
 // En dat van zaterdag, achter ?klem.
 const PreviewKleurenklem = lazy(() => import("./screens/_PreviewKleurenklem"));
+const PreviewRekenladder = lazy(() => import("./screens/_PreviewRekenladder"));
 import { InviteBanner } from "./components/InviteBanner";
 import { DmBanner } from "./components/DmBanner";
 import { localNotify } from "./components/NotifyNudge";
@@ -482,6 +483,8 @@ export default function App() {
     screen = <PreviewLettersoep />;
   } else if (typeof location !== "undefined" && location.search.includes("klem")) {
     screen = <PreviewKleurenklem />;
+  } else if (typeof location !== "undefined" && location.search.includes("reken")) {
+    screen = <PreviewRekenladder />;
   } else if (showRules) {
     screen = <Rules onBack={() => setShowRules(false)} />;
   } else if (showDaily) {

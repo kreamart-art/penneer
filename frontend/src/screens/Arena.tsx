@@ -25,6 +25,7 @@ import { NeonText } from "../components/NeonText";
 import { ArtSchaduw, GOUD, KADER_LIJN_ROOD, NeonKader, Paneel, PlekWapen } from "../components/ProfileHero";
 import { GlasRij, Lijst } from "./Hub";
 import { Kleurenklem } from "./_PreviewKleurenklem";
+import { Rekenladder } from "./_PreviewRekenladder";
 import { Lettersoep } from "./_PreviewLettersoep";
 import type { GameApi } from "../net/socket";
 import { useT } from "../i18n/i18n";
@@ -488,7 +489,7 @@ export function ArenaDeel({ game, onBack }: { game: GameApi; onBack: () => void 
   // decor over, en twee lagen tegelijk zou twee panelen door elkaar tekenen.
   useEffect(() => {
     if (fase === "spel") return;
-    const hal = info?.game === "lettersoep" || info?.game === "kleurenklem" ? "soephal" : "flitshal";
+    const hal = info?.game === "lettersoep" || info?.game === "kleurenklem" || info?.game === "rekenladder" ? "soephal" : "flitshal";
     document.body.classList.add(hal);
     return () => document.body.classList.remove(hal);
   }, [fase, info?.game]);
@@ -576,6 +577,10 @@ export function ArenaDeel({ game, onBack }: { game: GameApi; onBack: () => void 
             // dezelfde letters is een geheugenspel, geen zoekspel). De server
             // kent beide helften, dus de reeks blijft controleerbaar.
             <Lettersoep seed={`${poging.seed}:${poging.attempt_id}`} onKlaar={klaar} />
+          ) : info?.game === "rekenladder" ? (
+            // Ook per poging vers. Twee keer dezelfde sommen in dezelfde
+            // volgorde is geen rekentest meer maar een geheugentest.
+            <Rekenladder seed={`${poging.seed}:${poging.attempt_id}`} onKlaar={klaar} />
           ) : info?.game === "kleurenklem" ? (
             // Kleurenklem ook per poging vers, en om dezelfde reden: de reeks
             // opgaven is kort en je onthoudt hem. Twee keer dezelfde kleuren in
