@@ -207,14 +207,13 @@ const LADDER_H = 733;
 // telefoonkader uit de mockup, 2092 van 4096 breed). Eén zaalpixel is dus
 // schermbreedte/2092, en daarmee is alles in vw uit te drukken:
 //   breedte = 1776,2 / 2092 = 84,90% van de schermbreedte
-// De bovenkant hangt aan de ONDERkant van de zaal, want die is onderaan
-// verankerd: de plaat is 195,8% van de breedte hoog, dus zijn bovenrand ligt op
-// 100lvh - 195,8vw, en het puntje zit 2070,6/2092 = 98,98vw daaronder.
-//   top = 100lvh - 195,79vw + 98,98vw = 100lvh - 96,81vw
+// De zaal is bovenaan verankerd en heeft 442 rijen doorgetrokken plafond boven
+// de tekening, dus het puntje zit (442 + 2070,6)/2092 = 120,11vw onder de
+// schermrand.
 const LADDER_BREED = 84.90;      // vw
-const LADDER_TOP = "calc(100lvh - 96.81vw)";
-// De onderkant volgt eruit: 96,81 - 84,90 * 733/1100 = 40,23.
-const LADDER_ONDER = "calc(100lvh - 40.23vw)";
+const LADDER_TOP = "120.11vw";
+// De onderkant volgt eruit: 120,11 + 84,90 * 733/1100 = 176,69.
+const LADDER_ONDER = "176.69vw";
 // De puntjes zelf zijn gereedschap en geen decor; die zijn uit de zaal gepoetst.
 
 /** Per trede: waar de strook zit in de ladder, en waar het VLAK van de plaat

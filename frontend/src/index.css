@@ -1335,9 +1335,17 @@ html.klassiek body.lijst::after {
    kader in de mockup is 0,51 breed-op-hoog en een telefoon 0,46, dus cover
    snijdt er meer af dan de tekenaar bedoelde.
 
-   Op 195,8% van de breedte is de plaat 769 punten hoog op een scherm van 852, en
-   die 83 punten bovenaan vult de achtergrondKLEUR. Dat mag hier, want de
-   bovenste rijen van de art zijn zelf (1, 0, 5): zwart op zwart, geen naad.
+   Op 195,8% van de breedte is een vierkante plaat 769 punten hoog op een scherm
+   van 852. Die 83 punten zijn opgelost in de PLAAT en niet in de css: er zitten
+   442 rijen doorgetrokken plafond bovenop, dus het bestand is 4096 bij 4538 en
+   vult het scherm helemaal.
+
+   Dat is met opzet geen vulkleur en geen rek. Een vlakke kleur bovenaan leest
+   als een achtergrond die te snel dooft, en rekken haalt de vloerboog uit het
+   lood. Doortrekken kan hier omdat de bovenste rijen van de art (2, 0, 7) zijn
+   met een spreiding van 2: er valt niets te zien wat kan verspringen.
+
+   En omdat de lucht BOVENOP zit staat alles eronder nog precies waar het stond.
 
    EN VERDER NIETS. Geen ruislaag, geen sluier, geen verloop eronder: de zaal
    zoals hij getekend is, en anders niks. De andere hallen in dit bestand hebben
@@ -1354,14 +1362,14 @@ body.rekenspel::after {
   height: calc(100lvh + 240px);
   z-index: -1;
   pointer-events: none;
-  background-color: #010005;
+  background-color: #03000A;
   background-repeat: no-repeat;
-  background-position: bottom center;
+  background-position: top center;
   background-size: 195.8% auto;
 }
 body.rekenzaal::after {
   background-image: url("/ui/reken/bg-lobby.webp?v=2");
 }
 body.rekenspel::after {
-  background-image: url("/ui/reken/bg-spel.webp?v=2");
+  background-image: url("/ui/reken/bg-spel.webp?v=3");
 }
