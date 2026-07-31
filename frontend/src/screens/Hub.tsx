@@ -884,21 +884,7 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
     >
         {/* De kop draagt ALTIJD de veilige zone: de pagina begint bovenaan het
             scherm, dus de statusbalk van de telefoon ligt er altijd overheen. */}
-        <div style={{ padding: "calc(10px + env(safe-area-inset-top)) 16px 10px", backgroundColor: BALK_VULLING, ...goudHaarlijn("bottom") }}>
-          {/* De INHOUD van de balk verdwijnt zodra het toetsenbord opkomt, en
-              komt terug als je het wegtikt. De balk zelf blijft staan.
-              Waarom: iOS schuift de laag met zijn eigen animatie omhoog, en in
-              die halve seconde schildert hij de oude en de nieuwe stand kort
-              over elkaar. Dat zie je alleen aan wat er IN de balk staat, want
-              een egaal vlak over een egaal vlak is onzichtbaar. Het is geen
-              verlies: tijdens het typen kijk je naar je bericht, niet naar de
-              naam van degene met wie je praat. */}
-          <div style={{
-            display: "flex", alignItems: "center", gap: 10,
-            opacity: vak.gekrompen ? 0 : 1,
-            pointerEvents: vak.gekrompen ? "none" : "auto",
-            transition: "opacity .12s ease",
-          }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "calc(10px + env(safe-area-inset-top)) 16px 10px", backgroundColor: BALK_VULLING, ...goudHaarlijn("bottom") }}>
           {partner ? (
             <Avatar name={partner.name} color={partner.color} size={34} userId={partner.id} hasAvatar={partner.has_avatar} avatarVer={partner.avatar_ver} divisie={partner.divisie} />
           ) : null}
@@ -917,7 +903,6 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
           <button onClick={game.dmClose} aria-label={t("back")} style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 4 }}>
             <CloseIcon size={26} />
           </button>
-          </div>
         </div>
 
         {behangOpen && (
