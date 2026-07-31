@@ -194,6 +194,7 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
           margin: "0 auto",
           height: "min(72vh, 620px)",
           maxHeight: vak.hoogte,
+          transition: "max-height .2s cubic-bezier(.2,1,.3,1)",
           display: "flex",
           flexDirection: "column",
           background: "linear-gradient(180deg, #1B1245 0%, #140C33 100%)",
@@ -233,8 +234,10 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
             justifyContent: "space-between",
             // Zie de privéberichten: met toetsenbord staat de kop tegen de
             // statusbalk van de telefoon aan, dus dan schuift de inhoud daar
-            // onderuit.
+            // onderuit. Met een overgang, zodat hij meegroeit met de lade in
+            // plaats van er een beeldje later bovenop te springen.
             padding: vak.gekrompen ? "calc(10px + env(safe-area-inset-top)) 16px 10px" : "14px 16px 10px",
+            transition: "padding .2s cubic-bezier(.2,1,.3,1)",
             ...goudHaarlijn("bottom"),
           }}
         >

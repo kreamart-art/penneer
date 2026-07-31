@@ -16,6 +16,8 @@ export type ZichtbaarVak = {
   top: number;
   /** De hoogte van dat zichtbare deel. */
   hoogte: number;
+  /** Hoeveel er ONDERAAN wordt afgedekt. Vrijwel altijd de toetsenbordhoogte. */
+  bedekt: number;
   /** Is er een flink stuk scherm afgedekt? Vrijwel altijd het toetsenbord. */
   gekrompen: boolean;
 };
@@ -32,7 +34,7 @@ const DREMPEL = 80;
 
 function meet(): ZichtbaarVak {
   const vv = window.visualViewport;
-  if (!vv) return { top: 0, hoogte: window.innerHeight, gekrompen: false };
+  if (!vv) return { top: 0, hoogte: window.innerHeight, bedekt: 0, gekrompen: false };
   // De maat om tegen af te zetten is `clientHeight` van het document: dat IS de
   // layout-viewport en die blijft staan als het toetsenbord opkomt. De eerste
   // versie gebruikte hiervoor window.innerHeight, en die krimpt in de
@@ -40,7 +42,12 @@ function meet(): ZichtbaarVak {
   // nul. Wat hiervan afhangt blijft daarom klein (een marge, geen layout): gaat
   // het ooit toch mis op een toestel, dan kost het een randje en geen scherm.
   const layout = document.documentElement.clientHeight || window.innerHeight;
-  return { top: vv.offsetTop, hoogte: vv.height, gekrompen: layout - vv.height > DREMPEL };
+  return {
+    top: Math.round(vv.offsetTop),
+    hoogte: vv.height,
+    bedekt: Math.max(0, Math.round(layout - vv.height - vv.offsetTop)),
+    gekrompen: layout - vv.height > DREMPEL,
+  };
 }
 
 export function useZichtbaarVak(): ZichtbaarVak {

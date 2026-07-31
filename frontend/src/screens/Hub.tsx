@@ -852,15 +852,16 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
     // berichtenlijst (flex: 1) is wat er kleiner van wordt.
     <div
       style={{
+        // De doos zelf staat ALTIJD in de hoeken van het scherm, zodat er nooit
+        // een streepje app-achtergrond onder je gesprek doorschemert. Wat het
+        // toetsenbord afdekt gaat er als OPVULLING af, en dat is een lengte,
+        // dus die kan bewegen: de kop groeit naar de bredere balk terwijl de
+        // berichtenlijst eronder krimpt, in plaats van dat het springt.
         position: "fixed",
-        left: 0,
-        right: 0,
-        // Zonder toetsenbord tot in de HOEKEN van het scherm: een hoogte uit
-        // visualViewport kan er een pixel naast zitten en dan zie je onderaan
-        // een streepje app-achtergrond onder je gesprek. Met toetsenbord telt
-        // de gemeten hoogte wel, want dan is die het enige wat klopt.
-        top: vak.gekrompen ? vak.top : 0,
-        ...(vak.gekrompen ? { height: vak.hoogte } : { bottom: 0 }),
+        inset: 0,
+        paddingTop: vak.top,
+        paddingBottom: vak.bedekt,
+        transition: "padding .2s cubic-bezier(.2,1,.3,1)",
         zIndex: 85,
         display: "flex",
         flexDirection: "column",
