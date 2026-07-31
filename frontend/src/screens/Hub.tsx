@@ -21,7 +21,7 @@ import { AvatarZoom } from "../components/AvatarZoom";
 import { Button } from "../components/Button";
 import { MicButton } from "../components/MicButton";
 import { BeeldKnop } from "../components/BeeldKnop";
-import { KNOP_GOUD_VERLOOP, goudHaarlijn } from "../components/GlasKnop";
+import { goudHaarlijn } from "../components/GlasKnop";
 import { useZichtbaarVak } from "../lib/zichtbaarvak";
 import { VerstuurKnop } from "../components/VerstuurKnop";
 import { VoiceNote } from "../components/VoiceNote";
@@ -841,38 +841,38 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
   };
 
   return (
+    // Een VOLLEDIGE pagina, geen lade. Een gesprek in de room is een popup
+    // omdat je het spel erachter in de gaten wilt houden; een privégesprek uit
+    // de inbox heeft geen achtergrond die ertoe doet, dus dat verdient het
+    // hele scherm. Geen gouden rand eromheen (er is geen rand meer om te
+    // markeren), alleen de gouden haarlijnen tussen de stroken.
+    //
     // Aan het ZICHTBARE vak en niet aan de pagina: komt het toetsenbord op,
-    // dan krimpt dit vak en groeit de lade mee naar de bovenkant ervan. De kop
-    // met de avatar blijft zo bovenaan staan en de berichtenlijst (die `flex:
-    // 1` heeft) is wat er kleiner van wordt. Zonder toetsenbord is dit precies
-    // het hele scherm en verandert er niets.
-    <div style={{ position: "fixed", left: 0, right: 0, top: vak.top, height: vak.hoogte, zIndex: 85, background: "rgba(6,3,18,.7)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
-      {/* De lade in de neonlijst van de app. Alleen de BOVENhoeken zijn rond en
-          de lijn loopt door tot onder het scherm: hij komt van beneden en zit
-          daar vast, dus een lijst helemaal rondom zou hem los laten zweven. */}
-      <NeonKader
-        radius="22px 22px 0 0"
-        dik={0.75}
-        lijn={KNOP_GOUD_VERLOOP}
-        gloed="0 -14px 50px rgba(0,0,0,.45)"
-        vulling="geen"
-        style={{ width: "100%", maxWidth: 430 }}
-        binnen={{
-          height: "78dvh",
-          // Nooit hoger dan wat je ziet. Komt het toetsenbord op, dan snijdt dit
-          // de lade terug tot het gekrompen vak: de kop blijft bovenaan en de
-          // berichtenlijst (flex: 1) is wat er kleiner van wordt.
-          maxHeight: vak.hoogte,
-          display: "flex",
-          flexDirection: "column",
-          padding: 0,
-          backgroundImage: [
-            "linear-gradient(180deg, rgba(255,243,181,.07) 0%, transparent 12%)",
-            "linear-gradient(180deg, #241740 0%, #1A1035 55%, #120A28 100%)",
-          ].join(", "),
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: vak.gekrompen ? "calc(10px + env(safe-area-inset-top)) 16px 10px" : "14px 16px", ...goudHaarlijn("bottom") }}>
+    // dan krimpt dit vak mee. De kop met de avatar blijft bovenaan staan en de
+    // berichtenlijst (flex: 1) is wat er kleiner van wordt.
+    <div
+      style={{
+        position: "fixed",
+        left: 0,
+        right: 0,
+        // Zonder toetsenbord tot in de HOEKEN van het scherm: een hoogte uit
+        // visualViewport kan er een pixel naast zitten en dan zie je onderaan
+        // een streepje app-achtergrond onder je gesprek. Met toetsenbord telt
+        // de gemeten hoogte wel, want dan is die het enige wat klopt.
+        top: vak.gekrompen ? vak.top : 0,
+        ...(vak.gekrompen ? { height: vak.hoogte } : { bottom: 0 }),
+        zIndex: 85,
+        display: "flex",
+        flexDirection: "column",
+        backgroundImage: [
+          "linear-gradient(180deg, rgba(255,243,181,.07) 0%, transparent 12%)",
+          "linear-gradient(180deg, #241740 0%, #1A1035 55%, #120A28 100%)",
+        ].join(", "),
+      }}
+    >
+        {/* De kop draagt ALTIJD de veilige zone: de pagina begint bovenaan het
+            scherm, dus de statusbalk van de telefoon ligt er altijd overheen. */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "calc(10px + env(safe-area-inset-top)) 16px 10px", ...goudHaarlijn("bottom") }}>
           {partner ? (
             <Avatar name={partner.name} color={partner.color} size={34} userId={partner.id} hasAvatar={partner.has_avatar} avatarVer={partner.avatar_ver} divisie={partner.divisie} />
           ) : null}
@@ -1045,7 +1045,6 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
             </>
           )}
         </div>
-      </NeonKader>
     </div>
   );
 }
