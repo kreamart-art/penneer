@@ -17,7 +17,7 @@ import { Check } from "lucide-react";
 import { ARENA } from "./Arena";
 import { ArtIcoon } from "./ArtIcoon";
 import { Avatar } from "./Avatar";
-import { Schild } from "./Divisie";
+import { RingFoto, RingPortret, divisieKleur } from "./ProfileHero";
 import { Reel } from "./Reel";
 import type { GameApi } from "../net/socket";
 import { hoogtepunten, prestaties, woordVanDeRonde } from "../lib/hoogtepunten";
@@ -294,12 +294,22 @@ function Eindstand({ game }: { game: GameApi }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, width: "100%", padding: "0 16px", minWidth: 0 }}>
       <div className="stream-links-in" style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-        {/* De eerste plaats krijgt wat er op je profiel om je hoofd staat: de
-            gouden lijst om de avatar, met het rangschild ernaast. Ruimer
-            bemeten dan een gewone avatar, want een art-lijst vult zijn doos en
-            de avatar zakt daarbinnen terug tot zeventig procent. */}
-        <Avatar name={kampioen.p.name} color={kampioen.p.color} size={58} userId={kampioen.p.user_id} hasAvatar={kampioen.p.has_avatar} avatarVer={kampioen.p.avatar_ver} frame="fr01" glow />
-        <Schild divisie={kampioen.p.divisie ?? 0} maat={30} />
+        {/* Precies het portret van het profiel: de gouden ring met de
+            lauwertak, en het rangschild dat er onderop hangt, half over de foto
+            en half over de gouden band. Eén onderdeel, geen losse onderdelen
+            naast elkaar. */}
+        <RingPortret maat={72} level={kampioen.p.level ?? 0} kleur={divisieKleur(kampioen.p.divisie)}>
+          {/* Altijd RingFoto, ook zonder foto: die vult het ronde gat en heeft
+              zelf geen rand. De gewone Avatar zou zijn eigen rangring meebrengen
+              en dan zie je een vierkant kadertje binnen de gouden ring. */}
+          <RingFoto
+            userId={kampioen.p.user_id ?? ""}
+            versie={kampioen.p.avatar_ver}
+            heeftFoto={!!kampioen.p.user_id && kampioen.p.has_avatar}
+            naam={kampioen.p.name}
+            kleur={kampioen.p.color}
+          />
+        </RingPortret>
         <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
           <span style={{ fontFamily: font.ui, fontSize: 8.5, fontWeight: 800, letterSpacing: 1.1, textTransform: "uppercase", color: withAlpha(colors.gold, 0.85) }}>
             {t("streamKampioen")}
