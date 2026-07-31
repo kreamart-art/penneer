@@ -448,7 +448,7 @@ export function Livestream({ game }: { game: GameApi }) {
 
   // Het merkje draagt ook de ronde: hetzelfde plekje, meer te zeggen.
   const merk = eind
-    ? `${t("streamLive")} · ${t("streamEindstand")}`
+    ? t("streamEinde")
     : getoond === "lobby" || getoond === "rules"
       ? t("streamLive")
       : `${t("streamLive")} · ${t("streamRonde", { n: String(room.round_no), van: String(room.settings.rounds) })}`;
@@ -602,7 +602,10 @@ export function Livestream({ game }: { game: GameApi }) {
             borderRadius: "50%",
             background: colors.red,
             boxShadow: `0 0 6px ${colors.red}`,
-            animation: "fill-pulse 1.1s ease-in-out infinite",
+            // Alleen zolang er iets te zien is. Een knipperend lampje onder een
+            // afgelopen uitzending spreekt zichzelf tegen.
+            animation: eind ? undefined : "fill-pulse 1.1s ease-in-out infinite",
+            opacity: eind ? 0.55 : 1,
           }}
         />
         <span style={{ fontFamily: font.ui, fontWeight: 700, fontSize: 9, letterSpacing: 0.7, color: colors.redHi, textTransform: "uppercase" }}>
