@@ -18,6 +18,18 @@ export const GOUD_LICHT = "#FFDE8A";
  *  popup en de knoppen erin horen uit een stuk metaal te komen. */
 export const KNOP_GOUD_VERLOOP = `linear-gradient(155deg, ${GOUD_LICHT} 0%, ${GOUD_LIJN} 34%, ${GOUD_DONKER} 68%, ${GOUD_LIJN} 100%)`;
 
+/** Een gouden HAARLIJN boven- of onderaan een vlak, in hetzelfde verloop als
+ *  de knopranden. Als achtergrondlaag van 1px hoog, want een border kan geen
+ *  verloop volgen. In plaats van de grijze `colors.hairline`-schotten. */
+export function goudHaarlijn(kant: "top" | "bottom"): React.CSSProperties {
+  return {
+    backgroundImage: `linear-gradient(90deg, ${GOUD_DONKER} 0%, ${GOUD_LIJN} 30%, ${GOUD_LICHT} 50%, ${GOUD_LIJN} 70%, ${GOUD_DONKER} 100%)`,
+    backgroundSize: "100% 1px",
+    backgroundPosition: kant,
+    backgroundRepeat: "no-repeat",
+  };
+}
+
 /** Het verloop voor een teken in dezelfde gouden lijn als de rand. */
 export function GoudLijnDefs({ id }: { id: string }) {
   return (

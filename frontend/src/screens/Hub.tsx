@@ -21,7 +21,7 @@ import { AvatarZoom } from "../components/AvatarZoom";
 import { Button } from "../components/Button";
 import { MicButton } from "../components/MicButton";
 import { BeeldKnop } from "../components/BeeldKnop";
-import { KNOP_GOUD_VERLOOP } from "../components/GlasKnop";
+import { KNOP_GOUD_VERLOOP, goudHaarlijn } from "../components/GlasKnop";
 import { VerstuurKnop } from "../components/VerstuurKnop";
 import { VoiceNote } from "../components/VoiceNote";
 import { EmotePicker } from "../components/EmotePicker";
@@ -847,7 +847,7 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
         radius={22}
         dik={0.75}
         lijn={KNOP_GOUD_VERLOOP}
-        gloed="verloop"
+        gloed="0 -14px 50px rgba(0,0,0,.45)"
         vulling="geen"
         style={{ width: "100%", maxWidth: 430 }}
         binnen={{
@@ -861,7 +861,7 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
           ].join(", "),
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", borderBottom: `1px solid ${colors.hairline}` }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", ...goudHaarlijn("bottom") }}>
           {partner ? (
             <Avatar name={partner.name} color={partner.color} size={34} userId={partner.id} hasAvatar={partner.has_avatar} avatarVer={partner.avatar_ver} divisie={partner.divisie} />
           ) : null}
@@ -894,6 +894,7 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
               padding: "10px 14px", overflowX: "auto", overflowY: "hidden",
               WebkitOverflowScrolling: "touch", scrollbarWidth: "none",
               flexShrink: 0,
+              ...goudHaarlijn("bottom"),
             }}
           >
             {WALLPAPERS.map((w) => {
@@ -986,7 +987,7 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
           />
         )}
 
-        <div style={{ display: "flex", gap: 8, padding: "10px 14px calc(12px + env(safe-area-inset-bottom))" }}>
+        <div style={{ display: "flex", gap: 8, padding: "10px 14px calc(12px + env(safe-area-inset-bottom))", ...goudHaarlijn("top") }}>
           <button
             type="button"
             onClick={() => { sound.uiTap(); setDmEmotesOpen((v) => !v); }}

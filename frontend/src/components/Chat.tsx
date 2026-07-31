@@ -10,7 +10,7 @@ import type { GameApi } from "../net/socket";
 import { MicButton } from "./MicButton";
 import { BeeldKnop } from "./BeeldKnop";
 import { VerstuurKnop } from "./VerstuurKnop";
-import { KNOP_GOUD_VERLOOP } from "./GlasKnop";
+import { KNOP_GOUD_VERLOOP, goudHaarlijn } from "./GlasKnop";
 import { VoiceNote } from "./VoiceNote";
 import { EmotePicker } from "./EmotePicker";
 import { EMOTE_SRC, FREE_EMOTE_PACKS } from "./emotes";
@@ -224,7 +224,7 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
             alignItems: "center",
             justifyContent: "space-between",
             padding: "14px 16px 10px",
-            borderBottom: `1px solid ${colors.hairline}`,
+            ...goudHaarlijn("bottom"),
           }}
         >
           <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink }}>
@@ -258,6 +258,7 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
               padding: "10px 14px", overflowX: "auto", overflowY: "hidden",
               WebkitOverflowScrolling: "touch", scrollbarWidth: "none",
               flexShrink: 0,
+              ...goudHaarlijn("bottom"),
             }}
           >
             {WALLPAPERS.map((w) => {
@@ -391,7 +392,7 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
             gap: 8,
             padding: "10px 12px",
             paddingBottom: "calc(10px + env(safe-area-inset-bottom))",
-            borderTop: `1px solid ${colors.hairline}`,
+            ...goudHaarlijn("top"),
           }}
         >
           <button
@@ -435,7 +436,7 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
               // lijn die je ziet. Overal waar je iets zegt hoort hetzelfde vak.
               background: "rgba(6,3,18,.55)",
               border: "none",
-              boxShadow: `inset 0 0 0 1px ${withAlpha("#A868F5", draft.trim() ? 0.6 : 0.42)}, 0 0 4px ${withAlpha("#8B45E8", 0.3)}`,
+              boxShadow: `inset 0 0 0 1px ${withAlpha("#A868F5", draft.trim() ? 0.6 : 0.42)}, 0 0 3px ${withAlpha("#8B45E8", 0.18)}`,
               borderRadius: 999,
               padding: "11px 16px",
               color: colors.ink,
