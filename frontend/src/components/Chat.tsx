@@ -72,12 +72,16 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
   // achtergrond te veranderen, en wat je hier kiest geldt meteen ook daar.
   const [behang, setBehang] = useState<WallpaperId>(wallpaperVan);
   const [behangOpen, setBehangOpen] = useState(false);
-  // Ben je aan het typen? Dan gaat de gouden ring om de lade weg. Tijdens het
-  // typen is de lade geen VOORWERP meer dat over het spel ligt maar het enige
-  // waar je naar kijkt, en dan is een lijst eromheen alleen nog een streep
-  // tussen jou en je bericht. De gouden strepen tussen de stroken blijven wel:
-  // die verdelen de lade, ze omlijsten hem niet.
-  const [typt, setTypt] = useState(false);
+  // De gouden ring om de lade gaat weg zodra het TOETSENBORD op staat, en komt
+  // terug zodra je het wegtikt. Tijdens het typen is de lade geen voorwerp meer
+  // dat over het spel ligt maar het enige waar je naar kijkt, en dan is een
+  // lijst eromheen alleen nog een streep tussen jou en je bericht. De gouden
+  // strepen tussen de stroken blijven wel: die verdelen de lade, ze omlijsten
+  // hem niet.
+  //
+  // Op het TOETSENBORD en niet op de focus van het invulveld: de chat zet die
+  // focus zelf al bij het openen, dus op focus was de ring meteen weg voordat
+  // je ook maar iets gedaan had.
   const vak = useZichtbaarVak();
   const { laag, onder } = useVakLaag();
   const roomCode = game.state.room?.code ?? "";
@@ -233,7 +237,7 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
             borderTopRightRadius: 22,
             padding: "1px 1px 0",
             background: KNOP_GOUD_VERLOOP,
-            opacity: typt ? 0 : 0.85,
+            opacity: vak.gekrompen ? 0 : 0.85,
             transition: "opacity .22s ease",
             WebkitMask: "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
             WebkitMaskComposite: "xor",
@@ -466,8 +470,6 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
             placeholder={t("chatPlaceholder")}
             maxLength={280}
             enterKeyHint="send"
-            onFocus={() => setTypt(true)}
-            onBlur={() => setTypt(false)}
             style={{
               flex: 1,
               minWidth: 0,
