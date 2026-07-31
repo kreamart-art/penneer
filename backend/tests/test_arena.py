@@ -96,11 +96,11 @@ def test_kleurenklem_venster_loopt_dicht_en_stopt():
     """De klem sluit steeds sneller, maar nooit sneller dan zeven tienden;
     daaronder is het geen reactietest meer maar een gokje. Deze getallen moeten
     gelijk zijn aan trapVoor() op de client."""
-    assert arena.KLEURENKLEM_VENSTER(1) == 2400
-    assert arena.KLEURENKLEM_VENSTER(2) == 2335
-    assert arena.KLEURENKLEM_VENSTER(25) == 840
-    assert arena.KLEURENKLEM_VENSTER(26) == 800
-    assert arena.KLEURENKLEM_VENSTER(40) == 800
+    assert arena.KLEURENKLEM_VENSTER(1) == 2300
+    assert arena.KLEURENKLEM_VENSTER(2) == 2210
+    assert arena.KLEURENKLEM_VENSTER(18) == 770
+    assert arena.KLEURENKLEM_VENSTER(19) == 700
+    assert arena.KLEURENKLEM_VENSTER(40) == 700
 
 
 def test_zaterdag_is_kleurenklem_en_speelbaar():

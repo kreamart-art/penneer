@@ -145,7 +145,7 @@ def KLEURENKLEM_VENSTER(ronde: int) -> int:
     """Hoeveel milliseconden je voor opgave `ronde` krijgt. Moet gelijk lopen
     met trapVoor() in frontend/src/screens/_PreviewKleurenklem.tsx; staat het
     hier anders, dan keurt de server een eerlijke poging af."""
-    return max(800, 2400 - (max(1, ronde) - 1) * 65)
+    return max(700, 2300 - (max(1, ronde) - 1) * 90)
 
 
 def LETTERSOEP_DOEL(level: int) -> int:

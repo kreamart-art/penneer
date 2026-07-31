@@ -106,18 +106,12 @@ export function trapVoor(ronde: number): Trap {
   // van twee eronder, en dat leest als een fout in de opmaak. Vier is 2x2, zes
   // is 3x2, allebei recht.
   //
-  // Pas vanaf ronde tien zes stenen. Stond op zeven, en dan komt de sprong van
-  // vier naar zes precies terwijl de klok ook al korter wordt: twee klappen
-  // tegelijk, en dat is waar het te snel zwaar werd.
-  const kleuren = r <= 9 ? 4 : 6;
-  // De klok zakt 65ms per ronde in plaats van 90, begint iets ruimer en stopt
-  // op acht tienden in plaats van zeven. Ronde 10 heeft nu 1815ms waar dat
-  // eerst 1490 was, en de bodem ligt op ronde 26 in plaats van 19.
-  const venster = Math.max(800, 2400 - (r - 1) * 65);
-  // De kans dat inkt en woord toevallig kloppen. Nul tot en met ronde 17, daarna
+  const kleuren = r <= 6 ? 4 : 6;
+  const venster = Math.max(700, 2300 - (r - 1) * 90);
+  // De kans dat inkt en woord toevallig kloppen. Nul tot en met ronde 13, daarna
   // heel langzaam omhoog tot hoogstens een op de acht. Meer zou de tegenspraak
   // ondermijnen die het spel IS.
-  const gelijk = r <= 17 ? 0 : Math.min(0.12, (r - 17) * 0.015);
+  const gelijk = r <= 13 ? 0 : Math.min(0.12, (r - 13) * 0.015);
   return { kleuren, venster, gelijk };
 }
 
