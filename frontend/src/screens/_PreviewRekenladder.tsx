@@ -213,10 +213,12 @@ function Tab({ tekst }: { tekst: string }) {
       <NeonKader
         radius={7}
         hoek={9}
-        dik={0.45}
+        dik={0.3}
         vulling="zwart"
         lijn={KADER_LIJN_GOUD}
         gloed="0 0 12px rgba(255,190,60,.3)"
+        animeer
+        eindkap="kort"
         binnen={{ padding: "4px 22px" }}
       >
         <span style={{ fontFamily: font.wide, fontSize: 11.5, letterSpacing: 2.4, textTransform: "uppercase", color: "#FFD98A", textShadow: "0 0 10px rgba(255,180,50,.55)" }}>
@@ -273,10 +275,14 @@ function SomVenster({ children }: { children: React.ReactNode }) {
     <NeonKader
       radius={10}
       hoek={13}
-      dik={0.4}
+      // De dunste van de drie: hij ligt het diepst, en een lijn die verder weg
+      // is hoort fijner te zijn.
+      dik={0.28}
       vulling="geen"
       lijn={KADER_LIJN_GOUD}
       gloed="0 0 10px rgba(255,190,60,.22)"
+      eindkap="kort"
+      adem={0.8}
       style={{ width: "100%" }}
       binnen={{
         padding: "18px 14px",
@@ -409,10 +415,20 @@ export function Rekenladder({ seed, onKlaar, onOpnieuw }: {
           <NeonKader
             radius={14}
             hoek={18}
-            dik={0.55}
+            // Dun. Op een scherm van drie keer is 0,35 nog altijd een volle
+            // beeldpunt, en een haarlijn leest als metaal waar een dikke lijn
+            // als een rand leest.
+            dik={0.35}
             vulling="geen"
             lijn={KADER_LIJN_GOUD}
             gloed="verloop"
+            // Het licht zit IN de lijn: de kleuren lopen rond (`animeer`), de
+            // afgesneden hoeken vangen een kap op (`eindkap`), en het piekpunt
+            // glijdt af en toe langs de bovenrand (`veeg`). Eén rij met een veeg
+            // tegelijk, meer wordt onrustig; hier is dit de enige.
+            animeer
+            eindkap="kort"
+            veeg
             binnen={{
               padding: "22px 16px 16px",
               display: "flex",
