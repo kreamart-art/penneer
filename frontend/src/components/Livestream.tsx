@@ -32,6 +32,63 @@ const ROL_GROOT = 0.68;
  *  bij het rollen, maar wel groot genoeg om DE letter te zijn. */
 const ROL_KLEIN = 0.62;
 
+/** De BELICHTING per pagina. Zelfde set, ander licht.
+ *
+ *  Elke pagina hoort een eigen sfeer te hebben, en dat is precies wat een
+ *  studio doet: niet het decor omruilen tussen twee segmenten, maar de lampen
+ *  anders zetten. Vijf losse platen zouden dit venster vijf werelden maken in
+ *  plaats van één zender, en elke wissel zou ook nog een nieuwe afbeelding
+ *  moeten decoderen; dat zie je als een flits. Licht kost niets en laat zich
+ *  wel overvloeien.
+ *
+ *  Wat elke pagina krijgt:
+ *    lobby/regels  de studio vóór de uitzending, koel en gedempt
+ *    rollen        de schijnwerper, fel violet strak om de rol
+ *    invullen      werklicht, lager en breder, zodat klok en regels leesbaar zijn
+ *    uitslag       warm goud dat van onderen opkomt
+ *    eindstand     de kampioensbloom, het felst van allemaal
+ *
+ *  Alle lagen staan altijd in de boom en alleen hun dekking wisselt: een
+ *  `background-image` laat zich niet overvloeien, twee dekkingen wel.
+ */
+const SFEER: Record<string, string> = {
+  lobby:
+    "radial-gradient(120% 58% at 50% 16%, rgba(88,40,190,.20) 0%, transparent 62%)," +
+    "linear-gradient(180deg, rgba(4,1,20,.55) 0%, rgba(4,1,20,.30) 45%, rgba(4,1,20,.62) 100%)",
+  rules:
+    "radial-gradient(120% 58% at 50% 16%, rgba(88,40,190,.20) 0%, transparent 62%)," +
+    "linear-gradient(180deg, rgba(4,1,20,.55) 0%, rgba(4,1,20,.30) 45%, rgba(4,1,20,.62) 100%)",
+  reveal:
+    "radial-gradient(66% 44% at 50% 42%, rgba(158,88,255,.34) 0%, transparent 66%)," +
+    "linear-gradient(180deg, rgba(4,1,20,.34) 0%, rgba(4,1,20,0) 42%, rgba(4,1,20,.46) 100%)",
+  fill:
+    "radial-gradient(86% 46% at 32% 52%, rgba(74,58,224,.24) 0%, transparent 68%)," +
+    "linear-gradient(180deg, rgba(4,1,20,.44) 0%, rgba(4,1,20,.26) 50%, rgba(4,1,20,.52) 100%)",
+  results:
+    "radial-gradient(115% 60% at 50% 104%, rgba(232,179,60,.30) 0%, transparent 62%)," +
+    "linear-gradient(180deg, rgba(4,1,20,.52) 0%, rgba(4,1,20,.22) 70%, rgba(4,1,20,.34) 100%)",
+  final:
+    "radial-gradient(64% 46% at 33% 40%, rgba(255,206,110,.38) 0%, transparent 66%)," +
+    "radial-gradient(125% 70% at 50% 112%, rgba(232,179,60,.26) 0%, transparent 60%)," +
+    "linear-gradient(180deg, rgba(4,1,20,.55) 0%, rgba(4,1,20,.18) 55%, rgba(4,1,20,.5) 100%)",
+};
+
+/** De lichtflits op de wissel: de kleur hoort bij de pagina die KOMT.
+ *
+ *  Een studio knipt niet, die flitst. Op het moment dat het ene beeld het
+ *  andere wordt gaat er licht overheen, en dat licht heeft de kleur van waar je
+ *  naartoe gaat: violet als de schijnwerper op de rol aangaat, goud als de
+ *  uitslag of de kampioen komt. Het dekt precies de omslag af, dus je ziet het
+ *  wisselen niet meer gebeuren; je ziet dat er iets nieuws begint. */
+const FLITS: Record<string, string> = {
+  lobby: "radial-gradient(72% 56% at 50% 44%, rgba(206,192,255,.55) 0%, rgba(120,70,220,.22) 46%, transparent 74%)",
+  rules: "radial-gradient(72% 56% at 50% 44%, rgba(206,192,255,.55) 0%, rgba(120,70,220,.22) 46%, transparent 74%)",
+  reveal: "radial-gradient(70% 54% at 50% 44%, rgba(240,228,255,.82) 0%, rgba(158,88,255,.38) 44%, transparent 76%)",
+  fill: "radial-gradient(74% 56% at 42% 48%, rgba(224,220,255,.62) 0%, rgba(96,74,235,.26) 46%, transparent 76%)",
+  results: "radial-gradient(76% 58% at 50% 52%, rgba(255,244,214,.78) 0%, rgba(232,179,60,.34) 44%, transparent 76%)",
+  final: "radial-gradient(78% 58% at 42% 44%, rgba(255,246,220,.9) 0%, rgba(255,206,110,.42) 42%, transparent 76%)",
+};
+
 /** Hoe lang het beeld wegvalt voordat de volgende pagina komt.
  *
  *  Stond op 200ms, en dat was te kort om als overgang te lezen: de rol was weg
@@ -650,6 +707,7 @@ export function Livestream({ game }: { game: GameApi }) {
   const groep = nu;
   const [getoond, setGetoond] = useState(nu);
   const [dof, setDof] = useState(false);
+  const [flits, setFlits] = useState(0);
   const vorigeGroep = useRef(groep);
   useEffect(() => {
     if (groep === vorigeGroep.current) {
@@ -658,6 +716,11 @@ export function Livestream({ game }: { game: GameApi }) {
     }
     vorigeGroep.current = groep;
     setDof(true);
+    // De flits telt op in plaats van aan/uit te gaan: een teller als React-key
+    // maakt er elke wissel een NIEUW element van, en alleen dan speelt de
+    // animatie opnieuw af. Zet je hem op waar en weer op onwaar, dan mist een
+    // tweede wissel binnen de looptijd zijn flits.
+    setFlits((n) => n + 1);
     const id = window.setTimeout(() => {
       setGetoond(nu);
       setDof(false);
@@ -712,6 +775,23 @@ export function Livestream({ game }: { game: GameApi }) {
         overflow: "hidden",
       }}
     >
+      {/* De belichting van deze pagina. Zie SFEER hierboven: alle lampen hangen
+          er altijd, er brandt er telkens één. */}
+      {Object.entries(SFEER).map(([fase, licht]) => (
+        <span
+          key={fase}
+          aria-hidden
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: licht,
+            opacity: getoond === fase ? 1 : 0,
+            transition: "opacity .55s ease",
+            pointerEvents: "none",
+          }}
+        />
+      ))}
+
       {/* De TRAGE laag ligt achter de tekst: hij komt vóór de kolom hieronder in
           de rij, en die kolom is `position: relative` en dus een geschilderde
           laag die er later overheen komt. Alleen de achtergrond ligt er nog
@@ -928,6 +1008,21 @@ export function Livestream({ game }: { game: GameApi }) {
         >
           {klok}
         </span>
+      )}
+
+      {/* De flits ligt HELEMAAL bovenop, over het merkje en de lichtkrant heen.
+          Dat is met opzet: een lamp die alles wast behalve twee pilletjes is
+          geen lamp maar een masker. Hij duurt zeven tiende seconde en is dus
+          nooit iets waar je doorheen moet lezen.
+          Zonder teller geen flits: bij het openen van de chat staat er nog geen
+          wissel achter de rug, en dan hoort er ook geen licht te knallen. */}
+      {flits > 0 && (
+        <span
+          key={flits}
+          aria-hidden
+          className="stream-flits"
+          style={{ position: "absolute", inset: 0, background: FLITS[nu] ?? FLITS.lobby, pointerEvents: "none", zIndex: 2 }}
+        />
       )}
     </div>
   );

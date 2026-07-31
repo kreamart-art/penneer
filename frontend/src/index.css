@@ -664,6 +664,19 @@ a:active .hex-aan {
   86% { opacity: 1; }
   100% { opacity: 0; transform: translate3d(var(--drift, 0px), var(--val, 300px), 0) rotate(calc(var(--kantel, 0deg) + var(--draai, 620deg))); }
 }
+/* De lichtflits op een segmentwissel. De piek valt op 43% van 0,7s, dus rond de
+   300ms, en dat is precies het moment waarop de ene pagina de andere wordt.
+   Zo dekt het licht de omslag af in plaats van erna te komen. */
+@keyframes stream-flits {
+  0% { opacity: 0; }
+  43% { opacity: 1; }
+  100% { opacity: 0; }
+}
+.stream-flits {
+  animation: stream-flits 0.7s cubic-bezier(0.3, 0, 0.2, 1) both;
+  will-change: opacity;
+}
+
 .stream-snipper {
   animation-name: stream-confetti;
   animation-timing-function: linear;
