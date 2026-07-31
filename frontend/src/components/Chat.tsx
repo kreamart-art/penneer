@@ -242,15 +242,10 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
         {/* header */}
         <div
           style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
             // Zie de privéberichten: met toetsenbord staat de kop tegen de
             // statusbalk van de telefoon aan, dus dan schuift de inhoud daar
-            // onderuit. Met een overgang, zodat hij meegroeit met de lade in
-            // plaats van er een beeldje later bovenop te springen.
+            // onderuit.
             padding: vak.gekrompen ? "calc(10px + env(safe-area-inset-top)) 16px 10px" : "14px 16px 10px",
-            transition: "padding .2s cubic-bezier(.2,1,.3,1)",
             // Zie de gesprekspagina: eigen kleur, zodat de kop en de invulbalk
             // niet uit elkaar kleuren als het toetsenbord de lade inkort. Een
             // KLEUR en geen verloop, want de gouden haarlijn is een
@@ -259,6 +254,16 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
             ...goudHaarlijn("bottom"),
           }}
         >
+          {/* De inhoud gaat weg zolang het toetsenbord op staat; zie de
+              gesprekspagina voor waarom. */}
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            opacity: vak.gekrompen ? 0 : 1,
+            pointerEvents: vak.gekrompen ? "none" : "auto",
+            transition: "opacity .12s ease",
+          }}>
           <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink }}>
             {t("chat")}
           </span>
@@ -278,6 +283,7 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
           >
             <CloseIcon size={26} />
           </button>
+          </div>
         </div>
 
         {/* Dezelfde behangknop als in een gesprek: de kiezer is een strook van
