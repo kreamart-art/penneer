@@ -26,36 +26,13 @@
 // arenaregel vraagt, en is de dertigste trede echt iets anders dan de
 // vijfentwintigste.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { LogOut } from "lucide-react";
+import { LogOut, Timer } from "lucide-react";
 import { Screen } from "../components/Layout";
-import { KADER_LIJN_ROOD, NeonKader } from "../components/ProfileHero";
+import { KADER_LIJN_GOUD, KADER_LIJN_ROOD, NeonKader } from "../components/ProfileHero";
 import { colors, font, withAlpha } from "../theme/tokens";
 import { sound } from "../sound/sound";
 import { VAK } from "./Arena";
 
-// ---- de maten van de geleende art -------------------------------------------
-const SCORE_V = 3.7805;
-const BORD_V = 0.8349;
-const ONDER_V = 2.9589;
-const PANEEL_TOP = 0.024;
-const VENSTER = { l: 0.0561, r: 0.0573, t: 0.1636, b: 0.0758 };
-const SCORE_RUIT = { t: 0.2238, h: 0.6643, links: { l: 0.0407, b: 0.3213 }, rechts: { l: 0.637, b: 0.3213 } };
-const ONDER_RUIT = { l: 0.0148, b: 0.9704, t: 0.1315, h: 0.7 };
-
-const pct = (f: number) => `${(f * 100).toFixed(3)}%`;
-
-/** De maten van het somvak, waar de lijn en de vulling allebei uit komen. Zie
- *  de les uit Kleurenklem: een SVG die met `preserveAspectRatio="none"` wordt
- *  uitgerekt en een clip-path in vaste pixels zijn TWEE vormen. */
-const VAK_MAAT = { B: 319, H: 104, c: 16, m: 2.4 };
-const VAK_VORM = (() => {
-  const { B, H, c, m } = VAK_MAAT;
-  const x = (v: number) => `${((v / B) * 100).toFixed(3)}%`;
-  const y = (v: number) => `${((v / H) * 100).toFixed(3)}%`;
-  return `polygon(${x(c + m)} ${y(m)}, ${x(B - c - m)} ${y(m)}, ${x(B - m)} ${y(c + m)}, ${x(B - m)} ${y(H - c - m)}, ${x(B - c - m)} ${y(H - m)}, ${x(c + m)} ${y(H - m)}, ${x(m)} ${y(H - c - m)}, ${x(m)} ${y(c + m)})`;
-})();
-
-const PANEEL = "#0F1B2E";
 const LICHT = "#7BD8FF";
 
 // ---- de ladder --------------------------------------------------------------
@@ -191,78 +168,6 @@ function startTrede(): number {
 }
 
 // ---- bouwstenen -------------------------------------------------------------
-function Sectie({ art, verhouding, children }: { art: string; verhouding: number; children?: React.ReactNode }) {
-  return (
-    <div style={{ position: "relative", width: VAK, height: `calc(${VAK} / ${verhouding})`, flexShrink: 0 }}>
-      <img src={art} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block", maxWidth: "none" }} />
-      {children}
-    </div>
-  );
-}
-
-function Meter({ kop, waarde, breuk }: { kop: string; waarde: string; breuk: { l: number; b: number } }) {
-  return (
-    <div
-      style={{
-        position: "absolute",
-        left: pct(breuk.l), width: pct(breuk.b),
-        top: pct(SCORE_RUIT.t), height: pct(SCORE_RUIT.h),
-        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 1,
-      }}
-    >
-      <span style={{ fontFamily: font.ui, fontSize: 8.5, fontWeight: 800, letterSpacing: 1.2, color: withAlpha("#FFE7A8", 0.72) }}>{kop}</span>
-      <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 22, lineHeight: 1, color: "#FFF3D0" }}>{waarde}</span>
-    </div>
-  );
-}
-
-/** De lijst om het somvak: dezelfde gouden neonlijn als bij Kleurenklem, met de
- *  kleur van dit spel in het midden van het verloop. */
-function SomVak({ kleur, id }: { kleur: string; id: string }) {
-  const { B, H, c, m } = VAK_MAAT;
-  const punten = [
-    [c + m, m], [B - c - m, m], [B - m, c + m], [B - m, H - c - m],
-    [B - c - m, H - m], [c + m, H - m], [m, H - c - m], [m, c + m],
-  ].map((p) => p.join(",")).join(" ");
-  return (
-    <svg viewBox={`0 0 ${B} ${H}`} preserveAspectRatio="none" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 3, overflow: "visible" }}>
-      <defs>
-        <linearGradient id={`rl-lijn-${id}`} x1="0" y1="0" x2="1" y2="0.35">
-          <stop offset="0%" stopColor="#B0710E" stopOpacity="0.7" />
-          <stop offset="20%" stopColor="#FFD98A" stopOpacity="0.95" />
-          <stop offset="40%" stopColor="#FFF6DC" stopOpacity="1" />
-          <stop offset="52%" stopColor={kleur} stopOpacity="1" />
-          <stop offset="64%" stopColor="#FFF6DC" stopOpacity="1" />
-          <stop offset="84%" stopColor="#FFD98A" stopOpacity="0.9" />
-          <stop offset="100%" stopColor="#B0710E" stopOpacity="0.7" />
-        </linearGradient>
-        <filter id={`rl-bloei-${id}`} x="-20%" y="-40%" width="140%" height="180%">
-          <feGaussianBlur stdDeviation="3.4" />
-        </filter>
-      </defs>
-      <polygon points={punten} fill="none" stroke="#FFB43C" strokeWidth="4.2" opacity="0.42" filter={`url(#rl-bloei-${id})`} />
-      <polygon points={punten} fill="none" stroke={`url(#rl-lijn-${id})`} strokeWidth="2.2" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-/** De trap: de balk onder de som die leegloopt. Geen cijfers, want een aftellend
- *  getal naast een som die je moet uitrekenen vecht om dezelfde aandacht. */
-function Trapbalk({ rest }: { rest: number }) {
-  const kleur = rest < 0.3 ? "#FF5A4E" : LICHT;
-  return (
-    <span aria-hidden style={{ position: "absolute", left: "8%", right: "8%", bottom: "9%", height: 5, borderRadius: 3, background: "rgba(255,255,255,.09)", overflow: "hidden" }}>
-      <span
-        style={{
-          display: "block", height: "100%", width: `${Math.max(0, Math.min(1, rest)) * 100}%`,
-          background: `linear-gradient(90deg, ${withAlpha(kleur, 0.5)} 0%, ${kleur} 100%)`,
-          boxShadow: `0 0 10px ${withAlpha(kleur, 0.6)}`,
-        }}
-      />
-    </span>
-  );
-}
-
 function AntwoordKnop({ waarde, staat, onKies }: { waarde: number; staat: "rust" | "goed" | "fout" | "dood"; onKies: () => void }) {
   const rand = staat === "goed" ? "#2FE06E" : staat === "fout" ? "#FF5A4E" : withAlpha(LICHT, 0.45);
   return (
@@ -285,6 +190,104 @@ function AntwoordKnop({ waarde, staat, onKies }: { waarde: number; staat: "rust"
     >
       {waarde}
     </button>
+  );
+}
+
+
+// ---- het vraagpaneel --------------------------------------------------------
+//
+// Eigen kader in plaats van de geleende soep-platen. Alles is code: een gouden
+// verlooprand met een afsnijding op de hoeken, een tab die over de bovenrand
+// heen valt met de naam van het spel erin, en daarbinnen het somvak met zijn
+// eigen dunnere lijn. De klok ligt onderin als balk met een tellertje ernaast,
+// want een balk zegt HOEVER en een getal zegt HOEVEEL, en met een klok van drie
+// seconden wil je allebei weten.
+const VIOLET = "#B36BFF";
+const VIOLET_LICHT = "#E3B8FF";
+
+/** De tab die over de bovenrand van het kader valt. Een kleiner kader met
+ *  dezelfde lijn, zodat het één stuk metaal lijkt in plaats van een etiket. */
+function Tab({ tekst }: { tekst: string }) {
+  return (
+    <div style={{ position: "absolute", top: -13, left: 0, right: 0, display: "flex", justifyContent: "center", zIndex: 2, pointerEvents: "none" }}>
+      <NeonKader
+        radius={7}
+        hoek={9}
+        dik={0.45}
+        vulling="zwart"
+        lijn={KADER_LIJN_GOUD}
+        gloed="0 0 12px rgba(255,190,60,.3)"
+        binnen={{ padding: "4px 22px" }}
+      >
+        <span style={{ fontFamily: font.wide, fontSize: 11.5, letterSpacing: 2.4, textTransform: "uppercase", color: "#FFD98A", textShadow: "0 0 10px rgba(255,180,50,.55)" }}>
+          {tekst}
+        </span>
+      </NeonKader>
+    </div>
+  );
+}
+
+/** De klokbalk: een spoor met een violette vulling die leegloopt, met het
+ *  stopwatchje ervoor en de seconden erachter in een ring. De ring loopt mee
+ *  leeg, dus je ziet hetzelfde tweemaal maar op twee schalen: de balk voor de
+ *  grote lijn, de ring voor de laatste tellen. */
+function Klokbalk({ rest, seconden }: { rest: number; seconden: number }) {
+  const op = rest < 0.28;
+  const kleur = op ? "#FF5A4E" : VIOLET;
+  const licht = op ? "#FF9A92" : VIOLET_LICHT;
+  const omtrek = 2 * Math.PI * 15;
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, width: "100%" }}>
+      <Timer size={19} strokeWidth={1.8} color={withAlpha("#FFE7A8", 0.72)} style={{ flexShrink: 0 }} />
+      <span style={{ position: "relative", flex: 1, height: 11, borderRadius: 999, background: "rgba(0,0,0,.45)", boxShadow: `inset 0 0 0 1px ${withAlpha("#FFE7A8", 0.18)}, inset 0 2px 5px rgba(0,0,0,.55)`, overflow: "hidden" }}>
+        <span
+          style={{
+            position: "absolute", inset: 1, right: "auto",
+            width: `calc(${Math.max(0, Math.min(1, rest)) * 100}% - 2px)`,
+            borderRadius: 999,
+            background: `linear-gradient(180deg, ${licht} 0%, ${kleur} 48%, ${withAlpha(kleur, 0.75)} 100%)`,
+            boxShadow: `0 0 12px ${withAlpha(kleur, 0.65)}`,
+          }}
+        />
+      </span>
+      {/* De ring loopt tegen de klok in leeg, zoals een echte aftelling. */}
+      <span style={{ position: "relative", width: 38, height: 38, flexShrink: 0, display: "grid", placeItems: "center" }}>
+        <svg width="38" height="38" viewBox="0 0 38 38" style={{ position: "absolute", inset: 0, transform: "rotate(-90deg)" }} aria-hidden>
+          <circle cx="19" cy="19" r="15" fill="none" stroke="rgba(0,0,0,.45)" strokeWidth="3.2" />
+          <circle
+            cx="19" cy="19" r="15" fill="none" stroke={kleur} strokeWidth="3.2" strokeLinecap="round"
+            strokeDasharray={omtrek} strokeDashoffset={omtrek * (1 - Math.max(0, Math.min(1, rest)))}
+            style={{ filter: `drop-shadow(0 0 5px ${withAlpha(kleur, 0.8)})` }}
+          />
+        </svg>
+        <span style={{ position: "relative", fontFamily: font.display, fontWeight: 800, fontSize: 15, color: "#FFF3D0", fontVariantNumeric: "tabular-nums" }}>{seconden}</span>
+      </span>
+    </div>
+  );
+}
+
+/** Het vak met de som erin: dezelfde vorm als het kader eromheen, een slag
+ *  kleiner en een slag donkerder, zodat het erin ligt in plaats van erop. */
+function SomVenster({ children }: { children: React.ReactNode }) {
+  return (
+    <NeonKader
+      radius={10}
+      hoek={13}
+      dik={0.4}
+      vulling="geen"
+      lijn={KADER_LIJN_GOUD}
+      gloed="0 0 10px rgba(255,190,60,.22)"
+      style={{ width: "100%" }}
+      binnen={{
+        padding: "18px 14px",
+        display: "grid",
+        placeItems: "center",
+        background: "linear-gradient(180deg, #101A30 0%, #0A1220 60%, #070C16 100%)",
+        boxShadow: "inset 0 2px 14px rgba(0,0,0,.6)",
+      }}
+    >
+      {children}
+    </NeonKader>
   );
 }
 
@@ -397,120 +400,84 @@ export function Rekenladder({ seed, onKlaar, onOpnieuw }: {
   return (
     <>
       <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 9, paddingBottom: 24 }}>
-        <Sectie art="/ui/soep/scorebord.webp?v=1" verhouding={SCORE_V}>
-          <Meter kop="TREDE" waarde={String(trede)} breuk={SCORE_RUIT.links} />
-          <Meter kop="PUNTEN" waarde={String(totaal)} breuk={SCORE_RUIT.rechts} />
-        </Sectie>
-
-        <Sectie art="/ui/soep/bord.webp?v=1" verhouding={BORD_V}>
-          <div
-            style={{
-              position: "absolute", left: 0, right: 0,
-              top: pct(PANEEL_TOP), height: pct(VENSTER.t - PANEEL_TOP),
-              display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3,
+        {/* Het vraagpaneel. Alles in code: een gouden verlooprand met een
+            afsnijding op de hoeken, de naam op een tab die over de bovenrand
+            valt, het somvak erin met zijn eigen dunnere lijn, en onderin de
+            klok als balk plus ring. */}
+        <div style={{ position: "relative", width: VAK }}>
+          <Tab tekst="REKENLADDER" />
+          <NeonKader
+            radius={14}
+            hoek={18}
+            dik={0.55}
+            vulling="geen"
+            lijn={KADER_LIJN_GOUD}
+            gloed="verloop"
+            binnen={{
+              padding: "22px 16px 16px",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 14,
+              background: "linear-gradient(180deg, rgba(30,14,52,.92) 0%, rgba(18,8,34,.94) 55%, rgba(10,4,22,.96) 100%)",
             }}
           >
-            <span style={{ fontFamily: font.wide, fontSize: 14, letterSpacing: 2.4, color: "#FFD98A", textShadow: `0 0 10px ${withAlpha("#FFB43C", 0.6)}` }}>
-              {fase === "klaar" ? "REKENLADDER" : "WAT IS HET ANTWOORD"}
+            <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 17, letterSpacing: 0.4, color: "#FFFFFF", textShadow: "0 2px 6px rgba(0,0,0,.6)" }}>
+              {fase === "klaar" ? `GEVALLEN OP TREDE ${trede}` : "WAT IS HET ANTWOORD?"}
             </span>
-            <span style={{ fontFamily: font.ui, fontSize: 10.5, fontWeight: 600, color: withAlpha("#FFE7A8", 0.72) }}>
-              {fase === "klaar" ? `trede ${trede}` : fase === "tel" ? "maak je klaar" : "een fout is meteen einde"}
-            </span>
-          </div>
 
-          {fase === "klaar" ? (
-            <div
-              style={{
-                position: "absolute",
-                left: pct(VENSTER.l), right: pct(VENSTER.r), top: pct(VENSTER.t), bottom: pct(VENSTER.b),
-                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10,
-              }}
-            >
-              <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 46, lineHeight: 1, color: "#FFF3D0", textShadow: "0 0 18px rgba(255,190,60,.55)" }}>{totaal}</span>
-              <span style={{ fontFamily: font.ui, fontSize: 12, color: withAlpha("#FFE7A8", 0.7) }}>punten</span>
-            </div>
-          ) : (
-            <>
-              {/* De som. Hetzelfde vak als de letter bij Kleurenklem, dus de twee
-                  spellen lijken familie zonder dat ze hetzelfde zijn. */}
-              <div
+            <SomVenster>
+              <span
+                key={fase === "tel" ? `tel-${tel}` : `som-${trede}`}
+                className="klem-kom"
                 style={{
-                  position: "absolute",
-                  left: pct(VENSTER.l), right: pct(VENSTER.r), top: pct(VENSTER.t + 0.02),
-                  height: pct(0.24),
-                  display: "grid", placeItems: "center", overflow: "hidden",
-                  clipPath: VAK_VORM,
-                  backgroundColor: PANEEL,
-                  backgroundImage: "radial-gradient(125% 155% at 50% 14%, rgba(123,216,255,.16) 0%, rgba(123,216,255,.06) 52%, rgba(0,0,0,.18) 100%)",
+                  fontFamily: font.display, fontWeight: 800,
+                  fontSize: fase === "tel" ? 52 : 42, letterSpacing: 2, lineHeight: 1.1,
+                  color: "#FFFFFF",
+                  textShadow: "0 0 18px rgba(160,200,255,.35), 0 2px 4px rgba(0,0,0,.8)",
                 }}
               >
-                <span
-                  key={fase === "tel" ? `tel-${tel}` : `som-${trede}`}
-                  className="klem-kom"
-                  style={{
-                    position: "relative", zIndex: 2,
-                    fontFamily: font.display, fontWeight: 800,
-                    fontSize: fase === "tel" ? 52 : 36, letterSpacing: 1, lineHeight: 1,
-                    color: "#EAF6FF",
-                    textShadow: `0 0 14px ${withAlpha(LICHT, 0.5)}, 0 1px 4px rgba(0,0,0,.9)`,
-                  }}
-                >
-                  {fase === "tel" ? tel : som.vraag}
-                </span>
-                {fase === "spel" && <Trapbalk rest={rest} />}
-                <SomVak kleur={LICHT} id={String(trede)} />
-              </div>
-
-              {/* Vier antwoorden in 2x2. Altijd vier, altijd even groot: een
-                  raster dat per som van vorm verandert kost je een halve tel om
-                  opnieuw te lezen, en die halve tel heb je hier niet. */}
-              <div
-                style={{
-                  position: "absolute",
-                  left: pct(VENSTER.l), right: pct(VENSTER.r),
-                  top: pct(VENSTER.t + 0.29), bottom: pct(VENSTER.b),
-                  display: "grid", gridTemplateColumns: "repeat(2, 1fr)",
-                  gap: "4.5%", alignContent: "center",
-                }}
-              >
-                {fase !== "tel" && som.keuzes.map((w) => (
-                  <AntwoordKnop
-                    key={w}
-                    waarde={w}
-                    staat={
-                      !oordeel ? "rust"
-                      : oordeel.waarde === w ? (oordeel.goed ? "goed" : "fout")
-                      : w === som.antwoord && !oordeel.goed ? "goed"
-                      : "dood"
-                    }
-                    onKies={() => kies(w)}
-                  />
-                ))}
-              </div>
-            </>
-          )}
-        </Sectie>
-
-        <Sectie art="/ui/soep/onder.webp?v=1" verhouding={ONDER_V}>
-          <div
-            style={{
-              position: "absolute",
-              left: pct(ONDER_RUIT.l), width: pct(ONDER_RUIT.b),
-              top: pct(ONDER_RUIT.t), height: pct(ONDER_RUIT.h),
-              display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
-            }}
-          >
-            {fase === "klaar" ? (
-              <span style={{ fontFamily: font.wide, fontSize: 18, letterSpacing: 2.2, color: "#FFF3D0" }}>
-                GEVALLEN OP TREDE {trede}
+                {fase === "klaar" ? totaal : fase === "tel" ? tel : som.vraag}
               </span>
+            </SomVenster>
+
+            {fase === "spel" ? (
+              <Klokbalk rest={rest} seconden={Math.max(0, Math.ceil((rest * trap.venster) / 1000))} />
             ) : (
-              <span style={{ fontFamily: font.ui, fontSize: 11.5, color: withAlpha("#FFE7A8", 0.6), textAlign: "center" }}>
-                hoe hoger de trede, hoe meer elke som opbrengt
+              <span style={{ height: 38, display: "grid", placeItems: "center", fontFamily: font.ui, fontSize: 12, color: withAlpha("#FFE7A8", 0.7) }}>
+                {fase === "tel" ? "maak je klaar" : "punten"}
               </span>
             )}
+          </NeonKader>
+        </div>
+
+        {/* De teller staat onder het paneel tot de ladder-art er is. */}
+        {fase !== "klaar" && (
+          <div style={{ display: "flex", gap: 18, fontFamily: font.ui, fontSize: 12, color: withAlpha("#FFE7A8", 0.75) }}>
+            <span>TREDE <b style={{ fontFamily: font.display, fontSize: 15, color: "#FFF3D0" }}>{trede}</b></span>
+            <span>PUNTEN <b style={{ fontFamily: font.display, fontSize: 15, color: "#FFF3D0" }}>{totaal}</b></span>
           </div>
-        </Sectie>
+        )}
+
+        {/* De vier antwoorden. Zolang de ladder-art er nog niet is staan ze in
+            een raster; ze worden de treden zodra die er is. */}
+        {fase !== "tel" && fase !== "klaar" && (
+          <div style={{ width: VAK, display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
+            {som.keuzes.map((w) => (
+              <AntwoordKnop
+                key={w}
+                waarde={w}
+                staat={
+                  !oordeel ? "rust"
+                  : oordeel.waarde === w ? (oordeel.goed ? "goed" : "fout")
+                  : w === som.antwoord && !oordeel.goed ? "goed"
+                  : "dood"
+                }
+                onKies={() => kies(w)}
+              />
+            ))}
+          </div>
+        )}
 
         {(fase !== "klaar" || onOpnieuw) && (
         <NeonKader radius={999} dik={0.5} vulling="zwart" animeer lijn={KADER_LIJN_ROOD} gloed={`0 0 12px ${withAlpha(colors.red, 0.35)}`} binnen={{ padding: 0 }}>
