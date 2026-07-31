@@ -12,7 +12,7 @@
 // anderen invullen. Wat een uitzending daarbij hoort te hebben staat er ook: een
 // merkje dat zegt dat het live is, een klok, en een onderregel die zegt naar wie
 // je kijkt.
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check } from "lucide-react";
 import { ARENA } from "./Arena";
 import { Avatar } from "./Avatar";
@@ -24,8 +24,9 @@ import { colors, font, withAlpha } from "../theme/tokens";
 /** De rol is 172x200. Kleiner dan op de speelpagina: dit is een venster, geen
  *  hoofdzaak. */
 const ROL_GROOT = 0.68;
-/** Tijdens het invullen is de letter bijzaak naast de klok en de spelers. */
-const ROL_KLEIN = 0.5;
+/** Tijdens het invullen staat de letter naast de stroom, dus iets kleiner dan
+ *  bij het rollen, maar wel groot genoeg om DE letter te zijn. */
+const ROL_KLEIN = 0.62;
 
 /** De doos van een geschaalde rol blijft 200 hoog; alleen het BEELD krimpt.
  *  Zonder deze correctie staat er boven en onder de rol lucht die meetelt bij
@@ -189,6 +190,23 @@ export function Livestream({ game }: { game: GameApi }) {
   const { t } = useT();
   const room = game.state.room;
   const klok = useKlok(room?.timer.ends_at ? room.timer.ends_at * 1000 : null);
+
+  // "Pennen neer!" hoort bij het einde van de ronde, en wie in de chat zit ziet
+  // die over het hele scherm niet: App houdt hem dan tegen, want een schreeuw
+  // over je gesprek heen is geen uitzending maar een onderbreking. Hier komt
+  // hij terug op de plek waar je toch al kijkt. Zelfde bron als daar (het
+  // round_ended-teken van de server), dus hij valt op precies hetzelfde moment.
+  const eindeTeken = game.state.roundEndedToken;
+  const vorigTeken = useRef(eindeTeken);
+  const [pennenNeer, setPennenNeer] = useState(false);
+  useEffect(() => {
+    if (eindeTeken === vorigTeken.current) return;
+    vorigTeken.current = eindeTeken;
+    setPennenNeer(true);
+    const id = window.setTimeout(() => setPennenNeer(false), 1700);
+    return () => window.clearTimeout(id);
+  }, [eindeTeken]);
+
   if (!room) return null;
 
   const leider = room.players.find((p) => p.id === room.active_player_id);
@@ -275,6 +293,34 @@ export function Livestream({ game }: { game: GameApi }) {
           </span>
           <SpelerRij game={game} klaarIds={room.phase === "rules" ? room.ready_ids : []} />
         </>
+      )}
+
+      {pennenNeer && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "grid",
+            placeItems: "center",
+            background: "rgba(6,3,18,.55)",
+            backdropFilter: "blur(3px)",
+            WebkitBackdropFilter: "blur(3px)",
+            pointerEvents: "none",
+            zIndex: 3,
+          }}
+        >
+          <div style={{ textAlign: "center", animation: "pen-splash 1.7s ease forwards", padding: "0 12px" }}>
+            {/* Early GameBoy tekent klein voor zijn puntgrootte en heeft geen
+                onderkast, dus groter en in kapitalen. Kleiner dan de versie op
+                het volle scherm: dit vak is een derde daarvan. */}
+            <div style={{ fontFamily: "'Early GameBoy', 'Space Grotesk', sans-serif", fontWeight: 400, fontSize: "min(22px, 5.4vw)", letterSpacing: 1, lineHeight: 1.35, textTransform: "uppercase", color: "#FFC23D", textShadow: "0 0 26px rgba(255,194,61,.55), 0 3px 0 rgba(0,0,0,.35)" }}>
+              {t("penDownSplash")}
+            </div>
+            <div style={{ marginTop: 5, fontFamily: "Inter, sans-serif", fontSize: 12, color: "#CFC6E8" }}>
+              {t("penDownSub")}
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Het merkje linksonder: dit is geen plaatje van het spel maar het spel

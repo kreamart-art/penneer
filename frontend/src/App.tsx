@@ -602,7 +602,9 @@ export default function App() {
         <Suspense fallback={null}>{screen}</Suspense>
       </ChunkGrens>
       {navKey !== null && <BottomNav game={game} active={navKey} onSelect={goNav} />}
-      {penSplash && (
+      {/* Niet over een open chat heen: daar heeft de uitzending zijn eigen,
+          kleinere versie op de plek waar je op dat moment kijkt. */}
+      {penSplash && !game.state.chatOpen && (
         <div
           style={{
             position: "fixed",
