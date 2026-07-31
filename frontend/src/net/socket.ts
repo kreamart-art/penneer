@@ -654,10 +654,10 @@ function reducer(state: ClientState, action: Action): ClientState {
     return { ...state, dmOpenWith: null, dmMessages: [] };
   }
   if (action.type === "chatOpen") {
-    // Op de rol-pagina blijft hij dicht, wat de cliënt ook vraagt: dit is de
-    // enige plek waar dat te garanderen valt, want het paneel is ook via een
-    // toets of een oude tik te openen.
-    if (action.open && state.room?.phase === "reveal") return state;
+    // De rol-pagina zat hier ooit op slot, want dan stond het paneel over de
+    // letter heen. Sinds de chat de rol zelf laat zien (een kleine kopie in
+    // zijn eigen strook bovenin) is dat juist de plek waar je hem mist, dus die
+    // grendel is eraf.
     // Opening marks everything read.
     return { ...state, chatOpen: action.open, chatSeen: action.open ? state.chat.length : state.chatSeen };
   }
@@ -688,13 +688,13 @@ function reducer(state: ClientState, action: Action): ClientState {
       // New game: the reel resets and last game's ceremony data is stale.
       return { ...state, spinning: false, matchSummary: null };
     case "turn_started":
-      // De rol begint aan een nieuwe beurt: de reel staat stil en de chat gaat
-      // dicht. Wie op dat moment in de chat zat, hoort de rol te zien.
-      return { ...state, spinning: false, chatOpen: false };
+      // Nieuwe beurt: de reel staat stil. De chat blijft open als je erin zat;
+      // hij toont de rol nu zelf.
+      return { ...state, spinning: false };
     case "spin_started":
-      // De rol gaat draaien: de chat valt weg. Anders staat het paneel over de
-      // letter heen en ben je te laat om mee te doen aan de ronde.
-      return { ...state, spinning: true, chatOpen: false };
+      // De rol gaat draaien. Ook hier blijft de chat staan: de strook bovenin
+      // laat de rol zien, dus je mist niets.
+      return { ...state, spinning: true };
     case "letter_locked": {
       // Snap the reel immediately. room_state follows after the lock beat, but
       // patch the letter now so the Reel can show it during that beat.

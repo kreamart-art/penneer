@@ -2,6 +2,7 @@
 // panel. Lets players ask what a word means without leaving the app. Lives in
 // the TopBar, so it's reachable on every in-room screen.
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { CloseIcon } from "./CloseIcon";
 import { TelHex } from "./TelHex";
 import { ChatIcoon } from "./ChatIcoon";
@@ -12,6 +13,7 @@ import { BeeldKnop } from "./BeeldKnop";
 import { VerstuurKnop } from "./VerstuurKnop";
 import { KNOP_GOUD_VERLOOP, goudHaarlijn } from "./GlasKnop";
 import { useVakLaag, useZichtbaarVak } from "../lib/zichtbaarvak";
+import { Reel } from "./Reel";
 import { VoiceNote } from "./VoiceNote";
 import { EmotePicker } from "./EmotePicker";
 import { EMOTE_SRC, FREE_EMOTE_PACKS } from "./emotes";
@@ -19,22 +21,20 @@ import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { colors, font, withAlpha } from "../theme/tokens";
 
+// De rol boven de chat. Hij staat in de vrije ruimte boven de lade, dus hij mag
+// wat groter dan in een strook: 0.8 van 172x200 wordt 138x160.
+const ROL_SCHAAL = 0.8;
+
 export function ChatButton({ game }: { game: GameApi }) {
   const { t } = useT();
   const chat = game.state.chat;
   const open = game.state.chatOpen;
   const unread = open ? 0 : Math.max(0, chat.length - game.state.chatSeen);
-  // Op de ROL-pagina gaat de chat op slot. Hij viel al dicht zodra de rol begon
-  // te draaien, maar je kon hem daarna meteen weer openen en dan zat je achter
-  // een paneel te wachten terwijl de letter viel. Chatten hoort voor en na het
-  // rollen, niet tijdens.
-  const opSlot = game.state.room?.phase === "reveal";
 
   return (
     <>
       <button
-        onClick={() => { if (!opSlot) game.openChat(); }}
-        disabled={opSlot}
+        onClick={() => game.openChat()}
         aria-label={t("chat")}
         title={t("chat")}
         className="pressable"
@@ -42,8 +42,7 @@ export function ChatButton({ game }: { game: GameApi }) {
           position: "relative",
           background: "transparent",
           border: "none",
-          cursor: opSlot ? "default" : "pointer",
-          opacity: opSlot ? 0.35 : 1,
+          cursor: "pointer",
           padding: 0,
           lineHeight: 0,
           display: "flex",
@@ -56,7 +55,14 @@ export function ChatButton({ game }: { game: GameApi }) {
           </span>
         )}
       </button>
-      {open && <ChatPanel game={game} onClose={() => game.closeChat()} />}
+      {/* Het paneel gaat rechtstreeks onder de BODY hangen en niet hier, waar de
+          knop staat. De knop zit in de bovenbalk, en die bovenbalk is een eigen
+          stapelcontext; alles wat erin staat blijft daarbinnen, hoe hoog je zijn
+          z-index ook zet. De rol en de draaiknop van de rol-pagina zitten in een
+          BUURcontext die later in het document komt, en die won daardoor altijd:
+          precies de skins en objecten die over de chat heen kwamen. Vanaf de
+          body is er niets meer om onder te liggen. */}
+      {open && createPortal(<ChatPanel game={game} onClose={() => game.closeChat()} />, document.body)}
     </>
   );
 }
@@ -84,6 +90,16 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
   // je ook maar iets gedaan had.
   const vak = useZichtbaarVak();
   const { laag, onder } = useVakLaag();
+  // Rolt de spelleider? Dan komt de rol de chat IN, in een eigen strook bovenin.
+  // Niet als doorkijkje naar het scherm eronder maar als een tweede, kleinere
+  // weergave van dezelfde toestand: dezelfde skin, dezelfde letters, dezelfde
+  // beweging, alleen op zijn eigen schaal. Zo ligt er niets over de chat heen
+  // en valt er ook niets te repareren aan wat voor of achter hoort.
+  const kamer = game.state.room;
+  const rolt = kamer?.phase === "reveal";
+  const rolLetter = kamer?.round?.letter ?? "";
+  const rolSpeler = kamer?.players.find((p) => p.id === kamer.active_player_id);
+  const rolStand = rolLetter ? "locked" : game.state.spinning ? "spinning" : "idle";
   const roomCode = game.state.room?.code ?? "";
 
   // Upload a memo to this room, then post it as a chat message.
@@ -206,6 +222,47 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
         overflow: "hidden",
       }}
     >
+      {/* De rol, in de ruimte BOVEN de lade: dat vlak is toch al vervaagd en
+          doet verder niets. Niet als doorkijkje naar het scherm eronder maar
+          als een tweede, kleinere weergave van dezelfde toestand: dezelfde
+          skin, dezelfde letters, dezelfde beweging, alleen op zijn eigen
+          schaal. Er ligt dus niets over de chat heen en er valt niets te
+          repareren aan wat voor of achter hoort. */}
+      {rolt && (
+        <div
+          style={{
+            flex: 1,
+            display: "grid",
+            placeItems: "center",
+            pointerEvents: "none",
+            padding: "14px 0",
+            // Een EIGEN laag met dezelfde achtergrond als het spel eronder, in
+            // plaats van een vervaagd doorkijkje. Dezelfde nevel, dezelfde
+            // korrel, dezelfde randval als de app zelf; de rol staat daarop
+            // zoals hij op de rol-pagina op de achtergrond staat.
+            backgroundColor: "#06040e",
+            backgroundImage: [
+              "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E\")",
+              "radial-gradient(118% 74% at 50% 30%, transparent 34%, rgba(2,1,7,.72) 100%)",
+              "url(/bg-sub.webp)",
+              "linear-gradient(180deg, #100c24 0%, #14102c 30%, #0e0b20 60%, #090714 82%, #06040e 100%)",
+            ].join(", "),
+            backgroundRepeat: "repeat, no-repeat, no-repeat, no-repeat",
+            backgroundPosition: "top left, top, center, top",
+            backgroundSize: "160px 160px, 100% 100%, cover, 100% 100%",
+          }}
+        >
+          <div style={{ transform: `scale(${ROL_SCHAAL})`, transformOrigin: "center", lineHeight: 0 }}>
+            <Reel
+              state={rolStand}
+              letter={rolLetter}
+              exclude={kamer?.used_letters ?? []}
+              hard={!!kamer?.settings.hard_letters}
+              skin={rolSpeler?.reel_skin ?? null}
+            />
+          </div>
+        </div>
+      )}
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
@@ -214,12 +271,16 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
           margin: "0 auto",
           height: "min(72vh, 620px)",
           maxHeight: vak.hoogte,
-          transition: "max-height .2s cubic-bezier(.2,1,.3,1)",
           display: "flex",
           flexDirection: "column",
           background: "linear-gradient(180deg, #1B1245 0%, #140C33 100%)",
-          borderTopLeftRadius: 22,
-          borderTopRightRadius: 22,
+          // Tijdens het rollen wordt de lade een PAGINA: de hoeken lopen recht
+          // en de rolstrook sluit aan op de bovenrand van het scherm. Daarna
+          // rollen ze weer terug. De gouden lijn hieronder doet exact hetzelfde,
+          // dus de rand blijft en verandert alleen van vorm.
+          borderTopLeftRadius: rolt ? 0 : 22,
+          borderTopRightRadius: rolt ? 0 : 22,
+          transition: "max-height .2s cubic-bezier(.2,1,.3,1), border-radius .28s cubic-bezier(.2,1,.3,1)",
           // Knippen op de ronding: de kopbalk kreeg in v2.84.3 een eigen
           // dekkende kleur, en die schilderde als rechthoek OVER de afgeronde
           // hoeken heen. Wat je overhield waren twee scherpe puntjes bovenaan
@@ -238,12 +299,12 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
           style={{
             position: "absolute",
             inset: 0,
-            borderTopLeftRadius: 22,
-            borderTopRightRadius: 22,
+            borderTopLeftRadius: rolt ? 0 : 22,
+            borderTopRightRadius: rolt ? 0 : 22,
             padding: "1px 1px 0",
             background: KNOP_GOUD_VERLOOP,
             opacity: vak.gekrompen ? 0 : 0.85,
-            transition: "opacity .22s ease",
+            transition: "opacity .22s ease, border-radius .28s cubic-bezier(.2,1,.3,1)",
             WebkitMask: "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
             WebkitMaskComposite: "xor",
             mask: "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
