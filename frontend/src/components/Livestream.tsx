@@ -343,22 +343,51 @@ function Eindstand({ game }: { game: GameApi }) {
   );
 }
 
-/** De lichtkrant rechtsonder: wie er aan kop gaat. Reist heen en weer, zoals de
- *  regel boven een podium, want een stilstaande regel leest als een label en
- *  een reizende als een omroep. */
+/** De lichtkrant onderlangs: een rij koppen over IEDEREEN, aan elkaar geregen
+ *  tot één lange regel die het beeld in komt en er weer uit loopt.
+ *
+ *  Aan elkaar en niet om de beurt: een ticker die per kop wisselt vraagt een
+ *  klok en een keuze wanneer hij mag wisselen, en dan mis je er een als je net
+ *  wegkijkt. Zo komt alles vanzelf een keer langs.
+ *
+ *  De reistijd groeit mee met de lengte, anders raast een lange regel voorbij en
+ *  sukkelt een korte.
+ */
 function LedBalk({ game }: { game: GameApi }) {
   const { t } = useT();
   const room = game.state.room;
   if (!room) return null;
   const meedoen = room.players.filter((p) => !p.is_spectator);
-  const hoogste = Math.max(0, ...meedoen.map((p) => room.scores[p.id] ?? 0));
-  const kop = meedoen.filter((p) => (room.scores[p.id] ?? 0) === hoogste);
-  const tekst =
-    hoogste <= 0
-      ? t("streamNogNiks")
-      : kop.length === 1
-        ? t("streamKop", { naam: kop[0].name, n: String(hoogste) })
-        : t("streamGelijk", { namen: kop.slice(0, 3).map((p) => p.name).join(", "), n: String(hoogste) });
+  const stand = [...meedoen]
+    .map((p) => ({ p, punten: room.scores[p.id] ?? 0 }))
+    .sort((a, b) => b.punten - a.punten);
+  const hoogste = stand[0]?.punten ?? 0;
+  const kop = stand.filter((x) => x.punten === hoogste);
+  const eind = room.phase === "final";
+
+  const koppen: string[] = [];
+  if (eind && stand.length > 0) {
+    koppen.push(t("streamWint", { naam: stand[0].p.name, n: String(stand[0].punten) }));
+  } else if (hoogste <= 0) {
+    koppen.push(t("streamNogNiks"));
+  } else if (kop.length === 1) {
+    koppen.push(t("streamKop", { naam: kop[0].p.name, n: String(hoogste) }));
+  } else {
+    koppen.push(t("streamGelijk", { namen: kop.slice(0, 3).map((x) => x.p.name).join(", "), n: String(hoogste) }));
+  }
+
+  // Iedereen komt langs, in volgorde van de stand: ook wie achteraan hangt
+  // hoort in de uitzending voor te komen.
+  for (const x of stand) koppen.push(t("streamStaatOp", { naam: x.p.name, n: String(x.punten) }));
+
+  if (!eind) {
+    const over = Math.max(0, room.settings.rounds - room.round_no);
+    if (over === 0) koppen.push(t("streamLaatsteRonde"));
+    else koppen.push(t("streamRondesTeGaan", { n: String(over) }));
+  }
+
+  const regel = koppen.join("   ·   ");
+  const duur = Math.max(9, Math.round(regel.length * 0.32));
 
   return (
     <span
@@ -376,6 +405,7 @@ function LedBalk({ game }: { game: GameApi }) {
         className="led-reis"
         style={{
           top: 2,
+          animationDuration: `${duur}s`,
           fontFamily: font.ui,
           fontSize: 10,
           fontWeight: 800,
@@ -387,7 +417,7 @@ function LedBalk({ game }: { game: GameApi }) {
           textShadow: "0 1px 5px rgba(0,0,0,.9)",
         }}
       >
-        {tekst}
+        {regel}
       </span>
     </span>
   );
