@@ -498,7 +498,7 @@ export function Livestream({ game }: { game: GameApi }) {
         alignItems: "center",
         justifyContent: "center",
         gap: 10,
-        padding: "14px 0 34px",
+        padding: "calc(16px + env(safe-area-inset-top)) 0 34px",
         pointerEvents: "none",
         // Precies de achtergrond van de speelpagina.
         backgroundColor: ARENA.base,

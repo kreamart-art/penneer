@@ -230,7 +230,7 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
           width: "100%",
           maxWidth: 560,
           margin: "0 auto",
-          height: "min(72vh, 620px)",
+          height: "min(66vh, 580px)",
           maxHeight: vak.hoogte,
           display: "flex",
           flexDirection: "column",
