@@ -21,10 +21,21 @@ import type { GameApi } from "../net/socket";
 import { useT } from "../i18n/i18n";
 import { colors, font, withAlpha } from "../theme/tokens";
 
-/** De rol is 172x200; op 0.8 wordt hij 138x160 en past hij in de vrije ruimte. */
-const ROL_GROOT = 0.8;
+/** De rol is 172x200. Kleiner dan op de speelpagina: dit is een venster, geen
+ *  hoofdzaak. */
+const ROL_GROOT = 0.68;
 /** Tijdens het invullen is de letter bijzaak naast de klok en de spelers. */
 const ROL_KLEIN = 0.5;
+
+/** De doos van een geschaalde rol blijft 200 hoog; alleen het BEELD krimpt.
+ *  Zonder deze correctie staat er boven en onder de rol lucht die meetelt bij
+ *  het uitmiddelen, en dan hangt hij te laag in het vak. */
+const rolVak = (schaal: number) => ({
+  transform: `scale(${schaal})`,
+  transformOrigin: "center",
+  lineHeight: 0,
+  margin: `${-(200 * (1 - schaal)) / 2}px 0`,
+});
 
 /** mm:ss uit een tijdstip in de toekomst. Leeg als er geen klok loopt. */
 function useKlok(eindeMs: number | null): string {
@@ -72,31 +83,6 @@ function SpelerRij({ game, klaarIds }: { game: GameApi; klaarIds: string[] }) {
   );
 }
 
-/** De onderregel: naar wie kijk je. Zoals de balk onderin een uitzending. */
-function Onderregel({ tekst }: { tekst: string }) {
-  return (
-    <div
-      style={{
-        alignSelf: "center",
-        maxWidth: "86%",
-        padding: "4px 12px",
-        borderRadius: 999,
-        background: "linear-gradient(180deg, rgba(10,4,20,.86) 0%, rgba(6,3,14,.9) 100%)",
-        boxShadow: `inset 0 0 0 1px ${withAlpha("#A868F5", 0.4)}`,
-        fontFamily: font.ui,
-        fontSize: 11.5,
-        fontWeight: 600,
-        color: colors.ink,
-        whiteSpace: "nowrap",
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-      }}
-    >
-      {tekst}
-    </div>
-  );
-}
-
 export function Livestream({ game }: { game: GameApi }) {
   const { t } = useT();
   const room = game.state.room;
@@ -138,20 +124,18 @@ export function Livestream({ game }: { game: GameApi }) {
     >
       {rolt && (
         <>
-          <div style={{ transform: `scale(${ROL_GROOT})`, transformOrigin: "center", lineHeight: 0, margin: "-16px 0" }}>
+          <div style={rolVak(ROL_GROOT)}>
             <Reel state={rolStand} letter={letter} exclude={room.used_letters} hard={room.settings.hard_letters} skin={leider?.reel_skin ?? null} />
           </div>
-          <Onderregel tekst={game.isActive ? t("youSpin") : t("xSpinsRound", { name: leider?.name ?? "?" })} />
         </>
       )}
 
       {vult && (
         <>
-          <div style={{ transform: `scale(${ROL_KLEIN})`, transformOrigin: "center", lineHeight: 0, margin: "-50px 0" }}>
+          <div style={rolVak(ROL_KLEIN)}>
             <Reel state="locked" letter={letter} exclude={room.used_letters} hard={room.settings.hard_letters} skin={leider?.reel_skin ?? null} />
           </div>
           <SpelerRij game={game} klaarIds={room.ready_ids} />
-          <Onderregel tekst={t("streamKlaar", { n: String(room.ready_ids.length), van: String(room.players.filter((p) => !p.is_spectator).length) })} />
         </>
       )}
 
@@ -161,13 +145,6 @@ export function Livestream({ game }: { game: GameApi }) {
             {room.code}
           </span>
           <SpelerRij game={game} klaarIds={room.phase === "rules" ? room.ready_ids : []} />
-          <Onderregel
-            tekst={
-              room.phase === "rules"
-                ? t("streamKlaar", { n: String(room.ready_ids.length), van: String(room.players.filter((p) => !p.is_spectator).length) })
-                : t("streamWacht")
-            }
-          />
         </>
       )}
 
@@ -203,6 +180,31 @@ export function Livestream({ game }: { game: GameApi }) {
           {merk}
         </span>
       </span>
+
+      {/* Wie er draait, rechtsonder als kale tekst. Tijdens het rollen loopt er
+          geen klok, dus die hoek is vrij; en een tweede pil naast het merkje
+          zou lezen als een tweede knop. */}
+      {rolt && (
+        <span
+          style={{
+            position: "absolute",
+            right: 12,
+            bottom: 11,
+            maxWidth: "62%",
+            fontFamily: font.ui,
+            fontSize: 11,
+            fontWeight: 600,
+            color: colors.ink,
+            textShadow: "0 1px 4px rgba(0,0,0,.8)",
+            textAlign: "right",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
+          {game.isActive ? t("youSpin") : t("xSpinsRound", { name: leider?.name ?? "?" })}
+        </span>
+      )}
 
       {/* De klok rechtsonder, tegenover het merkje. Alleen als er echt een klok
           loopt: een room zonder tijd heeft niets af te tellen. */}
