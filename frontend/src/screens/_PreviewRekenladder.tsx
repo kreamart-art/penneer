@@ -237,6 +237,27 @@ const TREDEN = [
   },
 }));
 
+// DE GOUDEN KNOPPEN komen als EEN vel, niet als vier losse knopjes. Ze zijn
+// getekend bij deze ladder, dus de tekenaar heeft ze al op hun plek gezet; zelf
+// vier keer een plek uitrekenen zet ze onvermijdelijk net iets schever dan
+// bedoeld, en dat was ook precies wat er gebeurde.
+//
+// Het vel staat op 1,8850 keer het ladderbestand, met -363 in de hoogte en -156
+// in de breedte. Dat is geen aanname maar een fit: de vier knopharten komen
+// daarmee op 96,3 / 263,3 / 433,9 / 608,0 uit, tegen plaatmiddens van 96,5 /
+// 265,5 / 436 / 607,5. Twee pixels ernaast op een ladder van 733 hoog.
+//
+// Omgerekend naar de maat van de ladder in de app beslaat het vel:
+const KNOPPEN = { links: -5.11, top: 3.48, breed: 16.76, hoog: 91.47 };
+// En dit zijn de harten van de vier schijven daarin, met hun doorsnee, allemaal
+// in procenten van de ladder. De letters gaan daar bovenop.
+const LETTERS = [
+  { letter: "A", x: 4.41, y: 13.14, d: 6.96 },
+  { letter: "B", x: 3.59, y: 35.92, d: 7.41 },
+  { letter: "C", x: 2.69, y: 59.20, d: 7.74 },
+  { letter: "D", x: 1.85, y: 82.95, d: 8.11 },
+];
+
 type Staat = "uit" | "rust" | "goed" | "fout" | "dood";
 /** Wat er van een beurt bekend is. `gekozen` is null als de klok het deed en
  *  niet de speler: dan is er geen trede die rood hoort te worden. */
@@ -358,6 +379,36 @@ function Ladder({ keuzes, antwoord, oordeel, onKies, slapend, klaar }: {
           onKies={() => onKies(w)}
         />
       ))}
+      {/* Het knoppenvel gaat OVER de treden heen en niet eronder. Stond het
+          ervoor, dan tekende de ladder er overheen en zag je alleen het randje
+          dat links uitstak: dan lijkt het alsof de knoppen aan de ladder hangen
+          in plaats van erop zitten. */}
+      <img
+        src="/ui/reken/knoppen.webp"
+        alt=""
+        draggable={false}
+        style={{
+          position: "absolute", pointerEvents: "none",
+          left: `${KNOPPEN.links}%`, top: `${KNOPPEN.top}%`,
+          width: `${KNOPPEN.breed}%`, height: `${KNOPPEN.hoog}%`,
+        }}
+      />
+      {LETTERS.map((l) => (
+        <span
+          key={l.letter}
+          style={{
+            position: "absolute", pointerEvents: "none",
+            left: `${l.x}%`, top: `${l.y}%`,
+            transform: "translate(-50%, -50%)",
+            fontFamily: font.display, fontWeight: 800,
+            fontSize: `${((LADDER_BREED * l.d) / 100) * 0.56}vw`,
+            letterSpacing: 0.5,
+            color: "#FFE8B4", textShadow: "0 1px 2px rgba(0,0,0,.95), 0 0 6px rgba(255,190,90,.5)",
+          }}
+        >
+          {l.letter}
+        </span>
+      ))}
     </div>
   );
 }
@@ -374,7 +425,10 @@ function Ladder({ keuzes, antwoord, oordeel, onKies, slapend, klaar }: {
 // De sectie is smaller dan de ladder: die twee zijn niet even breed in de
 // mockup, en een vraagpaneel dat even breed is als het speelveld trekt de
 // aandacht naar de verkeerde helft van het scherm.
-const SECTIE = "min(310px, 84vw)";
+// De ladder is 84,90vw breed en zijn BOVENkant 970/1100 daarvan = 74,9vw. De
+// sectie staat daar net iets boven, maar blijft onder de volle ladderbreedte:
+// even breed als het speelveld trekt de aandacht naar de verkeerde helft.
+const SECTIE = "81.9vw";
 const VIOLET = "#B36BFF";
 const VIOLET_LICHT = "#E3B8FF";
 
@@ -491,10 +545,10 @@ function TabKader({ titel, children }: { titel: string; children: React.ReactNod
     return () => ro.disconnect();
   }, []);
 
-  const TH = 30;   // hoogte van de tab
-  const TB = 180;  // breedte van de tab, schouders meegerekend
-  const HELLING = 17; // de schuine kant waarmee de lijn omhoog stapt
-  const TC = 11;   // de facetten op de top, waarmee de tab een kristal wordt
+  const TH = 22;   // hoogte van de tab
+  const TB = 158;  // breedte van de tab, schouders meegerekend
+  const HELLING = 13; // de schuine kant waarmee de lijn omhoog stapt
+  const TC = 8;    // de facetten op de top, waarmee de tab een kristal wordt
   const C = 16;    // afsnijding van de hoeken
 
   const { b, h } = maat;
@@ -534,7 +588,7 @@ function TabKader({ titel, children }: { titel: string; children: React.ReactNod
         style={{
           position: "absolute", top: 0, left: 0, right: 0, height: TH,
           display: "grid", placeItems: "center", pointerEvents: "none",
-          fontFamily: font.wide, fontSize: 11.5, letterSpacing: 2.4, textTransform: "uppercase",
+          fontFamily: font.wide, fontSize: 9.5, letterSpacing: 1.8, textTransform: "uppercase",
           color: "#FFD98A", textShadow: "0 0 10px rgba(255,180,50,.55)",
         }}
       >
