@@ -14,6 +14,7 @@ import { VerstuurKnop } from "./VerstuurKnop";
 import { KNOP_GOUD_VERLOOP, goudHaarlijn } from "./GlasKnop";
 import { useVakLaag, useZichtbaarVak } from "../lib/zichtbaarvak";
 import { ARENA } from "./Arena";
+import { KADER_LIJN_ROOD, NeonKader } from "./ProfileHero";
 import { Reel } from "./Reel";
 import { VoiceNote } from "./VoiceNote";
 import { EmotePicker } from "./EmotePicker";
@@ -250,35 +251,34 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
           }}
         >
           {/* Het merkje linksonder: dit is geen plaatje van de rol maar de rol
-              zelf, live. Een knipperend rood stipje zegt dat in één oogopslag,
-              zoals elke uitzending dat doet. */}
-          <span
-            style={{
-              position: "absolute",
-              left: 14,
-              bottom: 12,
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 7,
-              padding: "5px 11px 5px 9px",
-              borderRadius: 999,
-              background: "linear-gradient(180deg, #C0142B 0%, #8E0C1F 100%)",
-              boxShadow: "0 2px 8px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.22)",
-            }}
-          >
-            <span
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: "50%",
-                background: "#FFF",
-                boxShadow: "0 0 6px rgba(255,255,255,.85)",
-                animation: "fill-pulse 1.1s ease-in-out infinite",
-              }}
-            />
-            <span style={{ fontFamily: font.ui, fontWeight: 800, fontSize: 10.5, letterSpacing: 0.9, color: "#FFF", textTransform: "uppercase" }}>
-              livestream
-            </span>
+              zelf, live. Een knipperend stipje zegt dat in één oogopslag, zoals
+              elke uitzending dat doet. Dezelfde pil als "Stoppen" in de arena:
+              rode neonlijn op een zwarte vulling, want dat is in deze app de
+              vorm van een rode pil. */}
+          <span style={{ position: "absolute", left: 12, bottom: 10 }}>
+            <NeonKader
+              radius={999}
+              dik={0.5}
+              vulling="zwart"
+              animeer
+              lijn={KADER_LIJN_ROOD}
+              gloed={`0 0 12px ${withAlpha(colors.red, 0.35)}`}
+              binnen={{ padding: "3px 9px 3px 7px", display: "inline-flex", alignItems: "center", gap: 5 }}
+            >
+              <span
+                style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: "50%",
+                  background: colors.red,
+                  boxShadow: `0 0 6px ${colors.red}`,
+                  animation: "fill-pulse 1.1s ease-in-out infinite",
+                }}
+              />
+              <span style={{ fontFamily: font.ui, fontWeight: 700, fontSize: 9, letterSpacing: 0.7, color: colors.redHi, textTransform: "uppercase" }}>
+                livestream
+              </span>
+            </NeonKader>
           </span>
           <div style={{ transform: `scale(${ROL_SCHAAL})`, transformOrigin: "center", lineHeight: 0 }}>
             <Reel
