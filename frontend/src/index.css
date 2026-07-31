@@ -1373,3 +1373,20 @@ body.rekenzaal::after {
 body.rekenspel::after {
   background-image: url("/ui/reken/bg-spel.webp?v=3");
 }
+
+/* De veeg over de onderrand van de naamplaat. Hij glijdt er in een vijfde van
+   de ronde overheen en rust de rest: licht dat blijft heen en weer gaan wordt
+   een knipperlicht, licht dat af en toe langsstrijkt blijft licht.
+
+   Op `stroke-dashoffset` en niet op een transform: de streep moet de VORM van de
+   rand volgen, inclusief de twee schuine punten, en dat kan een transform niet.
+   De lijn staat op pathLength 100, dus de maten kloppen bij elke schermbreedte. */
+@keyframes reken-veeg {
+  0% { stroke-dashoffset: 13; opacity: 0; }
+  4% { opacity: 1; }
+  18% { opacity: 1; }
+  22% { stroke-dashoffset: -100; opacity: 0; }
+  100% { stroke-dashoffset: -100; opacity: 0; }
+}
+.reken-veeg { animation: reken-veeg 5.4s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .reken-veeg { animation: none; opacity: 0; } }

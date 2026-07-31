@@ -247,15 +247,17 @@ const TREDEN = [
 // daarmee op 96,3 / 263,3 / 433,9 / 608,0 uit, tegen plaatmiddens van 96,5 /
 // 265,5 / 436 / 607,5. Twee pixels ernaast op een ladder van 733 hoog.
 //
-// Omgerekend naar de maat van de ladder in de app beslaat het vel:
-const KNOPPEN = { links: -5.11, top: 3.48, breed: 16.76, hoog: 91.47 };
+// Omgerekend naar de maat van de ladder in de app beslaat het vel dit, met een
+// tikje naar binnen (2,1% van de ladderbreedte) zodat de schijven op de stijl
+// staan in plaats van ernaast.
+const KNOPPEN = { links: -3.01, top: 3.48, breed: 16.76, hoog: 91.47 };
 // En dit zijn de harten van de vier schijven daarin, met hun doorsnee, allemaal
 // in procenten van de ladder. De letters gaan daar bovenop.
 const LETTERS = [
-  { letter: "A", x: 4.41, y: 13.14, d: 6.96 },
-  { letter: "B", x: 3.59, y: 35.92, d: 7.41 },
-  { letter: "C", x: 2.69, y: 59.20, d: 7.74 },
-  { letter: "D", x: 1.85, y: 82.95, d: 8.11 },
+  { letter: "A", x: 6.51, y: 13.14, d: 6.96 },
+  { letter: "B", x: 5.69, y: 35.92, d: 7.41 },
+  { letter: "C", x: 4.79, y: 59.20, d: 7.74 },
+  { letter: "D", x: 3.95, y: 82.95, d: 8.11 },
 ];
 
 type Staat = "uit" | "rust" | "goed" | "fout" | "dood";
@@ -431,6 +433,20 @@ function Ladder({ keuzes, antwoord, oordeel, onKies, slapend, klaar }: {
 const SECTIE = "81.9vw";
 const VIOLET = "#B36BFF";
 const VIOLET_LICHT = "#E3B8FF";
+const ROOD = "#FF5A4E";
+const ROOD_LICHT = "#FFB0A6";
+
+/** Twee kleuren mengen. In hex en niet in rgb(), want withAlpha() leest alleen
+ *  hex; geef je hem rgb(), dan komt er rgba(NaN,...) uit en gooit de browser het
+ *  hele verloop weg zonder een kik. */
+function meng(van: string, naar: string, deel: number): string {
+  const t = Math.max(0, Math.min(1, deel));
+  const p = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const [a, b] = [p(van), p(naar)];
+  const k = (v: number) => Math.round(v).toString(16).padStart(2, "0");
+  return `#${a.map((v, i) => k(v + (b[i] - v) * t)).join("")}`;
+}
+const donkerder = (hex: string, deel: number) => meng(hex, "#000000", 1 - deel);
 
 /** De verven voor de lijnen. Eén keer per svg neerzetten; wie ze twee keer
  *  neerzet krijgt dubbele id's en dan pakt de browser er willekeurig een. */
@@ -474,14 +490,30 @@ function Verven() {
         <stop offset="72%" stopColor="#7BD8FF" stopOpacity="0.55" />
         <stop offset="100%" stopColor="#7BD8FF" stopOpacity="0" />
       </linearGradient>
-      {/* Het paars van het bovenpaneel staat rond de 70%: op 30 viel het weg
-          tegen de zaal. Nog steeds niet dicht, want je moet de zaal erachter
-          kunnen zien, maar wel genoeg om als een paneel te lezen. Naar onderen
-          een tikje zwaarder, zodat het vlak belicht blijft ogen. */}
+      {/* Het paars van het bovenpaneel staat op 20%: je moet er doorheen kunnen
+          kijken naar de zaal. Naar onderen een haartje zwaarder, zodat het vlak
+          nog steeds belicht oogt en niet als een egale waas. */}
+      {/* Dezelfde kern als hierboven maar in paars, voor de naamplaat. Het goud
+          aan de uiteinden blijft daarmee goud; alleen het licht dat er middenin
+          doorheen brandt is paars. */}
+      <linearGradient id="rl-kern-paars" x1="0" y1="0" x2="1" y2="0.8">
+        <stop offset="0%" stopColor="#C98BFF" stopOpacity="0" />
+        <stop offset="28%" stopColor="#C98BFF" stopOpacity="0.55" />
+        <stop offset="50%" stopColor="#F3E2FF" stopOpacity="0.95" />
+        <stop offset="72%" stopColor="#C98BFF" stopOpacity="0.55" />
+        <stop offset="100%" stopColor="#C98BFF" stopOpacity="0" />
+      </linearGradient>
       <linearGradient id="rl-vul" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor="#2A1449" stopOpacity="0.66" />
-        <stop offset="55%" stopColor="#180B2C" stopOpacity="0.7" />
-        <stop offset="100%" stopColor="#0C0519" stopOpacity="0.74" />
+        <stop offset="0%" stopColor="#2A1449" stopOpacity="0.19" />
+        <stop offset="55%" stopColor="#180B2C" stopOpacity="0.21" />
+        <stop offset="100%" stopColor="#0C0519" stopOpacity="0.23" />
+      </linearGradient>
+      {/* De naamplaat dekt wel: hij is klein en draagt de naam, dus daar mag de
+          zaal niet doorheen schijnen. */}
+      <linearGradient id="rl-plaat" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor="#3A1B62" />
+        <stop offset="52%" stopColor="#24103F" />
+        <stop offset="100%" stopColor="#150826" />
       </linearGradient>
       <linearGradient id="rl-vul-diep" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0%" stopColor="#101A30" />
@@ -502,14 +534,14 @@ function Verven() {
  *  een vervaagde blauwe kern en daarbovenop de scherpe blauwe kern. Van buiten
  *  naar binnen dus goud met een blauw hart, wat op afstand leest als één lijn
  *  die van binnenuit brandt. */
-function NeonPad({ pad, vulling, breed = 1.1 }: { pad: string; vulling?: string; breed?: number }) {
+function NeonPad({ pad, vulling, breed = 1.1, kern = "rl-kern" }: { pad: string; vulling?: string; breed?: number; kern?: string }) {
   return (
     <>
       <path d={pad} fill="none" stroke="url(#rl-goud)" strokeWidth={breed + 1.2} opacity="0.3" filter="url(#rl-gloed)" />
       <path d={pad} fill={vulling ?? "none"} stroke="url(#rl-goud)" strokeWidth={breed} strokeLinejoin="round" />
       <path d={pad} fill="none" stroke="url(#rl-vonk)" strokeWidth={breed + 2.2} opacity="0.75" filter="url(#rl-kerngloed)" />
-      <path d={pad} fill="none" stroke="url(#rl-kern)" strokeWidth={breed + 1.6} opacity="0.5" filter="url(#rl-kerngloed)" />
-      <path d={pad} fill="none" stroke="url(#rl-kern)" strokeWidth={breed * 0.42} strokeLinejoin="round" />
+      <path d={pad} fill="none" stroke={`url(#${kern})`} strokeWidth={breed + 1.6} opacity="0.5" filter="url(#rl-kerngloed)" />
+      <path d={pad} fill="none" stroke={`url(#${kern})`} strokeWidth={breed * 0.42} strokeLinejoin="round" />
     </>
   );
 }
@@ -534,7 +566,22 @@ function achthoek(b: number, h: number, c: number): string {
  */
 function TabKader({ titel, children }: { titel: string; children: React.ReactNode }) {
   const doos = useRef<HTMLDivElement | null>(null);
+  const naam = useRef<HTMLSpanElement | null>(null);
   const [maat, setMaat] = useState({ b: 0, h: 0 });
+  // De plaat is precies zo breed als de naam die erop staat. Meten en niet
+  // gokken: het lettertype laadt na de eerste tekening, en een breedte die je
+  // uit de letters uitrekent klopt daarna nooit meer.
+  const [naamBreed, setNaamBreed] = useState(0);
+  useEffect(() => {
+    const el = naam.current;
+    if (!el) return;
+    const meet = () => setNaamBreed(el.getBoundingClientRect().width);
+    meet();
+    const ro = new ResizeObserver(meet);
+    ro.observe(el);
+    document.fonts?.ready.then(meet).catch(() => {});
+    return () => ro.disconnect();
+  }, [titel]);
   useEffect(() => {
     const el = doos.current;
     if (!el) return;
@@ -545,11 +592,21 @@ function TabKader({ titel, children }: { titel: string; children: React.ReactNod
     return () => ro.disconnect();
   }, []);
 
-  const TH = 22;   // hoogte van de tab
-  const TB = 158;  // breedte van de tab, schouders meegerekend
-  const HELLING = 13; // de schuine kant waarmee de lijn omhoog stapt
-  const TC = 8;    // de facetten op de top, waarmee de tab een kristal wordt
+  const TH = 15;   // hoogte van de tab: net genoeg om uit de lijn te stappen
+  const TB = 208;  // breedte van de tab, schouders meegerekend
+  const HELLING = 10; // de schuine kant waarmee de lijn omhoog stapt
+  const TC = 5;    // de facetten op de top, waarmee de tab een kristal wordt
   const C = 16;    // afsnijding van de hoeken
+
+  // DE NAAMPLAAT. De lijn stapt omhoog (dat zijn de schouders) en daar ligt een
+  // eigen plaatje overheen met de naam erop: zeshoekig, met de uiteinden
+  // afgeschuind naar een punt. De plaat is smaller dan de tab, precies zoveel
+  // dat de schuine schouders er aan weerszijden onderuit komen.
+  const PC = 9;                 // de afschuining van de uiteinden
+  // De punten sluiten om de naam heen: de tekst plus de twee schuintes plus een
+  // haar lucht.
+  const PB = Math.max(90, Math.round(naamBreed) + 2 * PC + 16);
+  const PH = TH + 12;           // hoogte: hij steekt boven EN onder de lijn uit
 
   const { b, h } = maat;
   const x1 = Math.round((b - TB) / 2);
@@ -576,25 +633,63 @@ function TabKader({ titel, children }: { titel: string; children: React.ReactNod
     "Z",
   ].join(" ") : "";
 
+  const px = (b - PB) / 2;
+  // Het hart van de plaat ligt op de lijn van de INHAM (die op nul), niet op de
+  // bovenlijn van het kader. Zo loopt de opgetilde lijn dwars door de plaat heen
+  // en blijft de kaderlijn er als tweede lijn onderdoor lopen.
+  const py = -PH / 2;
+  const plaat = b > 0 ? [
+    `M ${px + PC} ${py}`,
+    `L ${px + PB - PC} ${py}`,
+    `L ${px + PB} ${py + PH / 2}`,
+    `L ${px + PB - PC} ${py + PH}`,
+    `L ${px + PC} ${py + PH}`,
+    `L ${px} ${py + PH / 2}`,
+    "Z",
+  ].join(" ") : "";
+
+  // Alleen de ONDERrand van de plaat: van punt, langs de onderkant, naar punt.
+  // Daar glijdt het licht overheen.
+  const plaatOnder = b > 0 ? [
+    `M ${px} ${py + PH / 2}`,
+    `L ${px + PC} ${py + PH}`,
+    `L ${px + PB - PC} ${py + PH}`,
+    `L ${px + PB} ${py + PH / 2}`,
+  ].join(" ") : "";
+
   return (
     <div ref={doos} style={{ position: "relative", width: "100%" }}>
       {b > 0 && (
         <svg width={b} height={h} style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "visible" }} aria-hidden>
           <Verven />
           <NeonPad pad={pad} vulling="url(#rl-vul)" />
+          <NeonPad pad={plaat} vulling="url(#rl-plaat)" breed={0.85} kern="rl-kern-paars" />
+          {/* De veeg over de onderrand. `pathLength` zet de lijn om naar honderd
+              eenheden, dus de streepmaat klopt bij elke schermbreedte zonder dat
+              ik de echte lengte hoef te kennen. */}
+          <path
+            d={plaatOnder} fill="none" pathLength="100" className="reken-veeg"
+            stroke="#F3E2FF" strokeWidth="2.6" strokeLinecap="round"
+            strokeDasharray="13 100" opacity="0.55" style={{ filter: "blur(2.2px)" }}
+          />
+          <path
+            d={plaatOnder} fill="none" pathLength="100" className="reken-veeg"
+            stroke="#FFFFFF" strokeWidth="1" strokeLinecap="round"
+            strokeDasharray="13 100"
+          />
         </svg>
       )}
       <span
         style={{
-          position: "absolute", top: 0, left: 0, right: 0, height: TH,
+          position: "absolute", top: py, left: 0, right: 0, height: PH,
           display: "grid", placeItems: "center", pointerEvents: "none",
-          fontFamily: font.wide, fontSize: 9.5, letterSpacing: 1.8, textTransform: "uppercase",
+          fontFamily: font.wide, fontSize: 11, letterSpacing: 2.2, textTransform: "uppercase",
           color: "#FFD98A", textShadow: "0 0 10px rgba(255,180,50,.55)",
         }}
       >
-        {titel}
+        <span ref={naam}>{titel}</span>
       </span>
-      <div style={{ position: "relative", padding: `${TH + 14}px 16px 16px`, display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
+      <div style={{ position: "relative", padding: `${TH + 8}px 16px 11px`, display: "flex", flexDirection: "column", alignItems: "center", gap: 9 }}>
         {children}
       </div>
     </div>
@@ -606,32 +701,59 @@ function TabKader({ titel, children }: { titel: string; children: React.ReactNod
  *  leeg, dus je ziet hetzelfde tweemaal maar op twee schalen: de balk voor de
  *  grote lijn, de ring voor de laatste tellen. */
 function Klokbalk({ rest, seconden }: { rest: number; seconden: number }) {
-  const op = rest < 0.28;
-  const kleur = op ? "#FF5A4E" : VIOLET;
-  const licht = op ? "#FF9A92" : VIOLET_LICHT;
+  const r = Math.max(0, Math.min(1, rest));
+  // Geen omslagpunt maar een VERLOOP. Een balk die op 28 procent ineens rood
+  // wordt leest als een storing; een die geleidelijk warmer wordt leest als tijd
+  // die opraakt. Hij begint te kleuren op 70 procent en is op nul helemaal rood.
+  const hitte = Math.max(0, Math.min(1, (0.7 - r) / 0.7));
+  const kleur = meng(VIOLET, ROOD, hitte);
+  const licht = meng(VIOLET_LICHT, ROOD_LICHT, hitte);
   const omtrek = 2 * Math.PI * 15;
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10, width: "100%" }}>
-      <Timer size={19} strokeWidth={1.8} color={withAlpha("#FFE7A8", 0.72)} style={{ flexShrink: 0 }} />
-      <span style={{ position: "relative", flex: 1, height: 11, borderRadius: 999, background: "rgba(0,0,0,.45)", boxShadow: `inset 0 0 0 1px ${withAlpha("#FFE7A8", 0.18)}, inset 0 2px 5px rgba(0,0,0,.55)`, overflow: "hidden" }}>
+      <Timer size={19} strokeWidth={1.8} color={licht} style={{ flexShrink: 0, filter: `drop-shadow(0 0 5px ${withAlpha(kleur, 0.7)})` }} />
+      {/* De goot is neon: een donkere kern met een gekleurde lijn eromheen en een
+          gloed eronder, in dezelfde kleur als de balk. Zo hoort de lege helft bij
+          de volle in plaats van dat het een grijze rest is. */}
+      <span
+        style={{
+          position: "relative", flex: 1, height: 11, borderRadius: 999,
+          background: "rgba(4,1,12,.72)",
+          boxShadow: `inset 0 0 0 1px ${withAlpha(kleur, 0.55)}, inset 0 2px 5px rgba(0,0,0,.6), 0 0 10px ${withAlpha(kleur, 0.3)}`,
+        }}
+      >
         <span
           style={{
             position: "absolute", inset: 1, right: "auto",
-            width: `calc(${Math.max(0, Math.min(1, rest)) * 100}% - 2px)`,
+            width: `calc(${r * 100}% - 2px)`,
             borderRadius: 999,
-            background: `linear-gradient(180deg, ${licht} 0%, ${kleur} 48%, ${withAlpha(kleur, 0.75)} 100%)`,
-            boxShadow: `0 0 12px ${withAlpha(kleur, 0.65)}`,
+            // Licht bovenin, kleur in het midden, donker onderin: dat leest als
+            // een ronde buis en niet als een gekleurde reep.
+            background: `linear-gradient(180deg, ${licht} 0%, ${kleur} 46%, ${donkerder(kleur, 0.62)} 100%)`,
+            boxShadow: `0 0 12px ${withAlpha(kleur, 0.7)}, 0 0 3px ${withAlpha(licht, 0.9)}`,
+            transition: "background .3s linear",
           }}
         />
       </span>
-      {/* De ring loopt tegen de klok in leeg, zoals een echte aftelling. */}
+      {/* De ring loopt tegen de klok in leeg, zoals een echte aftelling, en
+          krijgt dezelfde neonbehandeling: een vervaagde kopie eronder voor de
+          gloed en een lichte kern erop. */}
       <span style={{ position: "relative", width: 38, height: 38, flexShrink: 0, display: "grid", placeItems: "center" }}>
-        <svg width="38" height="38" viewBox="0 0 38 38" style={{ position: "absolute", inset: 0, transform: "rotate(-90deg)" }} aria-hidden>
-          <circle cx="19" cy="19" r="15" fill="none" stroke="rgba(0,0,0,.45)" strokeWidth="3.2" />
+        <svg width="38" height="38" viewBox="0 0 38 38" style={{ position: "absolute", inset: 0, transform: "rotate(-90deg)", overflow: "visible" }} aria-hidden>
+          <circle cx="19" cy="19" r="15" fill="none" stroke="rgba(4,1,12,.72)" strokeWidth="3.4" />
+          <circle cx="19" cy="19" r="15" fill="none" stroke={withAlpha(kleur, 0.5)} strokeWidth="1" />
+          <circle
+            cx="19" cy="19" r="15" fill="none" stroke={kleur} strokeWidth="4.4" strokeLinecap="round"
+            strokeDasharray={omtrek} strokeDashoffset={omtrek * (1 - r)}
+            opacity="0.5" style={{ filter: "blur(3px)" }}
+          />
           <circle
             cx="19" cy="19" r="15" fill="none" stroke={kleur} strokeWidth="3.2" strokeLinecap="round"
-            strokeDasharray={omtrek} strokeDashoffset={omtrek * (1 - Math.max(0, Math.min(1, rest)))}
-            style={{ filter: `drop-shadow(0 0 5px ${withAlpha(kleur, 0.8)})` }}
+            strokeDasharray={omtrek} strokeDashoffset={omtrek * (1 - r)}
+          />
+          <circle
+            cx="19" cy="19" r="15" fill="none" stroke={licht} strokeWidth="1.1" strokeLinecap="round"
+            strokeDasharray={omtrek} strokeDashoffset={omtrek * (1 - r)}
           />
         </svg>
         <span style={{ position: "relative", fontFamily: font.display, fontWeight: 800, fontSize: 15, color: "#FFF3D0", fontVariantNumeric: "tabular-nums" }}>{seconden}</span>
@@ -663,7 +785,7 @@ function SomVenster({ children }: { children: React.ReactNode }) {
           <NeonPad pad={achthoek(maat.b, maat.h, 13)} vulling="url(#rl-vul-diep)" breed={0.9} />
         </svg>
       )}
-      <div style={{ position: "relative", padding: "18px 14px", display: "grid", placeItems: "center" }}>{children}</div>
+      <div style={{ position: "relative", padding: "10px 14px", display: "grid", placeItems: "center" }}>{children}</div>
     </div>
   );
 }
@@ -792,9 +914,16 @@ export function Rekenladder({ seed, onKlaar, onOpnieuw }: {
             afsnijding op de hoeken, de naam op een tab die IN de bovenrand valt,
             het somvak erin met zijn eigen dunnere lijn, en onderin de klok als
             balk plus ring. */}
-        <div style={{ width: SECTIE }}>
+        <div style={{ width: SECTIE, marginTop: 25 }}>
           <TabKader titel="REKENLADDER">
-            <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 17, letterSpacing: 0.4, color: "#FFFFFF", textShadow: "0 2px 6px rgba(0,0,0,.6)" }}>
+            <span
+              style={{
+                height: 20, display: "grid", placeItems: "center",
+                whiteSpace: "nowrap", lineHeight: 1,
+                fontFamily: font.display, fontWeight: 800, fontSize: 15.5, letterSpacing: 0.4,
+                color: "#FFFFFF", textShadow: "0 2px 6px rgba(0,0,0,.6)",
+              }}
+            >
               {fase === "klaar" ? `GEVALLEN OP TREDE ${trede}` : "WAT IS HET ANTWOORD?"}
             </span>
 
@@ -803,8 +932,9 @@ export function Rekenladder({ seed, onKlaar, onOpnieuw }: {
                 key={fase === "tel" ? `tel-${tel}` : `som-${trede}`}
                 className="klem-kom"
                 style={{
+                  height: 58, display: "grid", placeItems: "center", lineHeight: 1,
                   fontFamily: font.display, fontWeight: 800,
-                  fontSize: fase === "tel" ? 52 : 42, letterSpacing: 2, lineHeight: 1.1,
+                  fontSize: fase === "tel" ? 52 : 42, letterSpacing: 2,
                   color: "#FFFFFF",
                   textShadow: "0 0 18px rgba(160,200,255,.35), 0 2px 4px rgba(0,0,0,.8)",
                 }}
