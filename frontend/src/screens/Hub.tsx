@@ -22,7 +22,7 @@ import { Button } from "../components/Button";
 import { MicButton } from "../components/MicButton";
 import { BeeldKnop } from "../components/BeeldKnop";
 import { goudHaarlijn } from "../components/GlasKnop";
-import { useZichtbaarVak } from "../lib/zichtbaarvak";
+import { useVakLaag, useZichtbaarVak } from "../lib/zichtbaarvak";
 import { VerstuurKnop } from "../components/VerstuurKnop";
 import { VoiceNote } from "../components/VoiceNote";
 import { EmotePicker } from "../components/EmotePicker";
@@ -785,6 +785,7 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
   const [behang, setBehang] = useState<WallpaperId>(wallpaperVan);
   const [behangOpen, setBehangOpen] = useState(false);
   const vak = useZichtbaarVak();
+  const laag = useVakLaag();
   const listRef = useRef<HTMLDivElement | null>(null);
   // Partner identity: from threads, friends, or the viewed profile.
   const partner =
@@ -858,16 +859,14 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
     // dan krimpt dit vak mee. De kop met de avatar blijft bovenaan staan en de
     // berichtenlijst (flex: 1) is wat er kleiner van wordt.
     <div
+      ref={laag}
       style={{
-        // De doos zelf staat ALTIJD in de hoeken van het scherm, zodat er nooit
-        // een streepje app-achtergrond onder je gesprek doorschemert. Wat het
-        // toetsenbord afdekt gaat er als OPVULLING af, en dat is een lengte,
-        // dus die kan bewegen: de kop groeit naar de bredere balk terwijl de
-        // berichtenlijst eronder krimpt, in plaats van dat het springt.
+        // De doos hangt aan het ZICHTBARE vak (zie useVakLaag): even hoog, en
+        // meegeschoven met de pagina. De kop staat daardoor vast bovenaan wat
+        // je ziet, en de berichtenlijst (flex: 1) is het enige dat krimpt.
         position: "fixed",
         inset: 0,
-        paddingBottom: vak.bedekt,
-        transition: "padding-bottom .2s cubic-bezier(.2,1,.3,1)",
+        transition: "height .18s cubic-bezier(.2,1,.3,1), transform .18s cubic-bezier(.2,1,.3,1)",
         zIndex: 85,
         display: "flex",
         flexDirection: "column",

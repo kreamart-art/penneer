@@ -9,7 +9,7 @@
 // Hetzelfde trucje staat in [components/Arena.tsx] voor de decorlaag. Daar is
 // het een effect op een ref, hier een hook, want een lade moet ook zijn HOOGTE
 // laten afhangen van het antwoord en niet alleen zijn positie.
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export type ZichtbaarVak = {
   /** Hoever het zichtbare deel onder de bovenkant van de pagina begint. */
@@ -65,4 +65,32 @@ export function useZichtbaarVak(): ZichtbaarVak {
     };
   }, []);
   return vak;
+}
+
+/** Hangt een laag aan het zichtbare vak: even hoog, en meegeschoven met de
+ *  pagina. Zet hem op een element met `position: fixed` en `inset: 0`.
+ *
+ *  Rechtstreeks op het element en niet via React-staat: dit moet gebeuren in
+ *  hetzelfde beeldje waarin het toetsenbord beweegt, en een omweg langs een
+ *  hertekening loopt daar een paar beeldjes achteraan.
+ */
+export function useVakLaag(): React.RefObject<HTMLDivElement | null> {
+  const laag = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const vv = window.visualViewport;
+    const el = laag.current;
+    if (!vv || !el) return;
+    const sync = () => {
+      el.style.height = `${vv.height}px`;
+      el.style.transform = `translateY(${vv.offsetTop}px)`;
+    };
+    sync();
+    vv.addEventListener("resize", sync);
+    vv.addEventListener("scroll", sync);
+    return () => {
+      vv.removeEventListener("resize", sync);
+      vv.removeEventListener("scroll", sync);
+    };
+  }, []);
+  return laag;
 }

@@ -11,7 +11,7 @@ import { MicButton } from "./MicButton";
 import { BeeldKnop } from "./BeeldKnop";
 import { VerstuurKnop } from "./VerstuurKnop";
 import { KNOP_GOUD_VERLOOP, goudHaarlijn } from "./GlasKnop";
-import { useZichtbaarVak } from "../lib/zichtbaarvak";
+import { useVakLaag, useZichtbaarVak } from "../lib/zichtbaarvak";
 import { VoiceNote } from "./VoiceNote";
 import { EmotePicker } from "./EmotePicker";
 import { EMOTE_SRC, FREE_EMOTE_PACKS } from "./emotes";
@@ -79,6 +79,7 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
   // die verdelen de lade, ze omlijsten hem niet.
   const [typt, setTypt] = useState(false);
   const vak = useZichtbaarVak();
+  const laag = useVakLaag();
   const roomCode = game.state.room?.code ?? "";
 
   // Upload a memo to this room, then post it as a chat message.
@@ -174,16 +175,14 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
 
   return (
     <div
+      ref={laag}
       onClick={onClose}
       style={{
-        // Zie de privéberichten: in de hoeken van het scherm, met onderaan een
-        // opvulling ter grootte van wat het toetsenbord afdekt. Geen `top` uit
-        // een meting: Safari verankert een vaste laag zelf al aan het
-        // zichtbare vak, en dan zou een tweede correctie hem juist verschuiven.
+        // Zie de privéberichten: aan het zichtbare vak gehangen, zodat de lade
+        // boven het toetsenbord blijft staan.
         position: "fixed",
         inset: 0,
-        paddingBottom: vak.bedekt,
-        transition: "padding-bottom .2s cubic-bezier(.2,1,.3,1)",
+        transition: "height .18s cubic-bezier(.2,1,.3,1), transform .18s cubic-bezier(.2,1,.3,1)",
         zIndex: 60,
         background: "rgba(6,3,18,.55)",
         backdropFilter: "blur(3px)",
