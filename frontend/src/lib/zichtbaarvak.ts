@@ -101,8 +101,17 @@ export function useVakLaag(): {
       el.style.transform = `translateY(${vv.offsetTop}px)`;
       const strook = onder.current;
       if (strook) {
-        const layout = document.documentElement.clientHeight || window.innerHeight;
-        strook.style.height = `${Math.max(0, layout - vv.height - vv.offsetTop)}px`;
+        // Alleen de ONDERKANT van het zichtbare vak, en verder geen enkele
+        // meting: de strook hangt met `bottom: 0` aan de onderrand van zijn
+        // ouder en begint waar het zichtbare vak ophoudt. Wat ertussen zit is
+        // per definitie precies wat er afgedekt wordt.
+        //
+        // De eerste versie rekende met documentElement.clientHeight, en die
+        // krimpt in de geinstalleerde app op iOS MEE met het toetsenbord (net
+        // als window.innerHeight). Het verschil was daar altijd nul en de
+        // strook dus onzichtbaar. Deze vorm heeft dat probleem niet: hij vraagt
+        // nooit hoe hoog het scherm is.
+        strook.style.top = `${vv.offsetTop + vv.height}px`;
       }
     };
     sync();
