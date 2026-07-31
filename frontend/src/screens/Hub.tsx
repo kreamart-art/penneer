@@ -858,22 +858,28 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
     // Aan het ZICHTBARE vak en niet aan de pagina: komt het toetsenbord op,
     // dan krimpt dit vak mee. De kop met de avatar blijft bovenaan staan en de
     // berichtenlijst (flex: 1) is wat er kleiner van wordt.
+    // Twee lagen. De BODEM vult altijd het hele scherm en beweegt nooit: die
+    // zorgt dat je nooit de pagina eronder ziet, ook niet in het halve beeldje
+    // waarin het toetsenbord en de viewport het nog niet eens zijn. Daarbovenop
+    // volgt de INHOUD het zichtbare vak, zodat de kop vast bovenaan staat en
+    // alleen de berichtenlijst krimpt.
     <div
-      ref={laag}
       style={{
-        // De doos hangt aan het ZICHTBARE vak (zie useVakLaag): even hoog, en
-        // meegeschoven met de pagina. De kop staat daardoor vast bovenaan wat
-        // je ziet, en de berichtenlijst (flex: 1) is het enige dat krimpt.
         position: "fixed",
         inset: 0,
-        transition: "height .18s cubic-bezier(.2,1,.3,1), transform .18s cubic-bezier(.2,1,.3,1)",
         zIndex: 85,
-        display: "flex",
-        flexDirection: "column",
         backgroundImage: [
           "linear-gradient(180deg, rgba(255,243,181,.07) 0%, transparent 12%)",
           "linear-gradient(180deg, #241740 0%, #1A1035 55%, #120A28 100%)",
         ].join(", "),
+      }}
+    >
+    <div
+      ref={laag}
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
       }}
     >
         {/* De kop draagt ALTIJD de veilige zone: de pagina begint bovenaan het
@@ -1051,6 +1057,7 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
             </>
           )}
         </div>
+    </div>
     </div>
   );
 }

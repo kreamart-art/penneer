@@ -73,6 +73,12 @@ export function useZichtbaarVak(): ZichtbaarVak {
  *  Rechtstreeks op het element en niet via React-staat: dit moet gebeuren in
  *  hetzelfde beeldje waarin het toetsenbord beweegt, en een omweg langs een
  *  hertekening loopt daar een paar beeldjes achteraan.
+ *
+ *  Geef deze laag GEEN css-overgang. iOS animeert het toetsenbord zelf en
+ *  stuurt onderweg tientallen meldingen; een eigen overgang rent daar achteraan
+ *  en dat zie je als flikkering. En zet er een DEKKENDE laag onder die het hele
+ *  scherm vult: deze laag is per definitie kleiner dan het scherm, en zonder
+ *  bodem eronder kijk je in dat verschil naar de pagina die eronder ligt.
  */
 export function useVakLaag(): React.RefObject<HTMLDivElement | null> {
   const laag = useRef<HTMLDivElement | null>(null);

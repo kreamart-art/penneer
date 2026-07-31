@@ -174,22 +174,28 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
     .map(([, v]) => v.name);
 
   return (
+    // Twee lagen, zie de privéberichten: de verduistering vult altijd het hele
+    // scherm en beweegt nooit, de lade erbovenop volgt het zichtbare vak. Zo
+    // kijk je nooit in een kier naar het scherm eronder terwijl het toetsenbord
+    // en de viewport het nog niet eens zijn.
     <div
-      ref={laag}
       onClick={onClose}
       style={{
-        // Zie de privéberichten: aan het zichtbare vak gehangen, zodat de lade
-        // boven het toetsenbord blijft staan.
         position: "fixed",
         inset: 0,
-        transition: "height .18s cubic-bezier(.2,1,.3,1), transform .18s cubic-bezier(.2,1,.3,1)",
         zIndex: 60,
         background: "rgba(6,3,18,.55)",
         backdropFilter: "blur(3px)",
         WebkitBackdropFilter: "blur(3px)",
+      }}
+    >
+    <div
+      ref={laag}
+      style={{
         display: "flex",
         flexDirection: "column",
         justifyContent: "flex-end",
+        overflow: "hidden",
       }}
     >
       <div
@@ -484,6 +490,7 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
           )}
         </form>
       </div>
+    </div>
     </div>
   );
 }
