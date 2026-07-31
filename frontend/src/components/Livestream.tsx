@@ -332,7 +332,7 @@ function Eindstand({ game }: { game: GameApi }) {
           >
             <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 10, color: colors.faint, width: 10, flexShrink: 0 }}>{i + 2}</span>
             <Avatar name={r.p.name} color={r.p.color} size={18} userId={r.p.user_id} hasAvatar={r.p.has_avatar} avatarVer={r.p.avatar_ver} />
-            <span style={{ minWidth: 0, fontFamily: font.ui, fontSize: 10.5, fontWeight: 600, color: colors.ink, textShadow: "0 1px 4px rgba(0,0,0,.9)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <span style={{ flex: 1, minWidth: 0, fontFamily: font.ui, fontSize: 10.5, fontWeight: 600, color: colors.ink, textShadow: "0 1px 4px rgba(0,0,0,.9)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {r.p.name}
             </span>
             <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 11, color: colors.gold }}>{r.punten}</span>
