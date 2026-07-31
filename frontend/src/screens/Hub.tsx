@@ -866,7 +866,6 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
         // berichtenlijst eronder krimpt, in plaats van dat het springt.
         position: "fixed",
         inset: 0,
-        paddingTop: vak.top,
         paddingBottom: vak.bedekt,
         transition: "padding-bottom .2s cubic-bezier(.2,1,.3,1)",
         zIndex: 85,

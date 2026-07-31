@@ -176,13 +176,14 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
     <div
       onClick={onClose}
       style={{
-        // Zie de privéberichten: de lade hangt aan het zichtbare vak, zodat de
-        // kop bovenaan blijft staan als het toetsenbord opkomt.
+        // Zie de privéberichten: in de hoeken van het scherm, met onderaan een
+        // opvulling ter grootte van wat het toetsenbord afdekt. Geen `top` uit
+        // een meting: Safari verankert een vaste laag zelf al aan het
+        // zichtbare vak, en dan zou een tweede correctie hem juist verschuiven.
         position: "fixed",
-        left: 0,
-        right: 0,
-        top: vak.top,
-        height: vak.hoogte,
+        inset: 0,
+        paddingBottom: vak.bedekt,
+        transition: "padding-bottom .2s cubic-bezier(.2,1,.3,1)",
         zIndex: 60,
         background: "rgba(6,3,18,.55)",
         backdropFilter: "blur(3px)",
