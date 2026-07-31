@@ -127,6 +127,7 @@ function TypRegel({ naam, kleur, staart, avatar }: { naam: string; kleur: string
  *  ook het enige uit de uitslag dat je in vier regels kwijt kunt: de hele
  *  scorelijst staat toch al op de pagina eronder. */
 function Hoogtepunten({ game, max = 4 }: { game: GameApi; max?: number }) {
+  const { t } = useT();
   const room = game.state.room;
   const ronde = room?.round;
   if (!room || !ronde) return null;
@@ -145,8 +146,22 @@ function Hoogtepunten({ game, max = 4 }: { game: GameApi; max?: number }) {
   // De dikste vangst bovenaan, en niet meer dan er past.
   beste.sort((a, b) => b.punten - a.punten);
 
+  if (beste.length === 0) return null;
   return (
-    <div style={{ display: "flex", flexDirection: "column", justifyContent: "flex-end", gap: 5 }}>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 5,
+        padding: "7px 10px 8px",
+        borderRadius: 12,
+        background: "linear-gradient(180deg, rgba(10,4,20,.72) 0%, rgba(6,3,14,.78) 100%)",
+        boxShadow: `inset 0 0 0 1px ${withAlpha(colors.gold, 0.45)}`,
+      }}
+    >
+      <span style={{ fontFamily: font.ui, fontSize: 8.5, fontWeight: 800, letterSpacing: 1.1, textTransform: "uppercase", color: withAlpha(colors.gold, 0.85) }}>
+        {t("streamHoogtepunten")}
+      </span>
       {beste.slice(0, max).map((h) => (
         <TypRegel
           key={h.cat}
@@ -183,6 +198,54 @@ function KlaarStroom({ game, max = 5 }: { game: GameApi; max?: number }) {
         />
       ))}
     </div>
+  );
+}
+
+/** De lichtkrant rechtsonder: wie er aan kop gaat. Reist heen en weer, zoals de
+ *  regel boven een podium, want een stilstaande regel leest als een label en
+ *  een reizende als een omroep. */
+function LedBalk({ game }: { game: GameApi }) {
+  const { t } = useT();
+  const room = game.state.room;
+  if (!room) return null;
+  const meedoen = room.players.filter((p) => !p.is_spectator);
+  const hoogste = Math.max(0, ...meedoen.map((p) => room.scores[p.id] ?? 0));
+  const kop = meedoen.filter((p) => (room.scores[p.id] ?? 0) === hoogste);
+  const tekst =
+    hoogste <= 0
+      ? t("streamNogNiks")
+      : kop.length === 1
+        ? t("streamKop", { naam: kop[0].name, n: String(hoogste) })
+        : t("streamGelijk", { namen: kop.slice(0, 3).map((p) => p.name).join(", "), n: String(hoogste) });
+
+  return (
+    <span
+      style={{
+        position: "absolute",
+        left: 12,
+        right: 12,
+        bottom: 8,
+        height: 18,
+        overflow: "hidden",
+        display: "block",
+      }}
+    >
+      <span
+        className="led-reis"
+        style={{
+          top: 2,
+          fontFamily: font.ui,
+          fontSize: 10,
+          fontWeight: 800,
+          letterSpacing: 0.6,
+          textTransform: "uppercase",
+          color: colors.gold,
+          textShadow: `0 0 8px ${withAlpha(colors.gold, 0.55)}`,
+        }}
+      >
+        {tekst}
+      </span>
+    </span>
   );
 }
 
@@ -247,16 +310,29 @@ export function Livestream({ game }: { game: GameApi }) {
         overflow: "hidden",
       }}
     >
-      {(rolt || naast) && (
+      {uitslag && (
+        // De uitslag heeft geen rol nodig: die is gevallen. Links wat de ronde
+        // opleverde, rechts wie er klaar staat voor de volgende.
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 10, width: "100%", padding: "0 12px", minHeight: 0 }}>
+          <div style={{ flex: 1.15, minWidth: 0 }}>
+            <Hoogtepunten game={game} max={3} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "flex-end", alignSelf: "stretch" }}>
+            <KlaarStroom game={game} max={3} />
+          </div>
+        </div>
+      )}
+
+      {(rolt || vult) && (
         // EEN rol voor allebei de momenten, niet twee. Bij het omslaan van
         // rollen naar invullen verandert alleen zijn maat en groeit de kolom
         // ernaast open; omdat het dezelfde doos blijft schuift hij zelf naar
         // zijn nieuwe plek in plaats van te verspringen. Twee losse rollen
         // zouden hier onvermijdelijk knipperen.
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: naast ? 12 : 0, width: "100%", padding: "0 12px", minHeight: 0, transition: "gap .42s cubic-bezier(.2,1,.3,1)" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: vult ? 12 : 0, width: "100%", padding: "0 12px", minHeight: 0, transition: "gap .42s cubic-bezier(.2,1,.3,1)" }}>
           <div
             style={{
-              ...rolVak(naast ? ROL_KLEIN : ROL_GROOT),
+              ...rolVak(vult ? ROL_KLEIN : ROL_GROOT),
               transition: "transform .42s cubic-bezier(.2,1,.3,1), margin .42s cubic-bezier(.2,1,.3,1)",
             }}
           >
@@ -268,20 +344,13 @@ export function Livestream({ game }: { game: GameApi }) {
             style={{
               flex: 1,
               minWidth: 0,
-              maxWidth: naast ? 230 : 0,
-              opacity: naast ? 1 : 0,
+              maxWidth: vult ? 230 : 0,
+              opacity: vult ? 1 : 0,
               overflow: "hidden",
               transition: "max-width .42s cubic-bezier(.2,1,.3,1), opacity .3s ease",
             }}
           >
-            {uitslag ? (
-              <div style={{ display: "flex", flexDirection: "column", justifyContent: "flex-end", gap: 5, maxHeight: 140, overflow: "hidden" }}>
-                <Hoogtepunten game={game} max={3} />
-                <KlaarStroom game={game} max={3} />
-              </div>
-            ) : (
-              <KlaarStroom game={game} />
-            )}
+            <KlaarStroom game={game} />
           </div>
         </div>
       )}
@@ -331,7 +400,7 @@ export function Livestream({ game }: { game: GameApi }) {
         style={{
           position: "absolute",
           left: 12,
-          bottom: 10,
+          bottom: 30,
           display: "inline-flex",
           alignItems: "center",
           gap: 5,
@@ -364,7 +433,7 @@ export function Livestream({ game }: { game: GameApi }) {
           style={{
             position: "absolute",
             right: 12,
-            bottom: 11,
+            bottom: 31,
             maxWidth: "62%",
             fontFamily: font.ui,
             fontSize: 11,
@@ -381,6 +450,8 @@ export function Livestream({ game }: { game: GameApi }) {
         </span>
       )}
 
+      {uitslag && <LedBalk game={game} />}
+
       {/* De klok rechtsonder, tegenover het merkje. Alleen als er echt een klok
           loopt: een room zonder tijd heeft niets af te tellen. */}
       {!!klok && (
@@ -389,7 +460,7 @@ export function Livestream({ game }: { game: GameApi }) {
           style={{
             position: "absolute",
             right: 12,
-            bottom: 10,
+            bottom: 30,
             padding: "3px 10px",
             borderRadius: 999,
             background: "linear-gradient(180deg, rgba(10,4,20,.92) 0%, rgba(6,3,14,.95) 100%)",

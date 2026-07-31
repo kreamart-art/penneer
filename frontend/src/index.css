@@ -667,6 +667,24 @@ a:active .hex-aan {
   animation: zacht-in 0.45s ease both;
 }
 
+/* De lichtkrantregel in de uitzending: hij komt links het beeld in en verlaat
+   het rechts, en begint dan opnieuw. Zoals de regel boven een podium.
+
+   `left` en `transform` samen, en niet een van de twee: `left` zet de LINKERrand
+   van de tekst op een plek in de balk, en de verschuiving van honderd procent
+   van de tekst ZELF duwt hem daar precies zijn eigen breedte vandaan. Zo staat
+   hij bij nul volledig links buiten beeld en op het eind volledig rechts
+   buiten beeld, zonder dat we ergens een breedte hoeven te meten. */
+@keyframes led-reis {
+  0% { left: 0%; transform: translateX(-100%); }
+  100% { left: 100%; transform: translateX(0); }
+}
+.led-reis {
+  position: absolute;
+  white-space: nowrap;
+  animation: led-reis 9s linear infinite;
+}
+
 /* Victory popup. The old card reused .pop-in, which snaps from scale .6 with a
    hard overshoot while the darkened backdrop appears in a single frame: it hits
    the eye all at once. This lands in three staggered beats instead. The veil
