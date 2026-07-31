@@ -48,8 +48,6 @@ const SCORE_RUIT = { t: 0.2238, h: 0.6643, links: { l: 0.0407, b: 0.3213 }, rech
 const ONDER_RUIT = { l: 0.0148, b: 0.9704, t: 0.1315, h: 0.7 };
 
 const pct = (f: number) => `${(f * 100).toFixed(3)}%`;
-const ACHT = (c: number) =>
-  `polygon(${c}px 0, calc(100% - ${c}px) 0, 100% ${c}px, 100% calc(100% - ${c}px), calc(100% - ${c}px) 100%, ${c}px 100%, 0 calc(100% - ${c}px), 0 ${c}px)`;
 
 
 // ---- de kleuren -------------------------------------------------------------
@@ -263,8 +261,27 @@ function KleurKnop({ kleur, staat, onKies }: { kleur: Kleur; staat: "rust" | "go
  *
  *  De viewBox heeft precies de verhouding van het vak, dus er wordt niets
  *  uitgerekt en de hoeken blijven 45 graden. */
+/** De maten van het woordvak. De gouden lijn is een SVG die met
+ *  `preserveAspectRatio="none"` wordt uitgerekt, dus zijn hoeken schalen mee met
+ *  de breedte EN de hoogte van het vak. De vulling werd geknipt op 16 echte
+ *  pixels, en dat is een andere vorm zodra het vak niet toevallig 319x104 groot
+ *  is: op een breed scherm stak de kleur boven de lijn uit. Daarom staan de
+ *  getallen nu hier, en leiden allebei hun vorm er zelf uit af. */
+const VAK_MAAT = { B: 319, H: 104, c: 16, m: 2.4 };
+
+/** Dezelfde achthoek als de lijn, maar in procenten, zodat een clip-path hem
+ *  precies volgt hoe groot het vak ook wordt. De vulling loopt tot het HART van
+ *  de lijn; de buitenste helft van de streek ligt er dus overheen, en dat is
+ *  precies wat een rand hoort te doen. */
+const VAK_VORM = (() => {
+  const { B, H, c, m } = VAK_MAAT;
+  const x = (v: number) => `${((v / B) * 100).toFixed(3)}%`;
+  const y = (v: number) => `${((v / H) * 100).toFixed(3)}%`;
+  return `polygon(${x(c + m)} ${y(m)}, ${x(B - c - m)} ${y(m)}, ${x(B - m)} ${y(c + m)}, ${x(B - m)} ${y(H - c - m)}, ${x(B - c - m)} ${y(H - m)}, ${x(c + m)} ${y(H - m)}, ${x(m)} ${y(H - c - m)}, ${x(m)} ${y(c + m)})`;
+})();
+
 function WoordVak({ kleur, id }: { kleur: string; id: string }) {
-  const B = 319, H = 104, c = 16, m = 2.4;
+  const { B, H, c, m } = VAK_MAAT;
   const punten = [
     [c + m, m], [B - c - m, m], [B - m, c + m], [B - m, H - c - m],
     [B - c - m, H - m], [c + m, H - m], [m, H - c - m], [m, c + m],
@@ -297,14 +314,33 @@ function WoordVak({ kleur, id }: { kleur: string; id: string }) {
   );
 }
 
+type Rgb = [number, number, number];
+
+function rgbVan(hex: string): Rgb {
+  const n = parseInt(hex.slice(1), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
 /** Dezelfde kleur, alleen minder licht. Met alfa zou hij doorschijnend worden
  *  en mee verkleuren met wat eronder ligt; hier moet het echt dezelfde tint
  *  blijven, een slag donkerder. */
 function donkerder(hex: string, deel: number): string {
-  const n = parseInt(hex.slice(1), 16);
-  const kanaal = (schuif: number) => Math.round(((n >> schuif) & 255) * deel);
-  return `rgb(${kanaal(16)}, ${kanaal(8)}, ${kanaal(0)})`;
+  const [r, g, b] = rgbVan(hex);
+  return `rgb(${Math.round(r * deel)}, ${Math.round(g * deel)}, ${Math.round(b * deel)})`;
 }
+
+/** Onderweg van de ene kleur naar de andere. 0 is helemaal `van`, 1 helemaal `naar`. */
+function meng(van: Rgb, naar: Rgb, deel: number): string {
+  const t = Math.max(0, Math.min(1, deel));
+  const k = (i: number) => Math.round(van[i] + (naar[i] - van[i]) * t);
+  return `rgb(${k(0)}, ${k(1)}, ${k(2)})`;
+}
+
+/** Waar de klem naartoe kleurt als de tijd opraakt, en vanaf hoeveel resterende
+ *  tijd hij daaraan begint. Ruim over de helft, zodat het een aanzwellende
+ *  waarschuwing is en geen schrik op het laatste moment. */
+const KLEM_ROOD: Rgb = [255, 90, 78];
+const KLEM_VERKLEURT_VANAF = 0.55;
 
 /** De klem: twee kaken die op het woord dichtlopen. Ze staan in dezelfde doos
  *  als het woord, en hun breedte IS de resterende tijd; er is dus geen aparte
@@ -315,17 +351,15 @@ function donkerder(hex: string, deel: number): string {
  *  welke kleur je ziet, en dan gaat de kader zelf van kleur wisselen. Dat er
  *  weinig tijd over is lees je al aan hoe ver ze dicht staan, en dat is een
  *  maat en geen kleur. */
-function Klem({ rest, inkt, alarm }: { rest: number; inkt: string; alarm: boolean }) {
+function Klem({ rest, inkt }: { rest: number; inkt: string }) {
   const dicht = (1 - rest) * 0.5;
-  // De kaken dragen dezelfde kleur als het vak eronder: de inkt van het woord,
-  // een slag donkerder. Ze stonden op goud, en dat was een derde kleur in een
-  // vak waar het juist om één kleur gaat.
-  //
-  // Tot de tijd bijna op is: dan springen ze alsnog naar rood. Op dat moment
-  // gaat het niet meer over welke kleur je moet kiezen maar over dat je NU moet
-  // kiezen, en dan mag er best een kleur overheen die niets met de opgave te
-  // maken heeft.
-  const kleur = alarm ? "#FF5A4E" : donkerder(inkt, 0.62);
+  // De kaken beginnen in dezelfde kleur als het vak eronder (de inkt van het
+  // woord, een slag donkerder) en LOPEN van daaruit naar rood naarmate de tijd
+  // opraakt. Geen schakelaar die op een drempel omklapt: dan is het een schrik,
+  // en een schrik vertelt je niets over hoeveel tijd je nog hebt. Zo zie je aan
+  // de kleur hoe ver het is, net als aan hoe ver ze dicht staan.
+  const basis = rgbVan(inkt).map((v) => Math.round(v * 0.62)) as Rgb;
+  const kleur = meng(basis, KLEM_ROOD, (KLEM_VERKLEURT_VANAF - rest) / KLEM_VERKLEURT_VANAF);
   const kaak = (kant: "left" | "right"): React.CSSProperties => ({
     position: "absolute", top: 0, bottom: 0, [kant]: 0, width: pct(dicht),
     background: `linear-gradient(${kant === "left" ? "90deg" : "270deg"}, ${withAlpha(kleur, 0.02)} 0%, ${withAlpha(kleur, 0.14)} 62%, ${withAlpha(kleur, 0.42)} 92%, ${withAlpha(kleur, 0.95)} 100%)`,
@@ -478,7 +512,6 @@ export function Kleurenklem({ seed, onKlaar, onOpnieuw }: {
   const stop = () => setFase("klaar");
 
   // Tijdens het aftellen is er nog geen opgave, dus dan is de lijn gewoon goud.
-  const alarm = rest < 0.34;
   const inktNu = fase === "tel" ? "#FFD98A" : opgave.inkt.inkt;
 
   return (
@@ -558,7 +591,7 @@ export function Kleurenklem({ seed, onKlaar, onOpnieuw }: {
                   left: pct(VENSTER.l), right: pct(VENSTER.r), top: pct(VENSTER.t + 0.02),
                   height: pct(0.24),
                   display: "grid", placeItems: "center", overflow: "hidden",
-                  clipPath: ACHT(16),
+                  clipPath: VAK_VORM,
                   // Drie trappen van dezelfde kleur: de letters op vol, de klem
                   // op 62 procent, het vak op 34. Zo is alles in beeld dezelfde
                   // kleur als de inkt en blijven de letters er toch uit komen.
@@ -566,7 +599,7 @@ export function Kleurenklem({ seed, onKlaar, onOpnieuw }: {
                   backgroundImage: "radial-gradient(125% 155% at 50% 14%, rgba(255,255,255,.09) 0%, rgba(255,255,255,.03) 46%, rgba(0,0,0,.16) 100%)",
                 }}
               >
-                {fase === "spel" && <Klem rest={rest} inkt={inktNu} alarm={alarm} />}
+                {fase === "spel" && <Klem rest={rest} inkt={inktNu} />}
                 <span
                   key={fase === "tel" ? `tel-${tel}` : `woord-${ronde}`}
                   className="klem-kom"
