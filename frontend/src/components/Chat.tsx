@@ -237,7 +237,7 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
             className="pressable"
             style={{ background: "transparent", border: "none", cursor: "pointer", display: "flex", padding: 4, marginLeft: "auto" }}
           >
-            <img src="/ui/wallpaper.webp" alt="" aria-hidden style={{ width: 22, height: 22, objectFit: "contain", display: "block", opacity: behangOpen ? 1 : 0.75 }} />
+            <img src="/ui/wallpaper.webp" alt="" aria-hidden style={{ width: 26, height: 26, objectFit: "contain", display: "block", opacity: behangOpen ? 1 : 0.75 }} />
           </button>
           <button
             onClick={onClose}

@@ -875,7 +875,7 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
             className="pressable"
             style={{ background: "transparent", border: "none", cursor: "pointer", color: behangOpen ? GOUD[2] : colors.faint, display: "flex", padding: 4 }}
           >
-            <img src="/ui/wallpaper.webp" alt="" aria-hidden style={{ width: 22, height: 22, objectFit: "contain", display: "block" }} />
+            <img src="/ui/wallpaper.webp" alt="" aria-hidden style={{ width: 26, height: 26, objectFit: "contain", display: "block" }} />
           </button>
           <button onClick={game.dmClose} aria-label={t("back")} style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 4 }}>
             <CloseIcon size={26} />
