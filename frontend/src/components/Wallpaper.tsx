@@ -75,7 +75,12 @@ export function wallpaperStijl(id: WallpaperId): React.CSSProperties {
     ].join(", "),
     backgroundRepeat: "no-repeat, no-repeat",
     backgroundSize: "cover, cover",
-    backgroundPosition: "center, center",
+    // De art staat op `cover` in een smalle, hoge kolom, dus er valt links en
+    // rechts iets weg. Gecentreerd sneed dat precies het onderwerp eruit: de
+    // maan in de kosmos zit rechts in het beeld en verdween half buiten de
+    // rand. Rechts uitlijnen houdt hem heel; wat er dan wegvalt is de lege
+    // linkerhelft, en dat is nou juist het stuk waar niets gebeurt.
+    backgroundPosition: "center, right center",
     // Geen `local`: dan zou de art meeschalen met de HOOGTE van het gesprek en
     // bij een lange thread tot een uitgerekte vlek worden. Nu blijft hij staan
     // en schuiven de berichten eroverheen.

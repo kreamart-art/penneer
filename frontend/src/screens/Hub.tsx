@@ -766,6 +766,13 @@ function HistoryCard({ game, meId, vitrine }: { game: GameApi; meId: string; vit
 
 // ---- DM-gesprek ----------------------------------------------------------------
 
+/** De vulling van de kop- en de invulbalk. EIGEN kleur en niet die van de
+ *  pagina eronder: het paginaverloop loopt van boven naar beneden, dus zodra
+ *  het toetsenbord de invulbalk omhoog duwt zou hij in een andere kleur komen
+ *  te staan dan de kop. Twee balken die bij elkaar horen kleuren dan uit
+ *  elkaar precies op het moment dat je ze naast elkaar ziet. */
+const BALK_VULLING = "#271A4A";
+
 function DmThreadOverlay({ game }: { game: GameApi }) {
   const { t } = useT();
   const partnerId = game.state.dmOpenWith!;
@@ -873,7 +880,7 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
     >
         {/* De kop draagt ALTIJD de veilige zone: de pagina begint bovenaan het
             scherm, dus de statusbalk van de telefoon ligt er altijd overheen. */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "calc(10px + env(safe-area-inset-top)) 16px 10px", ...goudHaarlijn("bottom") }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "calc(10px + env(safe-area-inset-top)) 16px 10px", backgroundColor: BALK_VULLING, ...goudHaarlijn("bottom") }}>
           {partner ? (
             <Avatar name={partner.name} color={partner.color} size={34} userId={partner.id} hasAvatar={partner.has_avatar} avatarVer={partner.avatar_ver} divisie={partner.divisie} />
           ) : null}
@@ -1002,7 +1009,7 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
         {/* De onderrand van de telefoon hoeft alleen vrijgehouden te worden als
             je hem ziet. Ligt het toetsenbord eroverheen, dan is die marge een
             lege strook onder je invulveld. */}
-        <div style={{ display: "flex", gap: 8, padding: vak.gekrompen ? "8px 14px 8px" : "8px 14px calc(8px + env(safe-area-inset-bottom))", ...goudHaarlijn("top") }}>
+        <div style={{ display: "flex", gap: 8, padding: vak.gekrompen ? "8px 14px 8px" : "8px 14px calc(8px + env(safe-area-inset-bottom))", backgroundColor: BALK_VULLING, ...goudHaarlijn("top") }}>
           <button
             type="button"
             onClick={() => { sound.uiTap(); setDmEmotesOpen((v) => !v); }}

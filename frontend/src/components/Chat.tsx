@@ -245,6 +245,11 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
             // plaats van er een beeldje later bovenop te springen.
             padding: vak.gekrompen ? "calc(10px + env(safe-area-inset-top)) 16px 10px" : "14px 16px 10px",
             transition: "padding .2s cubic-bezier(.2,1,.3,1)",
+            // Zie de gesprekspagina: eigen kleur, zodat de kop en de invulbalk
+            // niet uit elkaar kleuren als het toetsenbord de lade inkort. Een
+            // KLEUR en geen verloop, want de gouden haarlijn is een
+            // background-image en die zou het verloop overschrijven.
+            backgroundColor: "#271A4A",
             ...goudHaarlijn("bottom"),
           }}
         >
@@ -413,6 +418,7 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
             gap: 8,
             padding: "8px 12px",
             paddingBottom: vak.gekrompen ? 8 : "calc(8px + env(safe-area-inset-bottom))",
+            backgroundColor: "#271A4A",
             ...goudHaarlijn("top"),
           }}
         >
