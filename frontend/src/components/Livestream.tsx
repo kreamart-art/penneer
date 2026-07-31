@@ -83,36 +83,104 @@ function SpelerRij({ game, klaarIds }: { game: GameApi; klaarIds: string[] }) {
   );
 }
 
+/** Eén regel die zichzelf typt. Geen geluid: het is een ondertitel, geen
+ *  gebeurtenis. Het typen begint zodra de regel bestaat, en omdat de lijst op
+ *  speler-id is gesleuteld gebeurt dat precies één keer, bij wie er NIEUW bij
+ *  komt. */
+function TypRegel({ naam, kleur, staart, avatar }: { naam: string; kleur: string; staart: string; avatar: React.ReactNode }) {
+  const vol = `${naam} ${staart}`;
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    setN(0);
+    const id = window.setInterval(() => {
+      setN((v) => {
+        if (v >= vol.length) {
+          window.clearInterval(id);
+          return v;
+        }
+        return v + 1;
+      });
+    }, 26);
+    return () => window.clearInterval(id);
+  }, [vol]);
+
+  // De naam eerst, in zijn eigen kleur; wat daarna komt is gewone tekst. Door
+  // op dezelfde teller te knippen loopt het typen dwars door die kleurgrens
+  // heen, als één zin.
+  const naamDeel = vol.slice(0, Math.min(n, naam.length));
+  const staartDeel = n > naam.length ? vol.slice(naam.length, n) : "";
+
+  return (
+    <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+      <span className="pop-in" style={{ display: "flex", flexShrink: 0 }}>{avatar}</span>
+      <span style={{ minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", textShadow: "0 1px 4px rgba(0,0,0,.9)" }}>
+        <span style={{ fontFamily: font.ui, fontSize: 11.5, fontWeight: 800, color: kleur }}>{naamDeel}</span>
+        <span style={{ fontFamily: font.ui, fontSize: 11, color: colors.ink }}>{staartDeel}</span>
+      </span>
+    </span>
+  );
+}
+
+/** De hoogtepunten van de ronde: per categorie het antwoord dat de meeste
+ *  punten pakte. Dat is wat een uitzending na een ronde laat zien, en het is
+ *  ook het enige uit de uitslag dat je in vier regels kwijt kunt: de hele
+ *  scorelijst staat toch al op de pagina eronder. */
+function Hoogtepunten({ game, max = 4 }: { game: GameApi; max?: number }) {
+  const room = game.state.room;
+  const ronde = room?.round;
+  if (!room || !ronde) return null;
+
+  const beste: { cat: string; speler: (typeof room.players)[number]; woord: string; punten: number }[] = [];
+  for (const cat of room.settings.categories) {
+    let top: { speler: (typeof room.players)[number]; woord: string; punten: number } | null = null;
+    for (const speler of room.players) {
+      const punten = ronde.points[speler.id]?.[cat] ?? 0;
+      const woord = ronde.answers[speler.id]?.[cat]?.text ?? "";
+      if (!woord || punten <= 0) continue;
+      if (!top || punten > top.punten) top = { speler, woord, punten };
+    }
+    if (top) beste.push({ cat, ...top });
+  }
+  // De dikste vangst bovenaan, en niet meer dan er past.
+  beste.sort((a, b) => b.punten - a.punten);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", justifyContent: "flex-end", gap: 5 }}>
+      {beste.slice(0, max).map((h) => (
+        <TypRegel
+          key={h.cat}
+          naam={h.speler.name}
+          kleur={h.speler.color}
+          staart={`${h.woord} +${h.punten}`}
+          avatar={<Avatar name={h.speler.name} color={h.speler.color} size={20} userId={h.speler.user_id} hasAvatar={h.speler.has_avatar} avatarVer={h.speler.avatar_ver} />}
+        />
+      ))}
+    </div>
+  );
+}
+
 /** Wie klaar is, als een stroom regels naast de letter. De laatste onderaan,
  *  zoals in een chat: wat er net gebeurde staat het dichtst bij je oog. */
-function KlaarStroom({ game }: { game: GameApi }) {
+function KlaarStroom({ game, max = 5 }: { game: GameApi; max?: number }) {
   const { t } = useT();
   const room = game.state.room;
   if (!room) return null;
   const klaar = room.ready_ids
     .map((id) => room.players.find((p) => p.id === id))
     .filter((p): p is NonNullable<typeof p> => !!p && !p.is_spectator)
-    .slice(-5);
+    .slice(-max);
 
   return (
-    <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "flex-end", gap: 5, maxHeight: 140, overflow: "hidden" }}>
-      {klaar.length === 0 ? (
-        <span style={{ fontFamily: font.ui, fontSize: 11, color: withAlpha(colors.ink, 0.55), textShadow: "0 1px 4px rgba(0,0,0,.8)" }}>
-          {t("streamNiemandKlaar")}
-        </span>
-      ) : (
-        klaar.map((p) => (
-          <span key={p.id} style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-            <Avatar name={p.name} color={p.color} size={20} userId={p.user_id} hasAvatar={p.has_avatar} avatarVer={p.avatar_ver} />
-            <span style={{ fontFamily: font.ui, fontSize: 11.5, fontWeight: 800, color: p.color, textShadow: "0 1px 4px rgba(0,0,0,.9)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "52%" }}>
-              {p.name}
-            </span>
-            <span style={{ fontFamily: font.ui, fontSize: 11, color: colors.ink, textShadow: "0 1px 4px rgba(0,0,0,.9)", whiteSpace: "nowrap" }}>
-              {t("streamIsKlaar")}
-            </span>
-          </span>
-        ))
-      )}
+    <div style={{ display: "flex", flexDirection: "column", justifyContent: "flex-end", gap: 5 }}>
+      {klaar.map((p) => (
+        <TypRegel
+          key={p.id}
+          naam={p.name}
+          kleur={p.color}
+          staart={t("streamIsKlaar")}
+          avatar={<Avatar name={p.name} color={p.color} size={20} userId={p.user_id} hasAvatar={p.has_avatar} avatarVer={p.avatar_ver} />}
+        />
+      ))}
     </div>
   );
 }
@@ -128,6 +196,11 @@ export function Livestream({ game }: { game: GameApi }) {
   const rolStand = letter ? "locked" : game.state.spinning ? "spinning" : "idle";
   const rolt = room.phase === "reveal";
   const vult = room.phase === "fill";
+  // De uitslag deelt het beeld met het invullen: dezelfde letter op dezelfde
+  // plek, alleen staat er rechts nu wat het ODLEVERDE in plaats van wie klaar
+  // is. Zo blijft de rol staan waar hij stond en verspringt er niets.
+  const uitslag = room.phase === "results";
+  const naast = vult || uitslag;
 
   // Het merkje draagt ook de ronde: hetzelfde plekje, meer te zeggen.
   const merk = room.phase === "lobby" || room.phase === "rules"
@@ -156,28 +229,46 @@ export function Livestream({ game }: { game: GameApi }) {
         overflow: "hidden",
       }}
     >
-      {rolt && (
-        <>
-          <div style={rolVak(ROL_GROOT)}>
+      {(rolt || naast) && (
+        // EEN rol voor allebei de momenten, niet twee. Bij het omslaan van
+        // rollen naar invullen verandert alleen zijn maat en groeit de kolom
+        // ernaast open; omdat het dezelfde doos blijft schuift hij zelf naar
+        // zijn nieuwe plek in plaats van te verspringen. Twee losse rollen
+        // zouden hier onvermijdelijk knipperen.
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: naast ? 12 : 0, width: "100%", padding: "0 12px", minHeight: 0, transition: "gap .42s cubic-bezier(.2,1,.3,1)" }}>
+          <div
+            style={{
+              ...rolVak(naast ? ROL_KLEIN : ROL_GROOT),
+              transition: "transform .42s cubic-bezier(.2,1,.3,1), margin .42s cubic-bezier(.2,1,.3,1)",
+            }}
+          >
             <Reel state={rolStand} letter={letter} exclude={room.used_letters} hard={room.settings.hard_letters} skin={leider?.reel_skin ?? null} />
           </div>
-        </>
-      )}
-
-      {vult && (
-        // De letter links, en rechts ernaast druppelt binnen wie klaar is. Als
-        // een chat: één regel per speler, met zijn avatar en zijn naam in zijn
-        // eigen kleur. Een rij avatars onder elkaar zegt hetzelfde, maar deze
-        // vorm laat het GEBEUREN: er komt iemand bij terwijl je kijkt.
-        <div style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "0 12px", minHeight: 0 }}>
-          <div style={rolVak(ROL_KLEIN)}>
-            <Reel state="locked" letter={letter} exclude={room.used_letters} hard={room.settings.hard_letters} skin={leider?.reel_skin ?? null} />
+          {/* De kolom groeit open vanaf nul breed. Een maximum is wel te
+              animeren, `flex-grow` niet, dus dat is waar de beweging in zit. */}
+          <div
+            style={{
+              flex: 1,
+              minWidth: 0,
+              maxWidth: naast ? 230 : 0,
+              opacity: naast ? 1 : 0,
+              overflow: "hidden",
+              transition: "max-width .42s cubic-bezier(.2,1,.3,1), opacity .3s ease",
+            }}
+          >
+            {uitslag ? (
+              <div style={{ display: "flex", flexDirection: "column", justifyContent: "flex-end", gap: 5, maxHeight: 140, overflow: "hidden" }}>
+                <Hoogtepunten game={game} max={3} />
+                <KlaarStroom game={game} max={3} />
+              </div>
+            ) : (
+              <KlaarStroom game={game} />
+            )}
           </div>
-          <KlaarStroom game={game} />
         </div>
       )}
 
-      {!rolt && !vult && (
+      {!rolt && !naast && (
         <>
           <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 34, letterSpacing: 3, color: colors.gold, textShadow: "0 2px 10px rgba(0,0,0,.6)" }}>
             {room.code}
@@ -248,6 +339,7 @@ export function Livestream({ game }: { game: GameApi }) {
           loopt: een room zonder tijd heeft niets af te tellen. */}
       {!!klok && (
         <span
+          className="zacht-in"
           style={{
             position: "absolute",
             right: 12,

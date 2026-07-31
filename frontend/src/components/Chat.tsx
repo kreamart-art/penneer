@@ -92,7 +92,12 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
   // beweging, alleen op zijn eigen schaal. Zo ligt er niets over de chat heen
   // en valt er ook niets te repareren aan wat voor of achter hoort.
   const kamer = game.state.room;
-  const rolt = kamer?.phase === "reveal";
+  // Zolang de uitzending erboven staat is de lade geen zwevend paneel maar de
+  // ONDERSTE HELFT van een pagina: rechte hoeken, zodat hij aansluit op de
+  // sectie erboven. De uitzending staat er in elke fase van een potje, dus in
+  // de praktijk is dat altijd; de overgang blijft staan voor het moment dat er
+  // ooit geen sectie is.
+  const rolt = !!kamer;
   const roomCode = game.state.room?.code ?? "";
 
   // Upload a memo to this room, then post it as a chat message.
