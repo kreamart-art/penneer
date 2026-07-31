@@ -685,6 +685,17 @@ a:active .hex-aan {
   animation: led-reis 9s linear infinite;
 }
 
+/* Een regel die van links zijn plek in schuift. Voor de hoogtepunten in de
+   uitzending: ze komen na elkaar binnen, zoals een commentator ze na elkaar
+   uitspreekt, in plaats van als een blok tegelijk te verschijnen. */
+@keyframes stream-links-in {
+  from { opacity: 0; transform: translateX(-22px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.stream-links-in {
+  animation: stream-links-in 0.42s cubic-bezier(0.2, 1, 0.3, 1) both;
+}
+
 /* Victory popup. The old card reused .pop-in, which snaps from scale .6 with a
    hard overshoot while the darkened backdrop appears in a single frame: it hits
    the eye all at once. This lands in three staggered beats instead. The veil

@@ -19,7 +19,7 @@ import { ArtIcoon } from "./ArtIcoon";
 import { Avatar } from "./Avatar";
 import { Reel } from "./Reel";
 import type { GameApi } from "../net/socket";
-import { hoogtepunten, woordVanDeRonde } from "../lib/hoogtepunten";
+import { hoogtepunten, prestaties, woordVanDeRonde } from "../lib/hoogtepunten";
 import { useT } from "../i18n/i18n";
 import { colors, font, withAlpha } from "../theme/tokens";
 
@@ -124,6 +124,23 @@ function TypRegel({ naam, kleur, staart, avatar }: { naam: string; kleur: string
   );
 }
 
+/** Een regel waarin de woorden IN KAPITALEN goud zijn en de rest wit. De
+ *  teksten zetten hun kern zelf al in kapitalen ("KreamTest had ALLES uniek",
+ *  "Alleen Robbie had iets: SCHILDPAD"), dus dit hoeft niets te weten van welke
+ *  regel het is: het volgt gewoon de nadruk die er al in zit. */
+function Nadruk({ tekst, basis }: { tekst: string; basis: string }) {
+  const delen = tekst.split(/([A-ZÀ-Þ]{2,}[A-ZÀ-Þ0-9]*)/g);
+  return (
+    <>
+      {delen.map((d, i) =>
+        /^[A-ZÀ-Þ]{2,}/.test(d)
+          ? <span key={i} style={{ color: colors.gold }}>{d}</span>
+          : <span key={i} style={{ color: basis }}>{d}</span>,
+      )}
+    </>
+  );
+}
+
 /** Dezelfde hoogtepuntensectie als op de uitslagpagina: het woord van de ronde
  *  in zijn gouden lijst, en daaronder één regel per categorie. Uit dezelfde
  *  bron (lib/hoogtepunten.ts), zodat de kijker en de speler hetzelfde verhaal
@@ -134,7 +151,17 @@ function Hoogtepunten({ game }: { game: GameApi }) {
   if (!room) return null;
   const spelers = room.players.filter((p) => !p.is_spectator);
   const woord = woordVanDeRonde(room, spelers);
-  const regels = hoogtepunten(room, spelers, t);
+  // Prestaties eerst: die gaan over een PERSOON en dat is wat een commentator
+  // eruit pikt. Daarna de categorieregels. En binnen dat geheel de
+  // OVERWINNINGEN bovenaan, want die krijgen de gouden lijst en dus de
+  // aandacht; een vaststelling vult de rij alleen aan als er te weinig te
+  // vieren valt. Drie regels, want meer past er niet in dit vak.
+  const rang = { gold: 0, ink: 1, faint: 2 } as const;
+  const regels = [...prestaties(room, spelers, t), ...hoogtepunten(room, spelers, t)]
+    .map((h, i) => ({ h, i }))
+    .sort((a, b) => rang[a.h.tone] - rang[b.h.tone] || a.i - b.i)
+    .map((x) => x.h)
+    .slice(0, 3);
   if (!woord && regels.length === 0) return null;
 
   return (
@@ -144,6 +171,7 @@ function Hoogtepunten({ game }: { game: GameApi }) {
       </span>
       {woord && (
         <div
+          className="stream-links-in"
           style={{
             display: "flex",
             alignItems: "center",
@@ -167,17 +195,47 @@ function Hoogtepunten({ game }: { game: GameApi }) {
           </div>
         </div>
       )}
-      {regels.slice(0, 4).map((h) => (
-        <div key={h.cat} style={{ display: "flex", alignItems: "baseline", gap: 7, minWidth: 0 }}>
-          <span style={{ fontFamily: font.ui, fontSize: 8.5, color: colors.faint, width: 38, flexShrink: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {tCat(h.cat)}
-          </span>
+      {regels.map((h, i) => (
+        <div
+          key={h.cat}
+          className="stream-links-in"
+          // Een, twee, drie: ze komen na elkaar binnen zoals ze na elkaar
+          // uitgesproken zouden worden.
+          //
+          // Alles wat een overwinning MELDT krijgt dezelfde gouden lijst als het
+          // woord van de ronde: een vlekkeloze ronde, de dikste oogst. Een
+          // vaststelling ("twee verschillende woorden") krijgt hem niet, anders
+          // is een lijst geen onderscheiding meer maar een opmaakstijl.
+          style={{
+            animationDelay: `${0.12 + i * 0.16}s`,
+            display: "flex",
+            alignItems: "baseline",
+            gap: 7,
+            minWidth: 0,
+            ...(h.tone === "gold"
+              ? {
+                  alignItems: "center",
+                  padding: "4px 8px",
+                  borderRadius: 9,
+                  background: "linear-gradient(180deg, rgba(10,4,20,.7) 0%, rgba(6,3,14,.78) 100%)",
+                  boxShadow: `inset 0 0 0 1px ${withAlpha(colors.gold, 0.5)}`,
+                }
+              : null),
+          }}
+        >
+          {/* Alleen een categorieregel krijgt zijn categorie ervoor. Een
+              prestatie gaat over een speler en heeft geen kop nodig; die
+              draagt een verzonnen sleutel en zou hier zijn eigen id tonen. */}
+          {room.settings.categories.includes(h.cat) && (
+            <span style={{ fontFamily: font.ui, fontSize: 8.5, color: colors.faint, width: 38, flexShrink: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {tCat(h.cat)}
+            </span>
+          )}
           <span
             style={{
               fontFamily: font.ui,
               fontSize: 10,
               fontWeight: 600,
-              color: h.tone === "gold" ? colors.gold : h.tone === "ink" ? colors.ink : colors.faint,
               textShadow: "0 1px 4px rgba(0,0,0,.85)",
               overflow: "hidden",
               textOverflow: "ellipsis",
@@ -185,7 +243,7 @@ function Hoogtepunten({ game }: { game: GameApi }) {
               minWidth: 0,
             }}
           >
-            {h.text}
+            <Nadruk tekst={h.text} basis={h.tone === "faint" ? colors.faint : colors.ink} />
           </span>
         </div>
       ))}
@@ -215,6 +273,52 @@ function KlaarStroom({ game, max = 5 }: { game: GameApi; max?: number }) {
           avatar={<Avatar name={p.name} color={p.color} size={20} userId={p.user_id} hasAvatar={p.has_avatar} avatarVer={p.avatar_ver} />}
         />
       ))}
+    </div>
+  );
+}
+
+/** De eindstand: de kampioen groot, met de rest eronder. Het slotbeeld van een
+ *  uitzending, dus hier mag het wel een lijstje zijn. */
+function Eindstand({ game }: { game: GameApi }) {
+  const { t } = useT();
+  const room = game.state.room;
+  if (!room) return null;
+  const rangen = room.players
+    .filter((p) => !p.is_spectator)
+    .map((p) => ({ p, punten: room.scores[p.id] ?? 0 }))
+    .sort((a, b) => b.punten - a.punten);
+  if (rangen.length === 0) return null;
+  const kampioen = rangen[0];
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, width: "100%", padding: "0 16px", minWidth: 0 }}>
+      <div className="stream-links-in" style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0 }}>
+        <Avatar name={kampioen.p.name} color={kampioen.p.color} size={34} userId={kampioen.p.user_id} hasAvatar={kampioen.p.has_avatar} avatarVer={kampioen.p.avatar_ver} divisie={kampioen.p.divisie} />
+        <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+          <span style={{ fontFamily: font.ui, fontSize: 8.5, fontWeight: 800, letterSpacing: 1.1, textTransform: "uppercase", color: withAlpha(colors.gold, 0.85) }}>
+            {t("streamKampioen")}
+          </span>
+          <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 17, color: colors.gold, textShadow: "0 2px 10px rgba(0,0,0,.7)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {kampioen.p.name} <span style={{ fontSize: 13, color: colors.ink }}>{kampioen.punten}</span>
+          </span>
+        </div>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 3, width: "100%", maxWidth: 240 }}>
+        {rangen.slice(1, 4).map((r, i) => (
+          <div
+            key={r.p.id}
+            className="stream-links-in"
+            style={{ animationDelay: `${0.16 + i * 0.14}s`, display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}
+          >
+            <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 10, color: colors.faint, width: 12, flexShrink: 0 }}>{i + 2}</span>
+            <Avatar name={r.p.name} color={r.p.color} size={18} userId={r.p.user_id} hasAvatar={r.p.has_avatar} avatarVer={r.p.avatar_ver} />
+            <span style={{ flex: 1, minWidth: 0, fontFamily: font.ui, fontSize: 10.5, fontWeight: 600, color: colors.ink, textShadow: "0 1px 4px rgba(0,0,0,.9)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {r.p.name}
+            </span>
+            <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 11, color: colors.gold }}>{r.punten}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -290,23 +394,50 @@ export function Livestream({ game }: { game: GameApi }) {
     return () => window.clearTimeout(id);
   }, [eindeTeken]);
 
+  // Elke pagina komt op met een infade en gaat weg met een uitfade. De ROL en
+  // het INVULLEN delen hun beeld (daar schuift de rol van plek), dus die twee
+  // gelden als één pagina; anders zou die beweging worden onderbroken door een
+  // fade. Het merkje en de achtergrond doen niet mee: die zijn de zender en
+  // blijven staan.
+  const nu = room?.phase ?? "lobby";
+  const groep = nu === "reveal" || nu === "fill" ? "spel" : nu;
+  const [getoond, setGetoond] = useState(nu);
+  const [dof, setDof] = useState(false);
+  const vorigeGroep = useRef(groep);
+  useEffect(() => {
+    if (groep === vorigeGroep.current) {
+      // Binnen dezelfde pagina (rollen -> invullen) meteen door.
+      setGetoond(nu);
+      return;
+    }
+    vorigeGroep.current = groep;
+    setDof(true);
+    const id = window.setTimeout(() => {
+      setGetoond(nu);
+      setDof(false);
+    }, 200);
+    return () => window.clearTimeout(id);
+  }, [groep, nu]);
+
   if (!room) return null;
 
   const leider = room.players.find((p) => p.id === room.active_player_id);
   const letter = room.round?.letter ?? "";
   const rolStand = letter ? "locked" : game.state.spinning ? "spinning" : "idle";
-  const rolt = room.phase === "reveal";
-  const vult = room.phase === "fill";
+  const rolt = getoond === "reveal";
+  const vult = getoond === "fill";
   // De uitslag deelt het beeld met het invullen: dezelfde letter op dezelfde
   // plek, alleen staat er rechts nu wat het ODLEVERDE in plaats van wie klaar
   // is. Zo blijft de rol staan waar hij stond en verspringt er niets.
-  const uitslag = room.phase === "results";
-  const naast = vult || uitslag;
+  const uitslag = getoond === "results";
+  const eind = getoond === "final";
 
   // Het merkje draagt ook de ronde: hetzelfde plekje, meer te zeggen.
-  const merk = room.phase === "lobby" || room.phase === "rules"
-    ? t("streamLive")
-    : `${t("streamLive")} · ${t("streamRonde", { n: String(room.round_no), van: String(room.settings.rounds) })}`;
+  const merk = eind
+    ? `${t("streamLive")} · ${t("streamEindstand")}`
+    : getoond === "lobby" || getoond === "rules"
+      ? t("streamLive")
+      : `${t("streamLive")} · ${t("streamRonde", { n: String(room.round_no), van: String(room.settings.rounds) })}`;
 
   return (
     <div
@@ -330,6 +461,20 @@ export function Livestream({ game }: { game: GameApi }) {
         overflow: "hidden",
       }}
     >
+      <div
+        style={{
+          flex: 1,
+          minWidth: 0,
+          width: "100%",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 10,
+          opacity: dof ? 0 : 1,
+          transition: "opacity .2s ease",
+        }}
+      >
       {uitslag && (
         // De uitslag heeft geen rol nodig: die is gevallen. Links wat de ronde
         // opleverde, rechts wie er klaar staat voor de volgende.
@@ -377,14 +522,17 @@ export function Livestream({ game }: { game: GameApi }) {
         </div>
       )}
 
-      {!rolt && !naast && (
+      {eind && <Eindstand game={game} />}
+
+      {!rolt && !vult && !uitslag && !eind && (
         <>
           <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 34, letterSpacing: 3, color: colors.gold, textShadow: "0 2px 10px rgba(0,0,0,.6)" }}>
             {room.code}
           </span>
-          <SpelerRij game={game} klaarIds={room.phase === "rules" ? room.ready_ids : []} />
+          <SpelerRij game={game} klaarIds={getoond === "rules" ? room.ready_ids : []} />
         </>
       )}
+      </div>
 
       {pennenNeer && (
         <div
@@ -422,7 +570,8 @@ export function Livestream({ game }: { game: GameApi }) {
         style={{
           position: "absolute",
           left: 12,
-          bottom: uitslag ? 30 : 10,
+          bottom: uitslag || eind ? 30 : 10,
+          transition: "bottom .34s cubic-bezier(.2,1,.3,1)",
           display: "inline-flex",
           alignItems: "center",
           gap: 5,
@@ -472,7 +621,7 @@ export function Livestream({ game }: { game: GameApi }) {
         </span>
       )}
 
-      {uitslag && <LedBalk game={game} />}
+      {(uitslag || eind) && <LedBalk game={game} />}
 
       {/* De klok rechtsonder, tegenover het merkje. Alleen als er echt een klok
           loopt: een room zonder tijd heeft niets af te tellen. */}
@@ -482,7 +631,8 @@ export function Livestream({ game }: { game: GameApi }) {
           style={{
             position: "absolute",
             right: 12,
-            bottom: uitslag ? 30 : 10,
+            bottom: uitslag || eind ? 30 : 10,
+            transition: "bottom .34s cubic-bezier(.2,1,.3,1)",
             padding: "3px 10px",
             borderRadius: 999,
             background: "linear-gradient(180deg, rgba(10,4,20,.92) 0%, rgba(6,3,14,.95) 100%)",

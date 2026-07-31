@@ -71,3 +71,52 @@ export function hoogtepunten(
     })
     .filter((h): h is Hoogtepunt => h !== null);
 }
+
+/** Prestaties van spelers in deze ronde: het soort regel dat een commentator
+ *  eruit pikt. Anders dan de categorieregels gaan deze over een PERSOON, en dat
+ *  is precies wat een uitzending wil laten zien.
+ *
+ *  Op volgorde van zeldzaamheid, want de bovenste krijgt de meeste aandacht:
+ *  een vlekkeloze ronde is het hoogste, daarna de ronde-oogst, dan wie er als
+ *  enige overal iets had, en tot slot wie er met lege handen stond.
+ */
+export function prestaties(
+  room: RoomState,
+  spelers: Player[],
+  t: (k: string, v?: Record<string, string | number>) => string,
+): Hoogtepunt[] {
+  const cats = room.settings.categories;
+  if (cats.length === 0 || spelers.length === 0) return [];
+  const uit: Hoogtepunt[] = [];
+
+  const uniek = (id: string) => cats.filter((c) => (room.round?.points[id]?.[c] ?? 0) === 10).length;
+  const oogst = (id: string) => cats.reduce((n, c) => n + (room.round?.points[id]?.[c] ?? 0), 0);
+  const ingevuld = (id: string) => cats.filter((c) => !!room.round?.answers[id]?.[c]?.text).length;
+
+  // Vlekkeloos: overal een uniek antwoord. Het zeldzaamste wat er is.
+  for (const p of spelers) {
+    if (uniek(p.id) === cats.length) uit.push({ cat: `perfect-${p.id}`, text: t("streamPerfect", { naam: p.name }), tone: "gold" });
+  }
+
+  // De dikste oogst van de ronde, alleen als er echt iets te oogsten viel en
+  // niet iedereen gelijk staat: "de beste van allemaal gelijk" is geen nieuws.
+  const beste = Math.max(0, ...spelers.map((p) => oogst(p.id)));
+  const kopstukken = spelers.filter((p) => oogst(p.id) === beste);
+  if (beste > 0 && kopstukken.length === 1 && spelers.length > 1) {
+    uit.push({ cat: `oogst-${kopstukken[0].id}`, text: t("streamRondeOogst", { naam: kopstukken[0].name, n: beste }), tone: "gold" });
+  }
+
+  // Als enige overal iets ingevuld: doorzetten telt ook als je niet scoort.
+  const compleet = spelers.filter((p) => ingevuld(p.id) === cats.length);
+  if (compleet.length === 1 && spelers.length > 1) {
+    uit.push({ cat: `vol-${compleet[0].id}`, text: t("streamAllesIn", { naam: compleet[0].name }), tone: "ink" });
+  }
+
+  // En wie er met lege handen stond. Hoort erbij: een uitzending verzwijgt de
+  // pijnlijke momenten ook niet.
+  for (const p of spelers) {
+    if (ingevuld(p.id) === 0) uit.push({ cat: `niets-${p.id}`, text: t("streamNiets", { naam: p.name }), tone: "faint" });
+  }
+
+  return uit;
+}
