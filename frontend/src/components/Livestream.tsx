@@ -53,7 +53,7 @@ const rolVak = (schaal: number) => ({
   margin: `${-(200 * (1 - schaal)) / 2}px 0`,
 });
 
-/** Confetti op de uitslag: het beeld waar een uitzending naartoe werkt.
+/** Confetti op de EINDSTAND: het beeld waar een hele uitzending naartoe werkt.
  *
  *  TWEE lagen, en dat is de hele truc. De voorste valt vlug en tuimelt, precies
  *  zoals de confetti van de ceremonie na een potje; de achterste valt traag,
@@ -61,28 +61,38 @@ const rolVak = (schaal: number) => ({
  *  achterste erachter, kijk je door de regen heen naar het scherm in plaats van
  *  ernaar. Eén laag is een effect, twee lagen is diepte.
  *
- *  Ze BLIJVEN vallen zolang de uitslag in beeld staat: een confettiregen die na
- *  twee tellen ophoudt leest als een storing.
+ *  En het is geen gelijkmatige regen maar een UITBARSTING die uitdunt. Het
+ *  grootste deel van de snippers valt precies één keer, vlak na het moment dat
+ *  de kampioen in beeld komt; wat overblijft is een kleinere groep die blijft
+ *  doorvallen zolang de eindstand staat. Zo hoort het ook te gaan: op het
+ *  moment zelf regent het, daarna dwarrelt het na. Een regen die van begin tot
+ *  eind even dicht is heeft geen moment, en een regen die helemaal ophoudt
+ *  leest als een storing.
  *
  *  Alles wordt geloot, en dat was eerst niet zo. De vorige versie rekende de
  *  maten uit met een vaste formule op de index, en dat zag je: gelijke
  *  tussenruimtes en kleuren die om de beurt terugkwamen, dus een patroon in
- *  plaats van een regen. `useMemo` op een lege lijst is genoeg om het één keer
- *  per pagina te loten en daarna stil te houden.
+ *  plaats van een regen.
  *
- *  De vertraging is NEGATIEF: dan zit elke snipper bij het eerste beeldje al
- *  midden in zijn val. Anders begint elke uitslag met een leeg scherm waar de
- *  eerste snippers nog aan komen zetten.
+ *  De blijvers hebben een NEGATIEVE vertraging: die zitten bij het eerste
+ *  beeldje al midden in hun val, zodat het scherm meteen vol staat.
  */
 const SNIPPER_KLEUREN = [colors.gold, colors.goldHi, colors.violet, colors.green, colors.red, "#FF7AC2"];
 
-function loot(n: number, traag: boolean) {
+/** Hoeveel er blijft vallen, en hoeveel er in de eerste golf meekomt. */
+const BLIJVERS = { snel: 28, traag: 20 } as const;
+const GOLF = { snel: 48, traag: 34 } as const;
+
+function loot(n: number, traag: boolean, golf: boolean) {
   return Array.from({ length: n }, () => ({
     links: Math.random() * 100,
     breed: (traag ? 3.5 : 5) + Math.random() * (traag ? 3 : 4.5),
     hoog: (traag ? 6 : 9) + Math.random() * (traag ? 5 : 7),
     duur: (traag ? 4.4 : 2.6) + Math.random() * (traag ? 3.2 : 1.8),
-    wacht: -Math.random() * (traag ? 7 : 4.4),
+    // De golf begint bovenaan (en een deel is al onderweg); de blijvers staan
+    // altijd midden in hun val.
+    wacht: golf ? -1.4 + Math.random() * 2.3 : -Math.random() * (traag ? 7 : 4.4),
+    herhaal: golf ? "1" : "infinite",
     drift: (Math.random() - 0.5) * (traag ? 60 : 26),
     draai: (Math.random() < 0.5 ? -1 : 1) * (traag ? 420 : 700),
     kantel: Math.random() * 360,
@@ -91,29 +101,60 @@ function loot(n: number, traag: boolean) {
 }
 
 function Confetti({ traag }: { traag: boolean }) {
-  const snippers = useMemo(() => loot(traag ? 15 : 22, traag), [traag]);
+  const snippers = useMemo(
+    () => [
+      ...loot(traag ? BLIJVERS.traag : BLIJVERS.snel, traag, false),
+      ...loot(traag ? GOLF.traag : GOLF.snel, traag, true),
+    ],
+    [traag],
+  );
+
+  // De valafstand wordt GEMETEN en niet in procenten gezet.
+  //
+  // Met `top` in procenten viel hij ook wel, maar `top` is een layout-maat: bij
+  // honderd snippers rekent de browser dan elk beeldje honderd keer de layout
+  // opnieuw uit, op de hoofddraad, naast een spel dat óók draait. Als `transform`
+  // gebeurt de val op de compositor en kost het niets. Een percentage in
+  // `translateY` slaat op de snipper ZELF en niet op zijn vak, dus de afstand
+  // moet in pixels, en dus moet het vak zichzelf opmeten.
+  const vak = useRef<HTMLSpanElement | null>(null);
+  const [val, setVal] = useState(0);
+  useEffect(() => {
+    const el = vak.current;
+    if (!el) return;
+    const meet = () => setVal(el.clientHeight + 28);
+    meet();
+    const ro = new ResizeObserver(meet);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   return (
-    <span aria-hidden style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none" }}>
-      {snippers.map((s, i) => (
-        <span
-          key={i}
-          className="stream-snipper"
-          style={{
-            position: "absolute",
-            left: `${s.links}%`,
-            width: s.breed,
-            height: s.hoog,
-            borderRadius: 1.5,
-            background: s.kleur,
-            opacity: 0,
-            animationDuration: `${s.duur}s`,
-            animationDelay: `${s.wacht}s`,
-            ["--drift" as string]: `${s.drift}px`,
-            ["--draai" as string]: `${s.draai}deg`,
-            ["--kantel" as string]: `${s.kantel}deg`,
-          }}
-        />
-      ))}
+    <span ref={vak} aria-hidden style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none" }}>
+      {val > 0 &&
+        snippers.map((s, i) => (
+          <span
+            key={i}
+            className="stream-snipper"
+            style={{
+              position: "absolute",
+              top: -14,
+              left: `${s.links}%`,
+              width: s.breed,
+              height: s.hoog,
+              borderRadius: 1.5,
+              background: s.kleur,
+              opacity: 0,
+              animationDuration: `${s.duur}s`,
+              animationDelay: `${s.wacht}s`,
+              animationIterationCount: s.herhaal,
+              ["--val" as string]: `${val}px`,
+              ["--drift" as string]: `${s.drift}px`,
+              ["--draai" as string]: `${s.draai}deg`,
+              ["--kantel" as string]: `${s.kantel}deg`,
+            }}
+          />
+        ))}
     </span>
   );
 }
@@ -674,8 +715,12 @@ export function Livestream({ game }: { game: GameApi }) {
       {/* De TRAGE laag ligt achter de tekst: hij komt vóór de kolom hieronder in
           de rij, en die kolom is `position: relative` en dus een geschilderde
           laag die er later overheen komt. Alleen de achtergrond ligt er nog
-          onder. */}
-      {uitslag && <Confetti traag />}
+          onder.
+
+          Alleen op de EINDSTAND. Op de uitslag van een losse ronde was het geen
+          feest maar een tussenstand met slingers: confetti bij elke ronde maakt
+          confetti aan het eind betekenisloos. */}
+      {eind && <Confetti traag />}
 
       <div
         style={{
@@ -766,7 +811,7 @@ export function Livestream({ game }: { game: GameApi }) {
           het merkje en de lichtkrant, en dus valt hij over de tekst heen maar
           nooit over de twee dingen die altijd leesbaar moeten blijven: wat er
           live is en wat de omroep zegt. */}
-      {uitslag && <Confetti traag={false} />}
+      {eind && <Confetti traag={false} />}
 
       {pennenNeer && (
         <div

@@ -659,16 +659,19 @@ a:active .hex-aan {
    eigenschap, dus een `transform` in de keyframes wist een `rotate` die er
    buitenom op stond. */
 @keyframes stream-confetti {
-  0% { top: -8%; opacity: 0; transform: translateX(0) rotate(var(--kantel, 0deg)); }
+  0% { opacity: 0; transform: translate3d(0, 0, 0) rotate(var(--kantel, 0deg)); }
   9% { opacity: 1; }
   86% { opacity: 1; }
-  100% { top: 106%; opacity: 0; transform: translateX(var(--drift, 0px)) rotate(calc(var(--kantel, 0deg) + var(--draai, 620deg))); }
+  100% { opacity: 0; transform: translate3d(var(--drift, 0px), var(--val, 300px), 0) rotate(calc(var(--kantel, 0deg) + var(--draai, 620deg))); }
 }
 .stream-snipper {
   animation-name: stream-confetti;
   animation-timing-function: linear;
+  /* Het aantal herhalingen komt per snipper mee: de eerste golf valt één keer,
+     de blijvers gaan door. */
   animation-iteration-count: infinite;
   pointer-events: none;
+  will-change: transform, opacity;
 }
 
 /* Ceremony elements snap in with a small overshoot. */

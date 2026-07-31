@@ -10,7 +10,7 @@
 // van een ander duwen. De server kent dezelfde zestien sleutels en gooit al het
 // andere weg (backend/app/rooms.py, KREET_SLEUTELS).
 import { useEffect, useRef, useState } from "react";
-import { MessageCircle } from "lucide-react";
+import { GlasKnop, GoudLijnDefs } from "./GlasKnop";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { colors, font, withAlpha } from "../theme/tokens";
@@ -25,7 +25,7 @@ export const KREET_PAKKETTEN: { pak: string; sleutels: string[] }[] = [
 
 /** Alle geldige kreten, plat. Staat HIER en niet bij de uitzending: een lijst
  *  die uit `KREET_PAKKETTEN` wordt afgeleid hoort in hetzelfde bestand te
- *  staan, anders hangt hij aan de vololgorde waarin de modules geladen worden. */
+ *  staan, anders hangt hij aan de volgorde waarin de modules geladen worden. */
 export const KREET_KEUZE: ReadonlySet<string> = new Set(KREET_PAKKETTEN.flatMap((p) => p.sleutels));
 
 /** De vertaalsleutel van een kreet. Eén plek, want de uitzending gebruikt hem
@@ -37,7 +37,7 @@ export function kreetSleutel(kreet: string): string {
 
 export function KreetKiezer({
   onKies,
-  maat = 34,
+  maat = 44,
 }: {
   /** De gekozen kreet. Dit MELDT je meteen klaar, met die zin erbij. */
   onKies: (kreet: string) => void;
@@ -65,32 +65,33 @@ export function KreetKiezer({
 
   return (
     <div ref={doos} style={{ position: "relative", flexShrink: 0 }}>
-      <button
-        type="button"
-        aria-label={t("kreetKies")}
-        title={t("kreetKies")}
-        className="pressable glowhover-klein"
+      {/* Dezelfde glastegel als het vliegtuigje, de foto en de microfoon in de
+          chatbalk: donker vlak glas met een gouden haarring eromheen, en het
+          teken erin in dezelfde gouden lijn. Het is hetzelfde soort knop (iets
+          zeggen tegen de room), dus het hoort ook hetzelfde te zijn. */}
+      <GlasKnop
         onClick={() => {
           sound.uiTap();
           setOpen((v) => !v);
         }}
-        style={{
-          width: maat,
-          height: maat,
-          borderRadius: "50%",
-          border: "none",
-          padding: 0,
-          cursor: "pointer",
-          display: "grid",
-          placeItems: "center",
-          position: "relative",
-          background: "linear-gradient(180deg, rgba(24,14,54,.95) 0%, rgba(14,8,34,.95) 100%)",
-          boxShadow: `inset 0 0 0 1px ${withAlpha(colors.gold, open ? 0.75 : 0.4)}`,
-          color: withAlpha(colors.gold, 0.9),
-        }}
+        label={t("kreetKies")}
+        maat={maat}
       >
-        <MessageCircle size={Math.round(maat * 0.48)} strokeWidth={2} />
-      </button>
+        {/* Een tekstwolkje met drie puntjes: praten. Dezelfde lijndikte als het
+            berglandschap van de fotoknop, zodat de tekens uit één set komen. */}
+        <svg width={Math.round(maat * 0.46)} height={Math.round(maat * 0.46)} viewBox="0 0 24 24" fill="none" aria-hidden style={{ position: "relative" }}>
+          <GoudLijnDefs id="kreet-goud" />
+          <path
+            d="M20.2 12.1c0 3.7-3.4 6.7-7.7 6.7-1 0-2-.2-2.9-.5l-4.2 1.4 1.4-3.5a6.3 6.3 0 0 1-1.7-4.1c0-3.7 3.4-6.7 7.6-6.7s7.5 3 7.5 6.7Z"
+            stroke="url(#kreet-goud)"
+            strokeWidth="1.3"
+            strokeLinejoin="round"
+          />
+          <circle cx="9.3" cy="12.1" r="1" fill="url(#kreet-goud)" />
+          <circle cx="12.6" cy="12.1" r="1" fill="url(#kreet-goud)" />
+          <circle cx="15.9" cy="12.1" r="1" fill="url(#kreet-goud)" />
+        </svg>
+      </GlasKnop>
 
       {open && (
         // Het laadje klapt OMHOOG open: de knop staat onderaan het scherm, dus
