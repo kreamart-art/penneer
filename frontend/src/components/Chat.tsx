@@ -21,6 +21,13 @@ import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { colors, font, withAlpha } from "../theme/tokens";
 
+/** Hoeveel van het scherm de lade pakt zolang er een uitzending boven staat. */
+const LADE_PROCENT = 66;
+const LADE_MAXHOOGTE = 580;
+const LADE_HOOGTE = `min(${LADE_PROCENT}vh, ${LADE_MAXHOOGTE}px)`;
+/** Onder deze hoogte is een uitzending geen venster meer maar een reepje. */
+const STREAM_MINIMUM = 140;
+
 export function ChatButton({ game }: { game: GameApi }) {
   const { t } = useT();
   const chat = game.state.chat;
@@ -86,6 +93,18 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
   // je ook maar iets gedaan had.
   const vak = useZichtbaarVak();
   const { laag, onder } = useVakLaag();
+  // Past er nog een uitzending boven de lade?
+  //
+  // De schermhoogte wordt ÉÉN keer gemeten, bij het openen van de chat. Op iOS
+  // krimpt `clientHeight` in de geïnstalleerde app mee met het toetsenbord (zie
+  // lib/zichtbaarvak.ts), dus een verse meting zou zeggen dat het scherm ineens
+  // 450 hoog is, dat de lade dus 300 wil zijn, en dat er dus nog ruimte over is
+  // voor een uitzending. Precies het strookje dat er niet hoort te staan. Deze
+  // maat is bovendien waar de 66vh hieronder toch al tegen afgezet wordt, en
+  // die verandert niet omdat er een toetsenbord opkomt.
+  const [scherm] = useState(() => document.documentElement.clientHeight || window.innerHeight);
+  const ladeWil = Math.min((LADE_PROCENT / 100) * scherm, LADE_MAXHOOGTE);
+  const toonStream = vak.hoogte - ladeWil >= STREAM_MINIMUM;
   // Rolt de spelleider? Dan komt de rol de chat IN, in een eigen strook bovenin.
   // Niet als doorkijkje naar het scherm eronder maar als een tweede, kleinere
   // weergave van dezelfde toestand: dezelfde skin, dezelfde letters, dezelfde
@@ -221,8 +240,13 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
       }}
     >
       {/* De uitzending: alles wat er in het spel gebeurt, in de ruimte boven de
-          lade. Zie components/Livestream.tsx. */}
-      <Livestream game={game} />
+          lade. Zie components/Livestream.tsx.
+
+          Weg zodra het toetsenbord opkomt. Wat er anders overblijft is een
+          strookje uitzending van een paar tellen hoog waar de inhoud half in
+          past, en dat las als een half weggeschoven scherm in plaats van als
+          een venster. Wie typt kijkt naar zijn eigen zin, niet naar de studio. */}
+      {toonStream && <Livestream game={game} />}
 
       <div
         onClick={(e) => e.stopPropagation()}
@@ -230,7 +254,10 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
           width: "100%",
           maxWidth: 560,
           margin: "0 auto",
-          height: "min(66vh, 580px)",
+          // Met uitzending erboven een vaste hoogte, zonder uitzending de VOLLE
+          // zichtbare band: anders houdt de lade zijn 66% en staat het gat waar
+          // de uitzending stond leeg naar de verduistering te kijken.
+          height: toonStream ? LADE_HOOGTE : "100%",
           maxHeight: vak.hoogte,
           display: "flex",
           flexDirection: "column",
@@ -241,7 +268,7 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
           // dus de rand blijft en verandert alleen van vorm.
           borderTopLeftRadius: rolt ? 0 : 22,
           borderTopRightRadius: rolt ? 0 : 22,
-          transition: "max-height .2s cubic-bezier(.2,1,.3,1), border-radius .28s cubic-bezier(.2,1,.3,1)",
+          transition: "height .2s cubic-bezier(.2,1,.3,1), max-height .2s cubic-bezier(.2,1,.3,1), border-radius .28s cubic-bezier(.2,1,.3,1)",
           // Knippen op de ronding: de kopbalk kreeg in v2.84.3 een eigen
           // dekkende kleur, en die schilderde als rechthoek OVER de afgeronde
           // hoeken heen. Wat je overhield waren twee scherpe puntjes bovenaan

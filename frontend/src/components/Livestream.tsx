@@ -41,6 +41,55 @@ const rolVak = (schaal: number) => ({
   margin: `${-(200 * (1 - schaal)) / 2}px 0`,
 });
 
+/** Snippers voor de uitslagpagina's: het beeld waar een uitzending naartoe
+ *  werkt. Ze BLIJVEN vallen zolang die pagina in beeld is, dus geen `forwards`
+ *  maar een oneindige herhaling; een confettiregen die na twee tellen ophoudt
+ *  leest als een storing.
+ *
+ *  De maten liggen vast in plaats van dat ze geloot worden. Een lot valt bij
+ *  elke hertekening opnieuw, en dan verspringt de hele regen zodra er ergens
+ *  een score binnenkomt. Deze reeks is één keer uitgerekend en daarna altijd
+ *  dezelfde, en dat ziet er precies zo willekeurig uit.
+ */
+const SNIPPER_KLEUREN = ["#FFD46B", "#E8B33C", "#FF5F6D", "#7BE0C0", "#C9A6FF", "#FFFFFF"];
+const SNIPPERS = Array.from({ length: 16 }, (_, i) => {
+  const g = (n: number) => (((i + 1) * 9301 + n * 49297) % 233280) / 233280;
+  return {
+    links: 2 + g(7) * 94,
+    duur: 3.2 + g(13) * 2.8,
+    wacht: g(29) * 5,
+    breed: 4 + g(37) * 3.5,
+    hoog: 7 + g(53) * 5,
+    drift: (g(71) - 0.5) * 54,
+    kleur: SNIPPER_KLEUREN[i % SNIPPER_KLEUREN.length],
+  };
+});
+
+function Confetti() {
+  return (
+    <span aria-hidden style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none" }}>
+      {SNIPPERS.map((s, i) => (
+        <span
+          key={i}
+          className="stream-snipper"
+          style={{
+            position: "absolute",
+            left: `${s.links}%`,
+            width: s.breed,
+            height: s.hoog,
+            borderRadius: 1.5,
+            background: s.kleur,
+            opacity: 0,
+            animationDuration: `${s.duur}s`,
+            animationDelay: `${s.wacht}s`,
+            ["--drift" as string]: `${s.drift}px`,
+          }}
+        />
+      ))}
+    </span>
+  );
+}
+
 /** mm:ss uit een tijdstip in de toekomst. Leeg als er geen klok loopt. */
 function useKlok(eindeMs: number | null): string {
   const [nu, setNu] = useState(() => Date.now());
@@ -156,13 +205,15 @@ function Hoogtepunten({ game }: { game: GameApi }) {
   // eruit pikt. Daarna de categorieregels. En binnen dat geheel de
   // OVERWINNINGEN bovenaan, want die krijgen de gouden lijst en dus de
   // aandacht; een vaststelling vult de rij alleen aan als er te weinig te
-  // vieren valt. Drie regels, want meer past er niet in dit vak.
+  // vieren valt. Twee regels: met drie eronder werd het woord van de ronde het
+  // vierde blok op een rij en las de kolom als een lijst in plaats van als een
+  // uitgelicht moment.
   const rang = { gold: 0, ink: 1, faint: 2 } as const;
   const regels = [...prestaties(room, spelers, t), ...hoogtepunten(room, spelers, t)]
     .map((h, i) => ({ h, i }))
     .sort((a, b) => rang[a.h.tone] - rang[b.h.tone] || a.i - b.i)
     .map((x) => x.h)
-    .slice(0, 3);
+    .slice(0, 2);
   if (!woord && regels.length === 0) return null;
 
   return (
@@ -350,6 +401,16 @@ function Eindstand({ game }: { game: GameApi }) {
  *  klok en een keuze wanneer hij mag wisselen, en dan mis je er een als je net
  *  wegkijkt. Zo komt alles vanzelf een keer langs.
  *
+ *  De koppen zijn geschreven zoals een verslaggever ze zou uitspreken, niet
+ *  zoals een scorebord ze zou afdrukken. "Pixel staat op 70" is een meting;
+ *  "Pixel heeft 40 voorsprong en deelt geen cadeaus uit" is een uitzending. De
+ *  stand staat er nog steeds bij, maar achterin: eerst het verhaal, dan de
+ *  cijfers.
+ *
+ *  Welke kleurregels er langskomen wisselt per ronde, met het rondenummer als
+ *  startpunt in de pool. Vast genoeg om binnen een ronde niet te springen,
+ *  wisselend genoeg om drie rondes lang niet dezelfde grap te horen.
+ *
  *  De reistijd groeit mee met de lengte, anders raast een lange regel voorbij en
  *  sukkelt een korte.
  */
@@ -364,10 +425,13 @@ function LedBalk({ game }: { game: GameApi }) {
   const hoogste = stand[0]?.punten ?? 0;
   const kop = stand.filter((x) => x.punten === hoogste);
   const eind = room.phase === "final";
+  const cats = room.settings.categories;
 
   const koppen: string[] = [];
   if (eind && stand.length > 0) {
+    koppen.push(t("streamTitel", { naam: stand[0].p.name }));
     koppen.push(t("streamWint", { naam: stand[0].p.name, n: String(stand[0].punten) }));
+    koppen.push(t("streamStudioLeeg", { naam: stand[0].p.name }));
   } else if (hoogste <= 0) {
     koppen.push(t("streamNogNiks"));
   } else if (kop.length === 1) {
@@ -376,8 +440,51 @@ function LedBalk({ game }: { game: GameApi }) {
     koppen.push(t("streamGelijk", { namen: kop.slice(0, 3).map((x) => x.p.name).join(", "), n: String(hoogste) }));
   }
 
-  // Iedereen komt langs, in volgorde van de stand: ook wie achteraan hangt
-  // hoort in de uitzending voor te komen.
+  // De pool waar de kleur uit komt. Alles hier hangt aan iets dat ECHT gebeurd
+  // is; een kop die net zo goed over een ander potje kon gaan is geen kop maar
+  // opvulling.
+  const pool: string[] = [];
+
+  const woord = woordVanDeRonde(room, meedoen);
+  if (woord) pool.push(t("streamWoordKop", { woord: woord.word.toUpperCase(), naam: woord.name }));
+
+  const letter = room.round?.letter;
+  if (letter) pool.push(t("streamLetterKop", { letter: letter.toUpperCase() }));
+
+  if (stand.length >= 2) {
+    const gat = stand[0].punten - stand[1].punten;
+    if (gat === 0 && hoogste > 0) pool.push(t("streamNekAanNek", { a: stand[0].p.name, b: stand[1].p.name }));
+    else if (gat > 0 && gat <= 10) pool.push(t("streamKrap", { a: stand[0].p.name, b: stand[1].p.name, n: String(gat) }));
+    else if (gat > 10) {
+      pool.push(t("streamVoorsprong", { naam: stand[0].p.name, n: String(gat) }));
+      pool.push(t("streamJachtOpen", { naam: stand[0].p.name }));
+    }
+    const achteraan = stand[stand.length - 1];
+    if (achteraan.punten === 0) pool.push(t("streamZoektPunt", { naam: achteraan.p.name }));
+  }
+
+  // Wat de ronde die net gespeeld is opleverde: de dikste oogst, en een
+  // vlekkeloze ronde als iemand die had.
+  if (!eind && cats.length > 0) {
+    const oogst = (id: string) => cats.reduce((n, c) => n + (room.round?.points[id]?.[c] ?? 0), 0);
+    const uniek = (id: string) => cats.filter((c) => (room.round?.points[id]?.[c] ?? 0) === 10).length;
+    const beste = Math.max(0, ...meedoen.map((p) => oogst(p.id)));
+    const kopstuk = meedoen.filter((p) => oogst(p.id) === beste);
+    if (beste > 0 && kopstuk.length === 1) pool.push(t("streamOogstKop", { naam: kopstuk[0].name, n: String(beste) }));
+    for (const p of meedoen) {
+      if (uniek(p.id) === cats.length) pool.push(t("streamPerfectKop", { naam: p.name }));
+    }
+  }
+
+  pool.push(t("streamPennenRoken"));
+  if (!eind && stand.length >= 2) pool.push(t("streamNiemandVeilig"));
+
+  // Drie kleurregels per ronde, vanaf een startpunt dat met de ronde meeschuift.
+  const hoeveel = Math.min(3, pool.length);
+  const start = pool.length > 0 ? room.round_no % pool.length : 0;
+  for (let i = 0; i < hoeveel; i++) koppen.push(pool[(start + i) % pool.length]);
+
+  // En dan pas de kale stand, zodat wie op de cijfers wacht ze ook krijgt.
   for (const x of stand) koppen.push(t("streamStaatOp", { naam: x.p.name, n: String(x.punten) }));
 
   if (!eind) {
@@ -498,7 +605,12 @@ export function Livestream({ game }: { game: GameApi }) {
         alignItems: "center",
         justifyContent: "center",
         gap: 10,
-        padding: "calc(16px + env(safe-area-inset-top)) 0 34px",
+        // De bovenmarge is de veilige zone MIN een tikje: de klok en de batterij
+        // van de telefoon staan bovenin, dus daaronder blijven, maar de volle
+        // zone plus een marge duwde alles zichtbaar naar beneden. Wat er
+        // overblijft is nog altijd ruim genoeg, want de inhoud is korter dan het
+        // vak en staat uitgemiddeld.
+        padding: "max(6px, calc(env(safe-area-inset-top) - 10px)) 0 34px",
         pointerEvents: "none",
         // Precies de achtergrond van de speelpagina.
         backgroundColor: ARENA.base,
@@ -509,11 +621,19 @@ export function Livestream({ game }: { game: GameApi }) {
         overflow: "hidden",
       }}
     >
+      {/* De snippers vallen op allebei de uitslagpagina's: de ronde die net
+          afliep en de eindstand. Ze liggen ACHTER de tekst (de kolom hieronder
+          is `position: relative` en komt daarmee in dezelfde schilderlaag,
+          later in de rij), want een naam in goud met goudkleurige snippers
+          eroverheen leest niet meer. */}
+      {(uitslag || eind) && <Confetti />}
+
       <div
         style={{
           flex: 1,
           minWidth: 0,
           width: "100%",
+          position: "relative",
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
