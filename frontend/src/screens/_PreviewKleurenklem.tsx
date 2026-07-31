@@ -321,19 +321,27 @@ function rgbVan(hex: string): Rgb {
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
 
+/** Terug naar HEX, en dat is hier geen smaakkwestie. `withAlpha` uit de tokens
+ *  leest een kleur met `parseInt(..., 16)` en spreekt dus alleen hex; geef je
+ *  hem `rgb(144, 41, 155)`, dan komt er `rgba(NaN, NaN, NaN, .02)` uit, gooit de
+ *  browser het hele verloop weg en verdwijnt de klem zonder een spoor in de
+ *  console. Precies dat is een keer gebeurd. */
+function hexVan([r, g, b]: Rgb): string {
+  const k = (v: number) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0");
+  return `#${k(r)}${k(g)}${k(b)}`;
+}
+
 /** Dezelfde kleur, alleen minder licht. Met alfa zou hij doorschijnend worden
  *  en mee verkleuren met wat eronder ligt; hier moet het echt dezelfde tint
  *  blijven, een slag donkerder. */
 function donkerder(hex: string, deel: number): string {
-  const [r, g, b] = rgbVan(hex);
-  return `rgb(${Math.round(r * deel)}, ${Math.round(g * deel)}, ${Math.round(b * deel)})`;
+  return hexVan(rgbVan(hex).map((v) => v * deel) as Rgb);
 }
 
 /** Onderweg van de ene kleur naar de andere. 0 is helemaal `van`, 1 helemaal `naar`. */
 function meng(van: Rgb, naar: Rgb, deel: number): string {
   const t = Math.max(0, Math.min(1, deel));
-  const k = (i: number) => Math.round(van[i] + (naar[i] - van[i]) * t);
-  return `rgb(${k(0)}, ${k(1)}, ${k(2)})`;
+  return hexVan(van.map((v, i) => v + (naar[i] - v) * t) as Rgb);
 }
 
 /** Waar de klem naartoe kleurt als de tijd opraakt, en vanaf hoeveel resterende
@@ -358,11 +366,15 @@ function Klem({ rest, inkt }: { rest: number; inkt: string }) {
   // opraakt. Geen schakelaar die op een drempel omklapt: dan is het een schrik,
   // en een schrik vertelt je niets over hoeveel tijd je nog hebt. Zo zie je aan
   // de kleur hoe ver het is, net als aan hoe ver ze dicht staan.
-  const basis = rgbVan(inkt).map((v) => Math.round(v * 0.62)) as Rgb;
+  const basis = rgbVan(inkt).map((v) => v * 0.78) as Rgb;
   const kleur = meng(basis, KLEM_ROOD, (KLEM_VERKLEURT_VANAF - rest) / KLEM_VERKLEURT_VANAF);
   const kaak = (kant: "left" | "right"): React.CSSProperties => ({
     position: "absolute", top: 0, bottom: 0, [kant]: 0, width: pct(dicht),
-    background: `linear-gradient(${kant === "left" ? "90deg" : "270deg"}, ${withAlpha(kleur, 0.02)} 0%, ${withAlpha(kleur, 0.14)} 62%, ${withAlpha(kleur, 0.42)} 92%, ${withAlpha(kleur, 0.95)} 100%)`,
+    // Vrijwel dekkend, en dat moet ook: de kaken hebben dezelfde kleur als het
+    // vak eronder, dus ze kunnen het niet van een kleurverschil hebben maar
+    // alleen van hun helderheid. Een verloop dat grotendeels doorzichtig is
+    // laat het vak er dan gewoon doorheen schijnen en dan zie je niets.
+    background: `linear-gradient(${kant === "left" ? "90deg" : "270deg"}, ${withAlpha(kleur, 0.35)} 0%, ${withAlpha(kleur, 0.72)} 55%, ${withAlpha(kleur, 0.94)} 88%, ${kleur} 100%)`,
     boxShadow: `${kant === "left" ? "" : "-"}3px 0 14px ${withAlpha(kleur, 0.55)}`,
     pointerEvents: "none",
   });
