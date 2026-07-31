@@ -933,7 +933,7 @@ const nl: Dict = {
   kreet_beter: "is klaar, jullie zijn niet zo goed",
   kreet_makkelijk: "is klaar, dit was te makkelijk",
   kreet_wachten: "is klaar en wacht op de rest",
-  kreet_alles: "is klaar met alles ingevuld",
+  kreet_alles: "is klaar en heeft alles ingevuld",
   kreet_rotletter: "is klaar, wat een rotletter",
   kreet_tijd: "is klaar, veel te weinig tijd",
   kreet_gegokt: "is klaar en heeft de helft gegokt",
