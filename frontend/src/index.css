@@ -1324,14 +1324,20 @@ html.klassiek body.lijst::after {
    Eigen zaal in plaats van de geleende soephal, in het paars en goud van de
    ladder.
 
-   De art is VIERKANT en een telefoon is 393 bij 852. Op ware verhouding zie je
-   dus alleen de middelste helft: het rustige midden van de zaal met de gloed en
-   de vloerboog, en de banieren erbuiten. Dat is precies de bedoeling, want het
-   scherm staat vol met gouden secties en een achtergrond die daar doorheen
-   schreeuwt maakt het onleesbaar.
+   DE UITSNEDE STAAT VAST, en die komt uit de mockup: daarin is het telefoonkader
+   2092 breed op een doek van 4096. De zaal staat dus op 4096/2092 = 195,8% van
+   de schermbreedte, en dan zie je precies wat in de mockup binnen het kader
+   valt, inclusief de banieren die net langs de rand staan.
 
-   Vandaar `cover` en niet `100% 100%`: dat laatste vult ook, maar rekt de zaal
-   ruim twee keer uit en dan klopt de vloerboog niet meer met de pilaren.
+   Met `cover` ging dat mis. Een vierkante plaat op een scherm van 393 bij 852
+   wordt door cover op HOOGTE geschaald, en dan zie je maar de middelste 46
+   procent: het lege midden van de zaal, met de banieren er allebei buiten. Het
+   kader in de mockup is 0,51 breed-op-hoog en een telefoon 0,46, dus cover
+   snijdt er meer af dan de tekenaar bedoelde.
+
+   Op 195,8% van de breedte is de plaat 769 punten hoog op een scherm van 852, en
+   die 83 punten bovenaan vult de achtergrondKLEUR. Dat mag hier, want de
+   bovenste rijen van de art zijn zelf (1, 0, 5): zwart op zwart, geen naad.
 
    EN VERDER NIETS. Geen ruislaag, geen sluier, geen verloop eronder: de zaal
    zoals hij getekend is, en anders niks. De andere hallen in dit bestand hebben
@@ -1348,10 +1354,10 @@ body.rekenspel::after {
   height: calc(100lvh + 240px);
   z-index: -1;
   pointer-events: none;
-  background-color: #07040F;
+  background-color: #010005;
   background-repeat: no-repeat;
   background-position: bottom center;
-  background-size: cover;
+  background-size: 195.8% auto;
 }
 body.rekenzaal::after {
   background-image: url("/ui/reken/bg-lobby.webp?v=2");

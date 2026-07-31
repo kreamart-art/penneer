@@ -203,12 +203,18 @@ const LADDER_H = 733;
 // art is bijgetekend ligt op y 3155-3325. De ladder staat dus precies in zijn
 // eigen schaduw.
 //
-// De zaal ligt als `cover` op een staand scherm, en omdat hij vierkant is wordt
-// hij op HOOGTE geschaald. Een percentage van de zaal is daarom een percentage
-// van de schermhoogte, niet van de breedte: vandaar lvh en niet vw. De vw-rem is
-// er alleen voor een liggend scherm, waar cover omslaat naar de breedte.
-const LADDER_TOP = 50.55;   // % van de schermhoogte
-const LADDER_BREED = 43.36; // idem
+// De zaal staat op 195,8% van de SCHERMBREEDTE (zie index.css: dat is het
+// telefoonkader uit de mockup, 2092 van 4096 breed). Eén zaalpixel is dus
+// schermbreedte/2092, en daarmee is alles in vw uit te drukken:
+//   breedte = 1776,2 / 2092 = 84,90% van de schermbreedte
+// De bovenkant hangt aan de ONDERkant van de zaal, want die is onderaan
+// verankerd: de plaat is 195,8% van de breedte hoog, dus zijn bovenrand ligt op
+// 100lvh - 195,8vw, en het puntje zit 2070,6/2092 = 98,98vw daaronder.
+//   top = 100lvh - 195,79vw + 98,98vw = 100lvh - 96,81vw
+const LADDER_BREED = 84.90;      // vw
+const LADDER_TOP = "calc(100lvh - 96.81vw)";
+// De onderkant volgt eruit: 96,81 - 84,90 * 733/1100 = 40,23.
+const LADDER_ONDER = "calc(100lvh - 40.23vw)";
 // De puntjes zelf zijn gereedschap en geen decor; die zijn uit de zaal gepoetst.
 
 /** Per trede: waar de strook zit in de ladder, en waar het VLAK van de plaat
@@ -327,8 +333,8 @@ function Ladder({ keuzes, antwoord, oordeel, onKies, slapend, klaar }: {
       style={{
         position: "fixed",
         left: "50%",
-        top: `${LADDER_TOP}lvh`,
-        width: `min(${LADDER_BREED}lvh, 96vw)`,
+        top: LADDER_TOP,
+        width: `${LADDER_BREED}vw`,
         transform: "translateX(-50%)",
         aspectRatio: `${LADDER_B} / ${LADDER_H}`,
       }}
@@ -783,9 +789,13 @@ export function Rekenladder({ seed, onKlaar, onOpnieuw }: {
         {/* De plek die de ladder in de kolom zou innemen. Hij staat er zelf niet
             meer in (die hangt aan het scherm), maar de knop eronder moet wel
             weten hoe hoog hij is. */}
-        <div style={{ height: `calc(min(${LADDER_BREED}lvh, 96vw) * ${LADDER_H} / ${LADDER_B})`, flexShrink: 0 }} aria-hidden />
+        <div style={{ height: `calc(${LADDER_BREED}vw * ${LADDER_H} / ${LADDER_B})`, flexShrink: 0 }} aria-hidden />
 
+        {/* De knop hangt onder de ladder en dus ook aan het scherm: de ladder
+            staat op een vaste plek in de zaal, dus een knop die in de kolom mee
+            zou schuiven komt er vroeg of laat overheen. */}
         {(fase !== "klaar" || onOpnieuw) && (
+        <div style={{ position: "fixed", left: "50%", top: `calc(${LADDER_ONDER} + 10px)`, transform: "translateX(-50%)" }}>
         <NeonKader radius={999} dik={0.5} vulling="zwart" animeer lijn={KADER_LIJN_ROOD} gloed={`0 0 12px ${withAlpha(colors.red, 0.35)}`} binnen={{ padding: 0 }}>
           <button
             onClick={fase === "klaar" ? onOpnieuw : stop}
@@ -795,6 +805,7 @@ export function Rekenladder({ seed, onKlaar, onOpnieuw }: {
             <LogOut size={14} /> {fase === "klaar" ? "Opnieuw" : "Stoppen"}
           </button>
         </NeonKader>
+        </div>
         )}
       </div>
     </>
