@@ -215,11 +215,26 @@ function Verven() {
       <linearGradient id="rl-goud" x1="0" y1="0" x2="1" y2="0.8">
         <stop offset="0%" stopColor="#FFEBB8" />
         <stop offset="14%" stopColor="#FFCF4A" />
-        <stop offset="32%" stopColor="#C58F1C" />
+        {/* Waar het goud vroeger dof bruin werd, gloeit het nu koper. Een
+            donkere plek in een neonlijn hoort niet dood te zijn maar alleen
+            verder weg, en warm goud dat wegzakt IS oranje. */}
+        <stop offset="30%" stopColor="#E08A1E" />
         <stop offset="50%" stopColor="#FFE08A" />
-        <stop offset="68%" stopColor="#E2A33C" />
-        <stop offset="84%" stopColor="#9C6B1F" />
+        <stop offset="68%" stopColor="#FF9A2E" />
+        <stop offset="84%" stopColor="#A9600F" />
         <stop offset="100%" stopColor="#FFEBB8" />
+      </linearGradient>
+      {/* De oranje vonk. Hij brandt op een KWART en op driekwart van de lijn,
+          precies waar de blauwe kern uitdooft, dus de twee vullen elkaar aan in
+          plaats van elkaar te vertroebelen. Alleen vervaagd getekend: een vonk
+          hoort licht te zijn, geen streep. */}
+      <linearGradient id="rl-vonk" x1="0" y1="0" x2="1" y2="0.8">
+        <stop offset="0%" stopColor="#FF9A2E" stopOpacity="0" />
+        <stop offset="22%" stopColor="#FFB55A" stopOpacity="0.85" />
+        <stop offset="40%" stopColor="#FF9A2E" stopOpacity="0" />
+        <stop offset="60%" stopColor="#FF9A2E" stopOpacity="0" />
+        <stop offset="78%" stopColor="#FFB55A" stopOpacity="0.85" />
+        <stop offset="100%" stopColor="#FF9A2E" stopOpacity="0" />
       </linearGradient>
       {/* De blauwe kern. Aan de uiteinden doorzichtig en in het MIDDEN op zijn
           felst: zo is het een highlight op de lijn en niet een tweede lijn
@@ -232,10 +247,14 @@ function Verven() {
         <stop offset="72%" stopColor="#7BD8FF" stopOpacity="0.55" />
         <stop offset="100%" stopColor="#7BD8FF" stopOpacity="0" />
       </linearGradient>
+      {/* Het paars van het bovenpaneel staat op 30%: je kijkt er doorheen naar
+          de arena erachter. De kleurtrap blijft staan (licht bovenin, diep
+          onderin), anders leest het vlak als een egale waas in plaats van als
+          een belicht oppervlak. */}
       <linearGradient id="rl-vul" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor="#1E0E34" stopOpacity="0.94" />
-        <stop offset="55%" stopColor="#120822" stopOpacity="0.96" />
-        <stop offset="100%" stopColor="#0A0416" stopOpacity="0.97" />
+        <stop offset="0%" stopColor="#2A1449" stopOpacity="0.3" />
+        <stop offset="55%" stopColor="#180B2C" stopOpacity="0.3" />
+        <stop offset="100%" stopColor="#0C0519" stopOpacity="0.3" />
       </linearGradient>
       <linearGradient id="rl-vul-diep" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0%" stopColor="#101A30" />
@@ -243,7 +262,7 @@ function Verven() {
         <stop offset="100%" stopColor="#070C16" />
       </linearGradient>
       <filter id="rl-gloed" x="-14%" y="-16%" width="128%" height="132%">
-        <feGaussianBlur stdDeviation="4" />
+        <feGaussianBlur stdDeviation="1.5" />
       </filter>
       <filter id="rl-kerngloed" x="-14%" y="-16%" width="128%" height="132%">
         <feGaussianBlur stdDeviation="2.4" />
@@ -259,8 +278,9 @@ function Verven() {
 function NeonPad({ pad, vulling, breed = 1.1 }: { pad: string; vulling?: string; breed?: number }) {
   return (
     <>
-      <path d={pad} fill="none" stroke="url(#rl-goud)" strokeWidth={breed + 2} opacity="0.45" filter="url(#rl-gloed)" />
+      <path d={pad} fill="none" stroke="url(#rl-goud)" strokeWidth={breed + 1.2} opacity="0.3" filter="url(#rl-gloed)" />
       <path d={pad} fill={vulling ?? "none"} stroke="url(#rl-goud)" strokeWidth={breed} strokeLinejoin="round" />
+      <path d={pad} fill="none" stroke="url(#rl-vonk)" strokeWidth={breed + 2.2} opacity="0.75" filter="url(#rl-kerngloed)" />
       <path d={pad} fill="none" stroke="url(#rl-kern)" strokeWidth={breed + 1.6} opacity="0.5" filter="url(#rl-kerngloed)" />
       <path d={pad} fill="none" stroke="url(#rl-kern)" strokeWidth={breed * 0.42} strokeLinejoin="round" />
     </>
