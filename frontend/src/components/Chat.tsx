@@ -14,7 +14,6 @@ import { VerstuurKnop } from "./VerstuurKnop";
 import { KNOP_GOUD_VERLOOP, goudHaarlijn } from "./GlasKnop";
 import { useVakLaag, useZichtbaarVak } from "../lib/zichtbaarvak";
 import { ARENA } from "./Arena";
-import { KADER_LIJN_ROOD, NeonKader } from "./ProfileHero";
 import { Reel } from "./Reel";
 import { VoiceNote } from "./VoiceNote";
 import { EmotePicker } from "./EmotePicker";
@@ -255,30 +254,38 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
               elke uitzending dat doet. Dezelfde pil als "Stoppen" in de arena:
               rode neonlijn op een zwarte vulling, want dat is in deze app de
               vorm van een rode pil. */}
-          <span style={{ position: "absolute", left: 12, bottom: 10 }}>
-            <NeonKader
-              radius={999}
-              dik={0.5}
-              vulling="zwart"
-              animeer
-              lijn={KADER_LIJN_ROOD}
-              gloed={`0 0 12px ${withAlpha(colors.red, 0.35)}`}
-              binnen={{ padding: "3px 9px 3px 7px", display: "inline-flex", alignItems: "center", gap: 5 }}
-            >
-              <span
-                style={{
-                  width: 6,
-                  height: 6,
-                  borderRadius: "50%",
-                  background: colors.red,
-                  boxShadow: `0 0 6px ${colors.red}`,
-                  animation: "fill-pulse 1.1s ease-in-out infinite",
-                }}
-              />
-              <span style={{ fontFamily: font.ui, fontWeight: 700, fontSize: 9, letterSpacing: 0.7, color: colors.redHi, textTransform: "uppercase" }}>
-                livestream
-              </span>
-            </NeonKader>
+          <span
+            style={{
+              position: "absolute",
+              left: 12,
+              bottom: 10,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 5,
+              padding: "3px 9px 3px 7px",
+              borderRadius: 999,
+              // De lijn als INSET-schaduw en niet als eigen laag eromheen. De
+              // neonlijst van de arena tekent zijn rand in een aparte doos, en
+              // op een merkje van zestien pixels hoog liep die rand net niet
+              // meer om de zwarte vulling heen: je zag de lijn en de vulling
+              // uit elkaar lopen. Een inset-schaduw volgt de vorm per definitie.
+              background: "linear-gradient(180deg, rgba(10,4,20,.92) 0%, rgba(6,3,14,.95) 100%)",
+              boxShadow: `inset 0 0 0 1px ${withAlpha(colors.red, 0.85)}, 0 0 10px ${withAlpha(colors.red, 0.3)}`,
+            }}
+          >
+            <span
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: "50%",
+                background: colors.red,
+                boxShadow: `0 0 6px ${colors.red}`,
+                animation: "fill-pulse 1.1s ease-in-out infinite",
+              }}
+            />
+            <span style={{ fontFamily: font.ui, fontWeight: 700, fontSize: 9, letterSpacing: 0.7, color: colors.redHi, textTransform: "uppercase" }}>
+              livestream
+            </span>
           </span>
           <div style={{ transform: `scale(${ROL_SCHAAL})`, transformOrigin: "center", lineHeight: 0 }}>
             <Reel
