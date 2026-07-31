@@ -13,6 +13,7 @@
 // randen vervagen maakt het niet uit als dat er een paar pixels naast zit.
 import { useTileSkin } from "../theme/tileSkin";
 import { useEffect, useRef, useState } from "react";
+import { CANVAS, useCanvasKleur } from "../lib/canvaskleur";
 import { withAlpha } from "../theme/tokens";
 
 export const ARENA = {
@@ -39,6 +40,10 @@ export function Arena({
   /** Uit: alleen de ondergrond en het vignet, geen plaat. Voor schermen die de
    *  plaat zelf ergens anders ophangen (zie ArenaPlate). */
   plate = true,
+  /** De kleur van de ONDERSTE beeldrij van dit decor. Zie lib/canvaskleur.ts:
+   *  op iOS blijft er onderaan soms een strook buiten de pagina, en die krijgt
+   *  deze kleur zodat hij naadloos doorloopt. */
+  onderkleur = CANVAS.duel,
 }: {
   src: string;
   podium: number;
@@ -47,6 +52,7 @@ export function Arena({
   glowAt?: string;
   fill?: boolean;
   plate?: boolean;
+  onderkleur?: string;
 }) {
   const [art, setArt] = useState(true);
   const layer = useRef<HTMLDivElement | null>(null);
@@ -63,13 +69,30 @@ export function Arena({
   // strook onbedekt: dan valt het decor rond de letter weg en zie je de kale
   // achtergrond. `visualViewport` vertelt precies welk stuk je nog ziet, dus
   // daar leggen we de laag overheen. Zonder toetsenbord verandert er niets.
+  // Het decor volgt het zichtbare vak ALLEEN als er iets afgedekt wordt.
+  //
+  // Eerst stond de hoogte er onvoorwaardelijk op, en dat kostte een strook: op
+  // iOS is `visualViewport.height` ook zonder toetsenbord al kleiner dan het
+  // scherm (gemeten 793 tegen 852), dus een laag van die hoogte houdt onderaan
+  // vanzelf 59 punten over. Zonder toetsenbord doet `inset: 0` het werk, en dat
+  // is per definitie de hele laag. De maat om tegen af te zetten is de HOOGSTE
+  // waarde die we ooit zagen, niet `clientHeight`: die krimpt in de
+  // geinstalleerde app mee met het toetsenbord (zie lib/zichtbaarvak.ts) en zou
+  // het verschil altijd op nul zetten.
   useEffect(() => {
     const vv = window.visualViewport;
     const el = layer.current;
     if (!vv || !el) return;
+    let hoogste = vv.height;
     const sync = () => {
-      el.style.height = `${vv.height}px`;
-      el.style.transform = `translateY(${vv.offsetTop}px)`;
+      hoogste = Math.max(hoogste, vv.height);
+      if (hoogste - vv.height > 80) {
+        el.style.height = `${vv.height}px`;
+        el.style.transform = `translateY(${vv.offsetTop}px)`;
+      } else {
+        el.style.height = "";
+        el.style.transform = "";
+      }
     };
     sync();
     vv.addEventListener("resize", sync);
@@ -79,6 +102,12 @@ export function Arena({
       vv.removeEventListener("scroll", sync);
     };
   }, []);
+
+  // De strook die op iOS onder de pagina kan overblijven krijgt de kleur van de
+  // onderrand van dit decor. De haak draait onvoorwaardelijk (hooks-volgorde),
+  // maar tekent de klassieke indeling geen arena, dan hoort de strook ook niet
+  // de kleur van een arena te hebben.
+  useCanvasKleur(skinAan ? onderkleur : CANVAS.sub);
 
   if (!skinAan) return null;
   return (

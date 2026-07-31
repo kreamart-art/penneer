@@ -34,6 +34,29 @@ def _new_id() -> str:
     return uuid.uuid4().hex
 
 
+# De kreten waarmee je klaar kunt gaan, in vier pakketten. Hier staan alleen de
+# SLEUTELS: de zinnen zelf staan in de vertalingen van de app, want de kijker
+# hoort ze in zijn eigen taal te lezen en niet in die van de verzender.
+#
+# Dat de lijst ook hier staat is de hele beveiliging: wie klaar gaat kiest welke
+# van deze zestien zinnen boven zijn naam komt en kan nooit zelf tekst
+# meesturen. Blijft deze lijst gelijk aan de sleutels in i18n, dan blijft het
+# ook uitbreidbaar; een sleutel die de app niet kent valt in de uitzending
+# gewoon terug op "is klaar".
+KREET_SLEUTELS: frozenset[str] = frozenset(
+    {
+        # blij
+        "winnen", "trots", "vlot", "grijns",
+        # stoer
+        "beter", "makkelijk", "wachten", "alles",
+        # boos
+        "rotletter", "tijd", "gegokt", "chagrijn",
+        # plagen
+        "koffie", "dutje", "hulp", "mazzel",
+    }
+)
+
+
 class RoomManager:
     def __init__(self) -> None:
         self.rooms: dict[str, Room] = {}
@@ -663,6 +686,7 @@ class RoomManager:
             room.phase = "rules"
             # Bots have read the rules by definition.
             room.ready_ids = [p.id for p in self.playing_players(room) if p.is_bot]
+            room.ready_kreten = {}
             await self.send_state(room)
             return
         if room.phase != "rules" or not self._all_ready(room):
@@ -676,6 +700,7 @@ class RoomManager:
             return
         room.phase = "lobby"
         room.ready_ids = []
+        room.ready_kreten = {}
         await self.send_state(room)
 
     async def _really_start(self, room: Room) -> None:
@@ -685,6 +710,7 @@ class RoomManager:
         # until the whole pool has been drawn (reset lives in _lock_letter).
         room.history = []
         room.ready_ids = []
+        room.ready_kreten = {}
         room.scores = {p.id: 0 for p in self.playing_players(room)}
         self._init_turn_order(room)
         await self.broadcast(
@@ -702,6 +728,7 @@ class RoomManager:
         room.timer.ends_at = None
         room.timer.duration = None
         room.ready_ids = []
+        room.ready_kreten = {}
         room.sat_out = []  # everyone who sat the previous round out is back in
         room.history.append(Round())
         self.pending[room.code] = {}
@@ -759,6 +786,7 @@ class RoomManager:
     async def _start_timer(self, room: Room) -> None:
         room.phase = "fill"
         room.ready_ids = []
+        room.ready_kreten = {}
         duration = room.settings.round_time
         if duration <= 0:
             # No-timer mode: the round runs open-ended until the spelleider stops.
@@ -837,6 +865,16 @@ class RoomManager:
             room.ready_ids.append(player_id)
         elif not ready and player_id in room.ready_ids:
             room.ready_ids.remove(player_id)
+        # De kreet waarmee je klaar gaat. Alleen een sleutel uit de lijst komt
+        # erdoor: wat hier binnenkomt gaat rechtstreeks het scherm van iedereen
+        # in de room op, dus de verzender bepaalt WELKE zin het is en nooit WAT
+        # er staat. Klaar zonder kreet wist een eerdere kreet, anders blijft een
+        # opschepper hangen nadat hij zich bedacht heeft.
+        kreet = payload.get("kreet")
+        if ready and isinstance(kreet, str) and kreet in KREET_SLEUTELS:
+            room.ready_kreten[player_id] = kreet
+        else:
+            room.ready_kreten.pop(player_id, None)
         await self.broadcast(room, {"type": "ready_updated", "ready_ids": list(room.ready_ids)})
         await self.send_state(room)
 
@@ -855,6 +893,7 @@ class RoomManager:
         room.phase = "results"
         room.timer.ends_at = None
         room.ready_ids = []  # fresh readiness for the "next round" gate
+        room.ready_kreten = {}
         self.submits[room.code] = set()
         # Tell clients fill is over so they submit their final answers...
         await self.broadcast(room, {"type": "round_ended"})
@@ -1083,6 +1122,7 @@ class RoomManager:
         room.active_player_id = None
         room.timer.ends_at = None
         room.ready_ids = []
+        room.ready_kreten = {}
         room.sat_out = []
         room.turn_order = []
         room.turn_ptr = 0

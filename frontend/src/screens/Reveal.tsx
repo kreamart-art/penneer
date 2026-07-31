@@ -15,6 +15,7 @@ import { Screen } from "../components/Layout";
 import { TopBar } from "../components/TopBar";
 import type { GameApi } from "../net/socket";
 import { ArtIcoon } from "../components/ArtIcoon";
+import { CANVAS } from "../lib/canvaskleur";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { colors, font, withAlpha } from "../theme/tokens";
@@ -57,7 +58,7 @@ export function Reveal({ game }: { game: GameApi }) {
 
   return (
     <Screen top={<div style={{ position: "relative", zIndex: 1 }}><TopBar code={room.code} roundNo={room.round_no} totalRounds={room.settings.rounds} connected={game.state.status === "open"} onLeave={game.leaveRoom} game={game} /></div>}>
-      <Arena src="/game-bg.webp" podium={PODIUM} at="79%" fill glowAt="70%" />
+      <Arena src="/game-bg.webp" podium={PODIUM} at="79%" fill glowAt="70%" onderkleur={CANVAS.arena} />
       <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column" }}>
         <AlphabetStrip used={room.used_letters} hard={room.settings.hard_letters} lockedLetter={letter} />
 

@@ -13,6 +13,7 @@ import { InstallPrompt, installPromptSeen, type InstallVariant } from "../compon
 import { canInstall, isIos, isIosChrome, isIosInAppBrowser, isStandalone, onInstallChange } from "../pwa/install";
 import { Screen, Card } from "../components/Layout";
 import type { GameApi } from "../net/socket";
+import { CANVAS, useCanvasKleur } from "../lib/canvaskleur";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { NeonText } from "../components/NeonText";
@@ -1126,6 +1127,9 @@ const LETTERS: {
 
 
 function LandingFX() {
+  // De strook die op iOS onder de pagina kan overblijven, in de kleur van de
+  // onderrand van dit decor. Zie lib/canvaskleur.ts.
+  useCanvasKleur(CANVAS.main);
   const letter = (_op: number): React.CSSProperties => ({
     position: "absolute",
     fontFamily: font.display,

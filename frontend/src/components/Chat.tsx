@@ -12,6 +12,7 @@ import { MicButton } from "./MicButton";
 import { BeeldKnop } from "./BeeldKnop";
 import { VerstuurKnop } from "./VerstuurKnop";
 import { KNOP_GOUD_VERLOOP, goudHaarlijn } from "./GlasKnop";
+import { CANVAS, useCanvasKleur } from "../lib/canvaskleur";
 import { useVakLaag, useZichtbaarVak } from "../lib/zichtbaarvak";
 import { Livestream } from "./Livestream";
 import { VoiceNote } from "./VoiceNote";
@@ -93,6 +94,10 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
   // je ook maar iets gedaan had.
   const vak = useZichtbaarVak();
   const { laag, onder } = useVakLaag();
+  // De strook onder de pagina krijgt de kleur van de invulbalk: op iOS valt de
+  // onderrand van het scherm soms buiten de pagina, en dan hoort daar de balk
+  // door te lopen en niet het decor van het scherm erachter.
+  useCanvasKleur(CANVAS.chat);
   // Past er nog een uitzending boven de lade?
   //
   // De schermhoogte wordt ÉÉN keer gemeten, bij het openen van de chat. Op iOS

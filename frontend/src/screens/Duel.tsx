@@ -23,6 +23,7 @@ import { GlasVeld } from "../components/GlasVeld";
 import { GOUD, KADER_LIJN_GOUD, KADER_LIJN_PAARS, KADER_LIJN_ROOD, NeonKader, Paneel, PlekWapen, RingFoto, RingPortret, SCHILD_KLEUREN, type SchildKleur } from "../components/ProfileHero";
 import { GlasRij } from "./Hub";
 import { SchermTip } from "../components/SchermTip";
+import { CANVAS } from "../lib/canvaskleur";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { rampFrom } from "../theme/neon";
@@ -386,7 +387,7 @@ export function Duel({ game, onBack, onProfile, openId, onGeopend }: {
     const tint = clockColor(frac);
     return (
       <Screen top={header}>
-        <Arena src="/duel-bg.webp" podium={PODIUM_Y} at="46%" width="205%" plate={false} />
+        <Arena src="/duel-bg.webp" podium={PODIUM_Y} at="46%" width="205%" plate={false} onderkleur={CANVAS.duel} />
         <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", gap: 16 }}>
           <RoundDots total={total} idx={idx} />
           {duel.stake > 0 && duel.stake_accepted && (

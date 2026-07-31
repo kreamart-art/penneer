@@ -19,6 +19,19 @@
 // Er hangt ook een meetlijn aan: standalone iOS stuurt zijn viewport-cijfers
 // naar de server (0/400/1200ms na de start, en nog eens na de eerste aanraking),
 // zodat we in de logs zien of de hamer werkte in plaats van het te moeten raden.
+//
+// En die meetlijn heeft geleverd. Op een iPhone met iOS 18.7 (393x852):
+//
+//   {'tag': 'start0-kort',   'inner': 793, 'client': 793, 'visual': 793, 'screen': 852}
+//   {'tag': 'start1200-kort','inner': 793, 'client': 793, 'visual': 793, 'screen': 852}
+//   {'tag': 'terug-ok',      'inner': 852, 'client': 852, 'visual': 852, 'screen': 852}
+//
+// Precies 59 punten te kort, de veilige zone bovenaan, elke start opnieuw, en
+// alleen na een terugkeer uit de achtergrond klopt het. De hamers sloegen dus
+// mis, en waarom bleek uit hamer 1: die zette een hoogte in de meta en HAALDE
+// HEM ER IN HET VOLGENDE BEELDJE WEER AF. Sinds die hoogte blijft staan is dit
+// een echte reparatie in plaats van drie pogingen. Wat er onverhoopt toch
+// buiten de pagina valt, vangt lib/canvaskleur.ts op.
 import { isIos, isStandalone } from "./install";
 
 const MAX_REPORTS = 6;
@@ -72,16 +85,42 @@ function tooShort(): boolean {
   return window.innerHeight + 1 < Math.max(screen.width, screen.height);
 }
 
-function hammer(): void {
-  // 1. viewport-meta hertekenen. Een gewijzigde en meteen teruggezette content
-  //    dwingt WebKit de viewport opnieuw op te meten; dit is de zwaarste zet en
-  //    de enige die op sommige iOS-versies aanslaat.
+/** De meta zoals hij in index.html staat, zonder onze toevoeging. */
+let metaOrigineel: string | null = null;
+/** Staat de opgelegde hoogte erin? Zie de waarschuwing hieronder. */
+let opgelegd = false;
+
+/** Zet `height=<scherm>` in de viewport-meta.
+ *
+ *  Dit is de kern van de reparatie en niet een van de drie hamers. De vorige
+ *  versie zette hem er ook in, maar haalde hem er in het volgende beeldje
+ *  meteen weer af; de meting daarna las dus altijd de oude, te korte viewport
+ *  en de logs stonden vol met "kort".
+ *
+ *  Eenmaal opgelegd blijft hij staan, en dat is met opzet. Hij WERKT namelijk
+ *  als hij werkt: dan meldt de viewport ineens de volle hoogte, en zou een
+ *  regel als "haal hem eraf zodra het klopt" hem meteen weer weghalen, waarna
+ *  de viewport terugvalt en hij er weer op moet. Dat pendelt door, en elke slag
+ *  is een herberekening van de layout. Alleen bij DRAAIEN gaat hij eraf: de
+ *  hoogte die we opleggen is de lange kant van het scherm, en in liggend is dat
+ *  de verkeerde maat. */
+function forceerHoogte(): void {
   const meta = document.querySelector('meta[name="viewport"]');
-  const original = meta?.getAttribute("content") ?? null;
-  if (meta && original) {
-    meta.setAttribute("content", `${original}, height=${Math.max(screen.width, screen.height)}`);
-    requestAnimationFrame(() => meta.setAttribute("content", original));
-  }
+  if (!meta) return;
+  if (metaOrigineel === null) metaOrigineel = meta.getAttribute("content");
+  if (!metaOrigineel) return;
+  const liggend = window.innerWidth > window.innerHeight;
+  const aan = !liggend && (opgelegd || tooShort());
+  opgelegd = aan;
+  const doel = aan ? `${metaOrigineel}, height=${Math.max(screen.width, screen.height)}` : metaOrigineel;
+  if (meta.getAttribute("content") !== doel) meta.setAttribute("content", doel);
+}
+
+function hammer(): void {
+  // 1. de viewport-meta een hoogte geven. Zolang WebKit een te korte viewport
+  //    volhoudt blijft die erin staan; hij verdwijnt vanzelf zodra de hoogte
+  //    klopt.
+  forceerHoogte();
 
   // 2. de swipe nabootsen: heel even scrollbaar maken, 1px heen en terug.
   const spacer = document.createElement("div");
@@ -111,6 +150,11 @@ export function armViewportHealer(): void {
   };
 
   for (const ms of [0, 400, 1200]) window.setTimeout(() => beat(`start${ms}`), ms);
+
+  // En blijven kijken: verandert de viewport (draaien, terugkomen, WebKit die
+  // zich alsnog bedenkt), dan gaat de opgelegde hoogte er meteen op of af.
+  window.visualViewport?.addEventListener("resize", () => forceerHoogte());
+  window.addEventListener("orientationchange", () => window.setTimeout(() => { opgelegd = false; forceerHoogte(); }, 120));
 
   // De eerste echte aanraking is precies het moment waarop het vanzelf goed
   // ging; die meting vertelt ons de "juiste" hoogte om tegen af te zetten.

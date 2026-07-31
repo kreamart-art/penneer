@@ -647,16 +647,22 @@ a:active .hex-aan {
   pointer-events: none;
 }
 
-/* Snippers in de uitzending. Een eigen animatie en niet die hierboven, om twee
-   redenen. Ze valt door de hoogte van HAAR VAK en niet door het scherm, dus in
-   `top`-procenten: het vak is een derde van een telefoon hoog, en 108vh zou de
-   snipper er meteen onderuit schieten. En ze herhaalt zich oneindig, want de
-   uitslag blijft staan tot de volgende ronde begint. */
+/* Snippers in de uitzending: dezelfde val als de ceremonie hierboven, maar door
+   de hoogte van HAAR VAK en niet door het scherm. Vandaar `top` in procenten:
+   het vak is een derde van een telefoon hoog, en die 108vh zou de snipper er
+   meteen onderuit schieten. En ze herhaalt zich oneindig, want de uitslag
+   blijft staan tot de volgende ronde begint.
+
+   De kanteling waarmee een snipper begint is een eigen hoek per stuk, want
+   zestien rechthoekjes die allemaal recht beginnen vallen zichtbaar in de maat.
+   Daarom staat `--kantel` in ELK beeldje van de animatie: `rotate` is één
+   eigenschap, dus een `transform` in de keyframes wist een `rotate` die er
+   buitenom op stond. */
 @keyframes stream-confetti {
-  0% { top: -8%; opacity: 0; transform: translateX(0) rotate(0deg); }
-  10% { opacity: 1; }
-  85% { opacity: 1; }
-  100% { top: 104%; opacity: 0; transform: translateX(var(--drift, 0px)) rotate(620deg); }
+  0% { top: -8%; opacity: 0; transform: translateX(0) rotate(var(--kantel, 0deg)); }
+  9% { opacity: 1; }
+  86% { opacity: 1; }
+  100% { top: 106%; opacity: 0; transform: translateX(var(--drift, 0px)) rotate(calc(var(--kantel, 0deg) + var(--draai, 620deg))); }
 }
 .stream-snipper {
   animation-name: stream-confetti;
@@ -706,12 +712,19 @@ a:active .hex-aan {
 /* Een regel die van links zijn plek in schuift. Voor de hoogtepunten in de
    uitzending: ze komen na elkaar binnen, zoals een commentator ze na elkaar
    uitspreekt, in plaats van als een blok tegelijk te verschijnen. */
+/* De reis begint BUITEN beeld en duurt lang genoeg om te zien. De eerste versie
+   schoof 22px in 0,42s, en dat is precies de maat waarop je oog alleen "er
+   staat nu iets" registreert en niet "er komt iets aan": de helft van de weg is
+   dan al afgelegd voordat de regel zichtbaar wordt. Nu bijna drie keer zo ver,
+   ruim anderhalf keer zo lang, en met een lange staart aan het eind zodat de
+   regel op zijn plek uitloopt in plaats van te stoppen. */
 @keyframes stream-links-in {
-  from { opacity: 0; transform: translateX(-22px); }
+  from { opacity: 0; transform: translateX(-62px); }
+  40% { opacity: 1; }
   to { opacity: 1; transform: translateX(0); }
 }
 .stream-links-in {
-  animation: stream-links-in 0.42s cubic-bezier(0.2, 1, 0.3, 1) both;
+  animation: stream-links-in 0.66s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 /* Victory popup. The old card reused .pop-in, which snaps from scale .6 with a

@@ -16,6 +16,7 @@ import { DIVISIE_ACCENT, GOUD, KADER_LIJN_GOUD, KADER_LIJN_LOOP, KADER_LIJN_PAAR
 import { DivisieLadder, Schild, divisieNaam } from "../components/Divisie";
 import { MeldingRij } from "../components/Meldingen";
 import { WALLPAPERS, wallpaperKlasse, wallpaperStijl, wallpaperVan, wallpaperZet, type WallpaperId } from "../components/Wallpaper";
+import { CANVAS } from "../lib/canvaskleur";
 import { ensurePushSubscription } from "../pwa/push";
 import { AvatarZoom } from "../components/AvatarZoom";
 import { Button } from "../components/Button";
@@ -1141,7 +1142,15 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
   useEffect(() => {
     if (!vitrine) return;
     document.body.classList.add("profiel");
-    return () => document.body.classList.remove("profiel");
+    // En het doek eronder in de kleur van DIT decor, want op iOS blijft daar
+    // soms een strook van over. Zie lib/canvaskleur.ts.
+    const el = document.documentElement;
+    const vorige = el.style.backgroundColor;
+    el.style.backgroundColor = CANVAS.profiel;
+    return () => {
+      document.body.classList.remove("profiel");
+      el.style.backgroundColor = vorige;
+    };
   }, [vitrine]);
 
   async function uploadBlob(blob: Blob) {

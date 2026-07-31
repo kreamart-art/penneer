@@ -170,6 +170,11 @@ class Room:
     history: list[Round] = field(default_factory=list)
     scores: dict[str, int] = field(default_factory=dict)
     ready_ids: list[str] = field(default_factory=list)  # players who tapped "Ik ben klaar"
+    # Wie er met een KREET klaar ging: speler-id -> sleutel van de zin ("winnen",
+    # "makkelijk", ...). Alleen de sleutel gaat over de lijn en niet de zin zelf:
+    # de uitzending vertaalt hem naar de taal van wie kijkt, en zo kan niemand
+    # eigen tekst het scherm van een ander in duwen. Leeg = gewoon "is klaar".
+    ready_kreten: dict[str, str] = field(default_factory=dict)
     # Players who left mid-round and came back: they sit out the CURRENT round
     # (cannot fill in, score no points) and rejoin play next round.
     sat_out: list[str] = field(default_factory=list)
@@ -218,6 +223,7 @@ class Room:
             "timer": self.timer.public(),
             "scores": dict(self.scores),
             "ready_ids": list(self.ready_ids),
+            "ready_kreten": dict(self.ready_kreten),
             "sat_out": list(self.sat_out),
             # The current round (answers + points) so reconnecting clients
             # can rebuild reveal/results screens.

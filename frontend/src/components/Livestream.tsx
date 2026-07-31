@@ -12,7 +12,7 @@
 // anderen invullen. Wat een uitzending daarbij hoort te hebben staat er ook: een
 // merkje dat zegt dat het live is, een klok, en een onderregel die zegt naar wie
 // je kijkt.
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Check } from "lucide-react";
 import { ARENA } from "./Arena";
 import { ArtIcoon } from "./ArtIcoon";
@@ -20,6 +20,7 @@ import { Avatar } from "./Avatar";
 import { RingFoto, RingPortret, divisieKleur } from "./ProfileHero";
 import { Reel } from "./Reel";
 import type { GameApi } from "../net/socket";
+import { KREET_KEUZE, kreetSleutel } from "./Kreten";
 import { hoogtepunten, prestaties, woordVanDeRonde } from "../lib/hoogtepunten";
 import { useT } from "../i18n/i18n";
 import { colors, font, withAlpha } from "../theme/tokens";
@@ -31,6 +32,17 @@ const ROL_GROOT = 0.68;
  *  bij het rollen, maar wel groot genoeg om DE letter te zijn. */
 const ROL_KLEIN = 0.62;
 
+/** Hoe lang het beeld wegvalt voordat de volgende pagina komt.
+ *
+ *  Stond op 200ms, en dat was te kort om als overgang te lezen: de rol was weg
+ *  en meteen weer terug op zijn nieuwe plek, en dat ziet je oog als knipperen
+ *  in plaats van als wisselen. Uitfaden mag rustig, infaden mag iets langer
+ *  duren dan uitfaden: zo voelt het als een beeld dat KOMT en niet als een
+ *  beeld dat er ineens is. */
+const WISSEL_MS = 300;
+const UIT_MS = 260;
+const IN_MS = 420;
+
 /** De doos van een geschaalde rol blijft 200 hoog; alleen het BEELD krimpt.
  *  Zonder deze correctie staat er boven en onder de rol lucht die meetelt bij
  *  het uitmiddelen, en dan hangt hij te laag in het vak. */
@@ -41,34 +53,48 @@ const rolVak = (schaal: number) => ({
   margin: `${-(200 * (1 - schaal)) / 2}px 0`,
 });
 
-/** Snippers voor de uitslagpagina's: het beeld waar een uitzending naartoe
- *  werkt. Ze BLIJVEN vallen zolang die pagina in beeld is, dus geen `forwards`
- *  maar een oneindige herhaling; een confettiregen die na twee tellen ophoudt
- *  leest als een storing.
+/** Confetti op de uitslag: het beeld waar een uitzending naartoe werkt.
  *
- *  De maten liggen vast in plaats van dat ze geloot worden. Een lot valt bij
- *  elke hertekening opnieuw, en dan verspringt de hele regen zodra er ergens
- *  een score binnenkomt. Deze reeks is één keer uitgerekend en daarna altijd
- *  dezelfde, en dat ziet er precies zo willekeurig uit.
+ *  TWEE lagen, en dat is de hele truc. De voorste valt vlug en tuimelt, precies
+ *  zoals de confetti van de ceremonie na een potje; de achterste valt traag,
+ *  kleiner en met zijwaartse drift. Omdat de voorste vóór de tekst hangt en de
+ *  achterste erachter, kijk je door de regen heen naar het scherm in plaats van
+ *  ernaar. Eén laag is een effect, twee lagen is diepte.
+ *
+ *  Ze BLIJVEN vallen zolang de uitslag in beeld staat: een confettiregen die na
+ *  twee tellen ophoudt leest als een storing.
+ *
+ *  Alles wordt geloot, en dat was eerst niet zo. De vorige versie rekende de
+ *  maten uit met een vaste formule op de index, en dat zag je: gelijke
+ *  tussenruimtes en kleuren die om de beurt terugkwamen, dus een patroon in
+ *  plaats van een regen. `useMemo` op een lege lijst is genoeg om het één keer
+ *  per pagina te loten en daarna stil te houden.
+ *
+ *  De vertraging is NEGATIEF: dan zit elke snipper bij het eerste beeldje al
+ *  midden in zijn val. Anders begint elke uitslag met een leeg scherm waar de
+ *  eerste snippers nog aan komen zetten.
  */
-const SNIPPER_KLEUREN = ["#FFD46B", "#E8B33C", "#FF5F6D", "#7BE0C0", "#C9A6FF", "#FFFFFF"];
-const SNIPPERS = Array.from({ length: 16 }, (_, i) => {
-  const g = (n: number) => (((i + 1) * 9301 + n * 49297) % 233280) / 233280;
-  return {
-    links: 2 + g(7) * 94,
-    duur: 3.2 + g(13) * 2.8,
-    wacht: g(29) * 5,
-    breed: 4 + g(37) * 3.5,
-    hoog: 7 + g(53) * 5,
-    drift: (g(71) - 0.5) * 54,
-    kleur: SNIPPER_KLEUREN[i % SNIPPER_KLEUREN.length],
-  };
-});
+const SNIPPER_KLEUREN = [colors.gold, colors.goldHi, colors.violet, colors.green, colors.red, "#FF7AC2"];
 
-function Confetti() {
+function loot(n: number, traag: boolean) {
+  return Array.from({ length: n }, () => ({
+    links: Math.random() * 100,
+    breed: (traag ? 3.5 : 5) + Math.random() * (traag ? 3 : 4.5),
+    hoog: (traag ? 6 : 9) + Math.random() * (traag ? 5 : 7),
+    duur: (traag ? 4.4 : 2.6) + Math.random() * (traag ? 3.2 : 1.8),
+    wacht: -Math.random() * (traag ? 7 : 4.4),
+    drift: (Math.random() - 0.5) * (traag ? 60 : 26),
+    draai: (Math.random() < 0.5 ? -1 : 1) * (traag ? 420 : 700),
+    kantel: Math.random() * 360,
+    kleur: SNIPPER_KLEUREN[Math.floor(Math.random() * SNIPPER_KLEUREN.length)],
+  }));
+}
+
+function Confetti({ traag }: { traag: boolean }) {
+  const snippers = useMemo(() => loot(traag ? 15 : 22, traag), [traag]);
   return (
     <span aria-hidden style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none" }}>
-      {SNIPPERS.map((s, i) => (
+      {snippers.map((s, i) => (
         <span
           key={i}
           className="stream-snipper"
@@ -83,6 +109,8 @@ function Confetti() {
             animationDuration: `${s.duur}s`,
             animationDelay: `${s.wacht}s`,
             ["--drift" as string]: `${s.drift}px`,
+            ["--draai" as string]: `${s.draai}deg`,
+            ["--kantel" as string]: `${s.kantel}deg`,
           }}
         />
       ))}
@@ -166,7 +194,20 @@ function TypRegel({ naam, kleur, staart, avatar }: { naam: string; kleur: string
   return (
     <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
       <span className="pop-in" style={{ display: "flex", flexShrink: 0 }}>{avatar}</span>
-      <span style={{ minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", textShadow: "0 1px 4px rgba(0,0,0,.9)" }}>
+      {/* Tot twee regels, en dan pas afkappen. Met een enkele regel viel de
+          helft van een kreet weg ("KreamTest is klaar, jullie zij..."), en juist
+          die staart is waar het om gaat: een kreet die je niet uitleest is geen
+          kreet. */}
+      <span
+        style={{
+          minWidth: 0,
+          display: "-webkit-box",
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: "vertical",
+          overflow: "hidden",
+          textShadow: "0 1px 4px rgba(0,0,0,.9)",
+        }}
+      >
         <span style={{ fontFamily: font.ui, fontSize: 11.5, fontWeight: 800, color: kleur }}>{naamDeel}</span>
         <span style={{ fontFamily: font.ui, fontSize: 11, color: colors.ink }}>{staartDeel}</span>
       </span>
@@ -259,7 +300,7 @@ function Hoogtepunten({ game }: { game: GameApi }) {
           // vaststelling ("twee verschillende woorden") krijgt hem niet, anders
           // is een lijst geen onderscheiding meer maar een opmaakstijl.
           style={{
-            animationDelay: `${0.12 + i * 0.16}s`,
+            animationDelay: `${0.18 + i * 0.26}s`,
             display: "flex",
             alignItems: "baseline",
             gap: 7,
@@ -304,8 +345,14 @@ function Hoogtepunten({ game }: { game: GameApi }) {
 }
 
 /** Wie klaar is, als een stroom regels naast de letter. De laatste onderaan,
- *  zoals in een chat: wat er net gebeurde staat het dichtst bij je oog. */
-function KlaarStroom({ game, max = 5 }: { game: GameApi; max?: number }) {
+ *  zoals in een chat: wat er net gebeurde staat het dichtst bij je oog.
+ *
+ *  De staart is "is klaar", tenzij iemand met een KREET klaar ging; dan staat
+ *  zijn zin er ("is klaar om te winnen"). De sleutel komt van de server en
+ *  wordt hier tegen de eigen lijst gehouden: een sleutel die deze app niet kent
+ *  valt terug op de gewone regel in plaats van zijn eigen naam te tonen.
+ */
+function KlaarStroom({ game, max = 5, rechts = false }: { game: GameApi; max?: number; rechts?: boolean }) {
   const { t } = useT();
   const room = game.state.room;
   if (!room) return null;
@@ -315,16 +362,19 @@ function KlaarStroom({ game, max = 5 }: { game: GameApi; max?: number }) {
     .slice(-max);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", justifyContent: "flex-end", gap: 5 }}>
-      {klaar.map((p) => (
-        <TypRegel
-          key={p.id}
-          naam={p.name}
-          kleur={p.color}
-          staart={t("streamIsKlaar")}
-          avatar={<Avatar name={p.name} color={p.color} size={20} userId={p.user_id} hasAvatar={p.has_avatar} avatarVer={p.avatar_ver} />}
-        />
-      ))}
+    <div style={{ display: "flex", flexDirection: "column", justifyContent: "flex-end", alignItems: rechts ? "flex-end" : "stretch", gap: 5 }}>
+      {klaar.map((p) => {
+        const kreet = room.ready_kreten?.[p.id];
+        return (
+          <TypRegel
+            key={p.id}
+            naam={p.name}
+            kleur={p.color}
+            staart={kreet && KREET_KEUZE.has(kreet) ? t(kreetSleutel(kreet)) : t("streamIsKlaar")}
+            avatar={<Avatar name={p.name} color={p.color} size={20} userId={p.user_id} hasAvatar={p.has_avatar} avatarVer={p.avatar_ver} />}
+          />
+        );
+      })}
     </div>
   );
 }
@@ -379,7 +429,7 @@ function Eindstand({ game }: { game: GameApi }) {
           <div
             key={r.p.id}
             className="stream-links-in"
-            style={{ animationDelay: `${0.16 + i * 0.14}s`, display: "flex", alignItems: "center", gap: 6, minWidth: 0, marginTop: i === 0 ? 10 : 0 }}
+            style={{ animationDelay: `${0.22 + i * 0.2}s`, display: "flex", alignItems: "center", gap: 6, minWidth: 0, marginTop: i === 0 ? 10 : 0 }}
           >
             <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 10, color: colors.faint, width: 10, flexShrink: 0 }}>{i + 2}</span>
             <Avatar name={r.p.name} color={r.p.color} size={18} userId={r.p.user_id} hasAvatar={r.p.has_avatar} avatarVer={r.p.avatar_ver} />
@@ -570,7 +620,7 @@ export function Livestream({ game }: { game: GameApi }) {
     const id = window.setTimeout(() => {
       setGetoond(nu);
       setDof(false);
-    }, 200);
+    }, WISSEL_MS);
     return () => window.clearTimeout(id);
   }, [groep, nu]);
 
@@ -621,12 +671,11 @@ export function Livestream({ game }: { game: GameApi }) {
         overflow: "hidden",
       }}
     >
-      {/* De snippers vallen op allebei de uitslagpagina's: de ronde die net
-          afliep en de eindstand. Ze liggen ACHTER de tekst (de kolom hieronder
-          is `position: relative` en komt daarmee in dezelfde schilderlaag,
-          later in de rij), want een naam in goud met goudkleurige snippers
-          eroverheen leest niet meer. */}
-      {(uitslag || eind) && <Confetti />}
+      {/* De TRAGE laag ligt achter de tekst: hij komt vóór de kolom hieronder in
+          de rij, en die kolom is `position: relative` en dus een geschilderde
+          laag die er later overheen komt. Alleen de achtergrond ligt er nog
+          onder. */}
+      {uitslag && <Confetti traag />}
 
       <div
         style={{
@@ -640,23 +689,27 @@ export function Livestream({ game }: { game: GameApi }) {
           justifyContent: "center",
           gap: 10,
           opacity: dof ? 0 : 1,
-          transition: "opacity .2s ease",
+          transition: `opacity ${dof ? UIT_MS : IN_MS}ms ease`,
         }}
       >
       {uitslag && (
-        // De uitslag heeft geen rol nodig: die is gevallen. Links wat de ronde
-        // opleverde, rechts wie er klaar staat voor de volgende.
-        // De hoogtepunten staan niet tegen de linkerrand: een uitzending laat
-        // links wat lucht, anders plakt de tekst aan de kader.
-        <div style={{ display: "flex", alignItems: "flex-start", gap: 10, width: "100%", padding: "0 12px 0 26px", minHeight: 0 }}>
-          <div style={{ flex: 1.15, minWidth: 0 }}>
+        // De uitslag heeft geen rol nodig: die is gevallen. De hoogtepunten
+        // staan links en krijgen de ruimte; de klaar-regels zijn geen tweede
+        // kolom maar een onderschrift, en dat hoort rechtsonder.
+        //
+        // Als kolom NAAST de hoogtepunten stonden ze er bovenop te leunen: twee
+        // blokken tekst met tien pixels ertussen leest als één rommelig blok.
+        // Nu zit er een halve pagina tussen en weet je meteen dat het twee
+        // verschillende dingen zijn.
+        <div style={{ position: "relative", width: "100%", flex: 1, minHeight: 0, display: "flex", alignItems: "center", padding: "0 12px 0 26px" }}>
+          <div style={{ maxWidth: "74%", minWidth: 0 }}>
             <Hoogtepunten game={game} />
           </div>
-          {/* Op de hoogte van het woord van de ronde: twee kolommen die
-              onderaan uitlijnen lezen als twee losse blokken, bovenaan als
-              twee kolommen van hetzelfde bericht. */}
-          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "flex-start", paddingTop: 14 }}>
-            <KlaarStroom game={game} max={3} />
+          {/* Vlak boven de lichtkrant: dit vak eindigt precies waar de balk
+              begint, dus `bottom: 0` zet ze er netjes bovenop zonder een maat
+              te hoeven kennen. */}
+          <div style={{ position: "absolute", right: 12, bottom: 0, maxWidth: "48%" }}>
+            <KlaarStroom game={game} max={3} rechts />
           </div>
         </div>
       )}
@@ -674,12 +727,18 @@ export function Livestream({ game }: { game: GameApi }) {
             <Reel state={rolStand} letter={letter} exclude={room.used_letters} hard={room.settings.hard_letters} skin={leider?.reel_skin ?? null} />
           </div>
           {/* De kolom groeit open vanaf nul breed. Een maximum is wel te
-              animeren, `flex-grow` niet, dus dat is waar de beweging in zit. */}
+              animeren, `flex-grow` niet, dus dat is waar de beweging in zit.
+
+              `flex: 0 1 auto` en niet `flex: 1`: een kolom die alle overgebleven
+              ruimte opeist duwt de rol naar links, en dan staat het paar niet
+              in het midden maar de rol linksuit. Zo blijft de kolom precies zo
+              breed als zijn tekst en zwaait het geheel, rol plus regels, om het
+              midden van het beeld. */}
           <div
             style={{
-              flex: 1,
+              flex: "0 1 auto",
               minWidth: 0,
-              maxWidth: vult ? 230 : 0,
+              maxWidth: vult ? 236 : 0,
               opacity: vult ? 1 : 0,
               overflow: "hidden",
               transition: "max-width .42s cubic-bezier(.2,1,.3,1), opacity .3s ease",
@@ -701,6 +760,13 @@ export function Livestream({ game }: { game: GameApi }) {
         </>
       )}
       </div>
+
+      {/* En de SNELLE laag ervoor: dezelfde val als de confetti van de
+          ceremonie, groter en tuimelend. Hij staat hier, ná de kolom en vóór
+          het merkje en de lichtkrant, en dus valt hij over de tekst heen maar
+          nooit over de twee dingen die altijd leesbaar moeten blijven: wat er
+          live is en wat de omroep zegt. */}
+      {uitslag && <Confetti traag={false} />}
 
       {pennenNeer && (
         <div

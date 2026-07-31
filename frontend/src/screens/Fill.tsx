@@ -13,6 +13,7 @@ import type { GameApi } from "../net/socket";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { Paneel } from "../components/ProfileHero";
+import { KreetKiezer } from "../components/Kreten";
 import { colors, font, withAlpha } from "../theme/tokens";
 
 export function Fill({ game }: { game: GameApi }) {
@@ -229,15 +230,28 @@ export function Fill({ game }: { game: GameApi }) {
             pointerEvents: "none",
           }}
         >
-          <div style={{ maxWidth: 460, margin: "0 auto", padding: "0 18px", pointerEvents: "auto" }}>
-            <Button
-              variant={iAmReady ? "ghost" : "gold"}
-              full
-              onClick={() => { if (!iAmReady) { sound.ready(); sound.haptic(12); } game.setReady(!iAmReady); }}
-              style={iAmReady ? undefined : { animation: "fill-pulse 1.8s ease-in-out infinite" }}
-            >
-              {iAmReady ? t("notYet") : t("imReady")}
-            </Button>
+          {/* De klaarknop met het kreetteken ernaast. Het teken is klein en staat
+              rechts: de knop blijft de daad, de kreet is de franje. Zie
+              components/Kreten.tsx. */}
+          <div style={{ maxWidth: 460, margin: "0 auto", padding: "0 18px", pointerEvents: "auto", display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <Button
+                variant={iAmReady ? "ghost" : "gold"}
+                full
+                onClick={() => { if (!iAmReady) { sound.ready(); sound.haptic(12); } game.setReady(!iAmReady); }}
+                style={iAmReady ? undefined : { animation: "fill-pulse 1.8s ease-in-out infinite" }}
+              >
+                {iAmReady ? t("notYet") : t("imReady")}
+              </Button>
+            </div>
+            <KreetKiezer
+              onKies={(kreet) => {
+                // Een kreet kiezen IS klaar gaan, met die zin erbij. Wie al
+                // klaar stond wisselt alleen van zin.
+                if (!iAmReady) { sound.ready(); sound.haptic(12); }
+                game.setReady(true, kreet);
+              }}
+            />
           </div>
         </div>
       )}

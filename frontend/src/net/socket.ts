@@ -330,6 +330,10 @@ export interface RoomState {
   timer: { ends_at: number | null; duration: number | null };
   scores: Record<string, number>;
   ready_ids: string[];
+  /** Wie er met een kreet klaar ging: speler-id -> sleutel uit KREET_PAKKETTEN.
+   *  Alleen de sleutel, want de uitzending vertaalt hem naar de taal van wie
+   *  kijkt. Zie backend/app/rooms.py (KREET_SLEUTELS). */
+  ready_kreten?: Record<string, string>;
   sat_out: string[]; // left mid-round: sit out the current round, back next round
   ai_referee: boolean; // AI scheidsrechter active on the "?" answers
   round: RoundView | null;
@@ -873,7 +877,7 @@ export interface GameApi {
   spinStop: () => void;
   updateAnswers: (answers: Record<string, string>) => void;
   submitAnswers: (answers: Record<string, string>) => void;
-  setReady: (ready: boolean) => void;
+  setReady: (ready: boolean, kreet?: string) => void;
   rulesCancel: () => void;
   stopRound: () => void;
   challenge: (player_id: string, cat: string, valid?: boolean) => void;
@@ -1088,7 +1092,7 @@ export function useGame(): GameApi {
       pendingAnswersRef.current = answers;
       send({ type: "submit_answers", answers });
     },
-    setReady: (ready) => send({ type: "set_ready", ready }),
+    setReady: (ready, kreet) => send({ type: "set_ready", ready, kreet }),
     rulesCancel: () => send({ type: "rules_cancel" }),
     stopRound: () => {
       // Submit the complete final answers, then stop.
