@@ -1331,7 +1331,12 @@ html.klassiek body.lijst::after {
    schreeuwt maakt het onleesbaar.
 
    Vandaar `cover` en niet `100% 100%`: dat laatste vult ook, maar rekt de zaal
-   ruim twee keer uit en dan klopt de vloerboog niet meer met de pilaren. */
+   ruim twee keer uit en dan klopt de vloerboog niet meer met de pilaren.
+
+   EN VERDER NIETS. Geen ruislaag, geen sluier, geen verloop eronder: de zaal
+   zoals hij getekend is, en anders niks. De andere hallen in dit bestand hebben
+   die lagen wel, maar daar liggen ze om art te temmen die met de secties
+   concurreert. Deze zaal is zelf al rustig in het midden. */
 body.rekenzaal::after,
 body.rekenspel::after {
   content: "";
@@ -1344,19 +1349,13 @@ body.rekenspel::after {
   z-index: -1;
   pointer-events: none;
   background-color: #07040F;
-  background-repeat: repeat, no-repeat, no-repeat;
-  background-position: bottom left, bottom center, bottom;
-  background-size: 160px 160px, cover, 100% 100%;
+  background-repeat: no-repeat;
+  background-position: bottom center;
+  background-size: cover;
 }
 body.rekenzaal::after {
-  background-image:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
-    url("/ui/reken/bg-lobby.webp?v=1"),
-    linear-gradient(180deg, #1a0f38 0%, #130a29 50%, #07040f 100%);
+  background-image: url("/ui/reken/bg-lobby.webp?v=2");
 }
 body.rekenspel::after {
-  background-image:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
-    url("/ui/reken/bg-spel.webp?v=1"),
-    linear-gradient(180deg, #1a0f38 0%, #130a29 50%, #07040f 100%);
+  background-image: url("/ui/reken/bg-spel.webp?v=2");
 }

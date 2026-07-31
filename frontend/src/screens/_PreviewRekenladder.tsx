@@ -190,10 +190,10 @@ function startTrede(): number {
 // paars te liggen in plaats van ervoor in de plaats. Alleen TIJDENS de overgang
 // is dat mengen precies wat je wil, want dat is wat een crossfade is.
 const LADDER_B = 788;   // de maat waarop alles is opgemeten
-// 590 en niet 626: de pootjes onder de laatste plaat zijn eraf geknipt. De knip
-// ligt op y 1358 in de bron, waar de onderrand van de vierde plaat ophoudt (700
-// ondoorzichtige pixels op een rij) en de vier stompjes beginnen (nog 102).
-const LADDER_H = 590;
+// De ladder is 626 hoog: de twee BUITENSTE poten staan er nog (dat zijn de
+// stijlen), alleen de twee binnenste stompjes zijn uit de art gegumd. Dat kon
+// niet met een horizontale knip, want die haalt alle vier weg.
+const LADDER_H = 626;
 
 /** Per trede: waar de strook zit in de ladder, en waar het VLAK van de plaat
  *  zit in die strook. Het vlak is het tikbare deel en de plek van het getal;
@@ -203,7 +203,7 @@ const TREDEN = [
   { band: [0, 145], vlak: [76, 33, 712, 139] },
   { band: [145, 292], vlak: [74, 167, 709, 282] },
   { band: [292, 436], vlak: [72, 312, 715, 428] },
-  { band: [436, 590], vlak: [69, 459, 718, 576] },
+  { band: [436, 626], vlak: [69, 459, 718, 576] },
 ].map(({ band, vlak }) => ({
   top: (band[0] / LADDER_H) * 100,
   bodem: ((LADDER_H - band[1]) / LADDER_H) * 100,
