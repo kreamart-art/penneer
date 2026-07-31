@@ -1,24 +1,28 @@
 // KLEURENKLEM, het arenaspel van zaterdag. Speelbare testversie achter ?klem
 // in de url (eigen brok, dus wie hem niet opent downloadt hem ook niet).
 //
-// HET SPEL is de Stroop-test: er staat een KLEURNAAM op het scherm, in een INKT
-// die daar meestal niet mee klopt. Je tikt de kleur van de inkt, niet het woord
-// dat er staat. Je hersenen lezen sneller dan ze kijken, dus dat vecht tegen
-// elkaar, en dat gevecht IS het spel.
+// HET SPEL is de Stroop-test, omgekeerd gespeeld: er staat een KLEURNAAM op het
+// scherm, in een inkt die er NOOIT mee klopt. Je tikt de kleur die er GESCHREVEN
+// staat en negeert de kleur van de letters. Lezen gaat vanzelf, maar de kleur
+// die je ziet blijft de hele tijd het tegenovergestelde roepen, en dat gevecht
+// IS het spel.
+//
+// Waarom altijd botsen en niet soms: een opgave waarin woord en inkt toevallig
+// gelijk zijn heeft geen tegenspraak, en dus niets te negeren. Dat is geen
+// makkelijke opgave maar een lege.
 //
 // DE KLEM is de tijd. Per opgave sluiten twee kaken op het woord; raken ze
 // elkaar, dan ben je te laat. Elke ronde sluiten ze sneller. Dat is ook waar de
 // naam vandaan komt: niet jij loopt uit de tijd, de tijd loopt op jou dicht.
 //
-// DE OMKERING. Vanaf ronde acht draait de regel om: dan moet je juist het WOORD
-// kiezen en de inkt negeren. Daarna wisselt hij elke zes rondes. Het moment van
-// wisselen is expres luid (banner + het paneel kleurt), want een stille wissel
-// is geen uitdaging maar een streek.
+// EEN REGEL, DE HELE POT. Er was een omkering waarbij je vanaf ronde acht juist
+// de inkt moest kiezen, met een luide banner erbij. Die is eruit: twee regels
+// door elkaar maakt van een reactiespel een geheugenspel over welke regel nu
+// ook alweer geldt, en dat is niet waar de klok voor bedoeld is.
 //
 // VAN MAKKELIJK NAAR MOEILIJK, dezelfde ladder-gedachte als in Lettersoep:
-// ronde 1 heeft vier kleuren, ruim twee seconden en meestal een woord dat wél
-// klopt met zijn inkt. Ronde 25 heeft zes kleuren, zeven tienden van een
-// seconde en bijna altijd een botsing. Zie LADDER.
+// ronde 1 heeft vier kleuren en ruim twee seconden, ronde 19 en verder zes
+// kleuren en zeven tienden van een seconde. Zie trapVoor().
 //
 // CEILINGLOOS: je hebt drie levens en speelt door tot ze op zijn. Er is geen
 // eindronde, dus de arenaregel geldt vanzelf.
@@ -47,7 +51,6 @@ const pct = (f: number) => `${(f * 100).toFixed(3)}%`;
 const ACHT = (c: number) =>
   `polygon(${c}px 0, calc(100% - ${c}px) 0, 100% ${c}px, 100% calc(100% - ${c}px), calc(100% - ${c}px) 100%, ${c}px 100%, 0 calc(100% - ${c}px), 0 ${c}px)`;
 
-const PANEEL = "#1D0C29";
 
 // ---- de kleuren -------------------------------------------------------------
 //
@@ -63,13 +66,28 @@ const PANEEL = "#1D0C29";
 // woord GOUD gewoon een stuk gewone tekst.
 type Kleur = { key: string; naam: string; inkt: string };
 
+// De tinten zijn GEMETEN uit de stenen zelf (public/ui/klem/*.webp): per steen
+// de overheersende kleurhoek, gewogen op verzadiging en middentoon, zodat de
+// glans bovenop en de schaduw onderin de uitslag niet scheeftrekken. Daarna op
+// een vast licht van 62 procent gezet, want een letter moet op een donker
+// paneel leesbaar zijn en de steen zelf is daar veel te donker voor.
+//
+// Zo hoort het ook: het WOORD dat je leest en de STEEN die je aantikt zijn
+// dezelfde kleur. Stonden die naast elkaar iets uit de pas, dan twijfel je in
+// een spel waar je zeven tienden seconde hebt.
+//
+// Bruin heette eerst goud. Die steen deelt zijn kleurhoek met oranje (31 om 32
+// graden) en verschilde alleen in verzadiging, en twee stenen die alleen daarin
+// verschillen zijn in zeven tienden seconde niet uit elkaar te houden. Als
+// BRUIN heeft hij een eigen naam en een eigen plek: zelfde hoek, maar veel
+// minder verzadigd en donkerder, en dat is precies wat bruin is.
 const KLEUREN: Kleur[] = [
-  { key: "rood", naam: "ROOD", inkt: "#FF4A44" },
-  { key: "blauw", naam: "BLAUW", inkt: "#4A9BFF" },
-  { key: "groen", naam: "GROEN", inkt: "#2FE06E" },
-  { key: "oranje", naam: "ORANJE", inkt: "#FF9A2E" },
-  { key: "paars", naam: "PAARS", inkt: "#D64DFF" },
-  { key: "goud", naam: "GOUD", inkt: "#EFE0B0" },
+  { key: "rood", naam: "ROOD", inkt: "#FA4642" },
+  { key: "blauw", naam: "BLAUW", inkt: "#4275FA" },
+  { key: "groen", naam: "GROEN", inkt: "#42FA79" },
+  { key: "oranje", naam: "ORANJE", inkt: "#FAA342" },
+  { key: "paars", naam: "PAARS", inkt: "#E842FA" },
+  { key: "bruin", naam: "BRUIN", inkt: "#BC864E" },
 ];
 
 // ---- de ladder --------------------------------------------------------------
@@ -82,11 +100,7 @@ const KLEUREN: Kleur[] = [
 //            een woord dat botst moet je actief negeren.
 // De eerste rondes hebben expres veel kloppende woorden. Dat is niet om het
 // makkelijk te houden maar om de gewoonte te bouwen die daarna gesloopt wordt.
-type Trap = { kleuren: number; venster: number; botsing: number; regel: Regel };
-type Regel = "inkt" | "woord";
-
-const OMKEER_VANAF = 8;
-const OMKEER_ELKE = 6;
+type Trap = { kleuren: number; venster: number; gelijk: number };
 
 export function trapVoor(ronde: number): Trap {
   const r = Math.max(1, ronde);
@@ -95,10 +109,11 @@ export function trapVoor(ronde: number): Trap {
   // is 3x2, allebei recht.
   const kleuren = r <= 6 ? 4 : 6;
   const venster = Math.max(700, 2300 - (r - 1) * 90);
-  const botsing = Math.min(0.9, 0.2 + (r - 1) * 0.06);
-  // Elke blok van OMKEER_ELKE rondes na de eerste omkering draait de regel om.
-  const blok = r < OMKEER_VANAF ? 0 : Math.floor((r - OMKEER_VANAF) / OMKEER_ELKE) + 1;
-  return { kleuren, venster, botsing, regel: blok % 2 === 1 ? "woord" : "inkt" };
+  // De kans dat inkt en woord toevallig kloppen. Nul tot en met ronde 13, daarna
+  // heel langzaam omhoog tot hoogstens een op de acht. Meer zou de tegenspraak
+  // ondermijnen die het spel IS.
+  const gelijk = r <= 13 ? 0 : Math.min(0.12, (r - 13) * 0.015);
+  return { kleuren, venster, gelijk };
 }
 
 /** De punten van één goede opgave: honderd vast, plus honderd naar rato van de
@@ -123,24 +138,40 @@ function maakRng(seed: string): () => number {
 
 type Opgave = { woord: Kleur; inkt: Kleur; keuzes: Kleur[]; goed: Kleur };
 
-/** Eén opgave voor deze ronde. De keuzeknoppen bevatten ALTIJD het goede
- *  antwoord en, als de opgave botst, ook de afleider: het woord dat er staat.
- *  Anders zou je bij een botsing kunnen winnen door de valstrik simpelweg niet
- *  te zien staan, en dan test het spel niets meer. */
-function maakOpgave(seed: string, trap: Trap, dwingBotsing = false): Opgave {
+/** Eén opgave voor deze ronde.
+ *
+ *  Het antwoord is ALTIJD het woord: je tikt de kleur die er staat geschreven,
+ *  nooit de kleur van de inkt. En de inkt klopt NOOIT met het woord. Dat was
+ *  eerst een kans die per ronde opliep; nu is het een regel, want een opgave
+ *  waarin ze toevallig gelijk zijn heeft geen tegenspraak en is dus geen opgave.
+ *
+ *  De keuzeknoppen bevatten altijd het goede antwoord én de afleider, de kleur
+ *  van de inkt. Zonder die twee samen kun je winnen door de valstrik simpelweg
+ *  niet te zien staan, en dan test het spel niets meer. */
+function maakOpgave(seed: string, trap: Trap, vorige: Opgave | null = null): Opgave {
   const rng = maakRng(seed);
   const pak = <T,>(a: T[]) => a[Math.floor(rng() * a.length)];
   const pot = KLEUREN.slice(0, trap.kleuren);
 
   const woord = pak(pot);
-  // Bij een kloppend woord maakt de regel niet uit, dus dan is de opgave in de
-  // ronde waarin de regel net omdraaide een cadeautje na een luide waarschuwing.
-  // Die ronde botst altijd.
-  const botst = dwingBotsing || rng() < trap.botsing;
-  const inkt = botst ? pak(pot.filter((k) => k.key !== woord.key)) : woord;
-  const goed = trap.regel === "inkt" ? inkt : woord;
+  // Woord en inkt zijn in principe NOOIT gelijk: een opgave zonder tegenspraak
+  // heeft niets te negeren. Maar vanaf de zwaardere rondes mag het heel af en
+  // toe wel, en juist dan is het gemeen: je hebt inmiddels de gewoonte om de
+  // inkt weg te denken, en dan klopt hij ineens. Dat kost je een tel twijfel,
+  // en een tel heb je daar niet.
+  let inkt = rng() < trap.gelijk ? woord : pak(pot.filter((k) => k.key !== woord.key));
+  // Twee keer exact hetzelfde paar achter elkaar (BLAUW in goud, en dan weer
+  // BLAUW in goud) voelt als een haperende app en niet als een nieuwe opgave.
+  // Alleen de INKT wisselt dan; het woord mag best twee keer komen, want dat is
+  // met vier kleuren onvermijdelijk en het is ook niet wat opvalt.
+  if (vorige && vorige.woord.key === woord.key && vorige.inkt.key === inkt.key) {
+    inkt = pak(pot.filter((k) => k.key !== woord.key && k.key !== inkt.key));
+  }
+  const goed = woord;
 
-  const moet = [goed, ...(botst ? [trap.regel === "inkt" ? woord : inkt] : [])];
+  // Klopt de inkt toevallig met het woord, dan is er geen afleider om erbij te
+  // zetten; anders staat dezelfde steen twee keer in de rij.
+  const moet = inkt.key === woord.key ? [goed] : [goed, inkt];
   const rest = pot.filter((k) => !moet.some((m) => m.key === k.key));
   for (let j = rest.length - 1; j > 0; j--) {
     const k = Math.floor(rng() * (j + 1));
@@ -266,6 +297,15 @@ function WoordVak({ kleur, id }: { kleur: string; id: string }) {
   );
 }
 
+/** Dezelfde kleur, alleen minder licht. Met alfa zou hij doorschijnend worden
+ *  en mee verkleuren met wat eronder ligt; hier moet het echt dezelfde tint
+ *  blijven, een slag donkerder. */
+function donkerder(hex: string, deel: number): string {
+  const n = parseInt(hex.slice(1), 16);
+  const kanaal = (schuif: number) => Math.round(((n >> schuif) & 255) * deel);
+  return `rgb(${kanaal(16)}, ${kanaal(8)}, ${kanaal(0)})`;
+}
+
 /** De klem: twee kaken die op het woord dichtlopen. Ze staan in dezelfde doos
  *  als het woord, en hun breedte IS de resterende tijd; er is dus geen aparte
  *  balk nodig die hetzelfde nog eens vertelt.
@@ -275,9 +315,17 @@ function WoordVak({ kleur, id }: { kleur: string; id: string }) {
  *  welke kleur je ziet, en dan gaat de kader zelf van kleur wisselen. Dat er
  *  weinig tijd over is lees je al aan hoe ver ze dicht staan, en dat is een
  *  maat en geen kleur. */
-function Klem({ rest }: { rest: number }) {
+function Klem({ rest, inkt, alarm }: { rest: number; inkt: string; alarm: boolean }) {
   const dicht = (1 - rest) * 0.5;
-  const kleur = "#FFC23D";
+  // De kaken dragen dezelfde kleur als het vak eronder: de inkt van het woord,
+  // een slag donkerder. Ze stonden op goud, en dat was een derde kleur in een
+  // vak waar het juist om één kleur gaat.
+  //
+  // Tot de tijd bijna op is: dan springen ze alsnog naar rood. Op dat moment
+  // gaat het niet meer over welke kleur je moet kiezen maar over dat je NU moet
+  // kiezen, en dan mag er best een kleur overheen die niets met de opgave te
+  // maken heeft.
+  const kleur = alarm ? "#FF5A4E" : donkerder(inkt, 0.62);
   const kaak = (kant: "left" | "right"): React.CSSProperties => ({
     position: "absolute", top: 0, bottom: 0, [kant]: 0, width: pct(dicht),
     background: `linear-gradient(${kant === "left" ? "90deg" : "270deg"}, ${withAlpha(kleur, 0.02)} 0%, ${withAlpha(kleur, 0.14)} 62%, ${withAlpha(kleur, 0.42)} 92%, ${withAlpha(kleur, 0.95)} 100%)`,
@@ -342,9 +390,15 @@ export function Kleurenklem({ seed, onKlaar, onOpnieuw }: {
   }, [fase === "spel"]);
 
   const trap = useMemo(() => trapVoor(ronde), [ronde]);
-  const vorigeRegel = useMemo(() => trapVoor(Math.max(1, ronde - 1)).regel, [ronde]);
-  const netGedraaid = ronde > 1 && trap.regel !== vorigeRegel;
-  const opgave = useMemo(() => maakOpgave(`${potje}:${ronde}`, trap, netGedraaid), [potje, ronde, trap, netGedraaid]);
+  const opgave = useMemo(() => {
+    // Van ronde 1 af opbouwen en niet alleen de vorige uitrekenen: de vorige
+    // opgave kan ZELF een aangepaste inkt hebben gekregen, en dan klopt een
+    // losse herberekening daarvan niet met wat er echt op het scherm stond.
+    // Het is hooguit honderd keer een handvol worpen, dus dat mag.
+    let vorige: Opgave | null = null;
+    for (let r = 1; r <= ronde; r++) vorige = maakOpgave(`${potje}:${r}`, trapVoor(r), vorige);
+    return vorige as Opgave;
+  }, [potje, ronde]);
 
   const timers = useRef<number[]>([]);
   const na = (ms: number, fn: () => void) => { timers.current.push(window.setTimeout(fn, ms)); };
@@ -374,7 +428,7 @@ export function Kleurenklem({ seed, onKlaar, onOpnieuw }: {
     if (fase !== "spel") return;
     beslist.current = false;
     setRest(1);
-    const duur = trap.venster + (netGedraaid ? 500 : 0);
+    const duur = trap.venster;
     const start = performance.now();
     let vraag = 0;
     const stap = () => {
@@ -423,8 +477,8 @@ export function Kleurenklem({ seed, onKlaar, onOpnieuw }: {
 
   const stop = () => setFase("klaar");
 
-  const regelTekst = trap.regel === "inkt" ? "KIES DE INKTKLEUR" : "KIES HET WOORD";
   // Tijdens het aftellen is er nog geen opgave, dus dan is de lijn gewoon goud.
+  const alarm = rest < 0.34;
   const inktNu = fase === "tel" ? "#FFD98A" : opgave.inkt.inkt;
 
   return (
@@ -446,23 +500,19 @@ export function Kleurenklem({ seed, onKlaar, onOpnieuw }: {
             }}
           >
             <span
-              key={`regel-${trap.regel}`}
-              className={netGedraaid ? "klem-wissel" : undefined}
               style={{
                 fontFamily: font.wide, fontSize: 14, letterSpacing: 2.4,
-                color: netGedraaid ? "#FF9A2E" : "#FFD98A",
-                textShadow: `0 0 10px ${withAlpha(netGedraaid ? "#FF9A2E" : "#FFB43C", 0.6)}`,
+                color: "#FFD98A",
+                textShadow: `0 0 10px ${withAlpha("#FFB43C", 0.6)}`,
               }}
             >
-              {fase === "klaar" ? "KLEURENKLEM" : regelTekst}
+              {fase === "klaar" ? "KLEURENKLEM" : "KIES HET WOORD"}
             </span>
             <span style={{ display: "flex", alignItems: "center", gap: 5, fontFamily: font.ui, fontSize: 10.5, fontWeight: 600, color: withAlpha("#FFE7A8", 0.72) }}>
               {fase === "klaar" ? (
                 <>ronde {ronde} · langste reeks {beste}</>
               ) : fase === "tel" ? (
                 <span>maak je klaar</span>
-              ) : netGedraaid ? (
-                <span style={{ color: "#FFB65A" }}>de regel is omgedraaid</span>
               ) : (
                 <>
                   {Array.from({ length: LEVENS }, (_, i) => (
@@ -495,9 +545,13 @@ export function Kleurenklem({ seed, onKlaar, onOpnieuw }: {
             </div>
           ) : (
             <>
-              {/* Het woord: doorschijnend vak, gouden neonlijn met een verloop
-                  in de kleur van het woord, de klem eromheen, en een lichtveeg
-                  die er in dezelfde kleur overheen loopt. */}
+              {/* Het vak achter het woord draagt de INKT van dat woord, alleen
+                  veel donkerder. Staat er ROOD in paarse letters, dan is het
+                  vlak erachter ook paars. Zo liegt het hele paneel mee en zijn
+                  de letters het enige wat waar is.
+                  De wash blijft rond een derde en ligt op de donkere
+                  paneelkleur, anders vallen de letters weg in hun eigen kleur;
+                  de donkere slagschaduw eronder snijdt ze er hoe dan ook uit. */}
               <div
                 style={{
                   position: "absolute",
@@ -505,10 +559,14 @@ export function Kleurenklem({ seed, onKlaar, onOpnieuw }: {
                   height: pct(0.24),
                   display: "grid", placeItems: "center", overflow: "hidden",
                   clipPath: ACHT(16),
-                  background: `radial-gradient(120% 150% at 50% 12%, ${withAlpha(inktNu, 0.14)} 0%, ${withAlpha("#3A1B52", 0.5)} 42%, ${withAlpha(PANEEL, 0.68)} 100%)`,
+                  // Drie trappen van dezelfde kleur: de letters op vol, de klem
+                  // op 62 procent, het vak op 34. Zo is alles in beeld dezelfde
+                  // kleur als de inkt en blijven de letters er toch uit komen.
+                  backgroundColor: donkerder(inktNu, 0.34),
+                  backgroundImage: "radial-gradient(125% 155% at 50% 14%, rgba(255,255,255,.09) 0%, rgba(255,255,255,.03) 46%, rgba(0,0,0,.16) 100%)",
                 }}
               >
-                {fase === "spel" && <Klem rest={rest} />}
+                {fase === "spel" && <Klem rest={rest} inkt={inktNu} alarm={alarm} />}
                 <span
                   key={fase === "tel" ? `tel-${tel}` : `woord-${ronde}`}
                   className="klem-kom"
@@ -516,7 +574,7 @@ export function Kleurenklem({ seed, onKlaar, onOpnieuw }: {
                     position: "relative", zIndex: 2,
                     fontFamily: font.display, fontWeight: 800, fontSize: fase === "tel" ? 52 : 40, letterSpacing: 1.5, lineHeight: 1,
                     color: inktNu,
-                    textShadow: `0 0 16px ${withAlpha(inktNu, 0.55)}, 0 2px 3px rgba(0,0,0,.6)`,
+                    textShadow: `0 0 14px ${withAlpha(inktNu, 0.5)}, 0 1px 4px rgba(0,0,0,.9), 0 0 2px rgba(0,0,0,.7)`,
                   }}
                 >
                   {fase === "tel" ? tel : opgave.woord.naam}
@@ -573,9 +631,7 @@ export function Kleurenklem({ seed, onKlaar, onOpnieuw }: {
               </span>
             ) : (
               <span style={{ fontFamily: font.ui, fontSize: 11.5, color: withAlpha("#FFE7A8", 0.6), textAlign: "center" }}>
-                {trap.regel === "inkt"
-                  ? "tik de kleur waarin het woord geschreven staat"
-                  : "tik de kleur die het woord NOEMT, niet de inkt"}
+                {"tik de kleur die er STAAT, niet de kleur van de letters"}
               </span>
             )}
           </div>

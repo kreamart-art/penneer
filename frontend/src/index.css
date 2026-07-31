@@ -898,16 +898,6 @@ body.soepspel::after {
 }
 .klem-kom { animation: klem-kom .19s cubic-bezier(.2,1.3,.4,1) both; }
 
-/* De omkering van de regel. Dit mag opvallen: een stille wissel voelt als
-   valsspelen van het spel zelf. */
-@keyframes klem-wissel {
-  0%, 100% { transform: scale(1); }
-  22%      { transform: scale(1.16); }
-  46%      { transform: scale(.98); }
-  70%      { transform: scale(1.07); }
-}
-.klem-wissel { animation: klem-wissel .62s ease-out both; }
-
 /* Een misgreep schudt de knop. Kort, want er komt meteen een nieuwe opgave. */
 @keyframes klem-mis {
   0%, 100% { transform: translateX(0); }
@@ -918,7 +908,7 @@ body.soepspel::after {
 .klem-mis { animation: klem-mis .3s ease-out both; }
 
 @media (prefers-reduced-motion: reduce) {
-  .klem-mis, .klem-wissel { animation: none; }
+  .klem-mis { animation: none; }
 }
 
 /* Een afgekeurd woord schudt kort: nee. */
