@@ -35,10 +35,10 @@ import { VAK } from "./Arena";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { colors, font, withAlpha } from "../theme/tokens";
+import { Scorebord } from "../components/Scorebord";
 
 // ---- de maten van de art (gemeten in de bestanden) --------------------------
 const BORD_V = 0.8349;
-const SCORE_V = 3.7805;
 const ONDER_V = 2.9589;
 // De knoppen staan sinds v2.75 op 86% in hun vak: in de oude maat was de kier
 // tussen twee knoppen ~1% van de sectiebreedte (4px op een telefoon) en pakte
@@ -52,7 +52,6 @@ const RIJ = [0.1636, 0.359, 0.5497, 0.7451].map((r) => r + (0.1791 * (1 - KRIMP)
 const VAK_B = 0.213 * KRIMP;
 const VAK_H = 0.1791 * KRIMP;
 const PANEEL_TOP = 0.024;
-const SCORE_RUIT = { t: 0.2238, h: 0.6643, links: { l: 0.0407, b: 0.3213 }, rechts: { l: 0.637, b: 0.3213 } };
 const ONDER_RUIT = { l: 0.0148, b: 0.9704, woord: { t: 0.1315, h: 0.4192 }, lijst: { t: 0.5589, h: 0.2849 } };
 
 const pct = (f: number) => `${(f * 100).toFixed(3)}%`;
@@ -263,22 +262,6 @@ function Sectie({ art, verhouding, breedte = VAK, kind, children }: { art: strin
       <img src={art} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block", filter: "brightness(0) blur(11px)", opacity: 0.55, transform: "translateY(9px)", pointerEvents: "none" }} />
       <img src={art} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} />
       {children}
-    </div>
-  );
-}
-
-function Meter({ kop, waarde, kleur = "#FFF3D0", breuk }: { kop: string; waarde: string; kleur?: string; breuk: { l: number; b: number } }) {
-  return (
-    <div
-      style={{
-        position: "absolute",
-        left: pct(breuk.l), width: pct(breuk.b),
-        top: pct(SCORE_RUIT.t), height: pct(SCORE_RUIT.h),
-        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 1,
-      }}
-    >
-      <span style={{ fontFamily: font.wide, fontSize: 10, letterSpacing: 1.6, color: withAlpha("#FFE7A8", 0.72) }}>{kop}</span>
-      <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 22, lineHeight: 1, color: kleur, fontVariantNumeric: "tabular-nums", textShadow: "0 0 12px rgba(255,190,60,.5)" }}>{waarde}</span>
     </div>
   );
 }
@@ -519,10 +502,11 @@ export function Lettersoep({ seed, onKlaar, onOpnieuw }: {
 
   return (
       <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 9, paddingBottom: 24 }}>
-        <Sectie art="/ui/soep/scorebord.webp?v=1" verhouding={SCORE_V}>
-          <Meter kop={t("soepTijd")} waarde={klok(over)} kleur={over <= 15 ? "#FF6A5A" : "#FFF3D0"} breuk={SCORE_RUIT.links} />
-          <Meter kop={t("soepPunten")} waarde={String(totaal)} breuk={SCORE_RUIT.rechts} />
-        </Sectie>
+        <Scorebord
+          breedte={VAK}
+          links={{ kop: t("soepTijd"), waarde: klok(over), kleur: over <= 15 ? "#FF6A5A" : "#FFF3D0" }}
+          rechts={{ kop: t("soepPunten"), waarde: String(totaal) }}
+        />
 
         {fase === "klaar" ? (
           // ---- de uitslag: ALLES wat je vond, in dezelfde sectie -------------

@@ -489,7 +489,10 @@ export function ArenaDeel({ game, onBack }: { game: GameApi; onBack: () => void 
   // decor over, en twee lagen tegelijk zou twee panelen door elkaar tekenen.
   useEffect(() => {
     if (fase === "spel") return;
-    const hal = info?.game === "lettersoep" || info?.game === "kleurenklem" || info?.game === "rekenladder" ? "soephal" : "flitshal";
+    const hal =
+      info?.game === "rekenladder" ? "rekenzaal"
+      : info?.game === "lettersoep" || info?.game === "kleurenklem" ? "soephal"
+      : "flitshal";
     document.body.classList.add(hal);
     return () => document.body.classList.remove(hal);
   }, [fase, info?.game]);

@@ -1319,3 +1319,45 @@ html.klassiek body.lijst::after {
 @media (prefers-reduced-motion: reduce) {
   .reken-flits { animation: none; opacity: 0; }
 }
+
+/* ---------- REKENLADDER: de zaal ----------
+   Eigen zaal in plaats van de geleende soephal, in het paars en goud van de
+   ladder.
+
+   De art is VIERKANT en een telefoon is 393 bij 852. Op volle hoogte zie je dan
+   alleen de middelste 46 procent, en dat is precies het lege midden van de zaal:
+   de pilaren en de banieren vallen er allebei buiten. Vandaar 150% van de
+   schermbreedte en onderaan verankerd, zo staan de banieren links en rechts in
+   beeld en ligt de vloer waar de vloer hoort.
+
+   De bovenrand loopt weg in het verloop, en die fade zit IN het bestand. Een
+   donkere laag eroverheen zou ook werken, maar die maakt de hele zaal doffer
+   terwijl je alleen de rand wil laten verdwijnen. */
+body.rekenzaal::after,
+body.rekenspel::after {
+  content: "";
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(100vh + 240px);
+  height: calc(100lvh + 240px);
+  z-index: -1;
+  pointer-events: none;
+  background-color: #07040F;
+  background-repeat: repeat, no-repeat, no-repeat;
+  background-position: bottom left, bottom center, bottom;
+  background-size: 160px 160px, 150% auto, 100% 100%;
+}
+body.rekenzaal::after {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
+    url("/ui/reken/bg-lobby.webp?v=1"),
+    linear-gradient(180deg, #1a0f38 0%, #130a29 50%, #07040f 100%);
+}
+body.rekenspel::after {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
+    url("/ui/reken/bg-spel.webp?v=1"),
+    linear-gradient(180deg, #1a0f38 0%, #130a29 50%, #07040f 100%);
+}

@@ -753,6 +753,8 @@ const nl: Dict = {
   // deze regels horen bij een bord dat ook echt in die taal te spelen is.
   soepTijd: "TIJD",
   soepPunten: "PUNTEN",
+  // Rekenladder deelt de scorebalk met Lettersoep, en dus ook soepPunten.
+  rekenTrede: "TREDE",
   soepLevel: "LEVEL {n}",
   soepNog: "nog {n} van de {van} woorden",
   soepMinLetters: "{n}+ letters",
@@ -1766,6 +1768,7 @@ const en: Dict = {
   // ---- Lettersoep -----------------------------------------------------------
   soepTijd: "TIME",
   soepPunten: "POINTS",
+  rekenTrede: "STEP",
   soepLevel: "LEVEL {n}",
   soepNog: "{n} of {van} words to go",
   soepMinLetters: "{n}+ letters",

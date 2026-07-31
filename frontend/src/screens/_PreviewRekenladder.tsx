@@ -31,7 +31,9 @@ import { Screen } from "../components/Layout";
 import { KADER_LIJN_ROOD, NeonKader } from "../components/ProfileHero";
 import { colors, font, withAlpha } from "../theme/tokens";
 import { sound } from "../sound/sound";
+import { useT } from "../i18n/i18n";
 import { VAK } from "./Arena";
+import { Scorebord } from "../components/Scorebord";
 
 // ---- de ladder --------------------------------------------------------------
 //
@@ -211,7 +213,7 @@ const TREDEN = [
   },
 }));
 
-type Staat = "rust" | "goed" | "fout" | "dood";
+type Staat = "uit" | "rust" | "goed" | "fout" | "dood";
 /** Wat er van een beurt bekend is. `gekozen` is null als de klok het deed en
  *  niet de speler: dan is er geen trede die rood hoort te worden. */
 type Oordeel = { gekozen: number | null; goed: boolean } | null;
@@ -222,10 +224,10 @@ type Oordeel = { gekozen: number | null; goed: boolean } | null;
  *  elkaar. */
 function Trede({ i, waarde, staat, onKies }: { i: number; waarde: number; staat: Staat; onKies: () => void }) {
   const t = TREDEN[i];
-  const kleur = staat === "goed" ? "goed" : staat === "fout" ? "fout" : "rust";
+  const kleur = staat === "goed" ? "goed" : staat === "fout" ? "fout" : staat === "uit" ? "uit" : "rust";
   return (
     <div style={{ position: "absolute", left: 0, right: 0, top: `${t.top}%`, bottom: `${t.bodem}%` }}>
-      {(["rust", "goed", "fout"] as const).map((k) => (
+      {(["uit", "rust", "goed", "fout"] as const).map((k) => (
         <img
           key={k}
           src={`/ui/reken/trede${i + 1}-${k}.webp`}
@@ -271,7 +273,7 @@ function Trede({ i, waarde, staat, onKies }: { i: number; waarde: number; staat:
           fontFamily: font.display, fontWeight: 800, fontSize: 30, letterSpacing: 1,
           color: "#FFF6DC",
           textShadow: "0 2px 6px rgba(0,0,0,.75), 0 0 14px rgba(0,0,0,.5)",
-          opacity: staat === "dood" ? 0.4 : 1,
+          opacity: staat === "uit" ? 0 : staat === "dood" ? 0.4 : 1,
           transform: staat === "goed" ? "scale(1.06)" : "scale(1)",
           transition: "opacity .22s ease-out, transform .22s ease-out",
         }}
@@ -286,11 +288,15 @@ function Trede({ i, waarde, staat, onKies }: { i: number; waarde: number; staat:
  *  worden met top EN bodem vastgezet en niet met een hoogte, want dan rekent de
  *  browser de onderrand van de ene en de bovenrand van de volgende uit hetzelfde
  *  getal en valt er nooit een haarlijn tussen. */
-function Ladder({ keuzes, antwoord, oordeel, onKies }: {
+function Ladder({ keuzes, antwoord, oordeel, onKies, slapend }: {
   keuzes: number[];
   antwoord: number;
   oordeel: Oordeel;
   onKies: (w: number) => void;
+  /** Tijdens het aftellen: de ladder staat er wel, maar uit en zonder getallen.
+   *  Je ziet waar het gaat gebeuren zonder alvast te kunnen rekenen, en het
+   *  scherm springt niet in elkaar op het moment dat de eerste som komt. */
+  slapend?: boolean;
 }) {
   return (
     <div style={{ position: "relative", width: VAK, aspectRatio: `${LADDER_B} / ${LADDER_H}` }}>
@@ -300,7 +306,8 @@ function Ladder({ keuzes, antwoord, oordeel, onKies }: {
           i={i}
           waarde={w}
           staat={
-            !oordeel ? "rust"
+            slapend ? "uit"
+            : !oordeel ? "rust"
             // Het JUISTE antwoord wordt altijd groen, ook als je het niet koos:
             // je moet kunnen zien wat het was, anders leer je niets van je
             // laatste trede. Rood is alleen voor de trede die JIJ aantikte, en
@@ -575,9 +582,10 @@ export function Rekenladder({ seed, onKlaar, onOpnieuw }: {
   onKlaar?: (score: number, level: number, timeMs: number) => void;
   onOpnieuw?: () => void;
 }) {
+  const { t } = useT();
   useEffect(() => {
-    document.body.classList.add("soepspel");
-    return () => document.body.classList.remove("soepspel");
+    document.body.classList.add("rekenspel");
+    return () => document.body.classList.remove("rekenspel");
   }, []);
 
   const potje = seed;
@@ -708,17 +716,26 @@ export function Rekenladder({ seed, onKlaar, onOpnieuw }: {
           </TabKader>
         </div>
 
-        {/* De teller staat onder het paneel tot de scorebalk er is. */}
+        {/* Dezelfde gouden plaat als bij Lettersoep, met andere koppen. */}
         {fase !== "klaar" && (
-          <div style={{ display: "flex", gap: 18, fontFamily: font.ui, fontSize: 12, color: withAlpha("#FFE7A8", 0.75) }}>
-            <span>TREDE <b style={{ fontFamily: font.display, fontSize: 15, color: "#FFF3D0" }}>{trede}</b></span>
-            <span>PUNTEN <b style={{ fontFamily: font.display, fontSize: 15, color: "#FFF3D0" }}>{totaal}</b></span>
-          </div>
+          <Scorebord
+            breedte={VAK}
+            links={{ kop: t("rekenTrede"), waarde: String(trede) }}
+            rechts={{ kop: t("soepPunten"), waarde: String(totaal) }}
+          />
         )}
 
-        {/* De vier antwoorden ZIJN de treden van de ladder. */}
-        {fase !== "tel" && fase !== "klaar" && (
-          <Ladder keuzes={som.keuzes} antwoord={som.antwoord} oordeel={oordeel} onKies={kies} />
+        {/* De vier antwoorden ZIJN de treden van de ladder. Tijdens het aftellen
+            staat diezelfde ladder er al, maar dan uit: je ziet waar het gaat
+            gebeuren zonder de getallen alvast te kunnen lezen. */}
+        {fase !== "klaar" && (
+          <Ladder
+            keuzes={som.keuzes}
+            antwoord={som.antwoord}
+            oordeel={oordeel}
+            onKies={kies}
+            slapend={fase === "tel"}
+          />
         )}
 
         {(fase !== "klaar" || onOpnieuw) && (
