@@ -29,7 +29,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LogOut, Timer } from "lucide-react";
 import { Screen } from "../components/Layout";
 import { KADER_LIJN_ROOD, NeonKader } from "../components/ProfileHero";
-import { colors, font, withAlpha } from "../theme/tokens";
+import { ARENA_GOUD, colors, font, withAlpha } from "../theme/tokens";
 import { sound } from "../sound/sound";
 import { useT } from "../i18n/i18n";
 import { VAK } from "./Arena";
@@ -512,17 +512,19 @@ function Verven() {
     <defs>
       {/* Hetzelfde goud als KADER_LIJN_GOUD, maar als svg-verloop, zodat het
           een streek kan volgen die geen rechthoek is. */}
+      {/* Hetzelfde goud als de ladder en de scoreplaat: opgemeten uit de art,
+          niet gekozen. Zie ARENA_GOUD in theme/tokens.ts. */}
       <linearGradient id="rl-goud" x1="0" y1="0" x2="1" y2="0.8">
-        <stop offset="0%" stopColor="#FFEBB8" />
-        <stop offset="14%" stopColor="#FFCF4A" />
+        <stop offset="0%" stopColor={ARENA_GOUD[0]} />
+        <stop offset="14%" stopColor={ARENA_GOUD[1]} />
         {/* Waar het goud vroeger dof bruin werd, gloeit het nu koper. Een
             donkere plek in een neonlijn hoort niet dood te zijn maar alleen
             verder weg, en warm goud dat wegzakt IS oranje. */}
-        <stop offset="30%" stopColor="#E08A1E" />
-        <stop offset="50%" stopColor="#FFE08A" />
+        <stop offset="30%" stopColor={ARENA_GOUD[2]} />
+        <stop offset="50%" stopColor={ARENA_GOUD[0]} />
         <stop offset="68%" stopColor="#FF9A2E" />
-        <stop offset="84%" stopColor="#A9600F" />
-        <stop offset="100%" stopColor="#FFEBB8" />
+        <stop offset="84%" stopColor={ARENA_GOUD[4]} />
+        <stop offset="100%" stopColor={ARENA_GOUD[1]} />
       </linearGradient>
       {/* De oranje vonk. Hij brandt op een KWART en op driekwart van de lijn,
           precies waar de blauwe kern uitdooft, dus de twee vullen elkaar aan in

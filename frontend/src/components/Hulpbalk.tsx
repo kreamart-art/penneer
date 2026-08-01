@@ -19,7 +19,7 @@
 //     de afgeschuinde hoeken wordt de lijn smaller en valt hij daar weg.
 // Een pad volgt de afschuining wel, dus de hoeken zijn even dik als de rest.
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { font, withAlpha } from "../theme/tokens";
+import { ARENA_GOUD, font, withAlpha } from "../theme/tokens";
 
 const achthoek = (b: number, h: number, c: number) =>
   `M ${c} 0 L ${b - c} 0 L ${b} ${c} L ${b} ${h - c} L ${b - c} ${h} L ${c} ${h} L 0 ${h - c} L 0 ${c} Z`;
@@ -56,12 +56,14 @@ function Glas({ verf, dik, hoek, vulling, gloed, glans = "#FFFFFF", children, st
       {b > 0 && (
         <svg width={b} height={h} style={{ position: "absolute", inset: 0, pointerEvents: "none" }} aria-hidden>
           <defs>
+            {/* Hetzelfde goud als de ladder en de scoreplaat: opgemeten uit de
+                art, niet gekozen. Zie ARENA_GOUD in theme/tokens.ts. */}
             <linearGradient id="hb-goud" x1="0" y1="0" x2="1" y2="0.9">
-              <stop offset="0%" stopColor="#FFE9B0" />
-              <stop offset="26%" stopColor="#E0B45C" />
-              <stop offset="52%" stopColor="#A87422" />
-              <stop offset="74%" stopColor="#F2D38A" />
-              <stop offset="100%" stopColor="#C8983A" />
+              <stop offset="0%" stopColor={ARENA_GOUD[0]} />
+              <stop offset="24%" stopColor={ARENA_GOUD[1]} />
+              <stop offset="52%" stopColor={ARENA_GOUD[2]} />
+              <stop offset="76%" stopColor={ARENA_GOUD[3]} />
+              <stop offset="100%" stopColor={ARENA_GOUD[1]} />
             </linearGradient>
             {/* De vulling van een tegel: nog steeds twintig procent, maar
                 belicht. Een egale twintig procent leest als een sticker; met
