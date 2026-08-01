@@ -79,6 +79,17 @@ function Glas({ verf, dik, hoek, vulling, gloed, glans = "#FFFFFF", children, st
               <stop offset="62%" stopColor="#5E3596" />
               <stop offset="100%" stopColor="#B487F5" />
             </linearGradient>
+            {/* De witte punt op de omtrek: kort en fel, op twee plekken. */}
+            <linearGradient id="hb-punt" x1="0" y1="0" x2="1" y2="0.9">
+              <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0" />
+              <stop offset="13%" stopColor="#FFFFFF" stopOpacity="0" />
+              <stop offset="17%" stopColor="#FFFFFF" stopOpacity="0.95" />
+              <stop offset="21%" stopColor="#FFFFFF" stopOpacity="0" />
+              <stop offset="58%" stopColor="#FFFFFF" stopOpacity="0" />
+              <stop offset="62%" stopColor="#FFFFFF" stopOpacity="0.55" />
+              <stop offset="66%" stopColor="#FFFFFF" stopOpacity="0" />
+              <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
+            </linearGradient>
             <linearGradient id="hb-glans" x1="0" y1="0" x2="1" y2="0">
               <stop offset="0%" stopColor={glans} stopOpacity="0" />
               <stop offset="50%" stopColor={glans} stopOpacity="0.95" />
@@ -116,6 +127,11 @@ function Glas({ verf, dik, hoek, vulling, gloed, glans = "#FFFFFF", children, st
             fill="url(#hb-diep)" stroke="none"
           />
           <line x1={b * 0.22} y1={dik + 1.1} x2={b * 0.78} y2={dik + 1.1} stroke="url(#hb-glans)" strokeWidth="1.2" />
+          <path
+            d={achthoek(b - dik, h - dik, hoek)}
+            transform={`translate(${dik / 2}, ${dik / 2})`}
+            fill="none" stroke="url(#hb-punt)" strokeWidth={dik * 1.1} strokeLinecap="round"
+          />
         </svg>
       )}
       <div style={{ position: "relative", height: "100%" }}>{children}</div>

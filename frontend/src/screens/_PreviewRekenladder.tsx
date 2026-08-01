@@ -584,6 +584,21 @@ function Verven() {
         <stop offset="60%" stopColor="#0A1220" />
         <stop offset="100%" stopColor="#070C16" />
       </linearGradient>
+      {/* De witte punt: een KORTE felle plek op de lijn, niet een lichte lijn.
+          Twee glinsters, een sterke linksboven en een zwakkere verderop, want
+          gepolijst metaal vangt het licht op een paar plekken en niet overal.
+          Loopt zo'n glans over de halve lijn, dan leest het niet als licht maar
+          als een lichtere kleur. */}
+      <linearGradient id="rl-glans" x1="0" y1="0" x2="1" y2="0.8">
+        <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0" />
+        <stop offset="15%" stopColor="#FFFFFF" stopOpacity="0" />
+        <stop offset="19%" stopColor="#FFFFFF" stopOpacity="0.95" />
+        <stop offset="23%" stopColor="#FFFFFF" stopOpacity="0" />
+        <stop offset="60%" stopColor="#FFFFFF" stopOpacity="0" />
+        <stop offset="64%" stopColor="#FFFFFF" stopOpacity="0.5" />
+        <stop offset="68%" stopColor="#FFFFFF" stopOpacity="0" />
+        <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
+      </linearGradient>
       <filter id="rl-gloed" x="-14%" y="-16%" width="128%" height="132%">
         <feGaussianBlur stdDeviation="1.5" />
       </filter>
@@ -598,7 +613,7 @@ function Verven() {
  *  een vervaagde blauwe kern en daarbovenop de scherpe blauwe kern. Van buiten
  *  naar binnen dus goud met een blauw hart, wat op afstand leest als één lijn
  *  die van binnenuit brandt. */
-function NeonPad({ pad, vulling, breed = 0.8, kern = "rl-kern", gloed = true }: { pad: string; vulling?: string; breed?: number; kern?: string; gloed?: boolean }) {
+function NeonPad({ pad, vulling, breed = 0.8, kern = "rl-kern", gloed = true, glans = false }: { pad: string; vulling?: string; breed?: number; kern?: string; gloed?: boolean; glans?: boolean }) {
   return (
     <>
       {/* De vervaagde lagen zijn de gloed. Zonder die drie blijft er een kale
@@ -609,6 +624,7 @@ function NeonPad({ pad, vulling, breed = 0.8, kern = "rl-kern", gloed = true }: 
       {gloed && <path d={pad} fill="none" stroke="url(#rl-vonk)" strokeWidth={breed + 2.2} opacity="0.75" filter="url(#rl-kerngloed)" />}
       {gloed && <path d={pad} fill="none" stroke={`url(#${kern})`} strokeWidth={breed + 1.6} opacity="0.5" filter="url(#rl-kerngloed)" />}
       <path d={pad} fill="none" stroke={`url(#${kern})`} strokeWidth={breed * 0.42} strokeLinejoin="round" />
+      {glans && <path d={pad} fill="none" stroke="url(#rl-glans)" strokeWidth={breed * 0.9} strokeLinecap="round" />}
     </>
   );
 }
@@ -730,7 +746,7 @@ function TabKader({ titel, children }: { titel: string; children: React.ReactNod
         <svg width={b} height={h} style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "visible" }} aria-hidden>
           <Verven />
           <NeonPad pad={pad} vulling="url(#rl-vul)" gloed={false} />
-          <NeonPad pad={plaat} vulling="url(#rl-plaat)" breed={0.62} kern="rl-kern-paars" />
+          <NeonPad pad={plaat} vulling="url(#rl-plaat)" breed={0.62} kern="rl-kern-paars" glans />
           {/* De veeg over de onderrand. `pathLength` zet de lijn om naar honderd
               eenheden, dus de streepmaat klopt bij elke schermbreedte zonder dat
               ik de echte lengte hoef te kennen. */}
@@ -849,7 +865,7 @@ function SomVenster({ children }: { children: React.ReactNode }) {
       {maat.b > 0 && (
         <svg width={maat.b} height={maat.h} style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "visible" }} aria-hidden>
           <Verven />
-          <NeonPad pad={achthoek(maat.b, maat.h, 13)} vulling="url(#rl-vul-diep)" breed={0.72} gloed={false} />
+          <NeonPad pad={achthoek(maat.b, maat.h, 13)} vulling="url(#rl-vul-diep)" breed={0.72} gloed={false} glans />
         </svg>
       )}
       <div style={{ position: "relative", padding: "10px 14px", display: "grid", placeItems: "center" }}>{children}</div>

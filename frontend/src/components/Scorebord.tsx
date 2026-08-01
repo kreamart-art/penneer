@@ -56,11 +56,25 @@ export type Speler = {
   score: number;
 };
 
-/** Een speler in een gouden lijst: de foto in een ring, de naam eronder en de
- *  score groot. De lijst is getekend en geen border: een border loopt om de doos
- *  en niet om de ring, en dan zie je op de rondingen dat hij afknijpt. */
-function Kop({ speler, kant }: { speler: Speler; kant: "links" | "rechts" }) {
+/** Een kop in het ruitje: de foto in een gouden ring met er tekst naast.
+ *
+ *  GEEN PUNTEN meer op dit gezicht. Je eigen stand staat een paar tellen later
+ *  toch in het andere gezicht, en de scores in de arena lopen in de duizenden:
+ *  dan past het getal niet meer in het ruitje en is het bovendien dubbelop. Wat
+ *  hier telt is WIE je gaat passeren en hoe ver dat nog is, en dat is een klein
+ *  getal.
+ *
+ *  De letters krimpen mee als de tekst lang wordt. Een naam kan alles zijn, dus
+ *  een vaste lettergrootte gaat er vroeg of laat overheen. */
+function Kop({ speler, kant, kop, waarde }: {
+  speler: Speler;
+  kant: "links" | "rechts";
+  kop: string;
+  waarde?: string;
+}) {
   const M = 38;
+  const kopMaat = kop.length > 9 ? 8 : kop.length > 7 ? 8.8 : 9.5;
+  const waardeMaat = !waarde ? 0 : waarde.length > 5 ? 15 : waarde.length > 4 ? 17 : 20;
   return (
     <span
       style={{
@@ -80,25 +94,32 @@ function Kop({ speler, kant }: { speler: Speler; kant: "links" | "rechts" }) {
         style={{
           position: "relative", width: M, height: M, flexShrink: 0, borderRadius: "50%",
           overflow: "hidden",
-          // De gouden lijst: een verlooprand die tussen twee lagen uitsteekt.
           boxShadow: "0 0 0 1px #D8A63C, 0 0 0 1.7px #6E4A0E, 0 0 7px rgba(255,190,60,.4)",
         }}
       >
         <RingFoto userId={speler.id} versie={speler.versie} heeftFoto={speler.foto} naam={speler.naam} kleur={speler.kleur} />
       </span>
-      <span style={{ display: "flex", flexDirection: "column", alignItems: kant === "links" ? "flex-start" : "flex-end", gap: 1, minWidth: 0 }}>
+      <span style={{ display: "flex", flexDirection: "column", alignItems: kant === "links" ? "flex-start" : "flex-end", gap: 2, minWidth: 0, flex: 1 }}>
         <span
           style={{
-            fontFamily: font.wide, fontSize: 9.5, letterSpacing: 1.1, whiteSpace: "nowrap",
+            fontFamily: font.wide, fontSize: kopMaat, letterSpacing: 0.9, whiteSpace: "nowrap",
             overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%",
-            color: withAlpha("#FFE7A8", 0.8),
+            color: withAlpha("#FFE7A8", 0.82),
           }}
         >
-          {speler.naam.toUpperCase()}
+          {kop}
         </span>
-        <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 22, lineHeight: 1, color: "#FFF3D0", fontVariantNumeric: "tabular-nums", textShadow: "0 0 12px rgba(255,190,60,.5)" }}>
-          {speler.score}
-        </span>
+        {waarde && (
+          <span
+            style={{
+              fontFamily: font.display, fontWeight: 800, fontSize: waardeMaat, lineHeight: 1,
+              color: "#FFF3D0", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap",
+              textShadow: "0 0 12px rgba(255,190,60,.5)",
+            }}
+          >
+            {waarde}
+          </span>
+        )}
       </span>
     </span>
   );
@@ -140,8 +161,15 @@ export function Scorebord({ links, rechts, breedte, duel }: {
       </span>
       {duel && (
         <span style={{ position: "absolute", inset: 0, opacity: toonDuel ? 1 : 0, transition: "opacity .45s ease-in-out", pointerEvents: "none" }}>
-          <Kop speler={duel.mij} kant="links" />
-          <Kop speler={duel.rivaal} kant="rechts" />
+          {/* Links wie je bent, rechts wie je gaat passeren en hoeveel je nog
+              tekort komt. Dat verschil is het enige getal dat hier iets zegt. */}
+          <Kop speler={duel.mij} kant="links" kop={duel.mij.naam.toUpperCase()} />
+          <Kop
+            speler={duel.rivaal}
+            kant="rechts"
+            kop={duel.rivaal.naam.toUpperCase()}
+            waarde={`+${duel.rivaal.score - duel.mij.score}`}
+          />
         </span>
       )}
     </div>
