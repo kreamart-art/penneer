@@ -385,7 +385,7 @@ export function Woordketen({ seed, onKlaar, onOpnieuw }: {
 
         {/* HET LANGE KLEMBORD: de ketting die je hebt gebouwd. Geen schaduw: hij
             vervaagt aan de onderkant naar de achtergrond toe. */}
-        <Laag art="/ui/keten/klembord-lang.webp?v=1" maat={ART.klem} schaduw={false} zIndex={1}>
+        <Laag art="/ui/keten/klembord-lang.webp?v=3" maat={ART.klem} schaduw={false} zIndex={1}>
           <div
             style={{
               position: "absolute", left: "8%", right: "8%", top: "13%", height: "26%",
@@ -464,7 +464,7 @@ export function Woordketen({ seed, onKlaar, onOpnieuw }: {
         </Laag>
 
         {/* HET KORTE KLEMBORD: het invulveld. */}
-        <Laag art="/ui/keten/klembord-invul.webp?v=1" maat={ART.invul} zIndex={3} blur={13} zak={10}>
+        <Laag art="/ui/keten/klembord-invul.webp?v=3" maat={ART.invul} zIndex={3} blur={13} zak={10}>
           <form
             onSubmit={(e) => { e.preventDefault(); void lever(); }}
             style={{ position: "absolute", inset: "31% 8% 11%", display: "flex", alignItems: "center", gap: 8 }}
