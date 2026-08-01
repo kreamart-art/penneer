@@ -11,10 +11,14 @@ regels:
   3. VERDRINGING. Wie van plek 1 wordt gestoten hoort dat meteen, met de tijd
      die nog rest om terug te slaan. Dat kan alleen omdat regel 2 bestaat.
 
-De rotatie is een vaste weekkalender. Een spel dat nog niet gebouwd is staat er
-wel in ("af": False): de tegel toont dan de naam van het spel van vandaag met
-"binnenkort", zodat de kalender vanaf dag een klopt en er nooit een dag stil
-uitziet zonder uitleg.
+De rotatie is een vaste weekkalender, en die is nu VOL: elke dag draait een spel
+dat af is. Dat betekent dat twee spellen twee keer per week langskomen, en dat is
+beter dan een dag met "binnenkort" erop. Zodra er een nieuw spel bij komt neemt
+dat gewoon een van de dubbele plekken over.
+
+Het veld "af" blijft bestaan voor spellen die nog gebouwd worden: staat er False,
+dan toont de tegel de naam met "binnenkort" en accepteert de server geen
+inzendingen. Op dit moment staat er geen enkel spel meer op False.
 
 De SEED per dag komt uit de datum, net als de dagletter: iedereen speelt
 dezelfde reeks, anders is de ranglijst een loterij. De client genereert het
@@ -30,13 +34,20 @@ import hashlib
 
 # Weekdag (maandag = 0) -> spel. De key is ook de i18n-sleutel op de client
 # (arena_<key> en arena_<key>_uitleg).
+#
+# Vijf gebouwde spellen over zeven dagen, dus twee komen twee keer langs. Ze
+# staan zo ver mogelijk uit elkaar: Rekenladder op zondag en donderdag, Woordketen
+# op maandag en zaterdag. Nooit twee dagen achter elkaar hetzelfde.
+#
+# NOG TE BOUWEN: Wereldprik en Waaghet. Die krijgen de dubbele plekken zodra ze
+# af zijn, dus zaterdag en donderdag, en dan draait elk spel weer één dag.
 GAMES: dict[int, dict] = {
     0: {"key": "woordketen", "af": True},
-    1: {"key": "wereldprik", "af": False},
-    2: {"key": "waaghet", "af": False},
-    3: {"key": "flitsreeks", "af": True},
-    4: {"key": "lettersoep", "af": True},
-    5: {"key": "kleurenklem", "af": True},
+    1: {"key": "flitsreeks", "af": True},
+    2: {"key": "lettersoep", "af": True},
+    3: {"key": "rekenladder", "af": True},
+    4: {"key": "kleurenklem", "af": True},
+    5: {"key": "woordketen", "af": True},
     6: {"key": "rekenladder", "af": True},
 }
 

@@ -124,3 +124,53 @@ export function useVakLaag(): {
   }, []);
   return { laag, onder };
 }
+
+/** Houdt een lijst op zijn ONDERSTE bericht zodra het toetsenbord opkomt.
+ *
+ *  Zonder dit springt de chat naar het midden. De lijst hangt aan het zichtbare
+ *  vak, dus als het toetsenbord opkomt wordt hij korter, maar de browser laat
+ *  `scrollTop` staan waar hij stond. Dat getal telt vanaf de BOVENKANT, dus een
+ *  lijst die onderaan stond staat na het krimpen ineens een halve pagina te
+ *  hoog. Precies wat je niet wil op het moment dat je gaat typen: dan hoor je
+ *  het laatste bericht te zien.
+ *
+ *  Alleen bij een echte hoogtewijziging, niet bij elk voorval. iOS stuurt ook
+ *  `scroll` als je de pagina meesleept, en dan zou de lijst je omlaag trekken
+ *  terwijl je juist iets terugleest.
+ *
+ *  Drie keer pinnen per wijziging, en dat is geen slordigheid: iOS meldt de
+ *  nieuwe hoogte VOORDAT hij de bladzijde opnieuw heeft opgemaakt, dus de eerste
+ *  keer reken je nog met de oude `scrollHeight`. Een beeldje later klopt hij
+ *  meestal, en de late derde vangt de toestellen waar het toetsenbord eroverheen
+ *  schuift in plaats van meteen open te klappen.
+ */
+export function useBlijfOnderaan(ref: React.RefObject<HTMLElement | null>) {
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    let hoogte = vv.height;
+    let beeldje = 0;
+    let laat = 0;
+    const pin = () => {
+      const el = ref.current;
+      if (el) el.scrollTop = el.scrollHeight;
+    };
+    const sync = () => {
+      if (Math.abs(vv.height - hoogte) < 1) return;
+      hoogte = vv.height;
+      pin();
+      cancelAnimationFrame(beeldje);
+      beeldje = requestAnimationFrame(pin);
+      window.clearTimeout(laat);
+      laat = window.setTimeout(pin, 180);
+    };
+    vv.addEventListener("resize", sync);
+    vv.addEventListener("scroll", sync);
+    return () => {
+      vv.removeEventListener("resize", sync);
+      vv.removeEventListener("scroll", sync);
+      cancelAnimationFrame(beeldje);
+      window.clearTimeout(laat);
+    };
+  }, [ref]);
+}

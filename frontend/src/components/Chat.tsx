@@ -13,7 +13,7 @@ import { BeeldKnop } from "./BeeldKnop";
 import { VerstuurKnop } from "./VerstuurKnop";
 import { KNOP_GOUD_VERLOOP, goudHaarlijn } from "./GlasKnop";
 import { CANVAS, useCanvasKleur } from "../lib/canvaskleur";
-import { useVakLaag, useZichtbaarVak } from "../lib/zichtbaarvak";
+import { useBlijfOnderaan, useVakLaag, useZichtbaarVak } from "../lib/zichtbaarvak";
 import { Livestream } from "./Livestream";
 import { VoiceNote } from "./VoiceNote";
 import { EmotePicker } from "./EmotePicker";
@@ -163,6 +163,9 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
   useEffect(() => {
     if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
   }, [chat.length]);
+  // Dezelfde regel als het toetsenbord opkomt: de lijst krimpt en zou anders
+  // midden in het gesprek blijven staan.
+  useBlijfOnderaan(listRef);
   useEffect(() => {
     const id = window.setTimeout(() => inputRef.current?.focus(), 60);
     return () => window.clearTimeout(id);

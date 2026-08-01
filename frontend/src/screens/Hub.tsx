@@ -23,7 +23,7 @@ import { Button } from "../components/Button";
 import { MicButton } from "../components/MicButton";
 import { BeeldKnop } from "../components/BeeldKnop";
 import { goudHaarlijn } from "../components/GlasKnop";
-import { useVakLaag, useZichtbaarVak } from "../lib/zichtbaarvak";
+import { useBlijfOnderaan, useVakLaag, useZichtbaarVak } from "../lib/zichtbaarvak";
 import { VerstuurKnop } from "../components/VerstuurKnop";
 import { VoiceNote } from "../components/VoiceNote";
 import { EmotePicker } from "../components/EmotePicker";
@@ -804,6 +804,9 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
   }, [messages.length]);
+  // En ook als het toetsenbord opkomt: dan wordt de lijst korter en zou hij
+  // anders midden in het gesprek blijven hangen.
+  useBlijfOnderaan(listRef);
 
   const sendNow = () => {
     if (!text.trim()) return;
