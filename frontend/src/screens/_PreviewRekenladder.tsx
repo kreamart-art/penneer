@@ -219,11 +219,16 @@ const LADDER_BREED = 84.90;      // vw
  *  zit in die strook. Het vlak is het tikbare deel en de plek van het getal;
  *  daarbuiten liggen de stijlen en de gloed, waar een tik niet hoort te tellen.
  *  Alles in procenten, want de ladder schaalt mee met de schermbreedte. */
+// De vakken zijn opgemeten op de GEKNIPTE stroken zoals ze in de app zitten, en
+// niet overgenomen uit de oude art: die was 788 breed en de getallen stonden
+// daardoor per trede een stukje links of rechts van het midden. De platen zelf
+// liggen netjes op het hart van de ladder (548, 549, 549,5 en 551 op een ladder
+// van 1100), dus als de vakken kloppen staan de getallen vanzelf onder elkaar.
 const TREDEN = [
-  { band: [0, 174], vlak: [71, 27, 1028, 166] },
-  { band: [174, 337], vlak: [60, 195, 996, 336] },
-  { band: [337, 528], vlak: [97, 364, 1001, 508] },
-  { band: [528, 733], vlak: [93, 538, 1007, 677] },
+  { band: [0, 174], vlak: [101, 25, 995, 165] },
+  { band: [174, 337], vlak: [104, 195, 994, 336] },
+  { band: [337, 528], vlak: [99, 362, 1000, 507] },
+  { band: [528, 733], vlak: [95, 537, 1007, 679] },
 ].map(({ band, vlak }) => ({
   top: (band[0] / LADDER_H) * 100,
   bodem: ((LADDER_H - band[1]) / LADDER_H) * 100,
@@ -593,13 +598,16 @@ function Verven() {
  *  een vervaagde blauwe kern en daarbovenop de scherpe blauwe kern. Van buiten
  *  naar binnen dus goud met een blauw hart, wat op afstand leest als één lijn
  *  die van binnenuit brandt. */
-function NeonPad({ pad, vulling, breed = 0.8, kern = "rl-kern" }: { pad: string; vulling?: string; breed?: number; kern?: string }) {
+function NeonPad({ pad, vulling, breed = 0.8, kern = "rl-kern", gloed = true }: { pad: string; vulling?: string; breed?: number; kern?: string; gloed?: boolean }) {
   return (
     <>
-      <path d={pad} fill="none" stroke="url(#rl-goud)" strokeWidth={breed + 1.2} opacity="0.3" filter="url(#rl-gloed)" />
+      {/* De vervaagde lagen zijn de gloed. Zonder die drie blijft er een kale
+          gouden lijn met een kern over, en dat is precies wat het kader hoort te
+          zijn: de plaat met de naam is het enige dat mag oplichten. */}
+      {gloed && <path d={pad} fill="none" stroke="url(#rl-goud)" strokeWidth={breed + 1.2} opacity="0.3" filter="url(#rl-gloed)" />}
       <path d={pad} fill={vulling ?? "none"} stroke="url(#rl-goud)" strokeWidth={breed} strokeLinejoin="round" />
-      <path d={pad} fill="none" stroke="url(#rl-vonk)" strokeWidth={breed + 2.2} opacity="0.75" filter="url(#rl-kerngloed)" />
-      <path d={pad} fill="none" stroke={`url(#${kern})`} strokeWidth={breed + 1.6} opacity="0.5" filter="url(#rl-kerngloed)" />
+      {gloed && <path d={pad} fill="none" stroke="url(#rl-vonk)" strokeWidth={breed + 2.2} opacity="0.75" filter="url(#rl-kerngloed)" />}
+      {gloed && <path d={pad} fill="none" stroke={`url(#${kern})`} strokeWidth={breed + 1.6} opacity="0.5" filter="url(#rl-kerngloed)" />}
       <path d={pad} fill="none" stroke={`url(#${kern})`} strokeWidth={breed * 0.42} strokeLinejoin="round" />
     </>
   );
@@ -721,7 +729,7 @@ function TabKader({ titel, children }: { titel: string; children: React.ReactNod
       {b > 0 && (
         <svg width={b} height={h} style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "visible" }} aria-hidden>
           <Verven />
-          <NeonPad pad={pad} vulling="url(#rl-vul)" />
+          <NeonPad pad={pad} vulling="url(#rl-vul)" gloed={false} />
           <NeonPad pad={plaat} vulling="url(#rl-plaat)" breed={0.62} kern="rl-kern-paars" />
           {/* De veeg over de onderrand. `pathLength` zet de lijn om naar honderd
               eenheden, dus de streepmaat klopt bij elke schermbreedte zonder dat
@@ -841,7 +849,7 @@ function SomVenster({ children }: { children: React.ReactNode }) {
       {maat.b > 0 && (
         <svg width={maat.b} height={maat.h} style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "visible" }} aria-hidden>
           <Verven />
-          <NeonPad pad={achthoek(maat.b, maat.h, 13)} vulling="url(#rl-vul-diep)" breed={0.72} />
+          <NeonPad pad={achthoek(maat.b, maat.h, 13)} vulling="url(#rl-vul-diep)" breed={0.72} gloed={false} />
         </svg>
       )}
       <div style={{ position: "relative", padding: "10px 14px", display: "grid", placeItems: "center" }}>{children}</div>
