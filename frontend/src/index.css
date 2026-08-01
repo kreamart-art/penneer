@@ -1425,3 +1425,8 @@ body.ketenspel::after {
   color: rgba(18, 16, 12, 0.55);
   opacity: 1;
 }
+
+/* Het molentje op de knop van Woordketen, zolang de scheidsrechter kijkt. */
+@keyframes keten-draait { to { transform: rotate(360deg); } }
+.keten-draait { animation: keten-draait 0.9s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .keten-draait { animation-duration: 2.4s; } }

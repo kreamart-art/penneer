@@ -31,7 +31,7 @@
 // Het lange klembord krijgt er GEEN, want dat vervaagt aan de onderkant naar de
 // achtergrond toe en een schaduw zou die overgang verraden.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { LogOut, RotateCcw } from "lucide-react";
+import { Check, Loader2, LogOut, RotateCcw } from "lucide-react";
 import { Screen } from "../components/Layout";
 import { colors, font, withAlpha } from "../theme/tokens";
 import { sound } from "../sound/sound";
@@ -123,11 +123,17 @@ const ART = {
   // snijden en het hout begint op 0,668 daarvan, dus op een breedte van 0,94 zit
   // het hout 0,462 onder de top van het vel.
   //
-  // DE BREEDTES ten opzichte van elkaar: het klembord is het smalst, want dat is
-  // de laag die eronder ligt. Het groene bord en het invulveld zijn even breed en
-  // steken er aan weerszijden overheen; het hangende bord zit daartussenin.
+  // DE BREEDTES ten opzichte van elkaar: het klembord is met afstand het smalst,
+  // want dat is de laag die eronder ligt en de rest hoort er duidelijk overheen
+  // te steken. Het groene bord en het invulveld zijn even breed (0,96) en steken
+  // er aan weerszijden acht procent van de sectie overheen; het hangende bord
+  // zit daartussenin.
+  //
+  // De TEKST op het klembord schaalt hier NIET mee: de lettergroottes staan in
+  // punten en niet in procenten van het bord, dus een smaller klembord houdt
+  // dezelfde letters.
   bord: { v: 3849 / 2828, l: 0.030, b: 0.940, t: -0.2235 }, // hangend bord met kettingen
-  klem: { v: 1080 / 1244, l: 0.047, b: 0.906, t: 0.490 },   // lang klembord, de ketting
+  klem: { v: 1080 / 1244, l: 0.100, b: 0.800, t: 0.505 },   // lang klembord, de ketting
   woord: { v: 1080 / 419, l: 0.020, b: 0.960, t: 0.8048 },  // groen bord, het woord
   invul: { v: 1080 / 295, l: 0.020, b: 0.960, t: 1.2237 },  // kort klembord, het veld
   knop: { v: 720 / 202, l: 0.290, b: 0.420, t: 1.701 },     // houten plaat, de knop
@@ -359,12 +365,13 @@ export function Woordketen({ seed, onKlaar, onOpnieuw }: {
     setKetting((k) => [...k, woord]);
   }
 
-  // De laatste drie schakels op het klembord, de nieuwste onderaan.
-  const zichtbaar = ketting.slice(-4, -1);
+  // TWEE schakels terug, niet drie: het klembord is smaller geworden en twee
+  // woorden met een pijl ertussen staan daar rustig op, drie werd gedrang.
+  const zichtbaar = ketting.slice(-3, -1);
   const bezig = fase === "spel" || fase === "kijkt";
 
   return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", paddingTop: 4 }}>
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", marginTop: -22 }}>
       {/* z-index 0 op de doos zelf maakt er EEN stapel van. Zonder dat doen de
           lagen erin (1 tot 4) mee in de stapel van de pagina, en dan tekent het
           hangende bord over de kop heen: de ketting loopt tot voorbij de
@@ -381,7 +388,7 @@ export function Woordketen({ seed, onKlaar, onOpnieuw }: {
         <Laag art="/ui/keten/klembord-lang.webp?v=1" maat={ART.klem} schaduw={false} zIndex={1}>
           <div
             style={{
-              position: "absolute", left: "10%", right: "10%", top: "8%", height: "28%",
+              position: "absolute", left: "8%", right: "8%", top: "13%", height: "26%",
               display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", gap: 2,
               pointerEvents: "none",
             }}
@@ -460,7 +467,7 @@ export function Woordketen({ seed, onKlaar, onOpnieuw }: {
         <Laag art="/ui/keten/klembord-invul.webp?v=1" maat={ART.invul} zIndex={3} blur={13} zak={10}>
           <form
             onSubmit={(e) => { e.preventDefault(); void lever(); }}
-            style={{ position: "absolute", inset: "22% 8% 14%", display: "flex", alignItems: "center", gap: 8 }}
+            style={{ position: "absolute", inset: "31% 8% 11%", display: "flex", alignItems: "center", gap: 8 }}
           >
             <input
               ref={veld}
@@ -483,20 +490,28 @@ export function Woordketen({ seed, onKlaar, onOpnieuw }: {
                 borderBottom: `1.5px dashed ${withAlpha(INKT, 0.35)}`, padding: "2px 2px 3px",
               }}
             />
+            {/* VIERKANT en met een vinkje: "zet vast" in twee woorden nam de halve
+                breedte van het papier in beslag, en er is maar één ding dat deze
+                knop kan doen. Tijdens het wachten draait het vinkje mee als
+                molentje, zodat je ziet dat de scheidsrechter bezig is. */}
             <button
               type="submit"
               className="pressable"
+              aria-label={t("ketenLever")}
               disabled={!bezig || schoon(invoer).length < 2}
               style={{
                 appearance: "none", border: "none", cursor: "pointer", flexShrink: 0,
-                padding: "6px 13px", borderRadius: 8,
+                width: 38, height: 38, borderRadius: 9,
+                display: "grid", placeItems: "center",
                 background: "linear-gradient(180deg, #2F6B33 0%, #1C4520 100%)",
                 boxShadow: `inset 0 0 0 1px ${withAlpha(GOUD, 0.6)}, inset 0 1px 0 rgba(255,255,255,.2), 0 2px 6px rgba(0,0,0,.35)`,
                 opacity: !bezig || schoon(invoer).length < 2 ? 0.45 : 1,
-                fontFamily: font.wide, fontSize: 11, letterSpacing: 1.2, marginRight: -1.2, color: "#FFF3D0",
+                color: "#FFF3D0",
               }}
             >
-              {fase === "kijkt" ? t("ketenKijktKort") : t("ketenLever")}
+              {fase === "kijkt"
+                ? <Loader2 size={19} strokeWidth={2.6} className="keten-draait" />
+                : <Check size={21} strokeWidth={3} />}
             </button>
           </form>
         </Laag>
