@@ -583,17 +583,7 @@ export function ArenaDeel({ game, onBack }: { game: GameApi; onBack: () => void 
           ) : info?.game === "rekenladder" ? (
             // Ook per poging vers. Twee keer dezelfde sommen in dezelfde
             // volgorde is geen rekentest meer maar een geheugentest.
-            <Rekenladder
-              seed={`${poging.seed}:${poging.attempt_id}`}
-              onKlaar={klaar}
-              // Het dagbord gaat mee zodat de balk kan laten zien wie je gaat
-              // passeren; wie dat is volgt uit je LIVE stand, niet uit je plek.
-              bord={info?.board?.map((r) => ({
-                id: r.id, naam: r.name, kleur: r.color,
-                foto: !!r.has_avatar, versie: r.avatar_ver, score: r.score,
-              }))}
-              ik={account ? { id: account.id, naam: account.name, kleur: account.color, foto: account.has_avatar, versie: account.avatar_ver } : undefined}
-            />
+            <Rekenladder seed={`${poging.seed}:${poging.attempt_id}`} onKlaar={klaar} />
           ) : info?.game === "kleurenklem" ? (
             // Kleurenklem ook per poging vers, en om dezelfde reden: de reeks
             // opgaven is kort en je onthoudt hem. Twee keer dezelfde kleuren in

@@ -33,7 +33,7 @@ import { ARENA_GOUD, colors, font, withAlpha } from "../theme/tokens";
 import { sound } from "../sound/sound";
 import { useT } from "../i18n/i18n";
 import { VAK } from "./Arena";
-import { Scorebord, type Speler } from "../components/Scorebord";
+import { Scorebord } from "../components/Scorebord";
 import { Hulpbalk } from "../components/Hulpbalk";
 
 // ---- de ladder --------------------------------------------------------------
@@ -288,11 +288,26 @@ const HULPEN = [
   { sleutel: "vijftig", label: "50 / 50", icoon: <HulpIcoon sleutel="vijftig" /> },
 ];
 
+// De harten van de vier schijven en hun doorsnee, in procenten van de ladder.
+//
+// OPGEMETEN in knoppen.webp (200x727) en niet met de hand geplaatst. Per schijf
+// is de evenaar gezocht (de breedste regel van het alfakanaal) en het midden
+// daarvan; de schijven blijken rond te zijn, want de hoogte die uit die
+// symmetrie volgt komt op een pixel na uit op de gemeten breedte:
+//
+//   A (113,25 / 77,0) d 84    C ( 92,70 / 442,0) d 92
+//   B (103,44 / 257,5) d 90   D ( 82,62 / 629,5) d 95
+//
+// Nagegaan is ook of het LETTERVAK (de verzonken kant binnen de gouden rand)
+// wel om datzelfde hart ligt en niet naar het licht toe verschoven staat. Dat
+// ligt goed: het zwaartepunt ervan valt binnen anderhalve pixel op het hart.
+//
+// Daarna omgerekend met de plaatsing van het vel (KNOPPEN).
 const LETTERS = [
-  { letter: "A", x: 6.51, y: 13.14, d: 6.96 },
-  { letter: "B", x: 5.69, y: 35.92, d: 7.41 },
-  { letter: "C", x: 4.79, y: 59.20, d: 7.74 },
-  { letter: "D", x: 3.95, y: 82.95, d: 8.11 },
+  { letter: "A", x: 6.48, y: 13.17, d: 7.04 },
+  { letter: "B", x: 5.66, y: 35.88, d: 7.54 },
+  { letter: "C", x: 4.76, y: 59.09, d: 7.71 },
+  { letter: "D", x: 3.91, y: 82.68, d: 7.96 },
 ];
 
 type Staat = "uit" | "rust" | "goed" | "fout" | "dood";
@@ -461,7 +476,10 @@ function Ladder({ keuzes, antwoord, oordeel, onKies, slapend, klaar, weg = [], t
             transform: "translate(-50%, -50%)",
             fontFamily: font.display, fontWeight: 800,
             fontSize: `${((LADDER_BREED * l.d) / 100) * 0.56}vw`,
-            letterSpacing: 0.5,
+            // GEEN letterspatie. Er stond 0,5, en die spatie komt ook achter de
+            // letter te staan en telt mee in de breedte: bij een vertaling van
+            // -50% zet dat de letter een kwart pixel links van het hart. Op een
+            // los teken doet tracking bovendien niets nuttigs.
             color: "#FFE8B4", textShadow: "0 1px 2px rgba(0,0,0,.95), 0 0 6px rgba(255,190,90,.5)",
           }}
         >
@@ -562,10 +580,14 @@ function Verven() {
         <stop offset="72%" stopColor="#C98BFF" stopOpacity="0.55" />
         <stop offset="100%" stopColor="#C98BFF" stopOpacity="0" />
       </linearGradient>
+      {/* De vulling van de sectie: ZWART in plaats van paars, om te zien hoe de
+          doorzichtigheid daarop leest. De dekking blijft precies zoals hij was
+          (19 tot 23 procent van boven naar onder), want dat is het enige dat we
+          nu willen kunnen beoordelen; alleen de kleur eronder is gewisseld. */}
       <linearGradient id="rl-vul" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor="#2A1449" stopOpacity="0.19" />
-        <stop offset="55%" stopColor="#180B2C" stopOpacity="0.21" />
-        <stop offset="100%" stopColor="#0C0519" stopOpacity="0.23" />
+        <stop offset="0%" stopColor="#000000" stopOpacity="0.19" />
+        <stop offset="55%" stopColor="#000000" stopOpacity="0.21" />
+        <stop offset="100%" stopColor="#000000" stopOpacity="0.23" />
       </linearGradient>
       {/* De naamplaat dekt wel: hij is klein en draagt de naam, dus daar mag de
           zaal niet doorheen schijnen. */}
@@ -655,6 +677,11 @@ function achthoek(b: number, h: number, c: number): string {
  *  blijven de afsnijdingen 45 graden en de lijn overal even dik, hoe breed het
  *  vak ook wordt. Vandaar dat het vak zichzelf opmeet.
  */
+/** De letterspatie van de naam op de tab. Staat apart omdat hij op drie plekken
+ *  tegelijk moet kloppen: de spatiëring zelf, de breedte van de plaat eronder en
+ *  de correctie die de spatie achter de laatste letter weer weghaalt. */
+const NAAM_SPATIE = 2.2;
+
 function TabKader({ titel, children }: { titel: string; children: React.ReactNode }) {
   const doos = useRef<HTMLDivElement | null>(null);
   const naam = useRef<HTMLSpanElement | null>(null);
@@ -695,8 +722,10 @@ function TabKader({ titel, children }: { titel: string; children: React.ReactNod
   // dat de schuine schouders er aan weerszijden onderuit komen.
   const PC = 9;                 // de afschuining van de uiteinden
   // De punten sluiten om de naam heen: de tekst plus de twee schuintes plus een
-  // haar lucht.
-  const PB = Math.max(90, Math.round(naamBreed) + 2 * PC + 16);
+  // haar lucht. De gemeten breedte is die van de DOOS en daar zit de spatie
+  // achter de laatste letter nog in; die telt hier niet mee, anders staat de
+  // naam een halve spatie links in zijn eigen plaat.
+  const PB = Math.max(90, Math.round(naamBreed - NAAM_SPATIE) + 2 * PC + 16);
   const PH = TH + 12;           // hoogte: hij steekt boven EN onder de lijn uit
 
   const { b, h } = maat;
@@ -776,11 +805,14 @@ function TabKader({ titel, children }: { titel: string; children: React.ReactNod
         style={{
           position: "absolute", top: py, left: 0, right: 0, height: PH,
           display: "grid", placeItems: "center", pointerEvents: "none",
-          fontFamily: font.wide, fontSize: 11, letterSpacing: 2.2, textTransform: "uppercase",
+          fontFamily: font.wide, fontSize: 11, letterSpacing: NAAM_SPATIE, textTransform: "uppercase",
           color: "#FFD98A", textShadow: "0 0 10px rgba(255,180,50,.55)",
         }}
       >
-        <span ref={naam}>{titel}</span>
+        {/* De negatieve marge haalt de spatie achter de laatste letter weg. Die
+            hoort bij de doos maar niet bij het woord, dus zonder de correctie
+            legt het raster het woord een halve spatie te ver naar links. */}
+        <span ref={naam} style={{ marginRight: -NAAM_SPATIE }}>{titel}</span>
       </span>
       <div style={{ position: "relative", padding: `${TH + 16}px 16px 11px`, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
         {children}
@@ -891,14 +923,10 @@ function SomVenster({ children }: { children: React.ReactNode }) {
 // Twee schillen om dezelfde motor, net als bij Lettersoep en Kleurenklem. De
 // arena geeft de seed van de poging mee en krijgt via `onKlaar` de uitslag
 // terug; de testversie hieronder geeft een eigen sleutel en levert NIETS in.
-export function Rekenladder({ seed, onKlaar, onOpnieuw, bord, ik }: {
+export function Rekenladder({ seed, onKlaar, onOpnieuw }: {
   seed: string;
   onKlaar?: (score: number, level: number, timeMs: number) => void;
   onOpnieuw?: () => void;
-  /** Het dagbord, om te zien wie je gaat passeren. */
-  bord?: Speler[];
-  /** Jijzelf, zonder score: die komt live uit dit potje. */
-  ik?: Omit<Speler, "score">;
 }) {
   const { t } = useT();
   useEffect(() => {
@@ -1030,17 +1058,6 @@ export function Rekenladder({ seed, onKlaar, onOpnieuw, bord, ik }: {
     }
   }, [fase, gebruikt, som, voorraad]);
 
-  // WIE JE GAAT PASSEREN. Niet je plek op het bord van gisteren maar de laagste
-  // score BOVEN je huidige stand, dus zodra je eroverheen gaat schuift hij
-  // vanzelf door naar de volgende. Dat is precies wat het spannend maakt: er is
-  // altijd iemand net buiten bereik.
-  const duel = useMemo(() => {
-    if (!bord || !ik) return null;
-    const boven = bord.filter((s) => s.id !== ik.id && s.score > totaal).sort((a, b) => a.score - b.score)[0];
-    if (!boven) return null;
-    return { mij: { ...ik, score: totaal }, rivaal: boven };
-  }, [bord, ik, totaal]);
-
   const stop = () => setFase("klaar");
 
   return (
@@ -1055,7 +1072,6 @@ export function Rekenladder({ seed, onKlaar, onOpnieuw, bord, ik }: {
           breedte={VAK}
           links={{ kop: t("rekenTrede"), waarde: String(trede) }}
           rechts={{ kop: t("soepPunten"), waarde: String(totaal) }}
-          duel={duel}
         />
 
         {/* Het vraagpaneel. Alles in code: een gouden verlooprand met een
@@ -1161,19 +1177,7 @@ export function PreviewRekenladder() {
         </div>
       }
     >
-      {/* De testversie heeft geen dagbord, dus hier staat er een verzonnen bord
-          in: anders is er niets te zien van de wissel. */}
-      <Rekenladder
-        key={potje}
-        seed={potje}
-        onOpnieuw={() => setPotje(versSleutel())}
-        ik={{ id: "ik", naam: "JIJ", kleur: "#B36BFF", foto: false, versie: 0 }}
-        bord={[
-          { id: "a", naam: "TIJGER", kleur: "#FF8A3D", foto: false, versie: 0, score: 450 },
-          { id: "b", naam: "PANTYU", kleur: "#3DD6FF", foto: false, versie: 0, score: 1200 },
-          { id: "c", naam: "KREAM", kleur: "#FFD24A", foto: false, versie: 0, score: 2600 },
-        ]}
-      />
+      <Rekenladder key={potje} seed={potje} onOpnieuw={() => setPotje(versSleutel())} />
     </Screen>
   );
 }
