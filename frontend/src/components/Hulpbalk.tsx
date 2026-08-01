@@ -165,12 +165,12 @@ function Voorraad({ aantal }: { aantal: number }) {
     <span
       style={{
         display: "inline-flex", alignItems: "center", gap: 1,
-        fontFamily: font.display, fontWeight: 800, fontSize: 13,
+        fontFamily: font.display, fontWeight: 800, fontSize: 15,
         color: leeg ? withAlpha("#EBD9FF", 0.45) : "#FFF3D0",
         textShadow: leeg ? "none" : "0 1px 2px rgba(0,0,0,.7)",
       }}
     >
-      <span style={{ fontSize: 9, opacity: 0.75 }}>x</span>
+      <span style={{ fontSize: 11, opacity: 0.75 }}>x</span>
       {aantal}
     </span>
   );
@@ -216,8 +216,8 @@ export function Hulpbalk({ hulpen, breedte, onKies, op = [] }: {
               onPointerDown={(e) => { e.preventDefault(); if (!op.includes(h.sleutel) && h.aantal > 0) onKies?.(h.sleutel); }}
               disabled={!onKies || op.includes(h.sleutel) || h.aantal <= 0}
               style={{
-                width: "100%", background: "transparent", border: "none", padding: "6px 6px 6px 8px",
-                display: "flex", alignItems: "center", justifyContent: "flex-start", gap: 6,
+                width: "100%", background: "transparent", border: "none", padding: "5px 4px 5px 6px",
+                display: "flex", alignItems: "center", justifyContent: "flex-start", gap: 5,
                 cursor: onKies ? "pointer" : "default",
                 WebkitTapHighlightColor: "transparent", touchAction: "manipulation",
               }}
@@ -226,7 +226,7 @@ export function Hulpbalk({ hulpen, breedte, onKies, op = [] }: {
               <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 2, minWidth: 0 }}>
                 <span
                   style={{
-                    fontFamily: font.wide, fontSize: 9.5, letterSpacing: 0.4, lineHeight: 1.05,
+                    fontFamily: font.wide, fontSize: 11.5, letterSpacing: 0.2, lineHeight: 1.02,
                     textAlign: "left", color: withAlpha("#F2E6FF", 0.95),
                     textShadow: "0 1px 2px rgba(0,0,0,.65)",
                   }}

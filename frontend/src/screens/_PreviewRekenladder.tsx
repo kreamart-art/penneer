@@ -277,7 +277,7 @@ function HulpIcoon({ sleutel }: { sleutel: string }) {
       src={HULP_ART[sleutel]}
       alt=""
       draggable={false}
-      style={{ width: 28, height: 28, display: "block" }}
+      style={{ width: 24, height: 24, display: "block", flexShrink: 0 }}
     />
   );
 }
