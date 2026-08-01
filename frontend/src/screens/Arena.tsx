@@ -533,7 +533,9 @@ export function ArenaDeel({ game, onBack }: { game: GameApi; onBack: () => void 
   const spelNaam = info ? t(`arenaSpel_${info.game}`) : "";
 
   const header = (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", paddingTop: "calc(14px + env(safe-area-inset-top))" }}>
+    // Met een z-index, want Woordketen hangt zijn ketting tot voorbij de bovenrand
+    // van het scherm en die zou anders dwars door de titel heen lopen.
+    <div style={{ position: "relative", zIndex: 3, display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", paddingTop: "calc(14px + env(safe-area-inset-top))" }}>
       <button onClick={() => (fase === "intro" ? onBack() : setFase("intro"))} aria-label={t("back")} style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 2 }}>
         <ArrowLeft size={20} />
       </button>

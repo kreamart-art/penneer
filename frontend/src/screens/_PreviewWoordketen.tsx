@@ -117,17 +117,20 @@ const schoon = (s: string) => s.trim().toUpperCase().replace(/[^A-ZÀ-Ü'\- ]/g,
 // het bestand, het lange klembord op 0,89 tegen 0,87, het korte op 3,59 tegen
 // 3,66. Er is dus NIETS uitgerekt in de mockup, en hier hoeft dat ook niet.
 const ART = {
-  // De ketting is LANGER geworden in de art, en hangt dus met een negatieve top:
-  // zo blijven de planken op hun oude plek en loopt de ketting boven de sectie
-  // uit, achter de kop langs tot de bovenrand van het scherm. Het vel is
-  // 3849 op 2828 na het snijden en de planken beginnen op 0,668 daarvan, dus op
-  // een breedte van 0,892 zit het hout 0,438 onder de top van het vel: -0,20
-  // plus 0,438 zet de planken op 0,238, ongeveer waar ze in de mockup staan.
-  bord: { v: 3849 / 2828, l: 0.055, b: 0.892, t: -0.20 },// hangend bord met kettingen
-  klem: { v: 1080 / 1244, l: 0.046, b: 0.906, t: 0.490 },// lang klembord, de ketting
-  woord: { v: 1080 / 419, l: 0.055, b: 0.897, t: 0.817 },// groen bord, het woord
-  invul: { v: 1080 / 295, l: 0.046, b: 0.906, t: 1.231 },// kort klembord, het veld
-  knop: { v: 720 / 202, l: 0.263, b: 0.420, t: 1.701 },  // houten plaat, de knop
+  // De KETTING is langer geworden in de art, dus het bord hangt met een negatieve
+  // top: zo blijven de planken op hun plek en loopt de ketting boven de sectie
+  // uit tot voorbij de rand van het scherm. Het vel is 3849 op 2828 na het
+  // snijden en het hout begint op 0,668 daarvan, dus op een breedte van 0,94 zit
+  // het hout 0,462 onder de top van het vel.
+  //
+  // DE BREEDTES ten opzichte van elkaar: het klembord is het smalst, want dat is
+  // de laag die eronder ligt. Het groene bord en het invulveld zijn even breed en
+  // steken er aan weerszijden overheen; het hangende bord zit daartussenin.
+  bord: { v: 3849 / 2828, l: 0.030, b: 0.940, t: -0.2235 }, // hangend bord met kettingen
+  klem: { v: 1080 / 1244, l: 0.047, b: 0.906, t: 0.490 },   // lang klembord, de ketting
+  woord: { v: 1080 / 419, l: 0.020, b: 0.960, t: 0.8048 },  // groen bord, het woord
+  invul: { v: 1080 / 295, l: 0.020, b: 0.960, t: 1.2237 },  // kort klembord, het veld
+  knop: { v: 720 / 202, l: 0.290, b: 0.420, t: 1.701 },     // houten plaat, de knop
 } as const;
 /** Hoe hoog de hele bouw is, in dezelfde eenheid. */
 const HOOG = ART.knop.t + ART.knop.b / ART.knop.v + 0.02;
@@ -142,7 +145,7 @@ const INKT = "#3A2A17";     // de kleur van geschreven tekst op het papier
 const GROEN_INKT = "#EBF5DC";
 
 /** Een stuk art op zijn plek, met een schaduw eronder tenzij die uit staat. */
-function Laag({ art, maat, schaduw = true, zIndex, children, blur = 9, zak = 7 }: {
+function Laag({ art, maat, schaduw = true, zIndex, children, blur = 13, zak = 10 }: {
   art: string;
   maat: { v: number; l: number; b: number; t: number };
   schaduw?: boolean;
@@ -173,7 +176,7 @@ function Laag({ art, maat, schaduw = true, zIndex, children, blur = 9, zak = 7 }
           src={art} alt="" aria-hidden draggable={false}
           style={{
             position: "absolute", inset: 0, width: "100%", height: "100%", display: "block",
-            filter: `brightness(0) blur(${blur}px)`, opacity: 0.5, transform: `translateY(${zak}px)`,
+            filter: `brightness(0) blur(${blur}px)`, opacity: 0.72, transform: `translateY(${zak}px)`,
             pointerEvents: "none",
           }}
         />
@@ -362,9 +365,13 @@ export function Woordketen({ seed, onKlaar, onOpnieuw }: {
 
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", paddingTop: 4 }}>
-      <div style={{ position: "relative", width: "min(360px, 94vw)", paddingBottom: `${HOOG * 100}%` }}>
+      {/* z-index 0 op de doos zelf maakt er EEN stapel van. Zonder dat doen de
+          lagen erin (1 tot 4) mee in de stapel van de pagina, en dan tekent het
+          hangende bord over de kop heen: de ketting loopt tot voorbij de
+          bovenrand en zou dwars door "Arena" heen lopen. */}
+      <div style={{ position: "relative", zIndex: 0, width: "min(360px, 94vw)", paddingBottom: `${HOOG * 100}%` }}>
         {/* HET HANGENDE BORD: de stand. */}
-        <Laag art="/ui/keten/scorebord.webp?v=2" maat={ART.bord} zIndex={4} blur={10} zak={8}>
+        <Laag art="/ui/keten/scorebord.webp?v=2" maat={ART.bord} zIndex={4} blur={15} zak={12}>
           <Teller kant="links" kop={t("ketenSchakel")} waarde={String(schakel)} />
           <Teller kant="rechts" kop={t("soepPunten")} waarde={String(totaal)} />
         </Laag>
@@ -394,7 +401,7 @@ export function Woordketen({ seed, onKlaar, onOpnieuw }: {
 
         {/* HET GROENE BORD: het woord waar je nu op staat, met de letter die je
             moet gebruiken in het goud. */}
-        <Laag art="/ui/keten/woordvak.webp?v=1" maat={ART.woord} zIndex={3} blur={10} zak={7}>
+        <Laag art="/ui/keten/woordvak.webp?v=1" maat={ART.woord} zIndex={3} blur={15} zak={11}>
           <div
             style={{
               // Het WOORD krijgt de ruimte in het midden; de streep en de regel
@@ -450,7 +457,7 @@ export function Woordketen({ seed, onKlaar, onOpnieuw }: {
         </Laag>
 
         {/* HET KORTE KLEMBORD: het invulveld. */}
-        <Laag art="/ui/keten/klembord-invul.webp?v=1" maat={ART.invul} zIndex={3} blur={9} zak={6}>
+        <Laag art="/ui/keten/klembord-invul.webp?v=1" maat={ART.invul} zIndex={3} blur={13} zak={10}>
           <form
             onSubmit={(e) => { e.preventDefault(); void lever(); }}
             style={{ position: "absolute", inset: "22% 8% 14%", display: "flex", alignItems: "center", gap: 8 }}
@@ -496,7 +503,7 @@ export function Woordketen({ seed, onKlaar, onOpnieuw }: {
 
         {/* DE HOUTEN PLAAT: opnieuw of stoppen. */}
         {(fase !== "klaar" || onOpnieuw) && (
-          <Laag art="/ui/keten/knop.webp?v=1" maat={ART.knop} zIndex={3} blur={8} zak={6}>
+          <Laag art="/ui/keten/knop.webp?v=1" maat={ART.knop} zIndex={3} blur={11} zak={9}>
             <button
               onClick={fase === "klaar" ? onOpnieuw : () => setFase("klaar")}
               className="pressable"
@@ -538,7 +545,7 @@ export function PreviewWoordketen() {
   return (
     <Screen
       top={
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", paddingTop: "calc(14px + env(safe-area-inset-top))" }}>
+        <div style={{ position: "relative", zIndex: 3, display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", paddingTop: "calc(14px + env(safe-area-inset-top))" }}>
           <span style={{ flex: 1, fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>Arena</span>
           <span style={{ fontFamily: font.ui, fontSize: 11.5, fontWeight: 600, color: colors.redHi }}>testversie, telt niet mee</span>
         </div>
