@@ -29,7 +29,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LogOut, Timer } from "lucide-react";
 import { Screen } from "../components/Layout";
 import { KADER_LIJN_ROOD, NeonKader } from "../components/ProfileHero";
-import { ARENA_GOUD, colors, font, withAlpha } from "../theme/tokens";
+import { colors, font, withAlpha } from "../theme/tokens";
 import { sound } from "../sound/sound";
 import { useT } from "../i18n/i18n";
 import { VAK } from "./Arena";
@@ -523,298 +523,116 @@ function meng(van: string, naar: string, deel: number): string {
 }
 const donkerder = (hex: string, deel: number) => meng(hex, "#000000", 1 - deel);
 
-/** De verven voor de lijnen. Eén keer per svg neerzetten; wie ze twee keer
- *  neerzet krijgt dubbele id's en dan pakt de browser er willekeurig een. */
-function Verven() {
-  return (
-    <defs>
-      {/* Hetzelfde goud als KADER_LIJN_GOUD, maar als svg-verloop, zodat het
-          een streek kan volgen die geen rechthoek is. */}
-      {/* Hetzelfde goud als de ladder en de scoreplaat: opgemeten uit de art,
-          niet gekozen. Zie ARENA_GOUD in theme/tokens.ts. */}
-      <linearGradient id="rl-goud" x1="0" y1="0" x2="1" y2="0.8">
-        <stop offset="0%" stopColor={ARENA_GOUD[0]} />
-        <stop offset="14%" stopColor={ARENA_GOUD[1]} />
-        {/* Waar het goud vroeger dof bruin werd, gloeit het nu koper. Een
-            donkere plek in een neonlijn hoort niet dood te zijn maar alleen
-            verder weg, en warm goud dat wegzakt IS oranje. */}
-        <stop offset="30%" stopColor={ARENA_GOUD[2]} />
-        <stop offset="50%" stopColor={ARENA_GOUD[0]} />
-        <stop offset="68%" stopColor="#FF9A2E" />
-        <stop offset="84%" stopColor={ARENA_GOUD[4]} />
-        <stop offset="100%" stopColor={ARENA_GOUD[1]} />
-      </linearGradient>
-      {/* De oranje vonk. Hij brandt op een KWART en op driekwart van de lijn,
-          precies waar de blauwe kern uitdooft, dus de twee vullen elkaar aan in
-          plaats van elkaar te vertroebelen. Alleen vervaagd getekend: een vonk
-          hoort licht te zijn, geen streep. */}
-      <linearGradient id="rl-vonk" x1="0" y1="0" x2="1" y2="0.8">
-        <stop offset="0%" stopColor="#FF9A2E" stopOpacity="0" />
-        <stop offset="22%" stopColor="#FFB55A" stopOpacity="0.85" />
-        <stop offset="40%" stopColor="#FF9A2E" stopOpacity="0" />
-        <stop offset="60%" stopColor="#FF9A2E" stopOpacity="0" />
-        <stop offset="78%" stopColor="#FFB55A" stopOpacity="0.85" />
-        <stop offset="100%" stopColor="#FF9A2E" stopOpacity="0" />
-      </linearGradient>
-      {/* De blauwe kern. Aan de uiteinden doorzichtig en in het MIDDEN op zijn
-          felst: zo is het een highlight op de lijn en niet een tweede lijn
-          ernaast. Een kern die overal even hard staat leest als twee gestapelde
-          randen in twee kleuren. */}
-      <linearGradient id="rl-kern" x1="0" y1="0" x2="1" y2="0.8">
-        <stop offset="0%" stopColor="#7BD8FF" stopOpacity="0" />
-        <stop offset="28%" stopColor="#7BD8FF" stopOpacity="0.55" />
-        <stop offset="50%" stopColor="#E8FBFF" stopOpacity="0.95" />
-        <stop offset="72%" stopColor="#7BD8FF" stopOpacity="0.55" />
-        <stop offset="100%" stopColor="#7BD8FF" stopOpacity="0" />
-      </linearGradient>
-      {/* Het paars van het bovenpaneel staat op 20%: je moet er doorheen kunnen
-          kijken naar de zaal. Naar onderen een haartje zwaarder, zodat het vlak
-          nog steeds belicht oogt en niet als een egale waas. */}
-      {/* Dezelfde kern als hierboven maar in paars, voor de naamplaat. Het goud
-          aan de uiteinden blijft daarmee goud; alleen het licht dat er middenin
-          doorheen brandt is paars. */}
-      <linearGradient id="rl-kern-paars" x1="0" y1="0" x2="1" y2="0.8">
-        <stop offset="0%" stopColor="#C98BFF" stopOpacity="0" />
-        <stop offset="28%" stopColor="#C98BFF" stopOpacity="0.55" />
-        <stop offset="50%" stopColor="#F3E2FF" stopOpacity="0.95" />
-        <stop offset="72%" stopColor="#C98BFF" stopOpacity="0.55" />
-        <stop offset="100%" stopColor="#C98BFF" stopOpacity="0" />
-      </linearGradient>
-      {/* De vulling van de sectie: ZWART in plaats van paars, om te zien hoe de
-          doorzichtigheid daarop leest. De dekking blijft precies zoals hij was
-          (19 tot 23 procent van boven naar onder), want dat is het enige dat we
-          nu willen kunnen beoordelen; alleen de kleur eronder is gewisseld. */}
-      <linearGradient id="rl-vul" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor="#000000" stopOpacity="0.19" />
-        <stop offset="55%" stopColor="#000000" stopOpacity="0.21" />
-        <stop offset="100%" stopColor="#000000" stopOpacity="0.23" />
-      </linearGradient>
-      {/* De naamplaat dekt wel: hij is klein en draagt de naam, dus daar mag de
-          zaal niet doorheen schijnen. */}
-      {/* De naamplaat. De onderkant liep naar bijna-zwart weg en dat las als een
-          schaduw ín de plaat; nu blijft hij paars en komt het licht van een
-          witte punt op de onderrand. */}
-      <linearGradient id="rl-plaat" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor="#3E1D69" />
-        <stop offset="52%" stopColor="#2B1450" />
-        <stop offset="100%" stopColor="#24113F" />
-      </linearGradient>
-      {/* De witte punt op de onderrand: fel in het midden en aan beide kanten
-          weg. De gradient begrenst hem zelf, dus er is geen streepmaat nodig. */}
-      <linearGradient id="rl-punt-onder" x1="0" y1="0" x2="1" y2="0">
-        <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0" />
-        <stop offset="28%" stopColor="#E8D4FF" stopOpacity="0.25" />
-        <stop offset="42%" stopColor="#FFFFFF" stopOpacity="0.9" />
-        <stop offset="50%" stopColor="#FFFFFF" stopOpacity="1" />
-        <stop offset="58%" stopColor="#FFFFFF" stopOpacity="0.9" />
-        <stop offset="72%" stopColor="#E8D4FF" stopOpacity="0.25" />
-        <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
-      </linearGradient>
-      {/* Het somvak. GEMETEN in de mockup (872x1804), niet geschat: het vak ligt
-          daar op y 501-662, en bemonsterd op twee kolommen naast de cijfers geeft
-          dat van boven naar onder:
+// De sectie en het somvak zijn ART geworden, dus de svg-verven die hier stonden
+// (het goud, de blauwe kern, de vullingen, de gloedfilters) hebben geen tekening
+// meer om op te zetten. Ze zijn met NeonPad en achthoek mee verdwenen. Wat er nu
+// nog in code staat is de klokbalk, en die tekent zijn eigen kleuren.
 
-            4%  #161936     60%  #0D1021
-           20%  #151831     80%  #0A0D1C
-           40%  #111429     96%  #0A0C1A
-
-          Het is dus blauwVIOLET en niet blauwgrijs: bovenin is blauw ruim twee
-          keer rood. Precies die verzadiging maakt het warm; een grijzere variant
-          van dezelfde helderheid oogt meteen dof. */}
-      <linearGradient id="rl-vul-diep" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="4%" stopColor="#161936" />
-        <stop offset="20%" stopColor="#151831" />
-        <stop offset="40%" stopColor="#111429" />
-        <stop offset="60%" stopColor="#0D1021" />
-        <stop offset="80%" stopColor="#0A0D1C" />
-        <stop offset="100%" stopColor="#0A0C1A" />
-      </linearGradient>
-      <filter id="rl-gloed" x="-14%" y="-16%" width="128%" height="132%">
-        <feGaussianBlur stdDeviation="1.5" />
-      </filter>
-      <filter id="rl-kerngloed" x="-14%" y="-16%" width="128%" height="132%">
-        <feGaussianBlur stdDeviation="2.4" />
-      </filter>
-    </defs>
-  );
-}
-
-/** Eén omtrek, vier keer getekend: de vervaagde gouden gloed, de gouden body,
- *  een vervaagde blauwe kern en daarbovenop de scherpe blauwe kern. Van buiten
- *  naar binnen dus goud met een blauw hart, wat op afstand leest als één lijn
- *  die van binnenuit brandt. */
-function NeonPad({ pad, vulling, breed = 0.8, kern = "rl-kern", gloed = true, glans = false }: { pad: string; vulling?: string; breed?: number; kern?: string; gloed?: boolean; glans?: boolean }) {
-  return (
-    <>
-      {/* De vervaagde lagen zijn de gloed. Zonder die drie blijft er een kale
-          gouden lijn met een kern over, en dat is precies wat het kader hoort te
-          zijn: de plaat met de naam is het enige dat mag oplichten. */}
-      {gloed && <path d={pad} fill="none" stroke="url(#rl-goud)" strokeWidth={breed + 1.2} opacity="0.3" filter="url(#rl-gloed)" />}
-      <path d={pad} fill={vulling ?? "none"} stroke="url(#rl-goud)" strokeWidth={breed} strokeLinejoin="round" />
-      {gloed && <path d={pad} fill="none" stroke="url(#rl-vonk)" strokeWidth={breed + 2.2} opacity="0.75" filter="url(#rl-kerngloed)" />}
-      {gloed && <path d={pad} fill="none" stroke={`url(#${kern})`} strokeWidth={breed + 1.6} opacity="0.5" filter="url(#rl-kerngloed)" />}
-      <path d={pad} fill="none" stroke={`url(#${kern})`} strokeWidth={breed * 0.42} strokeLinejoin="round" />
-      {glans && <path d={pad} fill="none" stroke="url(#rl-glans)" strokeWidth={breed * 0.9} strokeLinecap="round" />}
-    </>
-  );
-}
-
-/** Een achthoek in echte pixels: dezelfde afsnijding als het kader, zodat de
- *  twee vakken familie zijn. */
-function achthoek(b: number, h: number, c: number): string {
-  return `M ${c} 0 L ${b - c} 0 L ${b} ${c} L ${b} ${h - c} L ${b - c} ${h} L ${c} ${h} L 0 ${h - c} L 0 ${c} Z`;
-}
-
-/** Het kader MET de tab erin: één doorlopende gouden lijn die bovenaan in het
- *  midden omhoog stapt, over de naam heen loopt en weer afdaalt. De naam zit dus
- *  IN de rand en ligt er niet als een etiket op.
+/** Het kader van de sectie. Dit is ART en geen getekend pad meer.
  *
- *  Waarom een eigen pad en niet twee NeonKaders op elkaar: een kader kan alleen
- *  een gesloten rechthoek tekenen, en dan krijg je een pil BOVENOP een lijn, met
- *  het stuk lijn er nog achter. Hier is het één omtrek, dus er is geen "achter".
+ *  Het vel is `sectie-lijn.webp`: één gouden lijn met een violette gloed en een
+ *  kristalpil die er bovenuit steekt. Het stond op puur zwart, en licht op zwart
+ *  is voorvermenigvuldigd (wat je ziet is kleur maal alfa), dus het hoogste
+ *  kanaal IS de alfa en delen door die alfa geeft de kleur terug. De naamplaat
+ *  is daarbij ondoorzichtig gemaakt: hij draagt de naam, daar mag de zaal niet
+ *  doorheen schijnen.
  *
- *  Het pad wordt in ECHTE pixels getekend, niet in een uitgerekte viewBox: dan
- *  blijven de afsnijdingen 45 graden en de lijn overal even dik, hoe breed het
- *  vak ook wordt. Vandaar dat het vak zichzelf opmeet.
+ *  De VULLING zit niet in de art maar in een eigen laag met `sectie-vlak.webp`
+ *  als masker. Zo blijft de kleur van de sectie in CSS te kiezen zonder dat er
+ *  een nieuw plaatje aan te pas komt, en volgt hij toch precies de binnenkant
+ *  van de lijn, tot en met de schouders onder de pil.
+ *
+ *  Alle maten hieronder zijn OPGEMETEN in het vel, want er zit lucht omheen (de
+ *  gloed) en de pil steekt boven de lijn uit. De sectie IS de lijndoos; het vel
+ *  hangt daar met negatieve marges omheen.
  */
-/** De letterspatie van de naam op de tab. Staat apart omdat hij op drie plekken
- *  tegelijk moet kloppen: de spatiëring zelf, de breedte van de plaat eronder en
- *  de correctie die de spatie achter de laatste letter weer weghaalt. */
+const SECTIE_ART = {
+  vel: { b: 3824, h: 2046 },
+  lijn: { l: 8, r: 3816, t: 189, o: 2025 },    // waar de gouden lijn loopt
+  plaat: { l: 1333, r: 2486, t: 40, o: 249 },  // de binnenkant van de naamplaat
+};
+
+/** En hetzelfde voor het somvak, `som-vak.webp`. Dat vel kwam WEL op wit
+ *  platgeslagen binnen: waargenomen = kunst maal alfa plus 255 maal (1 min
+ *  alfa). Photoshop laat dat niet zien want dat leest alleen het alfakanaal,
+ *  maar een browser mengt de RGB eronder wel mee en dan zie je een witte rand.
+ *  Teruggerekend en daarna pas verkleind. */
+const SOM_ART = {
+  vel: { b: 3896, h: 912 },
+  lijn: { l: 9, r: 3886, t: 15, o: 893 },
+};
+
+/** Het vel op zijn lijndoos leggen: de doos IS het element, het vel hangt er met
+ *  negatieve marges omheen. Zo staat de gouden lijn precies op de rand van het
+ *  vak, wat er ook aan gloed of uitsteeksel omheen zit. */
+function velOp(art: { vel: { b: number; h: number }; lijn: { l: number; r: number; t: number; o: number } }) {
+  const LB = art.lijn.r - art.lijn.l;
+  const LH = art.lijn.o - art.lijn.t;
+  return {
+    LB, LH,
+    bd: (v: number) => `${((v / LB) * 100).toFixed(4)}%`,
+    hd: (v: number) => `${((v / LH) * 100).toFixed(4)}%`,
+    laag: {
+      left: `${((-art.lijn.l / LB) * 100).toFixed(4)}%`,
+      top: `${((-art.lijn.t / LH) * 100).toFixed(4)}%`,
+      width: `${((art.vel.b / LB) * 100).toFixed(4)}%`,
+      height: `${((art.vel.h / LH) * 100).toFixed(4)}%`,
+    } as const,
+  };
+}
+
+/** De vulling van de sectie. Eén regel, want dit is precies wat er nog gekozen
+ *  moet worden. Nu zwart op 19 tot 23 procent, zoals het getekende kader had. */
+const SECTIE_VUL = "linear-gradient(180deg, rgba(0,0,0,.19) 0%, rgba(0,0,0,.21) 55%, rgba(0,0,0,.23) 100%)";
+
+/** De letterspatie van de naam op de plaat. De spatie komt ook ACHTER de laatste
+ *  letter te staan en telt mee in de breedte, dus zonder de negatieve marge
+ *  hieronder staat het woord een halve spatie te ver links op de plaat. */
 const NAAM_SPATIE = 2.2;
 
 function TabKader({ titel, children }: { titel: string; children: React.ReactNode }) {
-  const doos = useRef<HTMLDivElement | null>(null);
-  const naam = useRef<HTMLSpanElement | null>(null);
-  const [maat, setMaat] = useState({ b: 0, h: 0 });
-  // De plaat is precies zo breed als de naam die erop staat. Meten en niet
-  // gokken: het lettertype laadt na de eerste tekening, en een breedte die je
-  // uit de letters uitrekent klopt daarna nooit meer.
-  const [naamBreed, setNaamBreed] = useState(0);
-  useEffect(() => {
-    const el = naam.current;
-    if (!el) return;
-    const meet = () => setNaamBreed(el.getBoundingClientRect().width);
-    meet();
-    const ro = new ResizeObserver(meet);
-    ro.observe(el);
-    document.fonts?.ready.then(meet).catch(() => {});
-    return () => ro.disconnect();
-  }, [titel]);
-  useEffect(() => {
-    const el = doos.current;
-    if (!el) return;
-    const meet = () => setMaat({ b: el.clientWidth, h: el.clientHeight });
-    meet();
-    const ro = new ResizeObserver(meet);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-
-  const TH = 15;   // hoogte van de tab: net genoeg om uit de lijn te stappen
-  const TB = 208;  // breedte van de tab, schouders meegerekend
-  const HELLING = 10; // de schuine kant waarmee de lijn omhoog stapt
-  const TC = 5;    // de facetten op de top, waarmee de tab een kristal wordt
-  const C = 16;    // afsnijding van de hoeken
-
-  // DE NAAMPLAAT. De lijn stapt omhoog (dat zijn de schouders) en daar ligt een
-  // eigen plaatje overheen met de naam erop: zeshoekig, met de uiteinden
-  // afgeschuind naar een punt. De plaat is smaller dan de tab, precies zoveel
-  // dat de schuine schouders er aan weerszijden onderuit komen.
-  const PC = 9;                 // de afschuining van de uiteinden
-  // De punten sluiten om de naam heen: de tekst plus de twee schuintes plus een
-  // haar lucht. De gemeten breedte is die van de DOOS en daar zit de spatie
-  // achter de laatste letter nog in; die telt hier niet mee, anders staat de
-  // naam een halve spatie links in zijn eigen plaat.
-  const PB = Math.max(90, Math.round(naamBreed - NAAM_SPATIE) + 2 * PC + 16);
-  const PH = TH + 12;           // hoogte: hij steekt boven EN onder de lijn uit
-
-  const { b, h } = maat;
-  const x1 = Math.round((b - TB) / 2);
-  const x2 = Math.round((b + TB) / 2);
-  // Vier knikken per kant in plaats van een: de lijn stapt schuin omhoog en
-  // breekt vlak onder de top nog een keer. Dat tweede facet maakt het verschil
-  // tussen een bult in de rand en een geslepen kristal; met een enkele helling
-  // leest de tab als een hoekje dat is opgetild.
-  const pad = b > 0 ? [
-    `M ${C} ${TH}`,
-    `L ${x1} ${TH}`,
-    `L ${x1 + HELLING} ${TC}`,
-    `L ${x1 + HELLING + TC} 0`,
-    `L ${x2 - HELLING - TC} 0`,
-    `L ${x2 - HELLING} ${TC}`,
-    `L ${x2} ${TH}`,
-    `L ${b - C} ${TH}`,
-    `L ${b} ${TH + C}`,
-    `L ${b} ${h - C}`,
-    `L ${b - C} ${h}`,
-    `L ${C} ${h}`,
-    `L 0 ${h - C}`,
-    `L 0 ${TH + C}`,
-    "Z",
-  ].join(" ") : "";
-
-  const px = (b - PB) / 2;
-  // Het hart van de plaat ligt op de lijn van de INHAM (die op nul), niet op de
-  // bovenlijn van het kader. Zo loopt de opgetilde lijn dwars door de plaat heen
-  // en blijft de kaderlijn er als tweede lijn onderdoor lopen.
-  const py = -PH / 2;
-  const plaat = b > 0 ? [
-    `M ${px + PC} ${py}`,
-    `L ${px + PB - PC} ${py}`,
-    `L ${px + PB} ${py + PH / 2}`,
-    `L ${px + PB - PC} ${py + PH}`,
-    `L ${px + PC} ${py + PH}`,
-    `L ${px} ${py + PH / 2}`,
-    "Z",
-  ].join(" ") : "";
-
-  // Alleen de ONDERrand van de plaat: van punt, langs de onderkant, naar punt.
-  // Daar glijdt het licht overheen.
-  const plaatOnder = b > 0 ? [
-    `M ${px} ${py + PH / 2}`,
-    `L ${px + PC} ${py + PH}`,
-    `L ${px + PB - PC} ${py + PH}`,
-    `L ${px + PB} ${py + PH / 2}`,
-  ].join(" ") : "";
-
+  const A = SECTIE_ART;
+  const { LB, LH, bd, hd, laag: vel } = velOp(A);
+  const masker = "url(/ui/reken/sectie-vlak.webp?v=2)";
   return (
-    <div ref={doos} style={{ position: "relative", width: "100%" }}>
-      {b > 0 && (
-        <svg width={b} height={h} style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "visible" }} aria-hidden>
-          <Verven />
-          <NeonPad pad={pad} vulling="url(#rl-vul)" gloed={false} />
-          <NeonPad pad={plaat} vulling="url(#rl-plaat)" breed={0.62} kern="rl-kern-paars" gloed={false} glans />
-          <path d={plaatOnder} fill="none" stroke="url(#rl-punt-onder)" strokeWidth="2.4" opacity="0.45" style={{ filter: "blur(1.6px)" }} />
-          <path d={plaatOnder} fill="none" stroke="url(#rl-punt-onder)" strokeWidth="0.9" />
-          {/* De veeg over de onderrand. `pathLength` zet de lijn om naar honderd
-              eenheden, dus de streepmaat klopt bij elke schermbreedte zonder dat
-              ik de echte lengte hoef te kennen. */}
-          <path
-            d={plaatOnder} fill="none" pathLength="100" className="reken-veeg"
-            stroke="#F3E2FF" strokeWidth="2.6" strokeLinecap="round"
-            strokeDasharray="13 100" opacity="0.55" style={{ filter: "blur(2.2px)" }}
-          />
-          <path
-            d={plaatOnder} fill="none" pathLength="100" className="reken-veeg"
-            stroke="#FFFFFF" strokeWidth="1" strokeLinecap="round"
-            strokeDasharray="13 100"
-          />
-        </svg>
-      )}
+    <div style={{ position: "relative", width: "100%", aspectRatio: `${LB} / ${LH}` }}>
+      <span
+        aria-hidden
+        style={{
+          position: "absolute", ...vel, pointerEvents: "none", background: SECTIE_VUL,
+          WebkitMaskImage: masker, maskImage: masker,
+          WebkitMaskSize: "100% 100%", maskSize: "100% 100%",
+          WebkitMaskRepeat: "no-repeat", maskRepeat: "no-repeat",
+        }}
+      />
+      <img
+        src="/ui/reken/sectie-lijn.webp?v=2"
+        alt=""
+        aria-hidden
+        draggable={false}
+        style={{ position: "absolute", ...vel, maxWidth: "none", pointerEvents: "none", display: "block" }}
+      />
       <span
         style={{
-          position: "absolute", top: py, left: 0, right: 0, height: PH,
+          position: "absolute",
+          left: bd(A.plaat.l - A.lijn.l), width: bd(A.plaat.r - A.plaat.l),
+          top: hd(A.plaat.t - A.lijn.t), height: hd(A.plaat.o - A.plaat.t),
           display: "grid", placeItems: "center", pointerEvents: "none",
           fontFamily: font.wide, fontSize: 11, letterSpacing: NAAM_SPATIE, textTransform: "uppercase",
           color: "#FFD98A", textShadow: "0 0 10px rgba(255,180,50,.55)",
         }}
       >
-        {/* De negatieve marge haalt de spatie achter de laatste letter weg. Die
-            hoort bij de doos maar niet bij het woord, dus zonder de correctie
-            legt het raster het woord een halve spatie te ver naar links. */}
-        <span ref={naam} style={{ marginRight: -NAAM_SPATIE }}>{titel}</span>
+        <span style={{ marginRight: -NAAM_SPATIE, whiteSpace: "nowrap" }}>{titel}</span>
       </span>
-      <div style={{ position: "relative", padding: `${TH + 16}px 16px 11px`, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
+      {/* De inhoud staat BINNEN de lijndoos en wordt daarin gecentreerd. De doos
+          heeft de verhouding van de art, dus de hoogte ligt vast; verticaal
+          centreren verdeelt de lucht die overblijft gelijk over boven en onder. */}
+      <div
+        style={{
+          position: "absolute", inset: 0, padding: "4px 16px",
+          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3,
+        }}
+      >
         {children}
       </div>
     </div>
@@ -887,33 +705,30 @@ function Klokbalk({ rest, seconden }: { rest: number; seconden: number }) {
   );
 }
 
-/** Het vak met de som erin: dezelfde omtrek en dezelfde lijn als het kader
- *  eromheen, een slag kleiner en een slag donkerder, zodat het erin ligt in
- *  plaats van erop. */
+/** Het vak met de som erin. Ook ART: `som-vak.webp`, dezelfde afsnijding als het
+ *  kader eromheen maar een slag kleiner en een slag donkerder, zodat het erin
+ *  ligt in plaats van erop.
+ *
+ *  Het vel is PLATTER dan het getekende vak dat hier stond (4,42 tegen ongeveer
+ *  3,5 breed op hoog). Dat is precies de bedoeling: het somvak was te hoog en
+ *  duwde "GEVALLEN OP TREDE 1" tegen de bovenlijst aan. De hoogte volgt nu uit
+ *  de verhouding van het vel, dus daar valt niets meer aan te verschuiven.
+ *
+ *  Het getal krijgt GEEN eigen hoogte meer maar wordt in het vak gecentreerd.
+ *  Een vaste hoogte plus een lettergrootte die per fase verschilt (48 voor de
+ *  som, 58 voor het aftellen) is twee maten die tegen elkaar in werken. */
 function SomVenster({ children }: { children: React.ReactNode }) {
-  const doos = useRef<HTMLDivElement | null>(null);
-  const [maat, setMaat] = useState({ b: 0, h: 0 });
-  useEffect(() => {
-    const el = doos.current;
-    if (!el) return;
-    const meet = () => setMaat({ b: el.clientWidth, h: el.clientHeight });
-    meet();
-    const ro = new ResizeObserver(meet);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
+  const { LB, LH, laag: vel } = velOp(SOM_ART);
   return (
-    <div ref={doos} style={{ position: "relative", width: "100%" }}>
-      {maat.b > 0 && (
-        <svg width={maat.b} height={maat.h} style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "visible" }} aria-hidden>
-          {/* GEEN <Verven/> hier: dit vak zit in TabKader en die zet ze al neer.
-              Twee keer dezelfde id's betekent dat url(#id) de eerste in het
-              document pakt, en dat hangt af van de DOM-volgorde in plaats van
-              van welke svg erom vraagt. */}
-          <NeonPad pad={achthoek(maat.b, maat.h, 13)} vulling="url(#rl-vul-diep)" breed={0.72} gloed={false} glans />
-        </svg>
-      )}
-      <div style={{ position: "relative", padding: "10px 14px", display: "grid", placeItems: "center" }}>{children}</div>
+    <div style={{ position: "relative", width: "100%", aspectRatio: `${LB} / ${LH}`, flexShrink: 0 }}>
+      <img
+        src="/ui/reken/som-vak.webp?v=1"
+        alt=""
+        aria-hidden
+        draggable={false}
+        style={{ position: "absolute", ...vel, maxWidth: "none", pointerEvents: "none", display: "block" }}
+      />
+      <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", overflow: "hidden" }}>{children}</div>
     </div>
   );
 }
@@ -1096,7 +911,7 @@ export function Rekenladder({ seed, onKlaar, onOpnieuw }: {
                 key={fase === "tel" ? `tel-${tel}` : `som-${trede}`}
                 className="klem-kom"
                 style={{
-                  height: 62, display: "grid", placeItems: "center", lineHeight: 1,
+                  lineHeight: 1,
                   fontFamily: font.display, fontWeight: 800,
                   fontSize: fase === "tel" ? 58 : 48, letterSpacing: 2,
                   color: "#FFFFFF",
