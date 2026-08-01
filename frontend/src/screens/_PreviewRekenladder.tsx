@@ -574,30 +574,43 @@ function Verven() {
       </linearGradient>
       {/* De naamplaat dekt wel: hij is klein en draagt de naam, dus daar mag de
           zaal niet doorheen schijnen. */}
+      {/* De naamplaat. De onderkant liep naar bijna-zwart weg en dat las als een
+          schaduw ín de plaat; nu blijft hij paars en komt het licht van een
+          witte punt op de onderrand. */}
       <linearGradient id="rl-plaat" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor="#3A1B62" />
-        <stop offset="52%" stopColor="#24103F" />
-        <stop offset="100%" stopColor="#150826" />
+        <stop offset="0%" stopColor="#3E1D69" />
+        <stop offset="52%" stopColor="#2B1450" />
+        <stop offset="100%" stopColor="#24113F" />
       </linearGradient>
-      <linearGradient id="rl-vul-diep" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor="#101A30" />
-        <stop offset="60%" stopColor="#0A1220" />
-        <stop offset="100%" stopColor="#070C16" />
-      </linearGradient>
-      {/* De witte punt: een KORTE felle plek op de lijn, niet een lichte lijn.
-          Twee glinsters, een sterke linksboven en een zwakkere verderop, want
-          gepolijst metaal vangt het licht op een paar plekken en niet overal.
-          Loopt zo'n glans over de halve lijn, dan leest het niet als licht maar
-          als een lichtere kleur. */}
-      <linearGradient id="rl-glans" x1="0" y1="0" x2="1" y2="0.8">
+      {/* De witte punt op de onderrand: fel in het midden en aan beide kanten
+          weg. De gradient begrenst hem zelf, dus er is geen streepmaat nodig. */}
+      <linearGradient id="rl-punt-onder" x1="0" y1="0" x2="1" y2="0">
         <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0" />
-        <stop offset="15%" stopColor="#FFFFFF" stopOpacity="0" />
-        <stop offset="19%" stopColor="#FFFFFF" stopOpacity="0.95" />
-        <stop offset="23%" stopColor="#FFFFFF" stopOpacity="0" />
-        <stop offset="60%" stopColor="#FFFFFF" stopOpacity="0" />
-        <stop offset="64%" stopColor="#FFFFFF" stopOpacity="0.5" />
-        <stop offset="68%" stopColor="#FFFFFF" stopOpacity="0" />
+        <stop offset="28%" stopColor="#E8D4FF" stopOpacity="0.25" />
+        <stop offset="42%" stopColor="#FFFFFF" stopOpacity="0.9" />
+        <stop offset="50%" stopColor="#FFFFFF" stopOpacity="1" />
+        <stop offset="58%" stopColor="#FFFFFF" stopOpacity="0.9" />
+        <stop offset="72%" stopColor="#E8D4FF" stopOpacity="0.25" />
         <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
+      </linearGradient>
+      {/* Het somvak. GEMETEN in de mockup (872x1804), niet geschat: het vak ligt
+          daar op y 501-662, en bemonsterd op twee kolommen naast de cijfers geeft
+          dat van boven naar onder:
+
+            4%  #161936     60%  #0D1021
+           20%  #151831     80%  #0A0D1C
+           40%  #111429     96%  #0A0C1A
+
+          Het is dus blauwVIOLET en niet blauwgrijs: bovenin is blauw ruim twee
+          keer rood. Precies die verzadiging maakt het warm; een grijzere variant
+          van dezelfde helderheid oogt meteen dof. */}
+      <linearGradient id="rl-vul-diep" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="4%" stopColor="#161936" />
+        <stop offset="20%" stopColor="#151831" />
+        <stop offset="40%" stopColor="#111429" />
+        <stop offset="60%" stopColor="#0D1021" />
+        <stop offset="80%" stopColor="#0A0D1C" />
+        <stop offset="100%" stopColor="#0A0C1A" />
       </linearGradient>
       <filter id="rl-gloed" x="-14%" y="-16%" width="128%" height="132%">
         <feGaussianBlur stdDeviation="1.5" />
@@ -747,6 +760,8 @@ function TabKader({ titel, children }: { titel: string; children: React.ReactNod
           <Verven />
           <NeonPad pad={pad} vulling="url(#rl-vul)" gloed={false} />
           <NeonPad pad={plaat} vulling="url(#rl-plaat)" breed={0.62} kern="rl-kern-paars" gloed={false} glans />
+          <path d={plaatOnder} fill="none" stroke="url(#rl-punt-onder)" strokeWidth="2.4" opacity="0.45" style={{ filter: "blur(1.6px)" }} />
+          <path d={plaatOnder} fill="none" stroke="url(#rl-punt-onder)" strokeWidth="0.9" />
           {/* De veeg over de onderrand. `pathLength` zet de lijn om naar honderd
               eenheden, dus de streepmaat klopt bij elke schermbreedte zonder dat
               ik de echte lengte hoef te kennen. */}
