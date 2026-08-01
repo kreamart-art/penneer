@@ -18,7 +18,7 @@
 //   - de maskertruc (de padding uitknippen): die knipt een RECHTHOEK uit, dus op
 //     de afgeschuinde hoeken wordt de lijn smaller en valt hij daar weg.
 // Een pad volgt de afschuining wel, dus de hoeken zijn even dik als de rest.
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { ARENA_GOUD, font, withAlpha } from "../theme/tokens";
 
 const achthoek = (b: number, h: number, c: number) =>
@@ -28,10 +28,14 @@ const achthoek = (b: number, h: number, c: number) =>
  *  het pad wordt in ECHTE pixels getekend: alleen dan blijven de afschuiningen
  *  45 graden en is de lijn overal even dik, hoe breed het vak ook wordt. */
 function Glas({ verf, dik, hoek, vulling, gloed, glans = "#FFFFFF", children, style }: {
-  verf: string;
+  /** "goud" of "tegel": welke verf, niet de url. De id's worden per instantie
+   *  uniek gemaakt, want vier keer dezelfde id in een document betekent dat de
+   *  browser bij url(#id) ALTIJD de eerste pakt. Dan vullen de tegels zich met
+   *  de verf van de bak eronder, en dat zie je terug op de hoeken. */
+  verf: "goud" | "tegel";
   dik: number;
   hoek: number;
-  vulling: string;
+  vulling: "leeg" | "tegel";
   /** Een vervaagde kopie van de omtrek eronder: licht dat van het glas afkomt. */
   gloed?: string;
   /** De kleur van het streepje op de bovenrand. */
@@ -51,6 +55,10 @@ function Glas({ verf, dik, hoek, vulling, gloed, glans = "#FFFFFF", children, st
     return () => ro.disconnect();
   }, []);
   const { b, h } = maat;
+  const eig = useId().replace(/:/g, "");   // eigen id's per instantie
+  const id = (n: string) => `${eig}-${n}`;
+  const verfUrl = `url(#${id(verf === "goud" ? "goud" : "paars")})`;
+  const vulUrl = vulling === "leeg" ? "rgba(24,10,44,.20)" : `url(#${id("tegel")})`;
   return (
     <div ref={doos} style={{ position: "relative", ...style }}>
       {b > 0 && (
@@ -58,7 +66,7 @@ function Glas({ verf, dik, hoek, vulling, gloed, glans = "#FFFFFF", children, st
           <defs>
             {/* Hetzelfde goud als de ladder en de scoreplaat: opgemeten uit de
                 art, niet gekozen. Zie ARENA_GOUD in theme/tokens.ts. */}
-            <linearGradient id="hb-goud" x1="0" y1="0" x2="1" y2="0.9">
+            <linearGradient id={id("goud")} x1="0" y1="0" x2="1" y2="0.9">
               <stop offset="0%" stopColor={ARENA_GOUD[0]} />
               <stop offset="24%" stopColor={ARENA_GOUD[1]} />
               <stop offset="52%" stopColor={ARENA_GOUD[2]} />
@@ -68,12 +76,12 @@ function Glas({ verf, dik, hoek, vulling, gloed, glans = "#FFFFFF", children, st
             {/* De vulling van een tegel: nog steeds twintig procent, maar
                 belicht. Een egale twintig procent leest als een sticker; met
                 licht bovenin en diepte onderin leest hetzelfde vlak als glas. */}
-            <linearGradient id="hb-tegel" x1="0" y1="0" x2="0" y2="1">
+            <linearGradient id={id("tegel")} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#A863FF" stopOpacity="0.26" />
               <stop offset="42%" stopColor="#5E2FA8" stopOpacity="0.19" />
               <stop offset="100%" stopColor="#1B0B36" stopOpacity="0.24" />
             </linearGradient>
-            <linearGradient id="hb-paars" x1="0" y1="0" x2="1" y2="0.9">
+            <linearGradient id={id("paars")} x1="0" y1="0" x2="1" y2="0.9">
               <stop offset="0%" stopColor="#C79BFF" />
               <stop offset="34%" stopColor="#8B5BD6" />
               <stop offset="62%" stopColor="#5E3596" />
@@ -84,7 +92,7 @@ function Glas({ verf, dik, hoek, vulling, gloed, glans = "#FFFFFF", children, st
                 voordat hij verdwijnt. Dat verloop is wat een glans op gepolijst
                 materiaal doet: de kern is wit, de aanloop draagt de kleur van
                 het materiaal zelf. */}
-            <linearGradient id="hb-punt" x1="0" y1="0" x2="1" y2="0.9">
+            <linearGradient id={id("punt")} x1="0" y1="0" x2="1" y2="0.9">
               <stop offset="0%" stopColor="#B98CFF" stopOpacity="0" />
               <stop offset="8%" stopColor="#B98CFF" stopOpacity="0.18" />
               <stop offset="13%" stopColor="#D9BEFF" stopOpacity="0.55" />
@@ -99,19 +107,19 @@ function Glas({ verf, dik, hoek, vulling, gloed, glans = "#FFFFFF", children, st
               <stop offset="76%" stopColor="#B98CFF" stopOpacity="0" />
               <stop offset="100%" stopColor="#B98CFF" stopOpacity="0" />
             </linearGradient>
-            <linearGradient id="hb-glans" x1="0" y1="0" x2="1" y2="0">
+            <linearGradient id={id("glans")} x1="0" y1="0" x2="1" y2="0">
               <stop offset="0%" stopColor={glans} stopOpacity="0" />
               <stop offset="50%" stopColor={glans} stopOpacity="0.95" />
               <stop offset="100%" stopColor={glans} stopOpacity="0" />
             </linearGradient>
             {/* De binnenschaduw: donker onderin, niets bovenin. Dat is wat een
                 vlak in een bak legt in plaats van erop. */}
-            <linearGradient id="hb-diep" x1="0" y1="0" x2="0" y2="1">
+            <linearGradient id={id("diep")} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#000000" stopOpacity="0" />
               <stop offset="58%" stopColor="#000000" stopOpacity="0" />
               <stop offset="100%" stopColor="#000000" stopOpacity="0.42" />
             </linearGradient>
-            <filter id="hb-waas" x="-25%" y="-30%" width="150%" height="160%">
+            <filter id={id("waas")} x="-25%" y="-30%" width="150%" height="160%">
               <feGaussianBlur stdDeviation="3" />
             </filter>
           </defs>
@@ -119,27 +127,27 @@ function Glas({ verf, dik, hoek, vulling, gloed, glans = "#FFFFFF", children, st
             <path
               d={achthoek(b - dik, h - dik, hoek)}
               transform={`translate(${dik / 2}, ${dik / 2})`}
-              fill="none" stroke={gloed} strokeWidth={dik + 2.2} opacity="0.55" filter="url(#hb-waas)"
+              fill="none" stroke={gloed} strokeWidth={dik + 2.2} opacity="0.55" filter={`url(#${id("waas")})`}
             />
           )}
           <path
             d={achthoek(b - dik, h - dik, hoek)}
             transform={`translate(${dik / 2}, ${dik / 2})`}
-            fill={vulling}
-            stroke={verf}
+            fill={vulUrl}
+            stroke={verfUrl}
             strokeWidth={dik}
             strokeLinejoin="round"
           />
           <path
             d={achthoek(b - dik, h - dik, hoek)}
             transform={`translate(${dik / 2}, ${dik / 2})`}
-            fill="url(#hb-diep)" stroke="none"
+            fill={`url(#${id("diep")})`} stroke="none"
           />
-          <line x1={b * 0.22} y1={dik + 1.1} x2={b * 0.78} y2={dik + 1.1} stroke="url(#hb-glans)" strokeWidth="1.2" />
+          <line x1={b * 0.22} y1={dik + 1.1} x2={b * 0.78} y2={dik + 1.1} stroke={`url(#${id("glans")})`} strokeWidth="1.2" />
           <path
             d={achthoek(b - dik, h - dik, hoek)}
             transform={`translate(${dik / 2}, ${dik / 2})`}
-            fill="none" stroke="url(#hb-punt)" strokeWidth={dik * 1.1} strokeLinecap="round"
+            fill="none" stroke={`url(#${id("punt")})`} strokeWidth={dik * 1.1} strokeLinecap="round"
           />
         </svg>
       )}
@@ -148,27 +156,33 @@ function Glas({ verf, dik, hoek, vulling, gloed, glans = "#FFFFFF", children, st
   );
 }
 
-/** Het edelsteentje met het aantal ernaast. */
-function Prijs({ aantal }: { aantal: number }) {
+/** Hoeveel je er nog hebt. Geen prijs meer: deze hulpen koop je niet, je krijgt
+ *  de eerste twee en de rest verdien je in de league, de ranglijsten en de
+ *  missies. Een kruisje in plaats van een muntje, want dit is een voorraad. */
+function Voorraad({ aantal }: { aantal: number }) {
+  const leeg = aantal <= 0;
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-      <svg width="10" height="12" viewBox="0 0 11 13" aria-hidden style={{ flexShrink: 0 }}>
-        <defs>
-          <linearGradient id="hb-steen" x1="0" y1="0" x2="0.6" y2="1">
-            <stop offset="0%" stopColor="#F0A6FF" />
-            <stop offset="45%" stopColor="#B44BE8" />
-            <stop offset="100%" stopColor="#7A22B0" />
-          </linearGradient>
-        </defs>
-        <path d="M5.5 0 L11 4.4 L5.5 13 L0 4.4 Z" fill="url(#hb-steen)" />
-        <path d="M5.5 0 L11 4.4 L5.5 5.6 Z" fill="#FFFFFF" opacity="0.35" />
-      </svg>
-      <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 11.5, color: "#FFF3D0" }}>{aantal}</span>
+    <span
+      style={{
+        display: "inline-flex", alignItems: "center", gap: 1,
+        fontFamily: font.display, fontWeight: 800, fontSize: 13,
+        color: leeg ? withAlpha("#EBD9FF", 0.45) : "#FFF3D0",
+        textShadow: leeg ? "none" : "0 1px 2px rgba(0,0,0,.7)",
+      }}
+    >
+      <span style={{ fontSize: 9, opacity: 0.75 }}>x</span>
+      {aantal}
     </span>
   );
 }
 
-export type Hulp = { sleutel: string; label: string; prijs: number; icoon: ReactNode };
+export type Hulp = {
+  sleutel: string;
+  label: string;
+  /** Hoeveel je er hebt. Nul betekent: wel te zien, niet te gebruiken. */
+  aantal: number;
+  icoon: ReactNode;
+};
 
 /** De drie tegels in hun bak. `onKies` is optioneel: zonder blijft de balk staan
  *  maar doet hij niets. `op` zijn de hulpen die al gebruikt zijn. */
@@ -180,40 +194,46 @@ export function Hulpbalk({ hulpen, breedte, onKies, op = [] }: {
 }) {
   return (
     <Glas
-      verf="url(#hb-goud)"
+      verf="goud"
       dik={1}
       hoek={12}
-      vulling="rgba(24,10,44,.20)"
+      vulling="leeg"
       style={{ width: breedte, padding: 7, flexShrink: 0 }}
     >
       <div style={{ display: "flex", gap: 6, padding: 5 }}>
         {hulpen.map((h) => (
           <Glas
             key={h.sleutel}
-            verf="url(#hb-paars)"
+            verf="tegel"
             dik={1}
             hoek={9}
             gloed="#8B5BD6"
             glans="#E3C7FF"
-            vulling="url(#hb-tegel)"
-            style={{ flex: 1, minWidth: 0, opacity: op.includes(h.sleutel) ? 0.32 : 1, transition: "opacity .2s ease-out" }}
+            vulling="tegel"
+            style={{ flex: 1, minWidth: 0, opacity: op.includes(h.sleutel) || h.aantal <= 0 ? 0.32 : 1, transition: "opacity .2s ease-out" }}
           >
             <button
-              onPointerDown={(e) => { e.preventDefault(); if (!op.includes(h.sleutel)) onKies?.(h.sleutel); }}
-              disabled={!onKies || op.includes(h.sleutel)}
+              onPointerDown={(e) => { e.preventDefault(); if (!op.includes(h.sleutel) && h.aantal > 0) onKies?.(h.sleutel); }}
+              disabled={!onKies || op.includes(h.sleutel) || h.aantal <= 0}
               style={{
-                width: "100%", background: "transparent", border: "none", padding: "6px 4px",
-                display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+                width: "100%", background: "transparent", border: "none", padding: "6px 6px 6px 8px",
+                display: "flex", alignItems: "center", justifyContent: "flex-start", gap: 6,
                 cursor: onKies ? "pointer" : "default",
                 WebkitTapHighlightColor: "transparent", touchAction: "manipulation",
               }}
             >
               <span style={{ display: "grid", placeItems: "center", color: "#D9C1FF", flexShrink: 0, filter: "drop-shadow(0 0 6px rgba(150,90,235,.75))" }}>{h.icoon}</span>
               <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 2, minWidth: 0 }}>
-                <span style={{ fontFamily: font.wide, fontSize: 7.8, letterSpacing: 0.7, whiteSpace: "nowrap", color: withAlpha("#EBD9FF", 0.9) }}>
+                <span
+                  style={{
+                    fontFamily: font.wide, fontSize: 9.5, letterSpacing: 0.4, lineHeight: 1.05,
+                    textAlign: "left", color: withAlpha("#F2E6FF", 0.95),
+                    textShadow: "0 1px 2px rgba(0,0,0,.65)",
+                  }}
+                >
                   {h.label}
                 </span>
-                <Prijs aantal={h.prijs} />
+                <Voorraad aantal={h.aantal} />
               </span>
             </button>
           </Glas>

@@ -257,40 +257,35 @@ const TREDEN = [
 const KNOPPEN = { links: -3.01, top: 3.48, breed: 16.76, hoog: 91.47 };
 // En dit zijn de harten van de vier schijven daarin, met hun doorsnee, allemaal
 // in procenten van de ladder. De letters gaan daar bovenop.
-// De drie hulpen onder de ladder. De iconen zijn getekend en niet uit een pakket
-// gehaald: ze moeten dezelfde lijndikte hebben als de rest van dit scherm.
+// De drie hulpen onder de ladder. De icoontjes komen uit de art (gesneden uit
+// `Powerup icoontjes.png`) en niet uit een lijnenpakket: ze horen bij het goud en
+// paars van de rest, en dat krijg je met een streekicoon niet voor elkaar.
+//
+// GEEN PRIJS. Je koopt deze hulpen niet: de eerste twee krijg je, de rest verdien
+// je in de dagronde-league, de ranglijsten en de missies. Wat er staat is dus wat
+// je HEBT. Dat is ook wat het bord eerlijk houdt: een ladder zonder plafond waar
+// je hulp kunt bijkopen is geen ladder maar een kassa.
+const HULP_ART: Record<string, string> = {
+  vriend: "/ui/reken/hulp-vriend.webp",
+  ververs: "/ui/reken/hulp-ververs.webp",
+  vijftig: "/ui/reken/hulp-vijftig.webp",
+};
+
+function HulpIcoon({ sleutel }: { sleutel: string }) {
+  return (
+    <img
+      src={HULP_ART[sleutel]}
+      alt=""
+      draggable={false}
+      style={{ width: 28, height: 28, display: "block" }}
+    />
+  );
+}
+
 const HULPEN = [
-  {
-    sleutel: "vriend", label: "VRIEND HULP", prijs: 10,
-    icoon: (
-      <svg width="17" height="14" viewBox="0 0 20 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="7" cy="5" r="3" />
-        <path d="M1.6 14.4c.4-2.7 2.7-4.4 5.4-4.4s5 1.7 5.4 4.4" />
-        <circle cx="14.6" cy="6" r="2.2" />
-        <path d="M13 10.4c2.4-.5 4.7.9 5.4 3.4" />
-      </svg>
-    ),
-  },
-  {
-    sleutel: "ververs", label: "VERVERS", prijs: 5,
-    icoon: (
-      <svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="9" cy="9" r="7.2" />
-        <path d="M9 4.4l1.1 3.5 3.5 1.1-3.5 1.1L9 13.6l-1.1-3.5L4.4 9l3.5-1.1z" />
-      </svg>
-    ),
-  },
-  {
-    sleutel: "vijftig", label: "50 / 50", prijs: 15,
-    icoon: (
-      <svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="9" cy="9" r="7.2" />
-        <path d="M13 4.6L5 13.4" />
-        <text x="4.6" y="7.9" fontSize="4.6" fill="currentColor" stroke="none" fontFamily="sans-serif" fontWeight="700">50</text>
-        <text x="8.6" y="14.2" fontSize="4.6" fill="currentColor" stroke="none" fontFamily="sans-serif" fontWeight="700">50</text>
-      </svg>
-    ),
-  },
+  { sleutel: "vriend", label: "VRIEND HULP", icoon: <HulpIcoon sleutel="vriend" /> },
+  { sleutel: "ververs", label: "VERVERS", icoon: <HulpIcoon sleutel="ververs" /> },
+  { sleutel: "vijftig", label: "50 / 50", icoon: <HulpIcoon sleutel="vijftig" /> },
 ];
 
 const LETTERS = [
@@ -879,7 +874,10 @@ function SomVenster({ children }: { children: React.ReactNode }) {
     <div ref={doos} style={{ position: "relative", width: "100%" }}>
       {maat.b > 0 && (
         <svg width={maat.b} height={maat.h} style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "visible" }} aria-hidden>
-          <Verven />
+          {/* GEEN <Verven/> hier: dit vak zit in TabKader en die zet ze al neer.
+              Twee keer dezelfde id's betekent dat url(#id) de eerste in het
+              document pakt, en dat hangt af van de DOM-volgorde in plaats van
+              van welke svg erom vraagt. */}
           <NeonPad pad={achthoek(maat.b, maat.h, 13)} vulling="url(#rl-vul-diep)" breed={0.72} gloed={false} glans />
         </svg>
       )}
@@ -921,6 +919,9 @@ export function Rekenladder({ seed, onKlaar, onOpnieuw, bord, ik }: {
   // ladder zonder plafond geen ladder meer maar een kassa, want dan koop je je
   // eindeloos naar boven.
   const [gebruikt, setGebruikt] = useState<string[]>([]);
+  // De voorraad. Tot de opslag er is krijgt iedereen de twee gratis hulpen en
+  // staat de derde op nul, zodat je meteen ziet hoe een lege tegel oogt.
+  const [voorraad, setVoorraad] = useState<Record<string, number>>({ vriend: 1, ververs: 1, vijftig: 0 });
   const [vers, setVers] = useState(0);      // ververs-teller, zit in de seed
   const [weg, setWeg] = useState<number[]>([]);   // door 50/50 weggehaald
   const [tip, setTip] = useState<number | null>(null); // wat de vriend aanwijst
@@ -1007,7 +1008,9 @@ export function Rekenladder({ seed, onKlaar, onOpnieuw, bord, ik }: {
    *  is; het aftellen en het oordeel zijn geen moment om iets te kopen. */
   const hulp = useCallback((sleutel: string) => {
     if (fase !== "spel" || beslist.current || gebruikt.includes(sleutel)) return;
+    if ((voorraad[sleutel] ?? 0) <= 0) return;
     setGebruikt((g) => [...g, sleutel]);
+    setVoorraad((v) => ({ ...v, [sleutel]: Math.max(0, (v[sleutel] ?? 0) - 1) }));
     if (sleutel === "vijftig") {
       // Twee foute antwoorden weg. Uit de lijst zelf gekozen en niet willekeurig
       // door elkaar: zo blijft de volgorde staan en springt er niets.
@@ -1025,7 +1028,7 @@ export function Rekenladder({ seed, onKlaar, onOpnieuw, bord, ik }: {
       setTip(som.antwoord);
       sound.reeks();
     }
-  }, [fase, gebruikt, som]);
+  }, [fase, gebruikt, som, voorraad]);
 
   // WIE JE GAAT PASSEREN. Niet je plek op het bord van gisteren maar de laagste
   // score BOVEN je huidige stand, dus zodra je eroverheen gaat schuift hij
@@ -1117,11 +1120,15 @@ export function Rekenladder({ seed, onKlaar, onOpnieuw, bord, ik }: {
           tip={tip}
         />
 
-        {/* De hulpbalk onder de ladder. De prijzen staan er wel bij maar er wordt
-            nog niets afgeschreven: de knoppen werken, het betalen wacht op de
-            koppeling met je saldo. */}
+        {/* De hulpbalk onder de ladder. Wat er staat is je VOORRAAD; de opslag
+            ervan (en het verdienen in de league en de missies) moet nog. */}
         <div style={{ marginTop: 10 }}>
-          <Hulpbalk hulpen={HULPEN} breedte={`${LADDER_BREED}vw`} onKies={hulp} op={gebruikt} />
+          <Hulpbalk
+            hulpen={HULPEN.map((h) => ({ ...h, aantal: voorraad[h.sleutel] ?? 0 }))}
+            breedte={`${LADDER_BREED}vw`}
+            onKies={hulp}
+            op={gebruikt}
+          />
         </div>
 
         {(fase !== "klaar" || onOpnieuw) && (
