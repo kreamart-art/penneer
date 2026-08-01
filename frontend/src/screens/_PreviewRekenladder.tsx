@@ -45,12 +45,21 @@ import { Hulpbalk } from "../components/Hulpbalk";
 export type Soort = "plus" | "min" | "keer" | "deel" | "twee";
 export type Trap = { soorten: Soort[]; groot: number; venster: number };
 
-/** De klok van trede k. Begint royaal en zakt naar drie seconden; die bodem is
- *  bewust hoog, want onder de drie tellen is een som van twee bewerkingen geen
- *  rekenwerk meer maar een gok. Moet gelijk lopen met REKENLADDER_VENSTER in
- *  backend/app/arena.py. */
-export function vensterVoor(trede: number): number {
-  return Math.max(3000, 9000 - (Math.max(1, trede) - 1) * 400);
+/** De klok: TWINTIG SECONDEN op elke trede.
+ *
+ *  Hij liep af van negen naar drie seconden, en dat was te scherp: niet iedereen
+ *  rekent even snel, en dan meet je reactiesnelheid in plaats van rekenen.
+ *
+ *  Dat de klok niet meer krimpt maakt de ladder niet vlak, want de steiging zit
+ *  in de sommen zelf. Zie trapVoor: er komt een bewerking bij op trede 3, 6, 10
+ *  en 14, en de getallen springen van tien naar veertig. En snel zijn loont nog
+ *  steeds, alleen niet meer om te overleven: de helft van de punten van een
+ *  trede hangt aan de tijd die je overhoudt.
+ *
+ *  Moet gelijk lopen met REKENLADDER_VENSTER in backend/app/arena.py; staat het
+ *  daar anders, dan keurt de server een eerlijke poging af. */
+export function vensterVoor(_trede: number): number {
+  return 20000;
 }
 
 export function trapVoor(trede: number): Trap {

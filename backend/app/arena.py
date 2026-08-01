@@ -135,10 +135,17 @@ def plausibel(game: str, score: int, level: int, time_ms: int) -> bool:
 
 
 def REKENLADDER_VENSTER(trede: int) -> int:
-    """Hoeveel milliseconden je voor trede `trede` krijgt. Moet gelijk lopen met
-    vensterVoor() in frontend/src/screens/_PreviewRekenladder.tsx; staat het hier
-    anders, dan keurt de server een eerlijke poging af."""
-    return max(3000, 9000 - (max(1, trede) - 1) * 400)
+    """Hoeveel milliseconden je voor trede `trede` krijgt: TWINTIG SECONDEN, op
+    elke trede dezelfde.
+
+    Hij liep af van negen naar drie seconden, en dat was te scherp: niet iedereen
+    rekent even snel, en dan meet je reactiesnelheid in plaats van rekenen. De
+    steiging zit in de sommen zelf, niet in de klok.
+
+    Moet gelijk lopen met vensterVoor() in
+    frontend/src/screens/_PreviewRekenladder.tsx; staat het hier anders, dan
+    keurt de server een eerlijke poging af."""
+    return 20000
 
 
 def KLEURENKLEM_VENSTER(ronde: int) -> int:
