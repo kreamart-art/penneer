@@ -26,6 +26,7 @@ import { ArtSchaduw, GOUD, KADER_LIJN_ROOD, NeonKader, Paneel, PlekWapen } from 
 import { GlasRij, Lijst } from "./Hub";
 import { Kleurenklem } from "./_PreviewKleurenklem";
 import { Rekenladder } from "./_PreviewRekenladder";
+import { Woordketen } from "./_PreviewWoordketen";
 import { Lettersoep } from "./_PreviewLettersoep";
 import type { GameApi } from "../net/socket";
 import { useT } from "../i18n/i18n";
@@ -491,7 +492,7 @@ export function ArenaDeel({ game, onBack }: { game: GameApi; onBack: () => void 
     if (fase === "spel") return;
     const hal =
       info?.game === "rekenladder" ? "rekenzaal"
-      : info?.game === "lettersoep" || info?.game === "kleurenklem" ? "soephal"
+      : info?.game === "lettersoep" || info?.game === "kleurenklem" || info?.game === "woordketen" ? "soephal"
       : "flitshal";
     document.body.classList.add(hal);
     return () => document.body.classList.remove(hal);
@@ -589,6 +590,10 @@ export function ArenaDeel({ game, onBack }: { game: GameApi; onBack: () => void 
             // opgaven is kort en je onthoudt hem. Twee keer dezelfde kleuren in
             // dezelfde volgorde is niet meer de Stroop-test maar een dictee.
             <Kleurenklem seed={`${poging.seed}:${poging.attempt_id}`} onKlaar={klaar} />
+          ) : info?.game === "woordketen" ? (
+            // Ook per poging vers. Twee keer dezelfde ketting is geen
+            // taalspel meer maar een geheugenspel.
+            <Woordketen seed={`${poging.seed}:${poging.attempt_id}`} onKlaar={klaar} />
           ) : (
             <Flitsreeks seed={poging.seed} onKlaar={klaar} />
           )}

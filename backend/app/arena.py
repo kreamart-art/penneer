@@ -31,7 +31,7 @@ import hashlib
 # Weekdag (maandag = 0) -> spel. De key is ook de i18n-sleutel op de client
 # (arena_<key> en arena_<key>_uitleg).
 GAMES: dict[int, dict] = {
-    0: {"key": "woordketen", "af": False},
+    0: {"key": "woordketen", "af": True},
     1: {"key": "wereldprik", "af": False},
     2: {"key": "waaghet", "af": False},
     3: {"key": "flitsreeks", "af": True},
@@ -113,6 +113,24 @@ def plausibel(game: str, score: int, level: int, time_ms: int) -> bool:
         # marge per ronde kan niet, want dan was de klem allang dichtgeslagen.
         ruimte = sum(KLEURENKLEM_VENSTER(r) for r in range(1, level + 1))
         return time_ms <= 5000 + ruimte + 900 * level
+    if game == "woordketen":
+        # Score-contract met de client: schakel k levert 100*k punten plus
+        # hoogstens 50*k naar rato van de overgehouden tijd, dus ten hoogste
+        # 150*k. `level` is het aantal schakels dat je HEBT gemaakt, dus die
+        # zijn alle k = 1..level goed gegaan.
+        #   som van 150*k voor k=1..level  =  75 * level * (level+1)
+        if score > 75 * level * (level + 1):
+            return False
+        # Tijd van onderen: na elke goede tegel klikt de schakel eerst aan de
+        # ketting voordat de volgende beurt komt (320ms). Ruim eronder gerekend,
+        # want dit moet scriptjes vangen en geen snelle lezers.
+        if time_ms < 250 * level:
+            return False
+        # En van boven: alle klokken bij elkaar plus marge, plus de drie tellen
+        # aftellen aan het begin. Langer kan niet, want dan was de klok allang
+        # leeg gelopen.
+        ruimte = sum(WOORDKETEN_VENSTER(k) for k in range(1, level + 2))
+        return time_ms <= 8000 + ruimte + 900 * level
     if game == "rekenladder":
         # Score-contract met de client: trede k levert 100*k punten plus hooguit
         # 50*k naar rato van de overgehouden tijd, dus ten hoogste 150*k. `level`
@@ -132,6 +150,17 @@ def plausibel(game: str, score: int, level: int, time_ms: int) -> bool:
         return time_ms <= 5000 + ruimte + 900 * level
     # Spellen die nog niet af zijn accepteren geen inzendingen.
     return False
+
+
+def WOORDKETEN_VENSTER(schakel: int) -> int:
+    """Hoeveel milliseconden je voor een schakel krijgt: TIEN SECONDEN, elke
+    schakel dezelfde. De klim zit in het aantal tegels, de lengte van de woorden
+    en de gemeenheid van de lokkers, niet in de klok.
+
+    Moet gelijk lopen met KETEN_VENSTER in
+    frontend/src/screens/_PreviewWoordketen.tsx; staat het hier anders, dan keurt
+    de server een eerlijke poging af."""
+    return 10000
 
 
 def REKENLADDER_VENSTER(trede: int) -> int:
