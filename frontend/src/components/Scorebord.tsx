@@ -74,20 +74,23 @@ function Kop({ speler, kant, kop, waarde }: {
 }) {
   const M = 38;
   const kopMaat = kop.length > 9 ? 8 : kop.length > 7 ? 8.8 : 9.5;
-  const waardeMaat = !waarde ? 0 : waarde.length > 5 ? 15 : waarde.length > 4 ? 17 : 20;
+  const waardeMaat = !waarde ? 0 : waarde.length > 5 ? 13 : 15;
   return (
     <span
       style={{
         position: "absolute",
         // In het RUITJE en niet tegen de lijst: de plaat heeft twee vensters en
-        // die staan al opgemeten in SCORE_RUIT. Een eigen percentage verzinnen
-        // zet de ring onvermijdelijk tegen de gouden rand aan.
+        // die staan al opgemeten in SCORE_RUIT.
         top: pct(SCORE_RUIT.t), height: pct(SCORE_RUIT.h),
         [kant === "links" ? "left" : "right"]: pct(kant === "links" ? SCORE_RUIT.links.l : 1 - (SCORE_RUIT.rechts.l + SCORE_RUIT.rechts.b)),
         width: pct(SCORE_RUIT.links.b),
-        padding: "0 3%", boxSizing: "border-box",
-        display: "flex", flexDirection: kant === "links" ? "row" : "row-reverse",
-        alignItems: "center", gap: 7,
+        boxSizing: "border-box",
+        // GESTAPELD en niet naast elkaar. Naast elkaar kwam de ring op het gouden
+        // sierwerk van de plaat te staan: het ruitje loopt van 229,3 tot 345 en de
+        // ring stond op 296 tot 334, precies waar dat werk zit. Boven elkaar
+        // hoeft er horizontaal niets meer naast en staat de ring midden in het
+        // venster. Het ruitje is 63 hoog en ring plus naam samen 51, dus het past.
+        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2,
       }}
     >
       <span
@@ -99,28 +102,26 @@ function Kop({ speler, kant, kop, waarde }: {
       >
         <RingFoto userId={speler.id} versie={speler.versie} heeftFoto={speler.foto} naam={speler.naam} kleur={speler.kleur} />
       </span>
-      <span style={{ display: "flex", flexDirection: "column", alignItems: kant === "links" ? "flex-start" : "flex-end", gap: 2, minWidth: 0, flex: 1 }}>
+      <span
+        style={{
+          fontFamily: font.wide, fontSize: kopMaat, letterSpacing: 0.9, whiteSpace: "nowrap",
+          overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%",
+          color: withAlpha("#FFE7A8", 0.82), lineHeight: 1,
+        }}
+      >
+        {kop}
+      </span>
+      {waarde && (
         <span
           style={{
-            fontFamily: font.wide, fontSize: kopMaat, letterSpacing: 0.9, whiteSpace: "nowrap",
-            overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%",
-            color: withAlpha("#FFE7A8", 0.82),
+            fontFamily: font.display, fontWeight: 800, fontSize: waardeMaat, lineHeight: 1,
+            color: "#FFF3D0", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap",
+            textShadow: "0 0 12px rgba(255,190,60,.5)",
           }}
         >
-          {kop}
+          {waarde}
         </span>
-        {waarde && (
-          <span
-            style={{
-              fontFamily: font.display, fontWeight: 800, fontSize: waardeMaat, lineHeight: 1,
-              color: "#FFF3D0", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap",
-              textShadow: "0 0 12px rgba(255,190,60,.5)",
-            }}
-          >
-            {waarde}
-          </span>
-        )}
-      </span>
+      )}
     </span>
   );
 }
