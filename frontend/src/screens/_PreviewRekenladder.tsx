@@ -746,7 +746,7 @@ function TabKader({ titel, children }: { titel: string; children: React.ReactNod
         <svg width={b} height={h} style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "visible" }} aria-hidden>
           <Verven />
           <NeonPad pad={pad} vulling="url(#rl-vul)" gloed={false} />
-          <NeonPad pad={plaat} vulling="url(#rl-plaat)" breed={0.62} kern="rl-kern-paars" glans />
+          <NeonPad pad={plaat} vulling="url(#rl-plaat)" breed={0.62} kern="rl-kern-paars" gloed={false} glans />
           {/* De veeg over de onderrand. `pathLength` zet de lijn om naar honderd
               eenheden, dus de streepmaat klopt bij elke schermbreedte zonder dat
               ik de echte lengte hoef te kennen. */}
