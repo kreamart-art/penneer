@@ -14,6 +14,7 @@ import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { Paneel } from "../components/ProfileHero";
 import { KreetKiezer } from "../components/Kreten";
+import { KreetZwever } from "../components/KreetZwever";
 import { colors, font, withAlpha } from "../theme/tokens";
 
 export function Fill({ game }: { game: GameApi }) {
@@ -70,6 +71,10 @@ export function Fill({ game }: { game: GameApi }) {
 
   return (
     <Screen top={<TopBar code={room.code} roundNo={room.round_no} totalRounds={room.settings.rounds} connected={game.state.status === "open"} onLeave={game.leaveRoom} game={game} />}>
+      {/* De kreet van wie klaar gaat, als ballon links in beeld. Zonder dit las
+          alleen de uitzending hem, en zat wie aan het typen was er precies naast
+          op het moment dat het ertoe doet. */}
+      <KreetZwever game={game} />
       <div style={{ display: "flex", flexDirection: "column", gap: 16, paddingBottom: showFloatingReady || showFloatingStop ? 104 : 0 }}>
         {/* Letter + timer, in de PROFIELSECTIE: dezelfde art als de heldenkaart
             op het profiel. Dit is de kop van de ronde, en die hoort dezelfde
@@ -129,6 +134,7 @@ export function Fill({ game }: { game: GameApi }) {
           </Card>
         )}
 
+        {/* inputs (players only) */}
         {/* inputs (players only) */}
         {!isSpectator && !satOut && (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>

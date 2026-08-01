@@ -3,7 +3,7 @@
 // list categories, list-only scoring, one ranked attempt per account. Guests
 // play the identical round unranked and get a profile nudge.
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Check, ChevronRight, HelpCircle, Share2, X } from "lucide-react";
+import { ArrowLeft, Check, HelpCircle, Share2, X } from "lucide-react";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { Screen, Card } from "../components/Layout";
@@ -15,12 +15,12 @@ import { ArtIcoon } from "../components/ArtIcoon";
 import { GlasVeld } from "../components/GlasVeld";
 import { GOUD, Paneel, PlekWapen } from "../components/ProfileHero";
 import { GlasRij, Lijst } from "./Hub";
+import { DagSectie } from "../components/DagSectie";
 import { SchermTip } from "../components/SchermTip";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { makeDailyCard, shareOrDownload } from "../util/shareCard";
-import { colors, font, radius, withAlpha } from "../theme/tokens";
-import { neonSkin } from "../theme/neon";
+import { colors, font, withAlpha } from "../theme/tokens";
 
 const MAX_SCORE = 50;
 const LOCAL_KEY = "penneer.dailyResult"; // {day, payload} so a reload can re-open
@@ -318,34 +318,40 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
               )}
             </div>
           </Paneel>
-          <PartTile
-            icon={<img src="/ui/letter.webp" alt="" aria-hidden style={{ width: 46, height: 46, objectFit: "contain", display: "block" }} />}
-            title={t("partWords")}
-            desc={t("partWordsDesc")}
-            meta={info ? t("dailyPlayers", { n: info.players }) : ""}
-            done={wordsPlayed}
-            doneLabel={t("partDone")}
+          {/* De drie spelsecties op hun eigen plaat. Zie components/DagSectie.tsx:
+              de illustratie, de spelerspil en het standvak zitten in de art, de
+              tekst wordt er alleen overheen gezet. */}
+          <DagSectie
+            soort="woorden"
+            titel={t("partWords")}
+            omschrijving={t("partWordsDesc")}
+            spelers={info ? t("dailyPlayers", { n: info.players }) : ""}
+            klaar={wordsPlayed}
+            klaarLabel={t("partVoltooid")}
+            speelLabel={t("partSpeel")}
             onClick={() => { sound.uiTap(); setPart("words"); }}
           />
-          <PartTile
-            icon={<img src="/ui/wereld.webp" alt="" aria-hidden style={{ width: 46, height: 46, objectFit: "contain", display: "block" }} />}
-            title={t("partTopo")}
-            desc={t("partTopoDesc")}
-            meta={info ? t("topoPlayers", { n: info.topo_players ?? 0 }) : ""}
-            done={!!info?.topo_played}
-            doneLabel={t("partDone")}
+          <DagSectie
+            soort="topo"
+            titel={t("partTopo")}
+            omschrijving={t("partTopoDesc")}
+            spelers={info ? t("topoPlayers", { n: info.topo_players ?? 0 }) : ""}
+            klaar={!!info?.topo_played}
+            klaarLabel={t("partVoltooid")}
+            speelLabel={t("partSpeel")}
             onClick={() => { sound.uiTap(); setPart("topo"); }}
           />
           {/* Het derde deel: elke weekdag een ander spel, ceilingloos scoren en
-              zoveel pogingen als je wil binnen de dag. Daarom geen "gedaan"-
-              vinkje zoals bij de andere twee: hier ben je nooit klaar. */}
-          <PartTile
-            icon={<img src="/ui/arena.webp?v=1" alt="" aria-hidden style={{ width: 50, height: 50, objectFit: "contain", display: "block" }} />}
-            title={t("arenaTitel")}
-            desc={t("arenaDagDesc")}
-            meta=""
-            done={false}
-            doneLabel=""
+              zoveel pogingen als je wil binnen de dag. Daarom nooit "voltooid":
+              hier ben je nooit klaar. */}
+          <DagSectie
+            soort="arena"
+            titel={t("arenaTitel")}
+            omschrijving={t("arenaDagDesc")}
+            spelers={t("partOnbeperkt")}
+            klaar={false}
+            klaarLabel=""
+            speelLabel={t("partSpeel")}
             onClick={() => { sound.uiTap(); setPart("arena"); }}
           />
         </div>
@@ -582,51 +588,3 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
 
 /** Een van de twee onderdelen van de Dagronde. Bewust een grote aanraakbare
  *  tegel en geen lijstregel: dit is de eerste keuze van het scherm. */
-function PartTile({
-  icon, title, desc, meta, done, doneLabel, onClick,
-}: {
-  icon: React.ReactNode; title: string; desc: string; meta: string;
-  done: boolean; doneLabel: string; onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        display: "flex", alignItems: "center", gap: 13, width: "100%", textAlign: "left",
-        padding: "15px 14px", borderRadius: radius.card, cursor: "pointer",
-        // Het licht valt rechtsboven binnen en dooft naar beneden uit, in de
-        // kleur van de tegel zelf: dezelfde behandeling als de sectiekaart op
-        // de ranglijst, alleen gespiegeld. Onderaan is hij weer doorzichtig,
-        // zodat de pagina-achtergrond er doorheen blijft lopen.
-        background: `radial-gradient(130% 150% at 100% 0%, ${withAlpha(done ? colors.green : colors.violet, 0.16)} 0%, ${withAlpha(done ? colors.green : colors.violet, 0.06)} 42%, transparent 76%)`,
-        border: "none",
-        // Dezelfde lijst als overal, maar in het GROEN zodra je dit deel gedaan
-        // hebt: het is dan geen uitnodiging meer maar een afvinkje, en dat mag je
-        // aan de rand zien zonder de tekst te lezen. De rondlopende animatie
-        // blijft in allebei de gevallen staan; alleen de kleuren wisselen.
-        ...neonSkin(done ? colors.green : colors.violet),
-      }}
-      className="pressable panel-neon"
-    >
-      {/* Geen kader meer om het icoon: de art is zelf al een medaillon en een
-          rand eromheen maakte hem klein en opgesloten. Het icoon neemt de maat
-          van het oude kader over. */}
-      <span style={{ display: "grid", placeItems: "center", width: 46, height: 46, flexShrink: 0, color: colors.gold }}>
-        {icon}
-      </span>
-      <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
-        <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink }}>{title}</span>
-          {done && (
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontFamily: font.ui, fontSize: 10.5, fontWeight: 700, letterSpacing: 0.3, textTransform: "uppercase", color: colors.green, background: withAlpha(colors.green, 0.14), border: `1px solid ${withAlpha(colors.green, 0.45)}`, padding: "2px 7px", borderRadius: 999 }}>
-              <Check size={11} /> {doneLabel}
-            </span>
-          )}
-        </span>
-        <span style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.sub, lineHeight: 1.45 }}>{desc}</span>
-        {!!meta && <span style={{ fontFamily: font.ui, fontSize: 11.5, color: colors.faint }}>{meta}</span>}
-      </span>
-      <ChevronRight size={18} color={colors.faint} style={{ flexShrink: 0 }} />
-    </button>
-  );
-}

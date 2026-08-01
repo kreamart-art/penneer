@@ -1430,3 +1430,14 @@ body.ketenspel::after {
 @keyframes keten-draait { to { transform: rotate(360deg); } }
 .keten-draait { animation: keten-draait 0.9s linear infinite; }
 @media (prefers-reduced-motion: reduce) { .keten-draait { animation-duration: 2.4s; } }
+
+/* De zwevende kreetballon: hij komt met een kleine stuiter binnen en verdwijnt
+   weer, zodat je hem opmerkt zonder dat er iets hoeft te knipperen. */
+@keyframes kreet-zwever {
+  0% { opacity: 0; transform: translateY(10px) scale(0.72); }
+  14% { opacity: 1; transform: translateY(0) scale(1.06); }
+  24% { transform: scale(1); }
+  84% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: translateY(-8px) scale(0.96); }
+}
+.kreet-zwever { transform-origin: calc(100% - 20px) 100%; animation: kreet-zwever 3s ease-out forwards; }
