@@ -64,8 +64,11 @@ function Glas({ verf, dik, hoek, vulling, gloed, glans = "#FFFFFF", children, st
       {b > 0 && (
         <svg width={b} height={h} style={{ position: "absolute", inset: 0, pointerEvents: "none" }} aria-hidden>
           <defs>
-            {/* Hetzelfde goud als de ladder en de scoreplaat: opgemeten uit de
-                art, niet gekozen. Zie ARENA_GOUD in theme/tokens.ts. */}
+            {/* Hetzelfde goud als de gouden lijn van de sectie erboven:
+                opgemeten uit die art, niet gekozen. Zie ARENA_GOUD in
+                theme/tokens.ts. De streek loopt van fel linksboven naar donker
+                rechtsonder en licht op het eind weer op, zoals metaal doet dat
+                van linksboven wordt beschenen. */}
             <linearGradient id={id("goud")} x1="0" y1="0" x2="1" y2="0.9">
               <stop offset="0%" stopColor={ARENA_GOUD[0]} />
               <stop offset="24%" stopColor={ARENA_GOUD[1]} />

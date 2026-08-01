@@ -88,14 +88,23 @@ export function withAlpha(hex: string, alpha: number): string {
  * Donker -> fel, net als GOUD. */
 export const GROEN = ["#1D2D0C", "#4D7322", "#84BD42", "#BAD898"] as const;
 
-/* Het goud van de arena, GEMETEN uit de art en niet gekozen. Bemonsterd op de
- * gouden pixels van de ladderstijlen (ui/reken) en de scoreplaat (ui/soep):
+/* Het goud van de arena, GEMETEN uit de art en niet gekozen.
  *
- *   ladder     p99 #FFD88B   p90 #CABC77   p70 #927246   p25 #5A3811   p6 #41250F
- *   scoreplaat p99 #FFE2BD   p90 #FFD158   p70 #C9903D   p25 #703A00   p6 #4B2408
+ * De bron is nu de gouden lijn van de sectie (`ui/reken/sectie-lijn.webp`), want
+ * dat is de lijn waar de hulpbalk pal onder hangt. Bemonsterd op de 32.098
+ * pixels die goud zijn (ondoorzichtig en rood ruim boven blauw), naar helderheid
+ * gesorteerd:
  *
- * Deze vijf tinten liggen daartussen, met de scoreplaat als hoofdtoon omdat dat
- * de rijkste is. Elke gouden lijn in de arena tekent hieruit, zodat een lijn die
- * naast de art ligt uit hetzelfde metaal lijkt te komen in plaats van er
- * toevallig naast te vallen. Licht naar donker, want het licht komt van boven. */
-export const ARENA_GOUD = ["#FFE6B4", "#FFD158", "#C9903D", "#8C5A18", "#4B2408"] as const;
+ *   p99 #FEFDC5   p92 #FEFA9D   p80 #FEEB81   p60 #F3B53E   p38 #974E14
+ *
+ * Onder p38 loopt het naar #471304, maar dat is de rand waar de streek in de
+ * achtergrond zakt en niet meer het metaal zelf.
+ *
+ * Dit goud is GELER en feller dan de vorige reeks, die uit de ladderstijlen en
+ * de scoreplaat kwam (#FFE6B4 / #FFD158 / #C9903D / #8C5A18 / #4B2408). Die
+ * waren cremer en warmer, en naast de nieuwe sectie ging de hulpbalk daardoor
+ * dof staan. Twee gouden lijnen die elkaar raken moeten uit hetzelfde metaal
+ * komen, dus de sectie wint.
+ *
+ * Licht naar donker, want het licht komt van linksboven. */
+export const ARENA_GOUD = ["#FEFDC5", "#FEEB81", "#F3B53E", "#974E14", "#471304"] as const;
