@@ -60,14 +60,18 @@ export type Speler = {
  *  score groot. De lijst is getekend en geen border: een border loopt om de doos
  *  en niet om de ring, en dan zie je op de rondingen dat hij afknijpt. */
 function Kop({ speler, kant }: { speler: Speler; kant: "links" | "rechts" }) {
-  const M = 40;
+  const M = 38;
   return (
     <span
       style={{
         position: "absolute",
-        top: pct(0.1), height: pct(0.8),
-        [kant === "links" ? "left" : "right"]: pct(0.028),
-        width: pct(0.36),
+        // In het RUITJE en niet tegen de lijst: de plaat heeft twee vensters en
+        // die staan al opgemeten in SCORE_RUIT. Een eigen percentage verzinnen
+        // zet de ring onvermijdelijk tegen de gouden rand aan.
+        top: pct(SCORE_RUIT.t), height: pct(SCORE_RUIT.h),
+        [kant === "links" ? "left" : "right"]: pct(kant === "links" ? SCORE_RUIT.links.l : 1 - (SCORE_RUIT.rechts.l + SCORE_RUIT.rechts.b)),
+        width: pct(SCORE_RUIT.links.b),
+        padding: "0 3%", boxSizing: "border-box",
         display: "flex", flexDirection: kant === "links" ? "row" : "row-reverse",
         alignItems: "center", gap: 7,
       }}
