@@ -33,7 +33,7 @@ import { colors, font, withAlpha } from "../theme/tokens";
 import { sound } from "../sound/sound";
 import { useT } from "../i18n/i18n";
 import { VAK } from "./Arena";
-import { Scorebord } from "../components/Scorebord";
+import { Scorebord, type Speler } from "../components/Scorebord";
 import { Hulpbalk } from "../components/Hulpbalk";
 
 // ---- de ladder --------------------------------------------------------------
@@ -341,6 +341,25 @@ function Trede({ i, waarde, staat, onKies, tip = false }: { i: number; waarde: n
           }}
         />
       )}
+      {/* De violette lichtlijn over de bovenrand van de plaat. In de art is die
+          lijn crème; in de mockup gloeit hij paars. Twee streken: een vervaagde
+          eronder voor de gloed en een scherpe erop. Alleen zolang de trede
+          leeft, want op een dode of gekleurde plaat hoort geen paars licht. */}
+      {(staat === "rust" || staat === "uit") && (
+        <span
+          aria-hidden
+          style={{
+            position: "absolute",
+            left: `${t.vlak.left + 1.5}%`, width: `${t.vlak.breed - 3}%`,
+            top: `${t.vlak.top}%`, height: 2,
+            pointerEvents: "none",
+            opacity: staat === "uit" ? 0.45 : 1,
+            background: "linear-gradient(90deg, rgba(190,120,255,0) 0%, #D9A8FF 18%, #F6E8FF 50%, #D9A8FF 82%, rgba(190,120,255,0) 100%)",
+            boxShadow: "0 0 7px rgba(190,110,255,.95), 0 0 16px rgba(150,70,230,.6)",
+            transition: "opacity .22s ease-out",
+          }}
+        />
+      )}
       <button
         onPointerDown={(e) => { e.preventDefault(); if (staat === "rust") onKies(); }}
         disabled={staat !== "rust"}
@@ -352,7 +371,7 @@ function Trede({ i, waarde, staat, onKies, tip = false }: { i: number; waarde: n
           cursor: staat === "rust" ? "pointer" : "default",
           WebkitTapHighlightColor: "transparent", touchAction: "manipulation",
           display: "grid", placeItems: "center",
-          fontFamily: font.display, fontWeight: 800, fontSize: 30, letterSpacing: 1,
+          fontFamily: font.display, fontWeight: 800, fontSize: 34, letterSpacing: 1,
           color: "#FFF6DC",
           opacity: staat === "uit" ? 0 : staat === "dood" ? 0.4 : 1,
           transform: staat === "goed" ? "scale(1.06)" : "scale(1)",
@@ -833,10 +852,14 @@ function SomVenster({ children }: { children: React.ReactNode }) {
 // Twee schillen om dezelfde motor, net als bij Lettersoep en Kleurenklem. De
 // arena geeft de seed van de poging mee en krijgt via `onKlaar` de uitslag
 // terug; de testversie hieronder geeft een eigen sleutel en levert NIETS in.
-export function Rekenladder({ seed, onKlaar, onOpnieuw }: {
+export function Rekenladder({ seed, onKlaar, onOpnieuw, bord, ik }: {
   seed: string;
   onKlaar?: (score: number, level: number, timeMs: number) => void;
   onOpnieuw?: () => void;
+  /** Het dagbord, om te zien wie je gaat passeren. */
+  bord?: Speler[];
+  /** Jijzelf, zonder score: die komt live uit dit potje. */
+  ik?: Omit<Speler, "score">;
 }) {
   const { t } = useT();
   useEffect(() => {
@@ -963,6 +986,17 @@ export function Rekenladder({ seed, onKlaar, onOpnieuw }: {
     }
   }, [fase, gebruikt, som]);
 
+  // WIE JE GAAT PASSEREN. Niet je plek op het bord van gisteren maar de laagste
+  // score BOVEN je huidige stand, dus zodra je eroverheen gaat schuift hij
+  // vanzelf door naar de volgende. Dat is precies wat het spannend maakt: er is
+  // altijd iemand net buiten bereik.
+  const duel = useMemo(() => {
+    if (!bord || !ik) return null;
+    const boven = bord.filter((s) => s.id !== ik.id && s.score > totaal).sort((a, b) => a.score - b.score)[0];
+    if (!boven) return null;
+    return { mij: { ...ik, score: totaal }, rivaal: boven };
+  }, [bord, ik, totaal]);
+
   const stop = () => setFase("klaar");
 
   return (
@@ -977,6 +1011,7 @@ export function Rekenladder({ seed, onKlaar, onOpnieuw }: {
           breedte={VAK}
           links={{ kop: t("rekenTrede"), waarde: String(trede) }}
           rechts={{ kop: t("soepPunten"), waarde: String(totaal) }}
+          duel={duel}
         />
 
         {/* Het vraagpaneel. Alles in code: een gouden verlooprand met een
@@ -1001,9 +1036,9 @@ export function Rekenladder({ seed, onKlaar, onOpnieuw }: {
                 key={fase === "tel" ? `tel-${tel}` : `som-${trede}`}
                 className="klem-kom"
                 style={{
-                  height: 58, display: "grid", placeItems: "center", lineHeight: 1,
+                  height: 62, display: "grid", placeItems: "center", lineHeight: 1,
                   fontFamily: font.display, fontWeight: 800,
-                  fontSize: fase === "tel" ? 52 : 42, letterSpacing: 2,
+                  fontSize: fase === "tel" ? 58 : 48, letterSpacing: 2,
                   color: "#FFFFFF",
                   textShadow: "0 0 18px rgba(160,200,255,.35), 0 2px 4px rgba(0,0,0,.8)",
                 }}
@@ -1078,7 +1113,19 @@ export function PreviewRekenladder() {
         </div>
       }
     >
-      <Rekenladder key={potje} seed={potje} onOpnieuw={() => setPotje(versSleutel())} />
+      {/* De testversie heeft geen dagbord, dus hier staat er een verzonnen bord
+          in: anders is er niets te zien van de wissel. */}
+      <Rekenladder
+        key={potje}
+        seed={potje}
+        onOpnieuw={() => setPotje(versSleutel())}
+        ik={{ id: "ik", naam: "JIJ", kleur: "#B36BFF", foto: false, versie: 0 }}
+        bord={[
+          { id: "a", naam: "TIJGER", kleur: "#FF8A3D", foto: false, versie: 0, score: 450 },
+          { id: "b", naam: "PANTYU", kleur: "#3DD6FF", foto: false, versie: 0, score: 1200 },
+          { id: "c", naam: "KREAM", kleur: "#FFD24A", foto: false, versie: 0, score: 2600 },
+        ]}
+      />
     </Screen>
   );
 }

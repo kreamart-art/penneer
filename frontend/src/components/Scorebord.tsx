@@ -9,7 +9,9 @@
 // De maten zijn OPGEMETEN in het bestand en staan in breuken van de sectie, niet
 // in pixels: de balk schaalt mee met de schermbreedte en de ruitjes moeten dan
 // vanzelf mee schuiven.
+import { useEffect, useState } from "react";
 import { font, withAlpha } from "../theme/tokens";
+import { RingFoto } from "./ProfileHero";
 
 /** Breedte gedeeld door hoogte van de plaat. */
 export const SCORE_V = 3.7805;
@@ -45,23 +47,99 @@ export function Meter({ kop, waarde, kleur = "#FFF3D0", breuk }: {
   );
 }
 
+export type Speler = {
+  id: string;
+  naam: string;
+  kleur: string;
+  foto: boolean;
+  versie: number;
+  score: number;
+};
+
+/** Een speler in een gouden lijst: de foto in een ring, de naam eronder en de
+ *  score groot. De lijst is getekend en geen border: een border loopt om de doos
+ *  en niet om de ring, en dan zie je op de rondingen dat hij afknijpt. */
+function Kop({ speler, kant }: { speler: Speler; kant: "links" | "rechts" }) {
+  const M = 40;
+  return (
+    <span
+      style={{
+        position: "absolute",
+        top: pct(0.1), height: pct(0.8),
+        [kant === "links" ? "left" : "right"]: pct(0.028),
+        width: pct(0.36),
+        display: "flex", flexDirection: kant === "links" ? "row" : "row-reverse",
+        alignItems: "center", gap: 7,
+      }}
+    >
+      <span
+        style={{
+          position: "relative", width: M, height: M, flexShrink: 0, borderRadius: "50%",
+          overflow: "hidden",
+          // De gouden lijst: een verlooprand die tussen twee lagen uitsteekt.
+          boxShadow: "0 0 0 1px #D8A63C, 0 0 0 1.7px #6E4A0E, 0 0 7px rgba(255,190,60,.4)",
+        }}
+      >
+        <RingFoto userId={speler.id} versie={speler.versie} heeftFoto={speler.foto} naam={speler.naam} kleur={speler.kleur} />
+      </span>
+      <span style={{ display: "flex", flexDirection: "column", alignItems: kant === "links" ? "flex-start" : "flex-end", gap: 1, minWidth: 0 }}>
+        <span
+          style={{
+            fontFamily: font.wide, fontSize: 9.5, letterSpacing: 1.1, whiteSpace: "nowrap",
+            overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%",
+            color: withAlpha("#FFE7A8", 0.8),
+          }}
+        >
+          {speler.naam.toUpperCase()}
+        </span>
+        <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 22, lineHeight: 1, color: "#FFF3D0", fontVariantNumeric: "tabular-nums", textShadow: "0 0 12px rgba(255,190,60,.5)" }}>
+          {speler.score}
+        </span>
+      </span>
+    </span>
+  );
+}
+
 /** De hele balk: de plaat met links en rechts een ruitje.
  *
  *  De schaduw is een tweede kopie van dezelfde plaat, zwartgemaakt en vervaagd,
  *  en niet een drop-shadow: die breekt op iOS, waar Safari de laag apart rastert
  *  en je de rechthoek van die laag over de art heen ziet liggen. */
-export function Scorebord({ links, rechts, breedte }: {
+export function Scorebord({ links, rechts, breedte, duel }: {
   links: { kop: string; waarde: string; kleur?: string };
   rechts: { kop: string; waarde: string; kleur?: string };
   breedte: string;
+  /** Jij tegen degene die je gaat passeren. Zit hij erin, dan wisselt de balk om
+   *  de zoveel tellen tussen de cijfers en deze twee koppen. */
+  duel?: { mij: Speler; rivaal: Speler } | null;
 }) {
   const art = "/ui/soep/scorebord.webp?v=1";
+  // De wissel loopt door zolang er een rivaal is. Zeven tellen: kort genoeg om
+  // op te vallen, lang genoeg om je som af te maken zonder dat er iets in je
+  // ooghoek beweegt.
+  const [kant, setKant] = useState(0);
+  useEffect(() => {
+    if (!duel) { setKant(0); return; }
+    const id = window.setInterval(() => setKant((k) => 1 - k), 7000);
+    return () => window.clearInterval(id);
+  }, [duel]);
+  const toonDuel = !!duel && kant === 1;
   return (
     <div style={{ position: "relative", width: breedte, height: `calc(${breedte} / ${SCORE_V})`, flexShrink: 0 }}>
       <img src={art} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block", filter: "brightness(0) blur(11px)", opacity: 0.55, transform: "translateY(9px)", pointerEvents: "none" }} />
       <img src={art} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} />
-      <Meter kop={links.kop} waarde={links.waarde} kleur={links.kleur} breuk={SCORE_RUIT.links} />
-      <Meter kop={rechts.kop} waarde={rechts.waarde} kleur={rechts.kleur} breuk={SCORE_RUIT.rechts} />
+      {/* Twee gezichten op dezelfde plaat, over elkaar heen. Kruisfade en geen
+          omschakeling: een balk die knippert leest als een fout. */}
+      <span style={{ position: "absolute", inset: 0, opacity: toonDuel ? 0 : 1, transition: "opacity .45s ease-in-out", pointerEvents: "none" }}>
+        <Meter kop={links.kop} waarde={links.waarde} kleur={links.kleur} breuk={SCORE_RUIT.links} />
+        <Meter kop={rechts.kop} waarde={rechts.waarde} kleur={rechts.kleur} breuk={SCORE_RUIT.rechts} />
+      </span>
+      {duel && (
+        <span style={{ position: "absolute", inset: 0, opacity: toonDuel ? 1 : 0, transition: "opacity .45s ease-in-out", pointerEvents: "none" }}>
+          <Kop speler={duel.mij} kant="links" />
+          <Kop speler={duel.rivaal} kant="rechts" />
+        </span>
+      )}
     </div>
   );
 }
