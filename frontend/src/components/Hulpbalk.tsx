@@ -159,7 +159,7 @@ export function Hulpbalk({ hulpen, breedte, onKies, op = [] }: {
       vulling="rgba(24,10,44,.20)"
       style={{ width: breedte, padding: 7, flexShrink: 0 }}
     >
-      <div style={{ display: "flex", gap: 6, padding: "5px 0" }}>
+      <div style={{ display: "flex", gap: 6, padding: 5 }}>
         {hulpen.map((h) => (
           <Glas
             key={h.sleutel}
