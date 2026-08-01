@@ -79,16 +79,25 @@ function Glas({ verf, dik, hoek, vulling, gloed, glans = "#FFFFFF", children, st
               <stop offset="62%" stopColor="#5E3596" />
               <stop offset="100%" stopColor="#B487F5" />
             </linearGradient>
-            {/* De witte punt op de omtrek: kort en fel, op twee plekken. */}
+            {/* De punt op de omtrek. Wit dat meteen op nul valt geeft een harde
+                stip; hier loopt hij van lila naar wit en weer terug naar lila
+                voordat hij verdwijnt. Dat verloop is wat een glans op gepolijst
+                materiaal doet: de kern is wit, de aanloop draagt de kleur van
+                het materiaal zelf. */}
             <linearGradient id="hb-punt" x1="0" y1="0" x2="1" y2="0.9">
-              <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0" />
-              <stop offset="13%" stopColor="#FFFFFF" stopOpacity="0" />
+              <stop offset="0%" stopColor="#B98CFF" stopOpacity="0" />
+              <stop offset="8%" stopColor="#B98CFF" stopOpacity="0.18" />
+              <stop offset="13%" stopColor="#D9BEFF" stopOpacity="0.55" />
               <stop offset="17%" stopColor="#FFFFFF" stopOpacity="0.95" />
-              <stop offset="21%" stopColor="#FFFFFF" stopOpacity="0" />
-              <stop offset="58%" stopColor="#FFFFFF" stopOpacity="0" />
-              <stop offset="62%" stopColor="#FFFFFF" stopOpacity="0.55" />
-              <stop offset="66%" stopColor="#FFFFFF" stopOpacity="0" />
-              <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
+              <stop offset="21%" stopColor="#D9BEFF" stopOpacity="0.55" />
+              <stop offset="27%" stopColor="#B98CFF" stopOpacity="0.16" />
+              <stop offset="36%" stopColor="#B98CFF" stopOpacity="0" />
+              <stop offset="52%" stopColor="#B98CFF" stopOpacity="0" />
+              <stop offset="57%" stopColor="#C9A8FF" stopOpacity="0.22" />
+              <stop offset="62%" stopColor="#F0E2FF" stopOpacity="0.6" />
+              <stop offset="67%" stopColor="#C9A8FF" stopOpacity="0.22" />
+              <stop offset="76%" stopColor="#B98CFF" stopOpacity="0" />
+              <stop offset="100%" stopColor="#B98CFF" stopOpacity="0" />
             </linearGradient>
             <linearGradient id="hb-glans" x1="0" y1="0" x2="1" y2="0">
               <stop offset="0%" stopColor={glans} stopOpacity="0" />
