@@ -8,12 +8,22 @@
 // bestanden. Dat moet ook, want de plaat schaalt met de schermbreedte mee en
 // vaste punten zouden er bij elke telefoon anders op vallen.
 //
-// DE PILLEN ZIJN GEMETEN EN NIET GESCHAT. De rand van de pil is een dunne lijn
-// in een verder egaal vlak, dus hij is te vinden door het verschil tussen twee
-// rijen te nemen in een strook die ver van de illustratie en van het standvak
-// ligt (x 0,44 tot 0,66). Wat daaruit komt: de pil loopt bij Woorden van 0,671
-// tot 0,871, bij Topografie van 0,752 tot 0,934 en bij de Arena van 0,736 tot
-// 0,907. Op het oog had ik ze alle drie te laag en te hoog staan.
+// DE PILLEN ZIJN GEMETEN EN NIET GESCHAT, in twee richtingen.
+//
+// Van boven en onder door het verschil tussen twee rijen te nemen in een strook
+// die ver van de illustratie en van het standvak ligt (x 0,44 tot 0,66): de pil
+// loopt bij Woorden van 0,671 tot 0,871, bij Topografie van 0,752 tot 0,934 en
+// bij de Arena van 0,736 tot 0,907.
+//
+// Van links en rechts was lastiger, want het randlijntje is maar een paar pixels
+// breed en verdrinkt in de gloed die van de illustratie af naar rechts wegzakt.
+// Wat wel werkt: van elke kolom het gemiddelde van een brede omgeving aftrekken
+// (een hoogdoorlaat), zodat die trage gloed wegvalt en alleen dunne lijnen
+// overblijven, en dan middelen over de middelste zestig procent van de pilhoogte
+// zodat alleen lijnen overblijven die over de HELE pil doorlopen. Dat geeft in
+// alle drie de vellen dezelfde linkerrand, x 0,440, en een rechterrand op 0,730,
+// 0,730 en 0,689. Mijn eerste schatting van de linkerrand lag op 0,32, midden in
+// de illustratie, en daardoor stak het mensen-teken links naast de pil uit.
 //
 // DE DRIE VELLEN ZIJN OP DE DEKKENDE PLAAT GESNEDEN en niet op hun alfa-doos.
 // Om de arena zit veel meer gloed dan om de andere twee (0,964 tegen 0,996 van
@@ -28,7 +38,7 @@
 // HET VINKJE ZIT IN DE ART, en dat klopt alleen als je klaar bent. Ben je dat
 // niet, dan komt er een donkere schijf met een speeldriehoek overheen: dan leest
 // dezelfde plaat als een uitnodiging in plaats van als een afvinkje.
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { font, withAlpha } from "../theme/tokens";
 
 type Vak = { l: number; r: number; t: number; b: number };
@@ -51,21 +61,21 @@ export const DAG_PLATEN: Record<"woorden" | "topo" | "arena", Plaat> = {
   woorden: {
     art: "/ui/dag/woorden.webp?v=2", v: 1080 / 310, kleur: "#FFC23D",
     tekst: { l: 0.440, r: 0.760, t: 0.10, b: 0.62 },
-    pil: { l: 0.321, r: 0.748, t: 0.671, b: 0.871 },
+    pil: { l: 0.441, r: 0.730, t: 0.671, b: 0.871 },
     plaat: { l: 0.768, r: 0.945, t: 0.38, b: 0.90 },
     ring: { x: 0.855, y: 0.31, d: 0.115 },
   },
   topo: {
     art: "/ui/dag/topo.webp?v=2", v: 1080 / 302, kleur: "#5AC8FF",
     tekst: { l: 0.440, r: 0.760, t: 0.10, b: 0.72 },
-    pil: { l: 0.310, r: 0.748, t: 0.752, b: 0.934 },
+    pil: { l: 0.440, r: 0.730, t: 0.752, b: 0.934 },
     plaat: { l: 0.768, r: 0.945, t: 0.40, b: 0.90 },
     ring: { x: 0.855, y: 0.30, d: 0.105 },
   },
   arena: {
     art: "/ui/dag/arena.webp?v=2", v: 1080 / 330, kleur: "#FF6A55",
     tekst: { l: 0.440, r: 0.700, t: 0.10, b: 0.70 },
-    pil: { l: 0.318, r: 0.688, t: 0.736, b: 0.907 },
+    pil: { l: 0.440, r: 0.689, t: 0.736, b: 0.907 },
     plaat: { l: 0.705, r: 0.965, t: 0.575, b: 0.905 },
   },
 };
@@ -113,9 +123,30 @@ export function DagSectie({
   // Alles wat tekst is, in delen van de plaatbreedte.
   const titelMaat = Math.max(11, b * 0.049);
   const omMaat = Math.max(8, b * 0.0285);
-  const pilMaat = Math.max(7.5, b * 0.0255);
+  const pilMaat = Math.max(6.5, b * 0.0215);
   const standMaat = Math.max(8, b * 0.0295);
   const sterMaat = Math.max(6, b * 0.0215);
+
+  // DE PILINHOUD VOEGT ZICH NAAR DE PIL. Wat erin staat wisselt: "0 spelers
+  // vandaag" is langer dan "8 players today" en de arena zegt "Onbeperkt
+  // spelen" in een pil die smaller is dan die van de andere twee. Een vaste
+  // lettergrootte past dus in het ene geval wel en in het andere niet, en dan
+  // steekt het teken de rand uit.
+  //
+  // Meten met offsetWidth en NIET met getBoundingClientRect: offsetWidth geeft
+  // de opmaakbreedte en telt de transform niet mee, dus de meting blijft
+  // dezelfde zodra de krimp erop staat en er ontstaat geen kringetje van meten
+  // en opnieuw meten.
+  const pilDoos = useRef<HTMLSpanElement | null>(null);
+  const pilInhoud = useRef<HTMLSpanElement | null>(null);
+  const [krimp, setKrimp] = useState(1);
+  useLayoutEffect(() => {
+    const doos = pilDoos.current, inhoud = pilInhoud.current;
+    if (!doos || !inhoud || !inhoud.offsetWidth) return;
+    // 0,82 en niet 1: aan weerskanten hoort lucht te blijven staan, anders
+    // plakt de tekst tegen het randlijntje van de pil aan.
+    setKrimp(Math.min(1, (doos.offsetWidth * 0.82) / inhoud.offsetWidth));
+  }, [b, spelers, pilMaat]);
 
   return (
     <button
@@ -156,15 +187,25 @@ export function DagSectie({
       {/* De spelerspil zit al in de plaat; hier komt alleen wat erin staat. */}
       {!!spelers && (
         <span
+          ref={pilDoos}
           style={{
             position: "absolute",
             left: pct(P.pil.l), width: pct(P.pil.r - P.pil.l),
             top: pct(P.pil.t), height: pct(P.pil.b - P.pil.t),
-            display: "flex", alignItems: "center", justifyContent: "center", gap: b * 0.014,
+            display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden",
           }}
         >
-          <Mensen maat={pilMaat * 1.25} kleur={withAlpha(P.kleur, 0.85)} />
-          <span style={{ fontFamily: font.ui, fontSize: pilMaat, color: "rgba(236,228,255,.78)", whiteSpace: "nowrap" }}>{spelers}</span>
+          <span
+            ref={pilInhoud}
+            style={{
+              display: "flex", alignItems: "center", gap: pilMaat * 0.5,
+              transform: `scale(${krimp})`, transformOrigin: "center center",
+              whiteSpace: "nowrap",
+            }}
+          >
+            <Mensen maat={pilMaat * 1.25} kleur={withAlpha(P.kleur, 0.85)} />
+            <span style={{ fontFamily: font.ui, fontSize: pilMaat, color: "rgba(236,228,255,.78)" }}>{spelers}</span>
+          </span>
         </span>
       )}
 
