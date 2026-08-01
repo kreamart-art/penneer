@@ -624,13 +624,15 @@ function TabKader({ titel, children }: { titel: string; children: React.ReactNod
       >
         <span style={{ marginRight: -NAAM_SPATIE, whiteSpace: "nowrap" }}>{titel}</span>
       </span>
-      {/* De inhoud staat BINNEN de lijndoos en wordt daarin gecentreerd. De doos
-          heeft de verhouding van de art, dus de hoogte ligt vast; verticaal
-          centreren verdeelt de lucht die overblijft gelijk over boven en onder. */}
+      {/* De inhoud staat BINNEN de lijndoos, en LAGER dan het midden. Gelijk
+          verdeeld gaf boven en onder allebei 12,7, maar de naamplaat hangt vijf
+          pixels over de bovenlijst heen: dan is er boven nog maar 7,6 tot de
+          plaat en onder 12,7 tot de lijn, en dat leest scheef. Vandaar boven
+          meer dan onder; optisch staat het dan midden in het vak. */}
       <div
         style={{
-          position: "absolute", inset: 0, padding: "4px 16px",
-          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3,
+          position: "absolute", inset: 0, padding: "19px 16px 6px",
+          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", gap: 3,
         }}
       >
         {children}
