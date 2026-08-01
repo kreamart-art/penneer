@@ -114,12 +114,14 @@ def plausibel(game: str, score: int, level: int, time_ms: int) -> bool:
         ruimte = sum(KLEURENKLEM_VENSTER(r) for r in range(1, level + 1))
         return time_ms <= 5000 + ruimte + 900 * level
     if game == "woordketen":
-        # Score-contract met de client: schakel k levert 100*k punten plus
-        # hoogstens 50*k naar rato van de overgehouden tijd, dus ten hoogste
-        # 150*k. `level` is het aantal schakels dat je HEBT gemaakt, dus die
-        # zijn alle k = 1..level goed gegaan.
-        #   som van 150*k voor k=1..level  =  75 * level * (level+1)
-        if score > 75 * level * (level + 1):
+        # Score-contract met de client: schakel k levert (100 plus hoogstens 50
+        # naar rato van de overgehouden tijd) maal k maal de lengtefactor van je
+        # woord. Die factor loopt van 1 bij drie letters naar 2,5 bij acht, dus
+        # het hoogste dat schakel k kan opleveren is k * 150 * 2,5 = 375k.
+        # `level` is het aantal schakels dat je HEBT gemaakt, dus die zijn alle
+        # k = 1..level goed gegaan.
+        #   som van 375*k voor k=1..level  =  375 * level * (level+1) / 2
+        if score > 375 * level * (level + 1) // 2:
             return False
         # Tijd van onderen: na elke goede tegel klikt de schakel eerst aan de
         # ketting voordat de volgende beurt komt (320ms). Ruim eronder gerekend,

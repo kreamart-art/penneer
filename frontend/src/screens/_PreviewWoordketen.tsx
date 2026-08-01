@@ -49,12 +49,54 @@ export const KETEN_VENSTER = 20000;
  *  een letter waar hij zelf ook bijna niets op kan verzinnen. */
 const MIN_VERVOLG = 8;
 
+// ---- de drie schroeven waar de ketting mee aandraait -----------------------
+//
+// Het spel had er geen. De klok stond vast, er was geen ondergrens aan de lengte
+// en de enige regels waren "begint met de laatste letter" en "niet al gebruikt".
+// De beste zet was daarmee elke beurt het kortste woord dat je kon bedenken, en
+// dat is en makkelijk en saai.
+
+/** Zoveel letters moet je woord minstens hebben, per schakel. Klimt, want een
+ *  woord van zes letters op een gegeven beginletter is binnen twintig seconden
+ *  een heel andere opgave dan "AS". Staat op het bord, dus het overvalt je niet. */
+export function minLengte(schakel: number): number {
+  const k = Math.max(1, schakel);
+  if (k <= 5) return 3;
+  if (k <= 11) return 4;
+  if (k <= 19) return 5;
+  return 6;
+}
+
+/** Hoeveel schakels een EINDLETTER bezet blijft.
+ *
+ *  Je mag niet eindigen op een letter waarop je in de laatste acht schakels al
+ *  bent geeindigd. Dat is de zachte variant van "beginletters raken op": het legt
+ *  geen plafond op de ketting, maar het maakt de makkelijke uitgangen wel
+ *  schaars. En het is een regel die je ZELF in de hand hebt, want jij kiest het
+ *  woord en dus zijn laatste letter.
+ *
+ *  Op de laatste letter en niet op de eerste, en dat moet ook: je beginletter
+ *  ligt vast (het is de laatste letter van het vorige woord), dus daar een regel
+ *  op zetten zou een stand kunnen opleveren waarin geen enkele zet meer mag.
+ *
+ *  Acht van de tweeentwintig bruikbare letters bezet houden laat er altijd
+ *  veertien over, dus vastlopen kan niet. Meteen weg is ook het pingpongen
+ *  tussen -N en N-. */
+export const EINDE_GEHEUGEN = 8;
+
+/** Wat de lengte van je woord met de punten doet: van maal 1 bij drie letters
+ *  naar maal 2,5 bij acht. Zonder deze factor levert "AS" evenveel op als
+ *  "SNEEUWBAL" en is er geen reden om iets moois te zoeken. */
+export const lengteFactor = (lengte: number) => Math.min(2.5, 1 + 0.3 * Math.max(0, lengte - 3));
+
 /** Wat een schakel oplevert: honderd maal het nummer, plus de helft daarvan naar
- *  rato van de tijd die je overhield. Maal het nummer en niet vast, zodat twee
- *  spelers die allebei ver komen niet op dezelfde stand uitkomen. Dat is
- *  arenaregel 1: een score zonder plafond. */
-export const puntenVoor = (schakel: number, rest: number) =>
-  100 * schakel + Math.round(50 * schakel * Math.max(0, Math.min(1, rest)));
+ *  rato van de tijd die je overhield, en dat maal de lengtefactor. Maal het
+ *  nummer en niet vast, zodat twee spelers die allebei ver komen niet op dezelfde
+ *  stand uitkomen. Dat is arenaregel 1: een score zonder plafond.
+ *
+ *  Het hoogste dat een schakel k kan opleveren is k * 150 * 2,5 = 375k. */
+export const puntenVoor = (schakel: number, rest: number, lengte: number) =>
+  Math.round(schakel * (100 + 50 * Math.max(0, Math.min(1, rest))) * lengteFactor(lengte));
 
 // ---- seed en woordenlijst ---------------------------------------------------
 
@@ -267,6 +309,15 @@ export function Woordketen({ seed, onKlaar, onOpnieuw }: {
   const schakel = Math.max(0, ketting.length - 1);   // hoeveel schakels je maakte
   const huidig = ketting.length ? ketting[ketting.length - 1] : "";
   const letter = huidig ? huidig[huidig.length - 1] : "";
+  /** Zoveel letters vraagt de schakel die je nu maakt. */
+  const nodig = minLengte(schakel + 1);
+  /** De eindletters die de laatste acht schakels bezet houden. Het huidige woord
+   *  zit er bewust in: eindigen op de letter waar je net op eindigde is precies
+   *  het pingpongen dat deze regel eruit haalt. */
+  const opgebruikt = useMemo(
+    () => new Set(ketting.slice(-EINDE_GEHEUGEN).map((w) => w[w.length - 1])),
+    [ketting],
+  );
 
   const timers = useRef<number[]>([]);
   const na = useCallback((ms: number, fn: () => void) => { timers.current.push(window.setTimeout(fn, ms)); }, []);
@@ -328,6 +379,11 @@ export function Woordketen({ seed, onKlaar, onOpnieuw }: {
     if (woord.length < 2) return;
     if (woord[0] !== letter) { setMelding(t("ketenFoutLetter", { letter })); return; }
     if (gebruikt.current.has(woord)) { setMelding(t("ketenFoutHerhaling")); return; }
+    // De twee schroeven. Allebei ZACHT: ze zetten een melding neer en breken de
+    // ketting niet, want dit zijn regels en geen fouten. De klok loopt wel door,
+    // dus talmen kost je alsnog de beurt.
+    if (woord.length < nodig) { setMelding(t("ketenFoutKort", { n: nodig })); return; }
+    if (opgebruikt.has(woord[woord.length - 1])) { setMelding(t("ketenFoutEinde", { letter: woord[woord.length - 1] })); return; }
 
     const overGehouden = rest;
     // De lijst is de snelweg: staat het woord erin, dan gaat er niets over de
@@ -359,7 +415,7 @@ export function Woordketen({ seed, onKlaar, onOpnieuw }: {
     sound.haptic(10);
     if (nummer % 5 === 0) sound.reeks();
     gebruikt.current.add(woord);
-    setTotaal((s) => s + puntenVoor(nummer, overGehouden));
+    setTotaal((s) => s + puntenVoor(nummer, overGehouden, woord.length));
     setInvoer("");
     setMelding(null);
     setKetting((k) => [...k, woord]);
@@ -458,8 +514,33 @@ export function Woordketen({ seed, onKlaar, onOpnieuw }: {
               {fase === "tel" ? t("ketenKlaar")
                 : fase === "kijkt" ? t("ketenKijkt")
                 : fase === "klaar" ? (melding ?? t("ketenGebroken", { n: schakel }))
-                : melding ?? t("ketenKies", { letter })}
+                : melding ?? t("ketenKies", { letter, n: nodig })}
             </span>
+            {/* DE BEZETTE UITGANGEN. Een regel die je pas leert kennen doordat hij
+                je afwijst is geen regel maar een val, dus ze staan er gewoon: de
+                letters waarop je de laatste acht schakels al bent geeindigd, met
+                een streep erdoor. */}
+            {bezig && opgebruikt.size > 0 && (
+              <span style={{ display: "flex", alignItems: "center", gap: 3, marginTop: 3, flexWrap: "wrap", justifyContent: "center" }}>
+                <span style={{ fontFamily: font.ui, fontSize: 8.5, letterSpacing: 0.5, color: withAlpha(GROEN_INKT, 0.42), marginRight: 1 }}>
+                  {t("ketenNietOp")}
+                </span>
+                {[...opgebruikt].map((l) => (
+                  <span
+                    key={l}
+                    style={{
+                      minWidth: 13, height: 13, padding: "0 2px", borderRadius: 3,
+                      display: "grid", placeItems: "center",
+                      background: "rgba(0,0,0,.22)", boxShadow: `inset 0 0 0 1px ${withAlpha(GROEN_INKT, 0.2)}`,
+                      fontFamily: font.display, fontWeight: 800, fontSize: 9, lineHeight: 1,
+                      color: withAlpha(GROEN_INKT, 0.5), textDecoration: "line-through",
+                    }}
+                  >
+                    {l}
+                  </span>
+                ))}
+              </span>
+            )}
           </div>
         </Laag>
 
@@ -474,7 +555,7 @@ export function Woordketen({ seed, onKlaar, onOpnieuw }: {
               value={invoer}
               onChange={(e) => setInvoer(e.target.value)}
               disabled={!bezig}
-              placeholder={letter ? t("ketenVeld", { letter }) : ""}
+              placeholder={letter ? t("ketenVeld", { letter, n: nodig }) : ""}
               className="keten-veld"
               autoComplete="off"
               autoCorrect="off"
@@ -498,14 +579,14 @@ export function Woordketen({ seed, onKlaar, onOpnieuw }: {
               type="submit"
               className="pressable"
               aria-label={t("ketenLever")}
-              disabled={!bezig || schoon(invoer).length < 2}
+              disabled={!bezig || schoon(invoer).length < nodig}
               style={{
                 appearance: "none", border: "none", cursor: "pointer", flexShrink: 0,
                 width: 38, height: 38, borderRadius: 9,
                 display: "grid", placeItems: "center",
                 background: "linear-gradient(180deg, #2F6B33 0%, #1C4520 100%)",
                 boxShadow: `inset 0 0 0 1px ${withAlpha(GOUD, 0.6)}, inset 0 1px 0 rgba(255,255,255,.2), 0 2px 6px rgba(0,0,0,.35)`,
-                opacity: !bezig || schoon(invoer).length < 2 ? 0.45 : 1,
+                opacity: !bezig || schoon(invoer).length < nodig ? 0.45 : 1,
                 color: "#FFF3D0",
               }}
             >
