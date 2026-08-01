@@ -16,7 +16,7 @@ export const SCORE_V = 3.7805;
 
 /** Waar de twee ruitjes in de plaat zitten, in breuken van de sectie. */
 export const SCORE_RUIT = {
-  t: 0.2238, h: 0.6643,
+  t: 0.17, h: 0.66,
   links: { l: 0.0407, b: 0.3213 },
   rechts: { l: 0.637, b: 0.3213 },
 };
@@ -39,8 +39,8 @@ export function Meter({ kop, waarde, kleur = "#FFF3D0", breuk }: {
         display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 1,
       }}
     >
-      <span style={{ fontFamily: font.wide, fontSize: 10, letterSpacing: 1.6, color: withAlpha("#FFE7A8", 0.72) }}>{kop}</span>
-      <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 22, lineHeight: 1, color: kleur, fontVariantNumeric: "tabular-nums", textShadow: "0 0 12px rgba(255,190,60,.5)" }}>{waarde}</span>
+      <span style={{ fontFamily: font.wide, fontSize: 11, letterSpacing: 1.7, color: withAlpha("#FFE7A8", 0.72) }}>{kop}</span>
+      <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 26, lineHeight: 1, color: kleur, fontVariantNumeric: "tabular-nums", textShadow: "0 0 12px rgba(255,190,60,.5)" }}>{waarde}</span>
     </div>
   );
 }

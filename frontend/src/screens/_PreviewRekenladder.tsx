@@ -34,6 +34,7 @@ import { sound } from "../sound/sound";
 import { useT } from "../i18n/i18n";
 import { VAK } from "./Arena";
 import { Scorebord } from "../components/Scorebord";
+import { Hulpbalk } from "../components/Hulpbalk";
 
 // ---- de ladder --------------------------------------------------------------
 //
@@ -251,6 +252,42 @@ const TREDEN = [
 const KNOPPEN = { links: -3.01, top: 3.48, breed: 16.76, hoog: 91.47 };
 // En dit zijn de harten van de vier schijven daarin, met hun doorsnee, allemaal
 // in procenten van de ladder. De letters gaan daar bovenop.
+// De drie hulpen onder de ladder. De iconen zijn getekend en niet uit een pakket
+// gehaald: ze moeten dezelfde lijndikte hebben als de rest van dit scherm.
+const HULPEN = [
+  {
+    sleutel: "vriend", label: "VRIEND HULP", prijs: 10,
+    icoon: (
+      <svg width="20" height="16" viewBox="0 0 20 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="7" cy="5" r="3" />
+        <path d="M1.6 14.4c.4-2.7 2.7-4.4 5.4-4.4s5 1.7 5.4 4.4" />
+        <circle cx="14.6" cy="6" r="2.2" />
+        <path d="M13 10.4c2.4-.5 4.7.9 5.4 3.4" />
+      </svg>
+    ),
+  },
+  {
+    sleutel: "ververs", label: "VERVERS", prijs: 5,
+    icoon: (
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="9" cy="9" r="7.2" />
+        <path d="M9 4.4l1.1 3.5 3.5 1.1-3.5 1.1L9 13.6l-1.1-3.5L4.4 9l3.5-1.1z" />
+      </svg>
+    ),
+  },
+  {
+    sleutel: "vijftig", label: "50 / 50", prijs: 15,
+    icoon: (
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="9" cy="9" r="7.2" />
+        <path d="M13 4.6L5 13.4" />
+        <text x="4.6" y="7.9" fontSize="4.6" fill="currentColor" stroke="none" fontFamily="sans-serif" fontWeight="700">50</text>
+        <text x="8.6" y="14.2" fontSize="4.6" fill="currentColor" stroke="none" fontFamily="sans-serif" fontWeight="700">50</text>
+      </svg>
+    ),
+  },
+];
+
 const LETTERS = [
   { letter: "A", x: 6.51, y: 13.14, d: 6.96 },
   { letter: "B", x: 5.69, y: 35.92, d: 7.41 },
@@ -267,7 +304,7 @@ type Oordeel = { gekozen: number | null; goed: boolean } | null;
  *  vol; de andere twee staan op nul en faden mee. Zo is de overgang een echte
  *  kruisfade en niet een sprong, en zie je in rust nooit twee kleuren door
  *  elkaar. */
-function Trede({ i, waarde, staat, onKies }: { i: number; waarde: number; staat: Staat; onKies: () => void }) {
+function Trede({ i, waarde, staat, onKies, tip = false }: { i: number; waarde: number; staat: Staat; onKies: () => void; tip?: boolean }) {
   const t = TREDEN[i];
   const kleur = staat === "goed" ? "goed" : staat === "fout" ? "fout" : staat === "uit" ? "uit" : "rust";
   return (
@@ -317,10 +354,14 @@ function Trede({ i, waarde, staat, onKies }: { i: number; waarde: number; staat:
           display: "grid", placeItems: "center",
           fontFamily: font.display, fontWeight: 800, fontSize: 30, letterSpacing: 1,
           color: "#FFF6DC",
-          textShadow: "0 2px 6px rgba(0,0,0,.75), 0 0 14px rgba(0,0,0,.5)",
           opacity: staat === "uit" ? 0 : staat === "dood" ? 0.4 : 1,
           transform: staat === "goed" ? "scale(1.06)" : "scale(1)",
           transition: "opacity .22s ease-out, transform .22s ease-out",
+          // De tip van je vriend: een gouden gloed om het getal, geen pijl of
+          // vinkje. Het is een hint en geen antwoordblad.
+          textShadow: tip
+            ? "0 0 10px rgba(255,214,120,.95), 0 0 22px rgba(255,190,60,.7), 0 2px 6px rgba(0,0,0,.75)"
+            : "0 2px 6px rgba(0,0,0,.75), 0 0 14px rgba(0,0,0,.5)",
         }}
       >
         {waarde}
@@ -333,11 +374,15 @@ function Trede({ i, waarde, staat, onKies }: { i: number; waarde: number; staat:
  *  worden met top EN bodem vastgezet en niet met een hoogte, want dan rekent de
  *  browser de onderrand van de ene en de bovenrand van de volgende uit hetzelfde
  *  getal en valt er nooit een haarlijn tussen. */
-function Ladder({ keuzes, antwoord, oordeel, onKies, slapend, klaar }: {
+function Ladder({ keuzes, antwoord, oordeel, onKies, slapend, klaar, weg = [], tip = null }: {
   keuzes: number[];
   antwoord: number;
   oordeel: Oordeel;
   onKies: (w: number) => void;
+  /** Door 50/50 weggehaald: dof en niet meer aan te tikken. */
+  weg?: number[];
+  /** Wat de vriend aanwijst: die trede krijgt een gouden randje. */
+  tip?: number | null;
   /** Tijdens het aftellen: de ladder staat er wel, maar uit en zonder getallen.
    *  Je ziet waar het gaat gebeuren zonder alvast te kunnen rekenen, en het
    *  scherm springt niet in elkaar op het moment dat de eerste som komt. */
@@ -359,6 +404,7 @@ function Ladder({ keuzes, antwoord, oordeel, onKies, slapend, klaar }: {
           waarde={w}
           staat={
             slapend ? "uit"
+            : weg.includes(w) ? "dood"
             : !oordeel ? (klaar ? "dood" : "rust")
             // Het JUISTE antwoord wordt altijd groen, ook als je het niet koos:
             // je moet kunnen zien wat het was, anders leer je niets van je
@@ -370,6 +416,7 @@ function Ladder({ keuzes, antwoord, oordeel, onKies, slapend, klaar }: {
             : "dood"
           }
           onKies={() => onKies(w)}
+          tip={tip === w}
         />
       ))}
       {/* Het knoppenvel gaat OVER de treden heen en niet eronder. Stond het
@@ -525,7 +572,7 @@ function Verven() {
  *  een vervaagde blauwe kern en daarbovenop de scherpe blauwe kern. Van buiten
  *  naar binnen dus goud met een blauw hart, wat op afstand leest als één lijn
  *  die van binnenuit brandt. */
-function NeonPad({ pad, vulling, breed = 1.1, kern = "rl-kern" }: { pad: string; vulling?: string; breed?: number; kern?: string }) {
+function NeonPad({ pad, vulling, breed = 0.8, kern = "rl-kern" }: { pad: string; vulling?: string; breed?: number; kern?: string }) {
   return (
     <>
       <path d={pad} fill="none" stroke="url(#rl-goud)" strokeWidth={breed + 1.2} opacity="0.3" filter="url(#rl-gloed)" />
@@ -654,7 +701,7 @@ function TabKader({ titel, children }: { titel: string; children: React.ReactNod
         <svg width={b} height={h} style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "visible" }} aria-hidden>
           <Verven />
           <NeonPad pad={pad} vulling="url(#rl-vul)" />
-          <NeonPad pad={plaat} vulling="url(#rl-plaat)" breed={0.85} kern="rl-kern-paars" />
+          <NeonPad pad={plaat} vulling="url(#rl-plaat)" breed={0.62} kern="rl-kern-paars" />
           {/* De veeg over de onderrand. `pathLength` zet de lijn om naar honderd
               eenheden, dus de streepmaat klopt bij elke schermbreedte zonder dat
               ik de echte lengte hoef te kennen. */}
@@ -680,7 +727,7 @@ function TabKader({ titel, children }: { titel: string; children: React.ReactNod
       >
         <span ref={naam}>{titel}</span>
       </span>
-      <div style={{ position: "relative", padding: `${TH + 8}px 16px 11px`, display: "flex", flexDirection: "column", alignItems: "center", gap: 9 }}>
+      <div style={{ position: "relative", padding: `${TH + 16}px 16px 11px`, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
         {children}
       </div>
     </div>
@@ -773,7 +820,7 @@ function SomVenster({ children }: { children: React.ReactNode }) {
       {maat.b > 0 && (
         <svg width={maat.b} height={maat.h} style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "visible" }} aria-hidden>
           <Verven />
-          <NeonPad pad={achthoek(maat.b, maat.h, 13)} vulling="url(#rl-vul-diep)" breed={0.9} />
+          <NeonPad pad={achthoek(maat.b, maat.h, 13)} vulling="url(#rl-vul-diep)" breed={0.72} />
         </svg>
       )}
       <div style={{ position: "relative", padding: "10px 14px", display: "grid", placeItems: "center" }}>{children}</div>
@@ -806,9 +853,16 @@ export function Rekenladder({ seed, onKlaar, onOpnieuw }: {
   const [oordeel, setOordeel] = useState<Oordeel>(null);
   const [fase, setFase] = useState<"tel" | "spel" | "klaar">("tel");
   const [tel, setTel] = useState(3);
+  // De hulpen. Elk EEN keer per poging: dat is de rem. Zonder die rem is een
+  // ladder zonder plafond geen ladder meer maar een kassa, want dan koop je je
+  // eindeloos naar boven.
+  const [gebruikt, setGebruikt] = useState<string[]>([]);
+  const [vers, setVers] = useState(0);      // ververs-teller, zit in de seed
+  const [weg, setWeg] = useState<number[]>([]);   // door 50/50 weggehaald
+  const [tip, setTip] = useState<number | null>(null); // wat de vriend aanwijst
 
   const trap = useMemo(() => trapVoor(trede), [trede]);
-  const som = useMemo(() => maakSom(`${potje}:${trede}`, trap), [potje, trede, trap]);
+  const som = useMemo(() => maakSom(`${potje}:${trede}:${vers}`, trap), [potje, trede, trap, vers]);
 
   const t0 = useRef(performance.now());
   const ingeleverd = useRef(false);
@@ -869,7 +923,7 @@ export function Rekenladder({ seed, onKlaar, onOpnieuw }: {
     vraag = requestAnimationFrame(stap);
     return () => cancelAnimationFrame(vraag);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [potje, trede, fase]);
+  }, [potje, trede, fase, vers]);
 
   const kies = useCallback((w: number) => {
     if (beslist.current || fase !== "spel") return;
@@ -881,9 +935,33 @@ export function Rekenladder({ seed, onKlaar, onOpnieuw }: {
     // Elke vijfde trede een eigen klank: een mijlpaal, geen tweede geluid bij
     // elke goede som.
     if (trede % 5 === 0) sound.reeks();
-    na(420, () => { setOordeel(null); setTrede((k) => k + 1); });
+    na(420, () => { setOordeel(null); setWeg([]); setTip(null); setTrede((k) => k + 1); });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fase, som, rest, trede, mis]);
+
+  /** Een hulp inzetten. Alleen tijdens het spel en alleen als hij nog niet op
+   *  is; het aftellen en het oordeel zijn geen moment om iets te kopen. */
+  const hulp = useCallback((sleutel: string) => {
+    if (fase !== "spel" || beslist.current || gebruikt.includes(sleutel)) return;
+    setGebruikt((g) => [...g, sleutel]);
+    if (sleutel === "vijftig") {
+      // Twee foute antwoorden weg. Uit de lijst zelf gekozen en niet willekeurig
+      // door elkaar: zo blijft de volgorde staan en springt er niets.
+      const fout = som.keuzes.filter((w) => w !== som.antwoord);
+      setWeg(fout.slice(0, 2));
+      sound.klemGoed();
+    } else if (sleutel === "ververs") {
+      // Een andere som op dezelfde trede, en de klok begint opnieuw. Dat laatste
+      // hoort erbij: anders koop je een som die je toch niet meer haalt.
+      setWeg([]);
+      setTip(null);
+      setVers((v) => v + 1);
+      sound.woosh();
+    } else if (sleutel === "vriend") {
+      setTip(som.antwoord);
+      sound.reeks();
+    }
+  }, [fase, gebruikt, som]);
 
   const stop = () => setFase("klaar");
 
@@ -905,7 +983,7 @@ export function Rekenladder({ seed, onKlaar, onOpnieuw }: {
             afsnijding op de hoeken, de naam op een tab die IN de bovenrand valt,
             het somvak erin met zijn eigen dunnere lijn, en onderin de klok als
             balk plus ring. */}
-        <div style={{ width: SECTIE, marginTop: 25 }}>
+        <div style={{ width: SECTIE, marginTop: 12 }}>
           <TabKader titel="REKENLADDER">
             <span
               style={{
@@ -959,7 +1037,16 @@ export function Rekenladder({ seed, onKlaar, onOpnieuw }: {
           onKies={kies}
           slapend={fase === "tel"}
           klaar={fase === "klaar"}
+          weg={weg}
+          tip={tip}
         />
+
+        {/* De hulpbalk onder de ladder. De prijzen staan er wel bij maar er wordt
+            nog niets afgeschreven: de knoppen werken, het betalen wacht op de
+            koppeling met je saldo. */}
+        <div style={{ marginTop: 10 }}>
+          <Hulpbalk hulpen={HULPEN} breedte={`${LADDER_BREED}vw`} onKies={hulp} op={gebruikt} />
+        </div>
 
         {(fase !== "klaar" || onOpnieuw) && (
         <div style={{ marginTop: 10 }}>
