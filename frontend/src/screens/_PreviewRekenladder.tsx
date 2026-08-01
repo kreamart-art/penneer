@@ -277,13 +277,13 @@ function HulpIcoon({ sleutel }: { sleutel: string }) {
       src={HULP_ART[sleutel]}
       alt=""
       draggable={false}
-      style={{ width: 24, height: 24, display: "block", flexShrink: 0 }}
+      style={{ width: 36, height: 36, display: "block", flexShrink: 0 }}
     />
   );
 }
 
 const HULPEN = [
-  { sleutel: "vriend", label: "VRIEND HULP", icoon: <HulpIcoon sleutel="vriend" /> },
+  { sleutel: "vriend", label: "HULPLIJN", icoon: <HulpIcoon sleutel="vriend" /> },
   { sleutel: "ververs", label: "VERVERS", icoon: <HulpIcoon sleutel="ververs" /> },
   { sleutel: "vijftig", label: "50 / 50", icoon: <HulpIcoon sleutel="vijftig" /> },
 ];

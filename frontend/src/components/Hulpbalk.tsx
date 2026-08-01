@@ -200,7 +200,7 @@ export function Hulpbalk({ hulpen, breedte, onKies, op = [] }: {
       vulling="leeg"
       style={{ width: breedte, padding: 7, flexShrink: 0 }}
     >
-      <div style={{ display: "flex", gap: 6, padding: 5 }}>
+      <div style={{ display: "flex", gap: 4, padding: 5 }}>
         {hulpen.map((h) => (
           <Glas
             key={h.sleutel}
@@ -216,17 +216,18 @@ export function Hulpbalk({ hulpen, breedte, onKies, op = [] }: {
               onPointerDown={(e) => { e.preventDefault(); if (!op.includes(h.sleutel) && h.aantal > 0) onKies?.(h.sleutel); }}
               disabled={!onKies || op.includes(h.sleutel) || h.aantal <= 0}
               style={{
-                width: "100%", background: "transparent", border: "none", padding: "5px 4px 5px 6px",
-                display: "flex", alignItems: "center", justifyContent: "flex-start", gap: 5,
+                width: "100%", background: "transparent", border: "none", padding: "5px 3px 5px 7px",
+                display: "flex", alignItems: "center", justifyContent: "flex-start", gap: 4,
                 cursor: onKies ? "pointer" : "default",
                 WebkitTapHighlightColor: "transparent", touchAction: "manipulation",
               }}
             >
               <span style={{ display: "grid", placeItems: "center", color: "#D9C1FF", flexShrink: 0, filter: "drop-shadow(0 0 6px rgba(150,90,235,.75))" }}>{h.icoon}</span>
-              <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 2, minWidth: 0 }}>
+              <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 2, minWidth: 0, marginTop: 4 }}>
                 <span
                   style={{
                     fontFamily: font.wide, fontSize: 11.5, letterSpacing: 0.2, lineHeight: 1.02,
+                    whiteSpace: "nowrap",
                     textAlign: "left", color: withAlpha("#F2E6FF", 0.95),
                     textShadow: "0 1px 2px rgba(0,0,0,.65)",
                   }}
