@@ -1378,3 +1378,34 @@ body.rekenspel::after {
   background-image: url("/ui/reken/bg-spel.webp?v=3");
 }
 
+
+/* ---- de zaal van Woordketen ------------------------------------------------
+   Een warme muur met klimop, een boek en een kop koffie: het spel is de rustigste
+   van de zeven en de zaal hoort daarbij. De plaat is vierkant (4096x4096) en de
+   uitsnede staat vast op 150% van de schermbreedte, onderaan verankerd: zo staat
+   het bureaublad met het boek en de koffie onderin beeld en vullen de ranken de
+   bovenhoeken, net als in de mockup. */
+body.ketenzaal::after,
+body.ketenspel::after {
+  content: "";
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(100vh + 240px);
+  height: calc(100lvh + 240px);
+  z-index: -1;
+  pointer-events: none;
+  background-color: #14100A;
+  background-repeat: no-repeat;
+  background-image: url("/ui/keten/zaal.webp?v=3");
+  /* Onderaan verankerd en op VOLLE breedte: dan staan het boek links en de kop
+     koffie rechts onderin beeld, zoals in de mockup. Het doek is daarvoor
+     telefoonvormig gemaakt (1400 bij 3034); de plaat zelf is vierkant en zou op
+     volle breedte bovenaan een zwarte band overlaten. */
+  /* COVER en niet op breedte: de laag is hoger dan het scherm (100lvh plus 240)
+     en op breedte bleef er bovenaan een zwarte band over. Met cover vult de
+     plaat altijd, en wat er aan de zijkanten afvalt is muur. */
+  background-position: center bottom;
+  background-size: cover;
+}

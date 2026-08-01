@@ -1,79 +1,53 @@
 // Woordketen: het arenaspel van maandag.
 //
 // EEN KETTING DIE BLIJFT GROEIEN. Elk woord begint met de laatste letter van het
-// vorige. Je typt niets, je TIKT: onder de ketting liggen woordtegels en precies
-// een daarvan begint met de goede letter. Tik je hem aan, dan klikt hij aan de
-// ketting en schuift de rest een plek op.
+// vorige, en dat woord verzin je ZELF: je typt het in. Bestaat het, en begint het
+// met de goede letter, dan klikt het aan de ketting en telt de volgende schakel.
 //
-// WAAROM TIKKEN EN NIET TYPEN. Een kettingspel waarin je zelf een woord intikt
-// klinkt beter dan het is. De woordenlijst in deze app telt 1306 Nederlandse
-// woorden (zie data/nlwoorden.ts) en dat is prima om woorden UIT te halen, maar
-// te mager om woorden aan AF TE KEUREN: je typt een gewoon Nederlands woord dat
-// er niet in staat en het spel zegt dat het niet bestaat. Dat is geen spel maar
-// een ruzie. Door de woorden aan te bieden gebruik je de lijst waar hij goed in
-// is en heeft niemand ooit ongelijk.
+// DE SCHEIDSRECHTER STAAT OP DE SERVER. De woordenlijst op de client (1306 NL,
+// 1557 EN) is prima om woorden UIT te halen maar te mager om woorden AF TE
+// KEUREN, dus die lijst is alleen de snelweg: staat je woord erin, dan is het
+// meteen goed en gaat er niets over de lijn. Alles daarbuiten gaat langs
+// /api/arena/keten, waar eerst de gedeelde verdict-cache kijkt en pas daarna de
+// AI-scheids. Is die niet bereikbaar, dan telt het woord GOED: een speler hoort
+// niet te vallen omdat onze verbinding hapert.
 //
-// EIGEN INDELING, en dat mag: de ketting staat rechtop en groeit naar beneden,
-// met de laatste twee schakels er nog boven zodat je ziet waar je vandaan komt.
-// De andere arenaspellen hebben een vast vak met een bord erin; dit spel IS de
-// beweging naar beneden.
+// DE INDELING KOMT UIT DE MOCKUP en is helemaal art:
 //
-// DE KLIM ZIT NIET IN DE KLOK. Tien seconden per schakel, elke schakel dezelfde,
-// om dezelfde reden als bij de Rekenladder: onder een paar tellen meet je
-// reactiesnelheid in plaats van taal. Wat wel klimt:
+//   het hangende bord aan kettingen   de stand, met het schakel-medaillon
+//   het lange klembord                de ketting die je hebt gebouwd
+//   het groene bord                   het woord waar je nu op staat
+//   het korte klembord                het invulveld
+//   de houten plaat                   opnieuw of stoppen
 //
-//   1. HET AANTAL TEGELS. Vier, dan zes, dan acht. Meer lezen in dezelfde tijd.
-//   2. DE LENGTE van de woorden. Kort in het begin, lang verderop.
-//   3. DE LOKKERS. Eerst beginnen ze met een letter die nergens in het woord
-//      zit, dus je kunt op vorm zoeken. Later beginnen ze met een letter die WEL
-//      in het huidige woord staat, en vanaf schakel dertien staat er ook een
-//      tussen die begint met de letter waar je NET vandaan komt. Dan moet je
-//      echt op de laatste letter letten en niet op wat je herkent.
+// Alles staat absoluut in EEN doos met een vaste verhouding, net als in het
+// bestand waar de mockup uit komt. De onderdelen overlappen elkaar daar (het
+// groene bord ligt OP het lange klembord), en dat krijg je met een kolom van
+// blokken nooit precies goed.
 //
-// DOODLOPENDE EINDEN. Op de C, X en Y begint geen enkel woord in de lijst, en op
-// de U maar vier. Een woord dat daarop eindigt zou de ketting doodslaan, dus een
-// antwoord mag alleen eindigen op een letter waar minstens acht woorden mee
-// beginnen. Dat is geen kunstgreep om het makkelijk te maken maar de enige
-// manier waarop een ketting eindeloos KAN zijn.
+// DE SCHADUWEN zijn tweede kopieën van dezelfde art met brightness(0) en een
+// blur, net als bij de knoppen op de main page. Geen drop-shadow-filter: die
+// rastert Safari apart en dan zie je de rechthoek van de laag over de art heen.
+// Het lange klembord krijgt er GEEN, want dat vervaagt aan de onderkant naar de
+// achtergrond toe en een schaduw zou die overgang verraden.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { LogOut } from "lucide-react";
+import { LogOut, RotateCcw } from "lucide-react";
 import { Screen } from "../components/Layout";
-import { KADER_LIJN_ROOD, NeonKader } from "../components/ProfileHero";
-import { ARENA_GOUD, colors, font, withAlpha } from "../theme/tokens";
+import { colors, font, withAlpha } from "../theme/tokens";
 import { sound } from "../sound/sound";
 import { useT } from "../i18n/i18n";
-import { VAK } from "./Arena";
-import { Scorebord } from "../components/Scorebord";
 import { woordenboek, type Woordenboek } from "../data/woorden";
 
-/** De klok per schakel. TIEN SECONDEN, elke schakel dezelfde. Moet gelijk lopen
- *  met WOORDKETEN_VENSTER in backend/app/arena.py; staat het daar anders, dan
- *  keurt de server een eerlijke poging af. */
-export const KETEN_VENSTER = 10000;
+/** De klok per schakel. TWINTIG SECONDEN, elke schakel dezelfde: je moet een
+ *  woord VERZINNEN en typen, en dat kost meer dan een tik. Moet gelijk lopen met
+ *  WOORDKETEN_VENSTER in backend/app/arena.py; staat het daar anders, dan keurt
+ *  de server een eerlijke poging af. */
+export const KETEN_VENSTER = 20000;
 
 /** Hoeveel woorden er minstens met een letter moeten beginnen voordat die letter
- *  een geldig EINDE van een antwoord is. Onder deze grens kan de ketting op de
- *  volgende beurt niet verder. */
+ *  een geldig EINDE van een startwoord is. Onder die grens zet je de speler op
+ *  een letter waar hij zelf ook bijna niets op kan verzinnen. */
 const MIN_VERVOLG = 8;
-
-export type Trap = {
-  /** Hoeveel tegels er liggen. */
-  tegels: number;
-  /** De lengte die de woorden bij voorkeur hebben. Voorkeur en geen eis: op
-   *  sommige beginletters bestaan er domweg geen lange woorden. */
-  band: [number, number];
-  /** 0 = lokkers met een vreemde letter, 1 = lokkers uit het woord zelf,
-   *  2 = plus een lokker op de letter waar je net vandaan komt. */
-  gemeen: 0 | 1 | 2;
-};
-
-export function trapVoor(schakel: number): Trap {
-  const k = Math.max(1, schakel);
-  if (k <= 3) return { tegels: 4, band: [3, 5], gemeen: 0 };
-  if (k <= 7) return { tegels: 6, band: [3, 6], gemeen: 1 };
-  if (k <= 12) return { tegels: 8, band: [4, 7], gemeen: 1 };
-  return { tegels: 8, band: [4, 9], gemeen: 2 };
-}
 
 /** Wat een schakel oplevert: honderd maal het nummer, plus de helft daarvan naar
  *  rato van de tijd die je overhield. Maal het nummer en niet vast, zodat twee
@@ -82,7 +56,7 @@ export function trapVoor(schakel: number): Trap {
 export const puntenVoor = (schakel: number, rest: number) =>
   100 * schakel + Math.round(50 * schakel * Math.max(0, Math.min(1, rest)));
 
-// ---- seed en generator ------------------------------------------------------
+// ---- seed en woordenlijst ---------------------------------------------------
 
 function maakRng(seed: string): () => number {
   let a = 0;
@@ -95,31 +69,16 @@ function maakRng(seed: string): () => number {
   };
 }
 
-const kiesUit = <T,>(rng: () => number, lijst: readonly T[]): T => lijst[Math.floor(rng() * lijst.length)];
-
-function schud<T>(rng: () => number, lijst: T[]): T[] {
-  const uit = lijst.slice();
-  for (let i = uit.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
-    [uit[i], uit[j]] = [uit[j], uit[i]];
-  }
-  return uit;
-}
-
 /** De woorden op beginletter, plus de letters waar genoeg woorden mee beginnen.
- *
- *  Eén keer per woordenboek uitrekenen en bewaren: het is een paar duizend
- *  woorden en dat is te veel om per beurt opnieuw te doen, maar te weinig om
- *  ingewikkeld over te doen. */
+ *  Eén keer per woordenboek uitrekenen en bewaren. */
 const kaartjes = new WeakMap<Woordenboek, { per: Map<string, string[]>; levend: Set<string> }>();
 function kaart(wb: Woordenboek) {
   const oud = kaartjes.get(wb);
   if (oud) return oud;
   const per = new Map<string, string[]>();
   for (const w of wb.WOORDEN) {
-    const l = w[0];
-    const lijst = per.get(l);
-    if (lijst) lijst.push(w); else per.set(l, [w]);
+    const lijst = per.get(w[0]);
+    if (lijst) lijst.push(w); else per.set(w[0], [w]);
   }
   for (const lijst of per.values()) lijst.sort();
   const levend = new Set<string>();
@@ -129,209 +88,139 @@ function kaart(wb: Woordenboek) {
   return nieuw;
 }
 
-export type Beurt = {
-  /** Het woord dat aan de ketting mag. */
-  antwoord: string;
-  /** Alle tegels, geschud, met het antwoord ertussen. */
-  tegels: string[];
-};
-
-/** Uit een lijst kiezen met een voorkeur voor een lengte. Zit er niets in de
- *  band, dan wint de lengte die er het dichtst bij ligt: liever een kort woord
- *  dan geen beurt. */
-function kiesMetLengte(rng: () => number, lijst: string[], band: [number, number]): string | null {
-  if (!lijst.length) return null;
-  const in_band = lijst.filter((w) => w.length >= band[0] && w.length <= band[1]);
-  if (in_band.length) return kiesUit(rng, in_band);
-  const doel = (band[0] + band[1]) / 2;
-  let beste = lijst[0];
-  let afstand = Math.abs(beste.length - doel);
-  for (const w of lijst) {
-    const d = Math.abs(w.length - doel);
-    if (d < afstand) { beste = w; afstand = d; }
-  }
-  return beste;
-}
-
-/** Een beurt zetten: één goed woord op `letter` en de rest lokkers.
- *
- *  `null` als het niet lukt. Dat kan alleen als de lijst bijna op is (na
- *  honderden schakels), en dan is de ketting gewoon uit. */
-export function maakBeurt(
-  rng: () => number,
-  wb: Woordenboek,
-  letter: string,
-  gebruikt: ReadonlySet<string>,
-  trap: Trap,
-  huidig: string,
-  vorigeLetter: string | null,
-): Beurt | null {
-  const { per, levend } = kaart(wb);
-  const kandidaten = (per.get(letter) ?? []).filter((w) => !gebruikt.has(w) && levend.has(w[w.length - 1]));
-  const antwoord = kiesMetLengte(rng, kandidaten, trap.band);
-  if (!antwoord) return null;
-
-  // De lokkers. Welke beginletters mogen ze hebben?
-  const alle = [...per.keys()].filter((l) => l !== letter);
-  const inWoord = new Set(huidig.split(""));
-  const dichtbij = alle.filter((l) => inWoord.has(l));
-  const veraf = alle.filter((l) => !inWoord.has(l));
-
-  const gekozen: string[] = [];
-  const bezet = new Set<string>([antwoord]);
-  const pak = (uitLetters: string[]) => {
-    for (let poging = 0; poging < 24 && uitLetters.length; poging++) {
-      const l = kiesUit(rng, uitLetters);
-      const lijst = (per.get(l) ?? []).filter((w) => !gebruikt.has(w) && !bezet.has(w));
-      const w = kiesMetLengte(rng, lijst, trap.band);
-      if (w) { gekozen.push(w); bezet.add(w); return true; }
-    }
-    return false;
-  };
-
-  // Vanaf schakel dertien ligt er een lokker op de letter waar je NET vandaan
-  // komt. Dat is de gemeenste die er is: je oog wil terug naar wat het herkent.
-  if (trap.gemeen >= 2 && vorigeLetter && vorigeLetter !== letter) pak([vorigeLetter]);
-  while (gekozen.length < trap.tegels - 1) {
-    const bron = trap.gemeen >= 1 && dichtbij.length && rng() < 0.6 ? dichtbij : veraf.length ? veraf : alle;
-    if (!pak(bron) && !pak(alle)) break;
-  }
-  return { antwoord, tegels: schud(rng, [antwoord, ...gekozen]) };
-}
-
 /** Het woord waar de ketting mee begint. Kort, en het moet ergens heen kunnen. */
 export function startWoord(rng: () => number, wb: Woordenboek): string {
   const { per, levend } = kaart(wb);
   const alles: string[] = [];
   for (const lijst of per.values()) for (const w of lijst) if (w.length <= 5 && levend.has(w[w.length - 1])) alles.push(w);
-  return kiesUit(rng, alles.sort());
+  alles.sort();
+  return alles[Math.floor(rng() * alles.length)];
 }
 
-// ---- het beeld --------------------------------------------------------------
+const schoon = (s: string) => s.trim().toUpperCase().replace(/[^A-ZÀ-Ü'\- ]/g, "");
 
-const GOUD = ARENA_GOUD;
-const VIOLET = "#B36BFF";
-const GROEN = "#3BE08F";
-const ROOD = "#FF5A4E";
+// ---- de maten van de art ----------------------------------------------------
+//
+// Alles in delen van de BREEDTE van de doos, ook de hoogtes: dan schaalt de hele
+// bouw met de schermbreedte mee en blijft de verhouding tussen de onderdelen
+// staan. De verhoudingen komen uit de bestanden zelf, de plekken uit de mockup.
+//
+// OPGEMETEN IN DE MOCKUP, niet geschat. Het doek daar is 872 breed, en de vijf
+// stukken staan er op (links, breedte, top) in doekpunten:
+//
+//   bord    48  778   0      klembord  40  790  427
+//   groen   48  782  712     invul     40  790  1073
+//   knop   229  366  1483
+//
+// Gedeeld door 872 wordt dat de tabel hieronder. Nagerekend of de art dan ook
+// zijn eigen verhouding houdt: het groene bord komt uit op 2,52 tegen 2,58 in
+// het bestand, het lange klembord op 0,89 tegen 0,87, het korte op 3,59 tegen
+// 3,66. Er is dus NIETS uitgerekt in de mockup, en hier hoeft dat ook niet.
+const ART = {
+  bord: { v: 1080 / 545, l: 0.055, b: 0.892, t: 0 },     // hangend bord met kettingen
+  klem: { v: 1080 / 1244, l: 0.046, b: 0.906, t: 0.490 },// lang klembord, de ketting
+  woord: { v: 1080 / 419, l: 0.055, b: 0.897, t: 0.817 },// groen bord, het woord
+  invul: { v: 1080 / 295, l: 0.046, b: 0.906, t: 1.231 },// kort klembord, het veld
+  knop: { v: 720 / 202, l: 0.263, b: 0.420, t: 1.701 },  // houten plaat, de knop
+} as const;
+/** Hoe hoog de hele bouw is, in dezelfde eenheid. */
+const HOOG = ART.knop.t + ART.knop.b / ART.knop.v + 0.02;
 
-/** Een schakel in de ketting. `plek` is 0 voor de actieve en telt op naar boven,
- *  zodat oudere schakels kleiner en doffer worden en de ketting diepte krijgt. */
-function Schakel({ woord, plek, staat }: { woord: string; plek: number; staat?: "goed" | "fout" }) {
-  const dof = Math.max(0, 1 - plek * 0.34);
-  const actief = plek === 0;
-  const rand = staat === "goed" ? GROEN : staat === "fout" ? ROOD : GOUD[2];
+/** In het hangende bord: waar de twee planken liggen, in delen van de arthoogte.
+ *  Opgemeten: boven de 0,54 zijn het de kettingen, daaronder het hout. */
+const PLANK = { t: 0.55, h: 0.36, links: [0.04, 0.34], rechts: [0.66, 0.96] };
+
+const GOUD_FEL = "#FFE9A8";
+const GOUD = "#E7B75A";
+const INKT = "#3A2A17";     // de kleur van geschreven tekst op het papier
+const GROEN_INKT = "#EBF5DC";
+
+/** Een stuk art op zijn plek, met een schaduw eronder tenzij die uit staat. */
+function Laag({ art, maat, schaduw = true, zIndex, children, blur = 9, zak = 7 }: {
+  art: string;
+  maat: { v: number; l: number; b: number; t: number };
+  schaduw?: boolean;
+  zIndex?: number;
+  children?: React.ReactNode;
+  blur?: number;
+  zak?: number;
+}) {
+  const pb = (v: number) => `${(v * 100).toFixed(4)}%`;
   return (
     <div
       style={{
-        width: actief ? "100%" : `${94 - plek * 7}%`,
-        height: actief ? 52 : 30,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        position: "relative",
-        borderRadius: 12,
-        opacity: 0.25 + dof * 0.75,
-        background: actief
-          ? "linear-gradient(180deg, rgba(96,44,168,.55) 0%, rgba(44,17,84,.62) 100%)"
-          : "linear-gradient(180deg, rgba(70,32,124,.34) 0%, rgba(32,13,62,.4) 100%)",
-        boxShadow: actief
-          ? `inset 0 0 0 1px ${withAlpha(rand, 0.85)}, 0 0 14px ${withAlpha(rand, 0.3)}, inset 0 1px 0 rgba(255,255,255,.16)`
-          : `inset 0 0 0 1px ${withAlpha(GOUD[3], 0.6 * dof + 0.2)}`,
-        transition: "all .22s ease-out",
+        position: "absolute",
+        left: pb(maat.l), width: pb(maat.b),
+        // De hoogte via de verhouding van het bestand, en de top in dezelfde
+        // eenheid als de breedte: `padding-top` en `top` rekenen allebei met de
+        // BREEDTE van de doos, dus dat klopt vanzelf met elkaar.
+        // `top` in procenten rekent met de HOOGTE van de doos en `left`/`width`
+        // met de breedte. De maten hieronder staan allemaal in delen van de
+        // BREEDTE, dus de top wordt hier omgerekend door HOOG. Zonder die deling
+        // zakt alles ruim anderhalf keer te ver naar beneden.
+        top: pb(maat.t / HOOG), aspectRatio: `${maat.v}`,
+        zIndex,
       }}
     >
-      <span
-        style={{
-          fontFamily: font.display, fontWeight: 800,
-          fontSize: actief ? 26 : 15,
-          letterSpacing: actief ? 1.6 : 0.8, marginRight: actief ? -1.6 : -0.8,
-          color: actief ? "#FFFFFF" : withAlpha("#E7D9FF", 0.8),
-          textShadow: actief ? "0 2px 6px rgba(0,0,0,.6)" : "none",
-          whiteSpace: "nowrap",
-        }}
-      >
-        {actief ? woord.slice(0, -1) : woord}
-        {actief && (
-          // De laatste letter is de opdracht, dus die staat er niet als deel van
-          // het woord maar als een eigen teken in het goud van de arena.
-          <span style={{ color: GOUD[1], textShadow: `0 0 12px ${withAlpha(GOUD[1], 0.7)}, 0 2px 6px rgba(0,0,0,.7)` }}>
-            {woord.slice(-1)}
-          </span>
-        )}
-      </span>
-    </div>
-  );
-}
-
-/** Het stukje ketting tussen twee schakels: twee schalmen die in elkaar haken. */
-function Schalm({ dof }: { dof: number }) {
-  return (
-    <svg width="14" height="13" viewBox="0 0 14 13" aria-hidden style={{ display: "block", opacity: dof, flexShrink: 0 }}>
-      <ellipse cx="7" cy="4" rx="3.1" ry="3.6" fill="none" stroke={GOUD[2]} strokeWidth="1.5" />
-      <ellipse cx="7" cy="9" rx="3.1" ry="3.6" fill="none" stroke={GOUD[3]} strokeWidth="1.5" />
-    </svg>
-  );
-}
-
-/** Een woordtegel om aan te tikken. */
-function Tegel({ woord, staat, onKies }: {
-  woord: string;
-  staat: "rust" | "goed" | "fout" | "dood";
-  onKies: () => void;
-}) {
-  const rand = staat === "goed" ? GROEN : staat === "fout" ? ROOD : VIOLET;
-  const dood = staat === "dood";
-  return (
-    <button
-      onClick={onKies}
-      className="pressable"
-      disabled={staat !== "rust"}
-      style={{
-        appearance: "none", border: "none", cursor: staat === "rust" ? "pointer" : "default",
-        minHeight: 46, padding: "8px 6px", borderRadius: 11,
-        display: "grid", placeItems: "center",
-        opacity: dood ? 0.3 : 1,
-        background:
-          staat === "goed" ? "linear-gradient(180deg, rgba(30,120,74,.85) 0%, rgba(12,58,36,.9) 100%)"
-          : staat === "fout" ? "linear-gradient(180deg, rgba(150,42,34,.85) 0%, rgba(70,16,12,.9) 100%)"
-          : "linear-gradient(180deg, rgba(86,40,150,.5) 0%, rgba(38,15,72,.6) 100%)",
-        boxShadow: `inset 0 0 0 1px ${withAlpha(rand, dood ? 0.25 : 0.7)}, inset 0 1px 0 rgba(255,255,255,.14), 0 2px 8px rgba(0,0,0,.35)`,
-        transition: "all .18s ease-out",
-      }}
-    >
-      <span
-        style={{
-          fontFamily: font.display, fontWeight: 800, fontSize: woord.length > 7 ? 15 : 17,
-          letterSpacing: 0.6, marginRight: -0.6, color: "#F6EEFF",
-          textShadow: "0 1px 3px rgba(0,0,0,.6)", whiteSpace: "nowrap",
-        }}
-      >
-        {woord}
-      </span>
-    </button>
-  );
-}
-
-/** De klokbalk. Loopt van violet naar rood zonder omslagpunt: een balk die op
- *  een vast percentage ineens van kleur springt leest als een fout. */
-function Klokbalk({ rest }: { rest: number }) {
-  const r = Math.max(0, Math.min(1, rest));
-  const kleur = r > 0.5 ? VIOLET : r > 0.22 ? "#FF9F45" : ROOD;
-  return (
-    <div style={{ width: "100%", height: 8, borderRadius: 999, background: "rgba(20,8,40,.7)", boxShadow: `inset 0 0 0 1px ${withAlpha(GOUD[3], 0.45)}`, overflow: "hidden" }}>
-      <div
-        style={{
-          width: `${r * 100}%`, height: "100%", borderRadius: 999,
-          background: `linear-gradient(90deg, ${withAlpha(kleur, 0.65)} 0%, ${kleur} 100%)`,
-          boxShadow: `0 0 10px ${withAlpha(kleur, 0.6)}`,
-          transition: "width .1s linear, background .3s",
-        }}
+      {schaduw && (
+        <img
+          src={art} alt="" aria-hidden draggable={false}
+          style={{
+            position: "absolute", inset: 0, width: "100%", height: "100%", display: "block",
+            filter: `brightness(0) blur(${blur}px)`, opacity: 0.5, transform: `translateY(${zak}px)`,
+            pointerEvents: "none",
+          }}
+        />
+      )}
+      <img
+        src={art} alt="" aria-hidden draggable={false}
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block", pointerEvents: "none" }}
       />
+      {children}
     </div>
+  );
+}
+
+/** Een teller op een plank van het hangende bord. */
+function Teller({ kop, waarde, kant }: { kop: string; waarde: string; kant: "links" | "rechts" }) {
+  const [a, b] = kant === "links" ? PLANK.links : PLANK.rechts;
+  return (
+    <span
+      style={{
+        position: "absolute",
+        left: `${a * 100}%`, width: `${(b - a) * 100}%`,
+        top: `${PLANK.t * 100}%`, height: `${PLANK.h * 100}%`,
+        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 1,
+        pointerEvents: "none",
+      }}
+    >
+      <span style={{ fontFamily: font.wide, fontSize: 9, letterSpacing: 1.4, marginRight: -1.4, color: withAlpha(GOUD_FEL, 0.82) }}>{kop}</span>
+      <span
+        style={{
+          fontFamily: font.display, fontWeight: 800, fontSize: 20, lineHeight: 1,
+          color: "#FFF6DE", fontVariantNumeric: "tabular-nums",
+          textShadow: "0 1px 2px rgba(40,20,0,.8)",
+        }}
+      >
+        {waarde}
+      </span>
+    </span>
+  );
+}
+
+/** Een pijltje tussen twee schakels op het klembord. Wijst NAAR BENEDEN, want
+ *  daar groeit de ketting heen. */
+function Pijl() {
+  return (
+    <svg width="11" height="9" viewBox="0 0 11 9" aria-hidden style={{ display: "block", opacity: 0.5 }}>
+      <path d="M5.5 8.4 L0.7 1.2 L10.3 1.2 Z" fill={INKT} />
+    </svg>
   );
 }
 
 // ---- het spel ---------------------------------------------------------------
 
-type Fase = "tel" | "spel" | "klaar";
+type Fase = "tel" | "spel" | "kijkt" | "klaar";
 
 export function Woordketen({ seed, onKlaar, onOpnieuw }: {
   seed: string;
@@ -340,12 +229,16 @@ export function Woordketen({ seed, onKlaar, onOpnieuw }: {
 }) {
   const { t, lang } = useT();
   const wb = useMemo(() => woordenboek(lang), [lang]);
+  useEffect(() => {
+    document.body.classList.add("ketenspel");
+    return () => document.body.classList.remove("ketenspel");
+  }, []);
 
   const [fase, setFase] = useState<Fase>("tel");
   const [tel, setTel] = useState(3);
   const [ketting, setKetting] = useState<string[]>([]);
-  const [beurt, setBeurt] = useState<Beurt | null>(null);
-  const [oordeel, setOordeel] = useState<{ gekozen: string } | null>(null);
+  const [invoer, setInvoer] = useState("");
+  const [melding, setMelding] = useState<string | null>(null);
   const [totaal, setTotaal] = useState(0);
   const [rest, setRest] = useState(1);
 
@@ -354,8 +247,9 @@ export function Woordketen({ seed, onKlaar, onOpnieuw }: {
   const beslist = useRef(false);
   const t0 = useRef(performance.now());
   const ingeleverd = useRef(false);
+  const veld = useRef<HTMLInputElement | null>(null);
 
-  const schakel = ketting.length;              // hoeveel schakels je hebt gemaakt
+  const schakel = Math.max(0, ketting.length - 1);   // hoeveel schakels je maakte
   const huidig = ketting.length ? ketting[ketting.length - 1] : "";
   const letter = huidig ? huidig[huidig.length - 1] : "";
 
@@ -371,27 +265,15 @@ export function Woordketen({ seed, onKlaar, onOpnieuw }: {
     gebruikt.current.add(start);
     setKetting([start]);
     setFase("spel");
+    beslist.current = false;
+    setRest(1);
     t0.current = performance.now();
   }, [fase, tel, wb]);
 
-  // Een nieuwe beurt zodra de ketting is gegroeid.
+  // De klok van deze schakel. Staat STIL terwijl de scheidsrechter kijkt: dat
+  // wachten is van ons en niet van de speler.
   useEffect(() => {
-    if (fase !== "spel" || !huidig || oordeel) return;
-    const vorige = ketting.length >= 2 ? ketting[ketting.length - 2] : null;
-    const b = maakBeurt(
-      rng.current, wb, letter, gebruikt.current, trapVoor(schakel),
-      huidig, vorige ? vorige[vorige.length - 1] : null,
-    );
-    if (!b) { setFase("klaar"); return; }
-    setBeurt(b);
-    beslist.current = false;
-    setRest(1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fase, ketting.length]);
-
-  // De klok van deze beurt.
-  useEffect(() => {
-    if (fase !== "spel" || !beurt) return;
+    if (fase !== "spel" || !huidig) return;
     const begin = performance.now();
     let stop = false;
     const tik = () => {
@@ -404,118 +286,239 @@ export function Woordketen({ seed, onKlaar, onOpnieuw }: {
     const id = requestAnimationFrame(tik);
     return () => { stop = true; cancelAnimationFrame(id); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [beurt, fase]);
+  }, [fase, ketting.length]);
 
-  // De uitslag inleveren. Eén keer, en pas als het spel echt uit is.
+  // Het veld pakt de aandacht zodra er een nieuwe schakel te maken is.
+  useEffect(() => { if (fase === "spel") veld.current?.focus(); }, [fase, ketting.length]);
+
   useEffect(() => {
     if (fase !== "klaar" || !onKlaar || ingeleverd.current) return;
     ingeleverd.current = true;
-    // Het aantal SCHAKELS, niet het aantal woorden: het startwoord kreeg je
-    // cadeau. Zo sluit het plafond in plausibel() precies op de punten aan die
-    // hier zijn uitgedeeld (som van 150k voor k=1..schakels).
-    onKlaar(totaal, Math.max(0, schakel - 1), Math.round(performance.now() - t0.current));
+    onKlaar(totaal, schakel, Math.round(performance.now() - t0.current));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fase]);
 
-  function mis(gekozen: string | null) {
+  function mis(reden: string | null) {
     if (beslist.current) return;
     beslist.current = true;
     sound.klemFout();
     sound.haptic([18, 40, 18]);
-    setOordeel({ gekozen: gekozen ?? "" });
-    na(700, () => setFase("klaar"));
+    setMelding(reden);
+    na(900, () => setFase("klaar"));
   }
 
-  function kies(woord: string) {
-    if (fase !== "spel" || !beurt || beslist.current) return;
-    if (woord !== beurt.antwoord) { mis(woord); return; }
-    beslist.current = true;
-    const nummer = schakel;                      // deze schakel maakt hem langer
+  async function lever() {
+    if (fase !== "spel" || beslist.current) return;
+    const woord = schoon(invoer);
+    if (woord.length < 2) return;
+    if (woord[0] !== letter) { setMelding(t("ketenFoutLetter", { letter })); return; }
+    if (gebruikt.current.has(woord)) { setMelding(t("ketenFoutHerhaling")); return; }
+
+    const overGehouden = rest;
+    // De lijst is de snelweg: staat het woord erin, dan gaat er niets over de
+    // lijn en voelt de ketting meteen door.
+    if (wb.WOORDEN.has(woord)) { goed(woord, overGehouden); return; }
+
+    setFase("kijkt");
+    setMelding(null);
+    let ok = true;
+    try {
+      const r = await fetch("/api/arena/keten", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ word: woord, letter, lang }),
+      });
+      const d = r.ok ? await r.json() : null;
+      ok = d ? !!d.ok : true;
+    } catch {
+      ok = true;                       // onbereikbaar telt als goed
+    }
+    if (beslist.current) return;
+    if (ok) { setFase("spel"); goed(woord, overGehouden); }
+    else { setFase("spel"); mis(t("ketenFoutOnbekend", { woord })); }
+  }
+
+  function goed(woord: string, overGehouden: number) {
+    const nummer = schakel + 1;
     sound.klemGoed();
     sound.haptic(10);
     if (nummer % 5 === 0) sound.reeks();
-    setOordeel({ gekozen: woord });
-    setTotaal((s) => s + puntenVoor(nummer, rest));
-    na(320, () => {
-      gebruikt.current.add(woord);
-      setOordeel(null);
-      setKetting((k) => [...k, woord]);
-    });
+    gebruikt.current.add(woord);
+    setTotaal((s) => s + puntenVoor(nummer, overGehouden));
+    setInvoer("");
+    setMelding(null);
+    setKetting((k) => [...k, woord]);
   }
 
-  const staatVan = (w: string): "rust" | "goed" | "fout" | "dood" => {
-    if (!oordeel) return "rust";
-    if (w === beurt?.antwoord) return "goed";
-    if (w === oordeel.gekozen) return "fout";
-    return "dood";
-  };
-
-  // De laatste drie schakels: de actieve onderaan en twee erboven.
-  const zichtbaar = ketting.slice(-3).reverse();
+  // De laatste drie schakels op het klembord, de nieuwste onderaan.
+  const zichtbaar = ketting.slice(-4, -1);
+  const bezig = fase === "spel" || fase === "kijkt";
 
   return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, paddingBottom: 20 }}>
-      <Scorebord
-        breedte={VAK}
-        links={{ kop: t("ketenSchakel"), waarde: String(Math.max(0, schakel - 1)) }}
-        rechts={{ kop: t("soepPunten"), waarde: String(totaal) }}
-      />
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", paddingTop: 4 }}>
+      <div style={{ position: "relative", width: "min(360px, 94vw)", paddingBottom: `${HOOG * 100}%` }}>
+        {/* HET HANGENDE BORD: de stand. */}
+        <Laag art="/ui/keten/scorebord.webp?v=1" maat={ART.bord} zIndex={4} blur={10} zak={8}>
+          <Teller kant="links" kop={t("ketenSchakel")} waarde={String(schakel)} />
+          <Teller kant="rechts" kop={t("soepPunten")} waarde={String(totaal)} />
+        </Laag>
 
-      {/* DE KETTING. Van boven naar beneden: de oudste schakel die nog te zien is,
-          dan de schalmen, dan de actieve onderaan. Hij groeit dus naar je duim
-          toe en niet ervandaan. */}
-      <div style={{ width: VAK, display: "flex", flexDirection: "column", alignItems: "center", gap: 3, marginTop: 4, minHeight: 118, justifyContent: "flex-end" }}>
-        {zichtbaar.slice().reverse().map((w, i) => {
-          const plek = zichtbaar.length - 1 - i;
-          return (
-            <div key={`${w}-${plek}`} style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
-              <Schakel woord={w} plek={plek} staat={plek === 0 && oordeel ? (oordeel.gekozen === beurt?.antwoord ? "goed" : "fout") : undefined} />
-              {plek > 0 && <Schalm dof={Math.max(0.25, 1 - (plek - 1) * 0.3)} />}
-            </div>
-          );
-        })}
-      </div>
+        {/* HET LANGE KLEMBORD: de ketting die je hebt gebouwd. Geen schaduw: hij
+            vervaagt aan de onderkant naar de achtergrond toe. */}
+        <Laag art="/ui/keten/klembord-lang.webp?v=1" maat={ART.klem} schaduw={false} zIndex={1}>
+          <div
+            style={{
+              position: "absolute", left: "10%", right: "10%", top: "8%", height: "28%",
+              display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", gap: 2,
+              pointerEvents: "none",
+            }}
+          >
+            {zichtbaar.length === 0 && (
+              <span style={{ fontFamily: font.ui, fontSize: 11.5, color: withAlpha(INKT, 0.5), marginTop: 6 }}>{t("ketenLeeg")}</span>
+            )}
+            {zichtbaar.map((w, i) => (
+              <span key={`${w}-${i}`} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1, opacity: 0.45 + i * 0.22 }}>
+                <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 15, letterSpacing: 0.9, marginRight: -0.9, color: INKT }}>{w}</span>
+                {i < zichtbaar.length - 1 && <Pijl />}
+              </span>
+            ))}
+            {zichtbaar.length > 0 && <Pijl />}
+          </div>
+        </Laag>
 
-      {/* De opdracht in woorden, want de gouden letter alleen is te weinig als je
-          het spel voor het eerst speelt. */}
-      <span style={{ fontFamily: font.ui, fontSize: 12.5, color: withAlpha("#E7D9FF", 0.72), textAlign: "center", minHeight: 17 }}>
-        {fase === "tel" ? t("ketenKlaar")
-          : fase === "klaar" ? t("ketenGebroken", { n: Math.max(0, schakel - 1) })
-          : t("ketenKies", { letter })}
-      </span>
+        {/* HET GROENE BORD: het woord waar je nu op staat, met de letter die je
+            moet gebruiken in het goud. */}
+        <Laag art="/ui/keten/woordvak.webp?v=1" maat={ART.woord} zIndex={3} blur={10} zak={7}>
+          <div
+            style={{
+              // Het WOORD krijgt de ruimte in het midden; de streep en de regel
+              // eronder zakken naar de onderrand van het bord. Zo staat er boven
+              // het woord net zoveel lucht als er onder de regel overblijft en
+              // leest het bord van boven naar beneden: waar sta je, hoe lang heb
+              // je nog, en wat is er aan de hand.
+              position: "absolute", inset: "7% 7% 5%",
+              display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", gap: 0,
+              pointerEvents: "none",
+            }}
+          >
+            {/* Twee lagen: een vak dat de ruimte pakt en centreert, en DAARIN het
+                woord als één regel. Zonder dat tussenvak worden de twee stukken
+                (het woord en zijn laatste letter) twee vakken onder elkaar. */}
+            <span style={{ flex: 1, display: "grid", placeItems: "center", width: "100%", minHeight: 0 }}>
+              <span
+                style={{
+                  fontFamily: font.display, fontWeight: 800, fontSize: 34, lineHeight: 1.05,
+                  letterSpacing: 2.2, marginRight: -2.2, color: GROEN_INKT,
+                  textShadow: "0 2px 6px rgba(0,0,0,.5)", whiteSpace: "nowrap",
+                }}
+              >
+                {huidig ? huidig.slice(0, -1) : ""}
+                {huidig && <span style={{ color: GOUD, textShadow: `0 0 14px ${withAlpha(GOUD, 0.6)}, 0 2px 6px rgba(0,0,0,.6)` }}>{letter}</span>}
+              </span>
+            </span>
+            {/* De klok als dun spoor TUSSEN het woord en de regel eronder, zoals
+                in de mockup: hij hoort bij het woord waar je op staat en niet bij
+                de tekst die uitlegt wat er aan de hand is. */}
+            <span
+              style={{
+                width: "88%", height: 3, marginBottom: 3,
+                borderRadius: 999, background: "rgba(0,0,0,.28)", overflow: "hidden", flexShrink: 0,
+              }}
+            >
+              <span
+                style={{
+                  display: "block", height: "100%", borderRadius: 999,
+                  width: `${(bezig ? rest : 0) * 100}%`,
+                  background: rest > 0.45 ? GOUD : rest > 0.2 ? "#FF9F45" : "#FF5A4E",
+                  transition: "width .1s linear, background .3s",
+                }}
+              />
+            </span>
+            <span style={{ fontFamily: font.ui, fontSize: 11, letterSpacing: 0.6, color: withAlpha(GROEN_INKT, 0.66), textAlign: "center" }}>
+              {fase === "tel" ? t("ketenKlaar")
+                : fase === "kijkt" ? t("ketenKijkt")
+                : fase === "klaar" ? (melding ?? t("ketenGebroken", { n: schakel }))
+                : melding ?? t("ketenKies", { letter })}
+            </span>
+          </div>
+        </Laag>
 
-      <div style={{ width: VAK }}>
-        <Klokbalk rest={fase === "spel" ? rest : 0} />
-      </div>
+        {/* HET KORTE KLEMBORD: het invulveld. */}
+        <Laag art="/ui/keten/klembord-invul.webp?v=1" maat={ART.invul} zIndex={3} blur={9} zak={6}>
+          <form
+            onSubmit={(e) => { e.preventDefault(); void lever(); }}
+            style={{ position: "absolute", inset: "22% 8% 14%", display: "flex", alignItems: "center", gap: 8 }}
+          >
+            <input
+              ref={veld}
+              value={invoer}
+              onChange={(e) => setInvoer(e.target.value)}
+              disabled={!bezig}
+              placeholder={letter ? t("ketenVeld", { letter }) : ""}
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="characters"
+              spellCheck={false}
+              enterKeyHint="send"
+              style={{
+                flex: 1, minWidth: 0, appearance: "none", background: "transparent", border: "none", outline: "none",
+                fontFamily: font.display, fontWeight: 800, fontSize: 19, letterSpacing: 1.4,
+                // ZWART, niet de bruine inkt van het papier: wat je zelf typt moet
+                // eruit springen tegen wat er al staat.
+                color: "#12100C", textTransform: "uppercase",
+                borderBottom: `1.5px dashed ${withAlpha(INKT, 0.35)}`, padding: "2px 2px 3px",
+              }}
+            />
+            <button
+              type="submit"
+              className="pressable"
+              disabled={!bezig || schoon(invoer).length < 2}
+              style={{
+                appearance: "none", border: "none", cursor: "pointer", flexShrink: 0,
+                padding: "6px 13px", borderRadius: 8,
+                background: "linear-gradient(180deg, #2F6B33 0%, #1C4520 100%)",
+                boxShadow: `inset 0 0 0 1px ${withAlpha(GOUD, 0.6)}, inset 0 1px 0 rgba(255,255,255,.2), 0 2px 6px rgba(0,0,0,.35)`,
+                opacity: !bezig || schoon(invoer).length < 2 ? 0.45 : 1,
+                fontFamily: font.wide, fontSize: 11, letterSpacing: 1.2, marginRight: -1.2, color: "#FFF3D0",
+              }}
+            >
+              {fase === "kijkt" ? t("ketenKijktKort") : t("ketenLever")}
+            </button>
+          </form>
+        </Laag>
 
-      {/* DE TEGELS. Twee kolommen, ook bij acht: drie kolommen maakt de woorden
-          zo smal dat ze afbreken, en een woord dat je moet ontcijferen voordat je
-          hem kunt lezen is geen keuze maar een obstakel. */}
-      <div style={{ width: VAK, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 2, alignContent: "start", minHeight: 4 * 46 + 3 * 8 }}>
-        {fase === "tel" || !beurt
-          ? null
-          : beurt.tegels.map((w) => <Tegel key={w} woord={w} staat={staatVan(w)} onKies={() => kies(w)} />)}
-      </div>
-
-      {fase === "tel" && (
-        <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 58, lineHeight: 1, color: "#FFFFFF", textShadow: "0 0 18px rgba(160,200,255,.35)" }}>
-          {Math.max(1, tel)}
-        </span>
-      )}
-
-      {(fase !== "klaar" || onOpnieuw) && (
-        <div style={{ marginTop: 6 }}>
-          <NeonKader radius={999} dik={0.5} vulling="zwart" animeer lijn={KADER_LIJN_ROOD} gloed={`0 0 12px ${withAlpha(colors.red, 0.35)}`} binnen={{ padding: 0 }}>
+        {/* DE HOUTEN PLAAT: opnieuw of stoppen. */}
+        {(fase !== "klaar" || onOpnieuw) && (
+          <Laag art="/ui/keten/knop.webp?v=1" maat={ART.knop} zIndex={3} blur={8} zak={6}>
             <button
               onClick={fase === "klaar" ? onOpnieuw : () => setFase("klaar")}
               className="pressable"
-              style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, background: "transparent", border: "none", cursor: "pointer", color: colors.redHi, fontFamily: font.ui, fontSize: 13, fontWeight: 600, padding: "7px 16px" }}
+              style={{
+                position: "absolute", inset: 0, appearance: "none", background: "transparent", border: "none",
+                cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
+                fontFamily: font.wide, fontSize: 12.5, letterSpacing: 1.4, marginRight: -1.4,
+                color: GOUD_FEL, textShadow: "0 1px 3px rgba(30,14,0,.85)",
+              }}
             >
-              <LogOut size={14} /> {fase === "klaar" ? t("soepOpnieuw") : t("arenaStop")}
+              {fase === "klaar" ? <RotateCcw size={14} /> : <LogOut size={14} />}
+              {fase === "klaar" ? t("soepOpnieuw") : t("arenaStop")}
             </button>
-          </NeonKader>
-        </div>
-      )}
+          </Laag>
+        )}
+
+        {fase === "tel" && (
+          <span
+            style={{
+              position: "absolute", left: 0, right: 0, top: `${((ART.woord.t + 0.06) / HOOG) * 100}%`,
+              textAlign: "center", zIndex: 5, pointerEvents: "none",
+              fontFamily: font.display, fontWeight: 800, fontSize: 46, lineHeight: 1,
+              color: "#FFFFFF", textShadow: "0 0 18px rgba(255,220,150,.5), 0 3px 8px rgba(0,0,0,.6)",
+            }}
+          >
+            {Math.max(1, tel)}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
@@ -525,10 +528,6 @@ const versSleutel = () => `keten-${Math.random().toString(36).slice(2)}`;
 /** De testversie achter `?keten`: eigen kop, eigen sleutel, levert niets in. */
 export function PreviewWoordketen() {
   const [potje, setPotje] = useState(versSleutel);
-  useEffect(() => {
-    document.body.classList.add("soephal");
-    return () => document.body.classList.remove("soephal");
-  }, []);
   return (
     <Screen
       top={

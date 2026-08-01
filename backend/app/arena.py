@@ -160,7 +160,7 @@ def WOORDKETEN_VENSTER(schakel: int) -> int:
     Moet gelijk lopen met KETEN_VENSTER in
     frontend/src/screens/_PreviewWoordketen.tsx; staat het hier anders, dan keurt
     de server een eerlijke poging af."""
-    return 10000
+    return 20000
 
 
 def REKENLADDER_VENSTER(trede: int) -> int:

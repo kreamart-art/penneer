@@ -181,3 +181,51 @@ async def judge(letter: str, items: list[tuple[str, str]], lenient: bool = False
         return _parse_results(raw, len(items))
     except Exception:
         return [None] * len(items)
+
+
+def _build_woord_prompt(letter: str, words: list[str], taal: str) -> str:
+    """De prompt voor WOORDKETEN. Geen categorie, dus een andere vraag: bestaat
+    dit woord überhaupt, en begint het met de gevraagde letter?
+
+    Zelfstandig naamwoord in enkelvoud is de eis. Zonder die eis mag je bij elk
+    werkwoord een vorm verzinnen (loop, loopt, liep, gelopen) en dan is de
+    ketting geen woordenspel meer maar een vervoegingsspel.
+    """
+    tl = "Engels" if taal == "en" else "Nederlands"
+    return "\n".join([
+        "Je bent scheidsrechter in het woordspel Woordketen.",
+        f"De taal is {tl}. De gevraagde beginletter is '{letter}'.",
+        "Keur een woord GOED als het aan alle drie voldoet:",
+        f"  1. het is een bestaand {tl} zelfstandig naamwoord in het enkelvoud,",
+        f"  2. het begint met de letter '{letter}',",
+        "  3. het is geen eigennaam, merknaam, plaatsnaam of afkorting.",
+        "Samenstellingen die echt bestaan zijn goed (zoals 'tafelpoot').",
+        "Wees soepel met spelling: een typefout of een ontbrekend streepje is",
+        "geen reden om af te keuren, zolang duidelijk is welk woord bedoeld is.",
+        'Antwoord ALLEEN met JSON in dit formaat: {"results":[{"i":0,"ok":true}]}',
+        "",
+        "Woorden:",
+        *[f'{i}. "{w}"' for i, w in enumerate(words)],
+    ])
+
+
+async def judge_words(letter: str, words: list[str], taal: str = "nl") -> list[bool | None]:
+    """Bestaat dit woord, en begint het met `letter`? Per woord True/False/None.
+
+    Gooit nooit: bij elke fout komt er None terug en beslist de aanroeper zelf
+    wat hij daarmee doet. Voor de ketting is dat "goedkeuren", want een speler
+    mag niet vallen omdat onze scheids even niet bereikbaar is.
+    """
+    if not words or not available():
+        return [None] * len(words)
+    try:
+        import httpx
+    except Exception:
+        return [None] * len(words)
+    prompt = _build_woord_prompt(letter, words, taal)
+    try:
+        async with httpx.AsyncClient(timeout=TIMEOUT_S) as client:
+            raw = await (_call_nous(client, prompt) if provider() == "nous" else _call_anthropic(client, prompt))
+        return _parse_results(raw, len(words))
+    except Exception:
+        return [None] * len(words)

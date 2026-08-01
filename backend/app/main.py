@@ -1496,6 +1496,47 @@ async def arena_submit(request: Request) -> JSONResponse:
                          "rank": rank, "players": total, "board": db.arena_board(day, 25)})
 
 
+@app.post("/api/arena/keten")
+async def arena_keten(request: Request) -> JSONResponse:
+    """De scheidsrechter van Woordketen: bestaat dit woord, en begint het met de
+    gevraagde letter?
+
+    DRIE LAGEN, in deze volgorde:
+      1. de LETTER. Die weet de server zelf, daar is geen scheids voor nodig.
+      2. de CACHE. Hetzelfde woord krijgt voor iedereen hetzelfde oordeel, en
+         de AI hoeft nooit twee keer over hetzelfde woord na te denken. Dezelfde
+         word_verdicts-tabel als de dagronde en het duel, met "woordketen" als
+         categorie zodat de oordelen daar niet doorheen lopen: in de ketting is
+         alleen "bestaat dit woord" de vraag.
+      3. de AI. Pas als het woord nieuw is.
+
+    Is de scheids niet bereikbaar, dan telt het woord GOED. Een speler hoort
+    niet te vallen omdat onze verbinding hapert; liever een woord te veel
+    goedgekeurd dan een eerlijke ketting afgebroken.
+    """
+    db = get_db()
+    body = await request.json()
+    woord = str(body.get("word") or "").strip()
+    letter = str(body.get("letter") or "").strip().upper()[:1]
+    taal = "en" if str(body.get("lang") or "nl").lower().startswith("en") else "nl"
+    if not woord or not letter or len(woord) < 2 or len(woord) > 24:
+        return JSONResponse({"ok": False, "bron": "vorm"})
+    if not woord[:1].upper() == letter:
+        return JSONResponse({"ok": False, "bron": "letter"})
+    sleutel = ("woordketen", game.normalize(woord))
+    cached = db.word_verdicts([sleutel], False)
+    if sleutel in cached:
+        return JSONResponse({"ok": bool(cached[sleutel]), "bron": "cache"})
+    if not ai_referee.available():
+        return JSONResponse({"ok": True, "bron": "geen_scheids"})
+    oordelen = await ai_referee.judge_words(letter, [woord], taal)
+    oordeel = oordelen[0] if oordelen else None
+    if oordeel is None:
+        return JSONResponse({"ok": True, "bron": "onbereikbaar"})
+    db.set_word_verdict("woordketen", sleutel[1], False, bool(oordeel))
+    return JSONResponse({"ok": bool(oordeel), "bron": "ai"})
+
+
 @app.post("/api/kist/open")
 async def kist_open(request: Request) -> JSONResponse:
     """Open je oudste dichte kist. De server bepaalt en betaalt de inhoud."""

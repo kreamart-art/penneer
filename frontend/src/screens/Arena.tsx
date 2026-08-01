@@ -492,7 +492,8 @@ export function ArenaDeel({ game, onBack }: { game: GameApi; onBack: () => void 
     if (fase === "spel") return;
     const hal =
       info?.game === "rekenladder" ? "rekenzaal"
-      : info?.game === "lettersoep" || info?.game === "kleurenklem" || info?.game === "woordketen" ? "soephal"
+      : info?.game === "woordketen" ? "ketenzaal"
+      : info?.game === "lettersoep" || info?.game === "kleurenklem" ? "soephal"
       : "flitshal";
     document.body.classList.add(hal);
     return () => document.body.classList.remove(hal);
