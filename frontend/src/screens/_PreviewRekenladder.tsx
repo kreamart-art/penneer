@@ -258,7 +258,7 @@ const HULPEN = [
   {
     sleutel: "vriend", label: "VRIEND HULP", prijs: 10,
     icoon: (
-      <svg width="20" height="16" viewBox="0 0 20 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="17" height="14" viewBox="0 0 20 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="7" cy="5" r="3" />
         <path d="M1.6 14.4c.4-2.7 2.7-4.4 5.4-4.4s5 1.7 5.4 4.4" />
         <circle cx="14.6" cy="6" r="2.2" />
@@ -269,7 +269,7 @@ const HULPEN = [
   {
     sleutel: "ververs", label: "VERVERS", prijs: 5,
     icoon: (
-      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="9" cy="9" r="7.2" />
         <path d="M9 4.4l1.1 3.5 3.5 1.1-3.5 1.1L9 13.6l-1.1-3.5L4.4 9l3.5-1.1z" />
       </svg>
@@ -278,7 +278,7 @@ const HULPEN = [
   {
     sleutel: "vijftig", label: "50 / 50", prijs: 15,
     icoon: (
-      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="9" cy="9" r="7.2" />
         <path d="M13 4.6L5 13.4" />
         <text x="4.6" y="7.9" fontSize="4.6" fill="currentColor" stroke="none" fontFamily="sans-serif" fontWeight="700">50</text>

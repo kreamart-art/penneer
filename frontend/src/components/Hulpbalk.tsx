@@ -125,7 +125,7 @@ function Glas({ verf, dik, hoek, vulling, gloed, glans = "#FFFFFF", children, st
 function Prijs({ aantal }: { aantal: number }) {
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-      <svg width="11" height="13" viewBox="0 0 11 13" aria-hidden style={{ flexShrink: 0 }}>
+      <svg width="10" height="12" viewBox="0 0 11 13" aria-hidden style={{ flexShrink: 0 }}>
         <defs>
           <linearGradient id="hb-steen" x1="0" y1="0" x2="0.6" y2="1">
             <stop offset="0%" stopColor="#F0A6FF" />
@@ -136,7 +136,7 @@ function Prijs({ aantal }: { aantal: number }) {
         <path d="M5.5 0 L11 4.4 L5.5 13 L0 4.4 Z" fill="url(#hb-steen)" />
         <path d="M5.5 0 L11 4.4 L5.5 5.6 Z" fill="#FFFFFF" opacity="0.35" />
       </svg>
-      <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 12.5, color: "#FFF3D0" }}>{aantal}</span>
+      <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 11.5, color: "#FFF3D0" }}>{aantal}</span>
     </span>
   );
 }
@@ -159,7 +159,7 @@ export function Hulpbalk({ hulpen, breedte, onKies, op = [] }: {
       vulling="rgba(24,10,44,.20)"
       style={{ width: breedte, padding: 7, flexShrink: 0 }}
     >
-      <div style={{ display: "flex", gap: 7 }}>
+      <div style={{ display: "flex", gap: 6, padding: "5px 0" }}>
         {hulpen.map((h) => (
           <Glas
             key={h.sleutel}
@@ -175,15 +175,15 @@ export function Hulpbalk({ hulpen, breedte, onKies, op = [] }: {
               onPointerDown={(e) => { e.preventDefault(); if (!op.includes(h.sleutel)) onKies?.(h.sleutel); }}
               disabled={!onKies || op.includes(h.sleutel)}
               style={{
-                width: "100%", background: "transparent", border: "none", padding: "9px 5px",
-                display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                width: "100%", background: "transparent", border: "none", padding: "6px 4px",
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
                 cursor: onKies ? "pointer" : "default",
                 WebkitTapHighlightColor: "transparent", touchAction: "manipulation",
               }}
             >
               <span style={{ display: "grid", placeItems: "center", color: "#D9C1FF", flexShrink: 0, filter: "drop-shadow(0 0 6px rgba(150,90,235,.75))" }}>{h.icoon}</span>
               <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 2, minWidth: 0 }}>
-                <span style={{ fontFamily: font.wide, fontSize: 8.5, letterSpacing: 0.8, whiteSpace: "nowrap", color: withAlpha("#EBD9FF", 0.9) }}>
+                <span style={{ fontFamily: font.wide, fontSize: 7.8, letterSpacing: 0.7, whiteSpace: "nowrap", color: withAlpha("#EBD9FF", 0.9) }}>
                   {h.label}
                 </span>
                 <Prijs aantal={h.prijs} />
