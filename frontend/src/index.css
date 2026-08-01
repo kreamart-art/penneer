@@ -1392,20 +1392,36 @@ body.ketenspel::after {
   left: 0;
   right: 0;
   bottom: 0;
-  height: calc(100vh + 240px);
-  height: calc(100lvh + 240px);
+  /* Precies het scherm en niet 240 extra, anders dan de andere zalen. Die zetten
+     hun plaat onderaan vast en hebben die overhoogte nodig; deze staat op cover,
+     en dan betekent elke extra hoogte alleen maar dat er meer van de zijkanten
+     af valt. */
+  height: 100vh;
+  height: 100lvh;
   z-index: -1;
   pointer-events: none;
   background-color: #14100A;
   background-repeat: no-repeat;
-  background-image: url("/ui/keten/zaal.webp?v=3");
+  background-image: url("/ui/keten/zaal.webp?v=4");
   /* Onderaan verankerd en op VOLLE breedte: dan staan het boek links en de kop
      koffie rechts onderin beeld, zoals in de mockup. Het doek is daarvoor
      telefoonvormig gemaakt (1400 bij 3034); de plaat zelf is vierkant en zou op
      volle breedte bovenaan een zwarte band overlaten. */
-  /* COVER en niet op breedte: de laag is hoger dan het scherm (100lvh plus 240)
-     en op breedte bleef er bovenaan een zwarte band over. Met cover vult de
-     plaat altijd, en wat er aan de zijkanten afvalt is muur. */
-  background-position: center bottom;
-  background-size: cover;
+  /* De plaat blijft VIERKANT, zoals hij geschilderd is: uitrekken naar de vorm
+     van een telefoon maakt de kop koffie en de pot ovaal. Op cover vult hij het
+     scherm altijd en valt er links en rechts wat af. Dat mag. */
+  /* De plaat staat van de bovenrand tot de onderrand van het scherm, op zijn
+     eigen verhouding. Hij is vierkant en het scherm is smal, dus wat er links
+     en rechts af valt is muur. */
+  background-position: center center;
+  background-size: auto 100%;
+}
+
+/* Het invulveld van Woordketen. De TIP in het veld stond lila: bij
+   `color-scheme: dark` kiest de browser daar zijn eigen kleur voor, en die viel
+   op het papier van het klembord als een blauw vlekje. Nu dezelfde zwarte inkt
+   als wat je typt, alleen lichter, want een tip is geen antwoord. */
+.keten-veld::placeholder {
+  color: rgba(18, 16, 12, 0.55);
+  opacity: 1;
 }

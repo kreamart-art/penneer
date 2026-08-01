@@ -28,6 +28,12 @@ NAME_RE = re.compile(r"^[A-Za-z0-9À-ÿ_\- ]{2,20}$")
 NAME_BLOCKLIST = ("hitler", "nazi", "kanker", "neger", "faggot")
 
 TOKEN_BYTES = 24
+
+# Wat een nieuw account aan munten meekrijgt, en wat de bestaande spelers er een
+# keer bij hebben gekregen. Genoeg voor een draaiknop (80) of een rol-skin (100)
+# met ruimte over, te weinig voor een avatarpak (400) zonder er iets voor te
+# doen: je kunt meteen iets kiezen, maar het blijft de moeite waard om te spelen.
+START_MUNTEN = 2000
 LOGIN_CODE_TTL = 15 * 60          # magic link valid for 15 minutes
 INVITE_TTL = 60 * 60              # room invites expire after an hour
 AVATAR_MAX_BYTES = 300_000        # client resizes to ~256px JPEG; hard cap here
@@ -813,6 +819,15 @@ class Database:
             self._conn.execute("INSERT OR REPLACE INTO meta (key, value) VALUES ('coins_x10','1')")
             self._conn.commit()
 
+        # De 2000 startmunten met terugwerkende kracht. Wie er al was is niet
+        # minder waard dan wie morgen binnenkomt, dus het komt er BIJ en het
+        # vervangt niets. Een keer, via dezelfde vlag-in-meta als hierboven.
+        gedaan = self._conn.execute("SELECT value FROM meta WHERE key='start_munten'").fetchone()
+        if not gedaan:
+            self._conn.execute("UPDATE users SET coins = coins + ?", (START_MUNTEN,))
+            self._conn.execute("INSERT OR REPLACE INTO meta (key, value) VALUES ('start_munten','1')")
+            self._conn.commit()
+
         # Bestaande potjes alsnog hun XP geven. Die is exact terug te rekenen,
         # want de formule leest alleen dingen die in de rij zelf staan: XP is
         # punten plus 40 als je won plus 15 voor het spelen. Elk potje levert dus
@@ -862,8 +877,13 @@ class Database:
         with self._lock:
             try:
                 self._exec(
-                    "INSERT INTO users (id, name, name_lower, color, created_at) VALUES (?,?,?,?,?)",
-                    (uid, name, name.lower(), color, now),
+                    # STARTKAPITAAL. Een lege portemonnee maakt de winkel een
+                    # etalage: je ziet negen dingen die je geen van alle kunt
+                    # kopen, en dan kijk je er niet nog een keer naar. Met 2000
+                    # kun je meteen een draaiknop of een rol-skin pakken, en dan
+                    # weet je waar de munten voor zijn.
+                    "INSERT INTO users (id, name, name_lower, color, created_at, coins) VALUES (?,?,?,?,?,?)",
+                    (uid, name, name.lower(), color, now, START_MUNTEN),
                 )
             except sqlite3.IntegrityError:
                 return None  # name taken
