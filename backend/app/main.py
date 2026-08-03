@@ -8,6 +8,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import sys
 from datetime import datetime
 import time
 import uuid
@@ -102,6 +103,33 @@ async def _seed_rarity_table() -> None:
     n = get_db().answer_seed_from_daily()
     if n:
         print(f"[penneer] zeldzaamheidstabel gevuld met {n} dagronde-antwoorden", flush=True)
+
+
+@app.on_event("startup")
+async def _seed_kaarten() -> None:
+    """Zet de kaartcatalogus van Ontdekken klaar bij het opstarten.
+
+    Het seed-script is idempotent en raakt user_cards nooit aan, dus elke keer
+    draaien is goedkoop en scheelt een handmatige stap na een deploy: de
+    catalogus hoort bij de code, de verzameling van een speler bij de data.
+
+    Faalt hij, dan blijft de app gewoon staan. Ontdekken is dan leeg, en dat is
+    oneindig veel beter dan een server die niet opstart omdat een CSV een
+    tikfout heeft.
+    """
+    try:
+        scripts = Path(__file__).resolve().parents[1] / "scripts"
+        if not (scripts / "seed_cards.py").is_file():
+            return
+        if str(scripts) not in sys.path:
+            sys.path.insert(0, str(scripts))
+        import seed_cards  # noqa: PLC0415
+
+        n = seed_cards.seed(list(discover.CATEGORIES))
+        if n:
+            print(f"[ontdekken] catalogus bijgewerkt, {n} rijen")
+    except Exception as e:  # noqa: BLE001
+        print(f"[ontdekken] seeden overgeslagen: {e}")
 
 
 @app.on_event("startup")
