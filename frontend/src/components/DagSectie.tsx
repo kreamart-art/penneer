@@ -53,27 +53,34 @@ type Plaat = {
   pil: Vak;
   /** het vak rechts, waar de stand in komt */
   plaat: Vak;
-  /** de ring met het vinkje; ontbreekt bij de arena, die heeft zwaarden */
+  /** De lege ring rechtsboven; ontbreekt bij de arena, die heeft zwaarden.
+   *  x en y zijn het MIDDELPUNT van de ring in de art, d is de buitendiameter
+   *  als deel van de plaatbreedte. Opgemeten op de rij door het midden van de
+   *  ring: op een andere rij is de koorde korter dan de diameter en zet je hem
+   *  te klein en te hoog. */
   ring?: { x: number; y: number; d: number };
 };
 
 export const DAG_PLATEN: Record<"woorden" | "topo" | "arena", Plaat> = {
+  // De nieuwe art heeft exact dezelfde verhoudingen als de vorige, dus de
+  // vakken hieronder zijn ongewijzigd. Alleen de ring is opnieuw opgemeten,
+  // want daar zat het vinkje in gebakken en dat is er nu uit.
   woorden: {
-    art: "/ui/dag/woorden.webp?v=2", v: 1080 / 310, kleur: "#FFC23D",
+    art: "/ui/dag/woorden.webp?v=3", v: 1080 / 310, kleur: "#FFC23D",
     tekst: { l: 0.440, r: 0.760, t: 0.10, b: 0.62 },
     pil: { l: 0.441, r: 0.730, t: 0.671, b: 0.871 },
     plaat: { l: 0.768, r: 0.945, t: 0.38, b: 0.90 },
-    ring: { x: 0.855, y: 0.31, d: 0.115 },
+    ring: { x: 0.8569, y: 0.3306, d: 0.0917 },
   },
   topo: {
-    art: "/ui/dag/topo.webp?v=2", v: 1080 / 302, kleur: "#5AC8FF",
+    art: "/ui/dag/topo.webp?v=3", v: 1080 / 302, kleur: "#5AC8FF",
     tekst: { l: 0.440, r: 0.760, t: 0.10, b: 0.72 },
     pil: { l: 0.440, r: 0.730, t: 0.752, b: 0.934 },
     plaat: { l: 0.768, r: 0.945, t: 0.40, b: 0.90 },
-    ring: { x: 0.855, y: 0.30, d: 0.105 },
+    ring: { x: 0.8569, y: 0.3262, d: 0.0917 },
   },
   arena: {
-    art: "/ui/dag/arena.webp?v=2", v: 1080 / 330, kleur: "#FF6A55",
+    art: "/ui/dag/arena.webp?v=3", v: 1080 / 331, kleur: "#FF6A55",
     tekst: { l: 0.440, r: 0.700, t: 0.10, b: 0.70 },
     pil: { l: 0.440, r: 0.689, t: 0.736, b: 0.907 },
     plaat: { l: 0.705, r: 0.965, t: 0.575, b: 0.905 },
@@ -238,23 +245,30 @@ export function DagSectie({
         )}
       </span>
 
-      {/* De ring met het vinkje staat IN de art en klopt dus alleen als je klaar
-          bent. Zo niet, dan gaat er een donkere schijf met een speeldriehoek
-          overheen en leest dezelfde plaat als een uitnodiging. */}
-      {P.ring && !klaar && (
+      {/* De ring in de art is LEEG, dus hier komt alleen wat erin hoort: een
+          vinkje als je klaar bent, een speeldriehoek als je nog moet. Geen
+          eigen schijf en geen eigen randje meer: die waren er om het
+          ingebakken vinkje af te dekken, en zouden nu de gouden ring uit de
+          art onnodig overschilderen. */}
+      {P.ring && (
         <span
           style={{
             position: "absolute",
             left: pct(P.ring.x - P.ring.d / 2), width: pct(P.ring.d),
             top: pct(P.ring.y - (P.ring.d * P.v) / 2), height: pct(P.ring.d * P.v),
-            borderRadius: "50%", display: "grid", placeItems: "center",
-            background: "radial-gradient(circle, rgba(10,5,20,.94) 60%, rgba(10,5,20,.78) 100%)",
-            boxShadow: `inset 0 0 0 ${Math.max(1, b * 0.004)}px ${withAlpha(P.kleur, 0.75)}`,
+            display: "grid", placeItems: "center", pointerEvents: "none",
           }}
         >
-          <svg width={b * 0.038} height={b * 0.038} viewBox="0 0 24 24" fill={P.kleur} aria-hidden style={{ marginLeft: b * 0.004 }}>
-            <path d="M7 4.5l12 7.5-12 7.5z" />
-          </svg>
+          {klaar ? (
+            <svg width={b * 0.058} height={b * 0.058} viewBox="0 0 24 24" fill="none" stroke={P.kleur}
+                 strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M4.5 12.5l5 5 10-11" />
+            </svg>
+          ) : (
+            <svg width={b * 0.050} height={b * 0.050} viewBox="0 0 24 24" fill={P.kleur} aria-hidden style={{ marginLeft: b * 0.005 }}>
+              <path d="M7 4.5l12 7.5-12 7.5z" />
+            </svg>
+          )}
         </span>
       )}
     </button>
