@@ -13,7 +13,7 @@ import { Apple, ArrowLeft, Briefcase, Building2, ChevronDown, ChevronRight, Filt
 import type { LucideIcon } from "lucide-react";
 import { Button } from "../components/Button";
 import { LetterTegel } from "../components/LetterTegel";
-import { NeonKader } from "../components/ProfileHero";
+import { GoudKader } from "../components/GoudKader";
 import { useT } from "../i18n/i18n";
 import { colors, font, panelStyle, withAlpha } from "../theme/tokens";
 import { sound } from "../sound/sound";
@@ -339,8 +339,6 @@ function Sectie({ letter, discovered, total, percent }: {
   );
 }
 
-const GOUDLIJN = "linear-gradient(180deg, #FEEB81 0%, #F3B53E 45%, #B8791F 100%)";
-
 type Sortering = "az" | "nieuw";
 type Filter = "alles" | "ontdekt" | "mist";
 
@@ -349,10 +347,7 @@ type Filter = "alles" | "ontdekt" | "mist";
  *  drie waarden is meer tikken zonder meer overzicht. */
 function Keuze({ label, onClick, icoon }: { label: string; onClick: () => void; icoon: React.ReactNode }) {
   return (
-    <NeonKader radius={999} vulling="geen" dik={0.2} sterkte={0.3} lijn={GOUDLIJN} eindkap={false} hoeklicht={false}
-      gloed="0 0 6px rgba(243,181,62,.16)"
-      binnen={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 13px" }}
-    >
+    <GoudKader hoek={9} padding="3px 13px" style={{ display: "inline-block" }}>
       <button
         onClick={() => { sound.uiTap(); onClick(); }}
         className="pressable"
@@ -365,7 +360,7 @@ function Keuze({ label, onClick, icoon }: { label: string; onClick: () => void; 
         {label}
         {icoon}
       </button>
-    </NeonKader>
+    </GoudKader>
   );
 }
 
@@ -515,11 +510,8 @@ function Letter({ data, onVerzameling }: { data: LetterView; onVerzameling: () =
           van deze verzameling, dus ze horen erbij en niet erboven te zweven.
           Dezelfde vorm als de sectie erboven, met de dunst mogelijke lijn en
           een doorzichtige vulling, zodat het decor eronder blijft staan. */}
-      <NeonKader hoek={13} vulling="geen" dik={0.2} sterkte={0.3} lijn={GOUDLIJN} eindkap={false} hoeklicht={false}
-        gloed="0 0 8px rgba(243,181,62,.18)"
-        binnen={{ padding: 12, display: "flex", flexDirection: "column", gap: 12 }}
-      >
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+      <GoudKader hoek={13} fade padding={12} style={{ display: "flex", flexDirection: "column" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
           <Keuze
             label={`${t("ontdekkenSorteren")}: ${sortering === "az" ? t("ontdekkenSorteerAZ") : t("ontdekkenSorteerNieuw")}`}
             icoon={<ChevronDown size={14} />}
@@ -543,7 +535,7 @@ function Letter({ data, onVerzameling }: { data: LetterView; onVerzameling: () =
             ))}
           </div>
         )}
-      </NeonKader>
+      </GoudKader>
 
       <div
         className="panel-neon"
