@@ -7,6 +7,7 @@ import { Paneel, SierKop } from "../components/ProfileHero";
 import { PilKeuze } from "./Hub";
 import { Button } from "../components/Button";
 import { Toggle } from "../components/Toggle";
+import { ontdekAan, zetOntdek } from "../util/ontdekvlag";
 import { Screen, Card } from "../components/Layout";
 import type { GameApi } from "../net/socket";
 import { AdminDashboard } from "../components/AdminDashboard";
@@ -232,6 +233,7 @@ export function Settings({ game, onBack, onShowRules, onShowTour, onShowLegal, o
     setOpenPaneel((oud) => (oud === welk ? null : welk));
   const [adminCode, setAdminCode] = useState("");
   const { isAdmin, adminAi, recoveryCodes, aiCodes, avatarCodes, buzzerCodes } = game.state;
+  const [ontdekVlag, setOntdekVlag] = useState(ontdekAan());
 
   useEffect(() => onInstallChange(() => setInstallable(canInstall())), []);
 
@@ -256,6 +258,19 @@ export function Settings({ game, onBack, onShowRules, onShowTour, onShowLegal, o
             </div>
             <p style={{ margin: "6px 0 0", fontFamily: font.ui, fontSize: 12, color: colors.faint, lineHeight: 1.45 }}>{t("lookUitleg")}</p>
           </div>
+
+          {/* Ontdekken is nog niet af. Achter de admin-check, zodat de modus mee
+              kan met een gewone deploy zonder dat spelers hem tegenkomen. */}
+          {isAdmin && (
+            <div>
+              <SectionLabel>{t("ontdekkenAdminTitel")}</SectionLabel>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 8 }}>
+                <span style={{ flex: 1, fontFamily: font.ui, fontSize: 14, color: colors.ink }}>{t("ontdekkenTitel")}</span>
+                <Toggle on={ontdekVlag} onChange={(v) => { sound.uiTap(); zetOntdek(v); setOntdekVlag(v); }} />
+              </div>
+              <p style={{ margin: "6px 0 0", fontFamily: font.ui, fontSize: 12, color: colors.faint, lineHeight: 1.45 }}>{t("ontdekkenAdminUitleg")}</p>
+            </div>
+          )}
 
           <div>
             <SectionLabel>{t("language")}</SectionLabel>

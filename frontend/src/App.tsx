@@ -7,6 +7,7 @@ import { useT } from "./i18n/i18n";
 import { sound } from "./sound/sound";
 import { colors } from "./theme/tokens";
 import { useTileSkin } from "./theme/tileSkin";
+import { ontdekAan } from "./util/ontdekvlag";
 import { Intro } from "./screens/Intro";
 import { LanguagePage } from "./screens/LanguagePage";
 const Rules = lazy(() => import("./screens/Rules").then((m) => ({ default: m.Rules })));
@@ -22,6 +23,7 @@ const Hub = lazy(() => import("./screens/Hub").then((m) => ({ default: m.Hub }))
 const ProfielInstellingen = lazy(() => import("./screens/Hub").then((m) => ({ default: m.ProfileSettings })));
 const Shop = lazy(() => import("./screens/Shop").then((m) => ({ default: m.Shop })));
 const Training = lazy(() => import("./screens/Training").then((m) => ({ default: m.Training })));
+const Ontdekken = lazy(() => import("./screens/Ontdekken").then((m) => ({ default: m.Ontdekken })));
 const Daily = lazy(() => import("./screens/Daily").then((m) => ({ default: m.Daily })));
 const Duel = lazy(() => import("./screens/Duel").then((m) => ({ default: m.Duel })));
 import { BadgeToasts } from "./components/BadgeToasts";
@@ -112,6 +114,23 @@ export default function App() {
   const [showHub, setShowHub] = useState<HubSection | null>(null);
   const [showShop, setShowShop] = useState(false);
   const [showTraining, setShowTraining] = useState(false);
+  const [showOntdekken, setShowOntdekken] = useState(false);
+  const [ontdekVrij, setOntdekVrij] = useState(ontdekAan());
+  // De app heeft geen router; #ontdekken is het dichtste bij de route uit het
+  // ontwerp en maakt het scherm deelbaar en direct te openen.
+  useEffect(() => {
+    const bij = () => setOntdekVrij(ontdekAan());
+    window.addEventListener("penneer:ontdek", bij);
+    return () => window.removeEventListener("penneer:ontdek", bij);
+  }, []);
+  useEffect(() => {
+    // Ook de hash zit achter de schakelaar: anders is de modus alsnog te
+    // openen door de link te kennen.
+    const lees = () => setShowOntdekken(window.location.hash === "#ontdekken" && ontdekAan());
+    lees();
+    window.addEventListener("hashchange", lees);
+    return () => window.removeEventListener("hashchange", lees);
+  }, []);
   const [showDaily, setShowDaily] = useState(false);
   const [showDuel, setShowDuel] = useState(false);
   const [showTour, setShowTour] = useState(false);
@@ -515,8 +534,21 @@ export default function App() {
         }}
       />
     );
+  } else if (showOntdekken) {
+    screen = (
+      <Ontdekken
+        onBack={() => setShowOntdekken(false)}
+        onOefenen={() => { setShowOntdekken(false); setShowTraining(true); }}
+      />
+    );
   } else if (showTraining) {
-    screen = <Training onBack={() => setShowTraining(false)} lenient={!!game.state.account?.lenient_spelling} />;
+    screen = (
+      <Training
+        onBack={() => setShowTraining(false)}
+        lenient={!!game.state.account?.lenient_spelling}
+        onOntdekken={ontdekVrij ? () => { setShowTraining(false); setShowOntdekken(true); } : undefined}
+      />
+    );
   } else if (showShop) {
     screen = <Shop game={game} onBack={() => setShowShop(false)} />;
   } else if (showHub) {
@@ -577,7 +609,7 @@ export default function App() {
   // Which bar item is lit. Sub-flows that are not bar destinations (rules,
   // dagronde, oefenen, instellingen) hide the bar entirely.
   const navKey: NavKey | null =
-    inRoom || !introDone || !lang || showRules || showDaily || showDuel || showTraining || showSettings || showLegal
+    inRoom || !introDone || !lang || showRules || showDaily || showDuel || showTraining || showOntdekken || showSettings || showLegal
       ? null
       : showShop
       ? "shop"

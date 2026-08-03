@@ -28,6 +28,11 @@ export default defineConfig({
       "/api": {
         target: "http://localhost:8000",
       },
+      // Kaart-art van Ontdekken. In productie serveert FastAPI dit pad zelf;
+      // in dev moet Vite het doorsturen, anders zoekt hij het in public/.
+      "/static": {
+        target: "http://localhost:8000",
+      },
     },
   },
 });

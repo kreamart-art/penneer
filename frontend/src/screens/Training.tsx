@@ -38,7 +38,11 @@ interface CheckResult {
 }
 
 
-export function Training({ onBack, lenient = false }: { onBack: () => void; lenient?: boolean }) {
+export function Training({ onBack, lenient = false, onOntdekken }: {
+  onBack: () => void; lenient?: boolean;
+  /** Alleen gezet als de admin-schakelaar aanstaat; anders bestaat de knop niet. */
+  onOntdekken?: () => void;
+}) {
   const { t, tCat } = useT();
   const [phase, setPhase] = useState<"setup" | "round" | "result">("setup");
   const [selected, setSelected] = useState<Set<string>>(new Set(DEFAULT_ON));
@@ -156,6 +160,14 @@ export function Training({ onBack, lenient = false }: { onBack: () => void; leni
           <Button variant="gold" full disabled={cats.length === 0 || busy} onClick={startRound}>
             {t("trainStart")}
           </Button>
+
+          {/* Ontdekken hangt onder Oefenen, want daar komen de kaarten vandaan.
+              Staat er alleen als de admin-schakelaar in Instellingen aanstaat. */}
+          {onOntdekken && (
+            <Button variant="ghost" full onClick={onOntdekken}>
+              {t("ontdekkenOpenen")}
+            </Button>
+          )}
         </div>
       </Screen>
     );

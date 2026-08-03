@@ -18,7 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import ai_referee, arena, daily, dagprijzen, duel, game, missies_lang, missions, paypal, push
+from . import ai_referee, arena, daily, dagprijzen, discover, duel, game, missies_lang, missions, paypal, push
 from . import topo
 from .db import AVATAR_MAX_BYTES, get_db
 from .social import accounts, _level_of
@@ -374,6 +374,10 @@ async def train_check(request: Request) -> JSONResponse:
     out = {}
     learned = 0  # words revealed that the player did not know
     correct = 0  # answers that were in the list
+    seen: list[tuple[str, str | None, list[str]]] = []  # (cat, eigen woord, getoonde woorden)
+    # Ontdekken haakt hier in. Optioneel: een gast speelt precies zoals eerst.
+    db = get_db()
+    uid = db.auth(_bearer(request))
     for cat in cats:
         word = str(answers.get(cat) or "").strip()
         valid, in_list_exact = game.classify(word, letter, cat)
@@ -388,15 +392,174 @@ async def train_check(request: Request) -> JSONResponse:
         if in_list:
             correct += 1
         learned += len(missed)
+        # De reveal is afgekapt op TRAIN_REVEAL_CAP en `missed` staat op
+        # alfabet, dus zonder ingreep krijgt een speler elke ronde exact
+        # dezelfde twaalf woorden te zien en zijn de kaarten daarachter nooit
+        # te halen: letter B bleef op 10 van de 17 steken.
+        #
+        # Voor een ingelogde speler zetten we daarom de woorden die hij nog
+        # niet heeft vooraan. Zelfde lijst, zelfde aantal, alleen een andere
+        # volgorde, en de sortering is stabiel dus binnen elke groep blijft het
+        # alfabet staan. Een gast ziet exact wat hij altijd al zag.
+        dcat_pre = discover.LIST_TO_CAT.get(cat)
+        if uid and dcat_pre:
+            index = db.discover_card_index(dcat_pre)
+            owned = db.discover_owned_card_ids(uid, dcat_pre)
+            missed.sort(key=lambda w: index.get(game.normalize(w)) in owned)
+        shown = missed[:TRAIN_REVEAL_CAP]
         out[cat] = {
             "your": word,
             "valid": valid,
             "in_list": in_list,
-            "missed": missed[:TRAIN_REVEAL_CAP],
+            "missed": shown,
             "missed_total": len(missed),
             "list_total": len(all_words),
         }
-    return JSONResponse({"letter": letter, "categories": out, "correct": correct, "learned": learned})
+        seen.append((cat, canon if in_list else None, shown))
+    # Ontdekken: wat je noemde en wat je daarna te zien kreeg wordt een kaart.
+    # Alleen `shown` telt en niet `missed`, want je kunt niet verzamelen wat je
+    # nooit gezien hebt: de reveal is afgekapt op TRAIN_REVEAL_CAP.
+    new_cards: list[dict] = []
+    if uid:
+        for cat, own, shown in seen:
+            dcat = discover.LIST_TO_CAT.get(cat)
+            if not dcat:
+                continue  # categorie zonder curated lijst, dus zonder kaarten
+            words = ([own] if own else []) + shown
+            norms = discover.match_words(dcat, letter, words)
+            known = frozenset(discover.match_words(dcat, letter, [own])) if own else frozenset()
+            new_cards.extend(db.discover_unlock(uid, dcat, norms, source="practice", known=known))
+    return JSONResponse({
+        "letter": letter,
+        "categories": out,
+        "correct": correct,
+        "learned": learned,
+        "new_cards": new_cards,
+    })
+
+
+# ---- Ontdekken (discover: every practised word becomes a collectible card) --
+# Read-only in deze fase. Alles wat vrijkomt wordt server-side afgeleid uit
+# ingediende antwoorden (fase 2), nooit door de client bepaald.
+#
+# Een gast mag rondkijken: hij ziet de catalogus met alles op discovered=false,
+# zodat de modus uitlegbaar is zonder account. Verzamelen vereist inloggen.
+
+
+def _discover_uid(request: Request) -> str | None:
+    """De speler, of None voor een gast. Geen 401: rondkijken mag."""
+    return get_db().auth(_bearer(request))
+
+
+@app.get("/api/discover/overview")
+async def discover_overview(request: Request) -> JSONResponse:
+    """De hub: per categorie de voortgang, plus dagletter, streak en herhaalstapel."""
+    db = get_db()
+    uid = _discover_uid(request)
+    totals = db.discover_totals()
+    owned = db.discover_owned_counts(uid) if uid else {}
+    rows = []
+    for cat in discover.CATEGORIES:
+        total = totals.get(cat, 0)
+        got = owned.get(cat, 0)
+        rows.append({
+            "category": cat,
+            "label": discover.CAT_LABEL[cat],
+            "total": total,
+            "discovered": got,
+            # Afgerond naar beneden, zodat 99% pas 100% wordt als het echt af is.
+            "percent": int(got * 100 / total) if total else 0,
+        })
+    state = db.discover_state(uid) if uid else {}
+    return JSONResponse({
+        "categories": rows,
+        "fact_schema": {c: list(discover.fact_rows(c)) for c in discover.CATEGORIES},
+        "daily_letter": state.get("daily_letter"),
+        "daily_letter_date": state.get("daily_letter_date"),
+        "streak_days": state.get("streak_days", 0),
+        "review_due": db.discover_due_count(uid) if uid else 0,
+        "guest": uid is None,
+    })
+
+
+@app.get("/api/discover/category/{category}")
+async def discover_category(category: str, request: Request) -> JSONResponse:
+    """De 26 lettertegels van een categorie, met per letter total en discovered."""
+    if category not in discover.CATEGORIES:
+        return JSONResponse({"error": "categorie"}, status_code=404)
+    db = get_db()
+    uid = _discover_uid(request)
+    by_letter = {r["letter"]: r for r in db.discover_letters(category, uid)}
+    letters = [
+        by_letter.get(l, {"letter": l, "total": 0, "discovered": 0})
+        for l in discover.LETTERS
+    ]
+    # '#' vangt woorden die niet op A..Z beginnen. Alleen meesturen als er iets
+    # in zit, anders staat er een lege tegel in het raster die nooit vult.
+    if "#" in by_letter:
+        letters.append(by_letter["#"])
+    total = sum(l["total"] for l in letters)
+    got = sum(l["discovered"] for l in letters)
+    return JSONResponse({
+        "category": category,
+        "label": discover.CAT_LABEL[category],
+        "total": total,
+        "discovered": got,
+        "percent": int(got * 100 / total) if total else 0,
+        "letters": letters,
+        "fact_schema": list(discover.fact_rows(category)),
+        "guest": uid is None,
+    })
+
+
+@app.get("/api/discover/category/{category}/letter/{letter}")
+async def discover_letter(category: str, letter: str, request: Request) -> JSONResponse:
+    """De kaarten van één letter. Niet ontdekte kaarten komen leeg terug."""
+    if category not in discover.CATEGORIES:
+        return JSONResponse({"error": "categorie"}, status_code=404)
+    key = (letter or "").strip().upper()[:1] or "#"
+    if key not in discover.LETTERS and key != "#":
+        return JSONResponse({"error": "letter"}, status_code=404)
+    db = get_db()
+    uid = _discover_uid(request)
+    cards = db.discover_cards_for_letter(category, key, uid)
+    return JSONResponse({
+        "category": category,
+        "label": discover.CAT_LABEL[category],
+        "letter": key,
+        "total": len(cards),
+        "discovered": sum(1 for c in cards if c["discovered"]),
+        "cards": cards,
+        "fact_schema": list(discover.fact_rows(category)),
+        "guest": uid is None,
+    })
+
+
+@app.post("/api/discover/unlock")
+async def discover_unlock(request: Request) -> JSONResponse:
+    """Zet de woorden van een ronde om in kaarten. Geeft alleen de nieuwe terug.
+
+    De client stuurt wel welke woorden er speelden, maar bepaalt niet wat ze
+    waard zijn: match_words gooit alles weg dat niet op de curated lijst van
+    precies deze categorie en letter staat. Een verzonnen verzoek kan dus nooit
+    meer opleveren dan één echte ronde van dezelfde letter ook had gegeven.
+    """
+    db = get_db()
+    uid = db.auth(_bearer(request))
+    if not uid:
+        return JSONResponse({"error": "auth"}, status_code=401)
+    body = await request.json() or {}
+    category = str(body.get("category") or "")
+    if category not in discover.CATEGORIES:
+        return JSONResponse({"error": "categorie"}, status_code=400)
+    letter = (str(body.get("letter") or "").strip().upper() or "?")[:1]
+    source = str(body.get("source") or "practice")
+    if source not in discover.SOURCES:
+        source = "practice"
+    norms = discover.match_words(category, letter, body.get("words") or [])
+    known = frozenset(discover.match_words(category, letter, body.get("known") or []))
+    new_cards = db.discover_unlock(uid, category, norms, source=source, known=known)
+    return JSONResponse({"new_cards": new_cards, "count": len(new_cards)})
 
 
 # ---- dagronde (daily round: same letter for everyone, ranked) ---------------
@@ -1679,7 +1842,20 @@ async def shop_paypal_capture(request: Request) -> JSONResponse:
 
 # Serve the built SPA when present (Docker copies it to ./static).
 STATIC_DIR = Path(os.environ.get("PENNEER_STATIC", "static"))
-if STATIC_DIR.is_dir():
+# Kaart-art van Ontdekken. Eigen mount buiten de `if` hieronder, want in dev
+# bestaat static/assets (de gebouwde frontend) niet en zou de art dan niet
+# geserveerd worden terwijl Vite ernaar vraagt. Onveranderlijk per slug, dus
+# een lange cache mag: nieuwe art krijgt een nieuwe naam of een nieuwe deploy.
+_CARDS_DIR = STATIC_DIR / "cards"
+if _CARDS_DIR.is_dir():
+    app.mount("/static/cards", StaticFiles(directory=_CARDS_DIR), name="cards")
+
+# Op static/ASSETS testen en niet op static/ zelf: sinds de kaart-art van
+# Ontdekken bestaat static/ ook in dev, terwijl de gebouwde frontend er dan niet
+# in staat. Op static/ testen liet de server dan stukgaan op een map die er
+# alleen na een build is. In productie staan ze er allebei, dus daar verandert
+# er niets.
+if (STATIC_DIR / "assets").is_dir():
     app.mount("/assets", StaticFiles(directory=STATIC_DIR / "assets"), name="assets")
 
     # The app shell + service worker must always revalidate, so a new deploy

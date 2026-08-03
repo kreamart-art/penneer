@@ -1441,3 +1441,24 @@ body.ketenspel::after {
   100% { opacity: 0; transform: translateY(-8px) scale(0.96); }
 }
 .kreet-zwever { transform-origin: calc(100% - 20px) 100%; animation: kreet-zwever 3s ease-out forwards; }
+
+/* Ontdekken — de lettertegels komen trapsgewijs op. Alleen een korte opkomst,
+   geen doorlopende animatie: dit raster is om te scannen, en iets dat beweegt
+   terwijl je zoekt werkt tegen. */
+@keyframes ontdek-tegel-op {
+  from { opacity: 0; transform: translateY(6px) scale(.96); }
+  to   { opacity: 1; transform: none; }
+}
+.ontdek-tegel {
+  animation: ontdek-tegel-op .28s ease both;
+}
+/* Zichtbare focus voor toetsenbordbediening, in het goud van de app. */
+.ontdek-tegel:focus-visible {
+  outline: 2px solid #FFC23D;
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ontdek-tegel { animation: none; }
+}
+
+

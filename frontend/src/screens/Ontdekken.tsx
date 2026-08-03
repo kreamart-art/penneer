@@ -1,0 +1,725 @@
+// Ontdekken — de verzamelmodus. Hub, categorie en letter.
+//
+// Drie schermen in één bestand met een eigen stapel, want de app heeft geen
+// router: navigatie zijn state-vlaggen in App.tsx en dit sluit daarop aan. De
+// stapel is bewust een array zodat "terug" altijd één stap terug is, ook als je
+// van de hub via een categorie in een letter zit.
+//
+// Voortgang komt ALTIJD van de server en gaat nooit in localStorage. Een
+// verzameling die op twee toestellen anders staat is erger dan een verzameling
+// die een halve seconde later verschijnt.
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Apple, ArrowLeft, Briefcase, Building2, ChevronDown, ChevronRight, Filter, Globe, Layers, Lightbulb, PawPrint } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { Button } from "../components/Button";
+import { LetterTegel } from "../components/LetterTegel";
+import { NeonKader } from "../components/ProfileHero";
+import { useT } from "../i18n/i18n";
+import { colors, font, panelStyle, withAlpha } from "../theme/tokens";
+import { sound } from "../sound/sound";
+
+// ---- types (spiegelen de payload van /api/discover) -------------------------
+
+interface FactRow { key: string; label: string; quiz: boolean }
+interface CatRow { category: string; label: string; total: number; discovered: number; percent: number }
+interface Overview {
+  categories: CatRow[];
+  fact_schema: Record<string, FactRow[]>;
+  daily_letter: string | null;
+  streak_days: number;
+  review_due: number;
+  guest: boolean;
+}
+interface LetterRow { letter: string; total: number; discovered: number }
+interface CategoryView {
+  category: string; label: string; total: number; discovered: number; percent: number;
+  letters: LetterRow[]; guest: boolean;
+}
+export interface Kaart {
+  id: number;
+  card_number: number;
+  discovered: boolean;
+  word?: string;
+  slug?: string;
+  facts?: Record<string, string>;
+  image_path?: string | null;
+  iso?: string | null;
+  discovered_at?: number | null;
+  favorite?: boolean;
+}
+interface LetterView {
+  category: string; label: string; letter: string;
+  total: number; discovered: number; cards: Kaart[]; fact_schema: FactRow[]; guest: boolean;
+}
+
+// Iconen zijn lijntekeningen, geen emoji: emoji ziet er op elk toestel anders
+// uit en hoort niet bij de huisstijl.
+const CAT_ICON: Record<string, LucideIcon> = {
+  land: Globe, stad: Building2, vrucht: Apple, dier: PawPrint, beroep: Briefcase,
+};
+
+// ---- fetch ------------------------------------------------------------------
+
+async function haal<T>(pad: string): Promise<T> {
+  const token = localStorage.getItem("penneer.accountToken") || "";
+  const res = await fetch(pad, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+  if (!res.ok) throw new Error(String(res.status));
+  return res.json() as Promise<T>;
+}
+
+// ---- kleine bouwstenen ------------------------------------------------------
+
+function Kop({ titel, onBack }: { titel: string; onBack: () => void }) {
+  const { t } = useT();
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+      <button
+        onClick={() => { sound.uiTap(); onBack(); }}
+        aria-label={t("back")}
+        style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 2 }}
+      >
+        <ArrowLeft size={20} />
+      </button>
+      <h1 style={{ margin: 0, fontFamily: font.display, fontWeight: 800, fontSize: 21, color: colors.ink }}>
+        {titel}
+      </h1>
+    </div>
+  );
+}
+
+/** Ring met het percentage erin. Puur SVG, geen extra afhankelijkheid. */
+function Ring({ percent, size = 54 }: { percent: number; size?: number }) {
+  const r = (size - 7) / 2;
+  const omtrek = 2 * Math.PI * r;
+  const vol = percent >= 100;
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden style={{ display: "block" }}>
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,.10)" strokeWidth={5} />
+      {/* Bij 0% helemaal geen boog: met ronde uiteinden geeft lengte 0 toch
+          een puntje, en dat leest als "er staat al iets". */}
+      {percent > 0 && (
+        <circle
+          cx={size / 2} cy={size / 2} r={r} fill="none"
+          stroke={vol ? colors.gold : colors.violet}
+          strokeWidth={5} strokeLinecap="round"
+          strokeDasharray={`${(omtrek * percent) / 100} ${omtrek}`}
+          transform={`rotate(-90 ${size / 2} ${size / 2})`}
+        />
+      )}
+      <text
+        x="50%" y="50%" textAnchor="middle" dominantBaseline="central"
+        fontFamily={font.display} fontWeight={800} fontSize={size * 0.28}
+        fill={vol ? colors.gold : colors.ink}
+      >
+        {percent}%
+      </text>
+    </svg>
+  );
+}
+
+function Paneel({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
+  return (
+    <div className="panel-neon" style={{ ...panelStyle, padding: 16, ...style }}>
+      {children}
+    </div>
+  );
+}
+
+// ---- hub --------------------------------------------------------------------
+
+function Hub({ data, onCategorie, onOefenen }: {
+  data: Overview; onCategorie: (c: string) => void; onOefenen: () => void;
+}) {
+  const { t } = useT();
+  return (
+    <>
+      {data.daily_letter && (
+        <Paneel style={{ marginBottom: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div
+              style={{
+                width: 62, height: 62, borderRadius: "50%", display: "grid", placeItems: "center",
+                flexShrink: 0,
+                background: `radial-gradient(circle, ${withAlpha(colors.gold, 0.22)}, transparent 70%)`,
+                border: `2px solid ${withAlpha(colors.gold, 0.55)}`,
+                fontFamily: font.display, fontWeight: 800, fontSize: 30, color: colors.gold,
+                textShadow: `0 0 12px ${withAlpha(colors.gold, 0.6)}`,
+              }}
+            >
+              {data.daily_letter}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontFamily: font.ui, fontSize: 11.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: colors.sub }}>
+                {t("ontdekkenLetterVanVandaag")}
+              </div>
+              {data.streak_days > 0 && (
+                <div style={{ fontFamily: font.ui, fontSize: 13, color: colors.ink, marginTop: 2 }}>
+                  {data.streak_days === 1 ? t("ontdekkenDagOpRij") : t("ontdekkenDagenOpRij", { n: data.streak_days })}
+                </div>
+              )}
+            </div>
+          </div>
+          <div style={{ marginTop: 12 }}>
+            <Button variant="gold" full onClick={onOefenen}>{t("ontdekkenSpeelDeLetter")}</Button>
+          </div>
+        </Paneel>
+      )}
+
+      <Paneel style={{ marginBottom: 14 }}>
+        <h2 style={{ margin: "0 0 12px", fontFamily: font.ui, fontSize: 11.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: colors.sub }}>
+          {t("ontdekkenJouwVoortgang")}
+        </h2>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {data.categories.map((c) => (
+            <button
+              key={c.category}
+              onClick={() => { sound.uiTap(); onCategorie(c.category); }}
+              className="pressable"
+              style={{
+                display: "flex", alignItems: "center", gap: 12, width: "100%",
+                padding: "10px 12px", borderRadius: 14, cursor: "pointer",
+                background: "rgba(255,255,255,.04)",
+                border: `1.5px solid ${colors.hairline}`,
+                textAlign: "left",
+              }}
+            >
+              <span aria-hidden style={{ width: 24, display: "grid", placeItems: "center", flexShrink: 0, color: colors.violet }}>
+                {(() => { const Ico = CAT_ICON[c.category]; return Ico ? <Ico size={19} /> : null; })()}
+              </span>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ display: "block", fontFamily: font.display, fontWeight: 700, fontSize: 15, color: colors.ink }}>
+                  {c.label}
+                </span>
+                <span style={{ display: "block", fontFamily: font.ui, fontSize: 12, color: colors.sub, marginTop: 1 }}>
+                  {t("ontdekkenKaartenOntdekt", { n: c.discovered, total: c.total })}
+                </span>
+              </span>
+              <Ring percent={c.percent} />
+              <ChevronRight size={16} color={colors.faint} style={{ flexShrink: 0 }} />
+            </button>
+          ))}
+        </div>
+      </Paneel>
+
+      <Paneel>
+        <h2 style={{ margin: "0 0 6px", fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink }}>
+          {t("ontdekkenHerhalen")}
+        </h2>
+        <p style={{ margin: "0 0 12px", fontFamily: font.ui, fontSize: 13, lineHeight: 1.4, color: colors.sub }}>
+          {data.review_due > 0
+            ? t("ontdekkenHerhalenKlaar", { n: data.review_due })
+            : t("ontdekkenHerhalenLeeg")}
+        </p>
+        <Button variant="primary" full disabled={data.review_due === 0} onClick={onOefenen}>
+          {t("ontdekkenStartHerhaling")}
+        </Button>
+      </Paneel>
+    </>
+  );
+}
+
+// ---- categorie --------------------------------------------------------------
+
+function Categorie({ data, onLetter }: { data: CategoryView; onLetter: (l: string) => void }) {
+  const { t } = useT();
+  return (
+    <>
+      <Paneel style={{ marginBottom: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <Ring percent={data.percent} size={64} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: font.display, fontWeight: 800, fontSize: 18, color: colors.ink }}>
+              {data.label}
+            </div>
+            <div style={{ fontFamily: font.ui, fontSize: 13, color: colors.sub, marginTop: 2 }}>
+              {t("ontdekkenKaartenOntdekt", { n: data.discovered, total: data.total })}
+            </div>
+          </div>
+        </div>
+      </Paneel>
+
+      {/* Het lettergrid. Zes op een rij past op 393 punten breed zonder dat de
+          tegel onder de tikmaat van 44 punten zakt. */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 8 }}>
+        {data.letters.map((l, i) => (
+          <LetterTegel
+            key={l.letter}
+            letter={l.letter}
+            total={l.total}
+            discovered={l.discovered}
+            index={i}
+            onClick={() => { sound.uiTap(); onLetter(l.letter); }}
+          />
+        ))}
+      </div>
+    </>
+  );
+}
+
+// ---- letter -----------------------------------------------------------------
+
+// ---- letterpagina -----------------------------------------------------------
+// De opbouw volgt het ontwerp: een sectie met de gouden letter in de medaille,
+// de voortgang op een gouden plaat, een hintregel op de donkere plaat, en
+// daaronder het raster met kaarten.
+//
+// Alle vier de onderdelen zijn art uit Oefenen/oefenen bovensectie.png, in
+// stukken gesneden naar /ontdek. Het kader is een border-image, want dat is de
+// enige manier om een versierde lijst mee te laten rekken zonder dat de hoeken
+// vervormen: de hoeken blijven staan, alleen de rechte stukken worden opgerekt.
+const KAART_RATIO = "658 / 1012";
+
+// De sectie is EEN afbeelding: het kader, de ronde medaille links en de twee
+// platen rechts zitten er al in. De inhoud gaat er als laag overheen, op de
+// plekken die de art zelf aangeeft. Vandaar percentages en geen pixels: het
+// hele blok schaalt mee met de schermbreedte en alles blijft op zijn plek.
+//
+// Opgemeten in de bron (4095x1903):
+//   medaille   x 12.5..43.5%   y 11.5..77.0%   (de cirkel is verticaal
+//              uitgemiddeld op het rechterblok, zie scripts)
+//   plaat 1    x 47.4..93.2%   y 10.0..39.9%   -> titel en telling
+//   plaat 2    x 47.4..93.2%   y 58.7..85.1%   -> de voortgangsbalk
+const SECTIE_RATIO = 1400 / 493;
+
+// De sectie is EEN afbeelding: het gouden kader, de gloeiende ring links en
+// het kosmische paars ertussen zitten er al in. De inhoud gaat er als laag
+// overheen, op plekken die met de goud-kleur zijn opgemeten en niet geschat:
+//
+//   ring   midden (17.07%, 48.48%)   buitendiameter 25.6% van de breedte
+//
+// De letter krijgt 70% van de ring, zodat hij de gouden band niet raakt.
+const VLAK = {
+  letter: { left: "8.5%", right: "74.4%", top: "24.1%", bottom: "27.2%" },
+  tekst:  { left: "44.0%", right: "5.0%", top: "16.0%", bottom: "52.0%" },
+  balk:   { left: "44.0%", right: "5.0%", top: "58.0%", bottom: "20.0%" },
+} as const;
+
+function Sectie({ letter, discovered, total, percent }: {
+  letter: string; discovered: number; total: number; percent: number;
+}) {
+  const { t } = useT();
+  return (
+    <div style={{ position: "relative", width: "100%", aspectRatio: `${SECTIE_RATIO}` }}>
+      <img src="/ontdek/sectie.webp" alt="" style={{ width: "100%", height: "100%", display: "block" }} />
+
+      {/* De gouden letter in de ring. In een eigen vak, want een img met eigen
+          afmetingen rekt niet mee met left/right/top/bottom. */}
+      <div style={{ position: "absolute", ...VLAK.letter }}>
+        <img
+          src={`/letters/${letter}.webp`}
+          alt={letter}
+          style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
+        />
+      </div>
+
+      {/* Kop en telling in het lege deel rechts. */}
+      <div style={{ position: "absolute", ...VLAK.tekst, display: "flex", flexDirection: "column", justifyContent: "flex-end", overflow: "hidden" }}>
+        <span style={{ fontFamily: font.wide, fontSize: "clamp(15px, 5.4vw, 26px)", lineHeight: 1, letterSpacing: ".03em", color: colors.ink, whiteSpace: "nowrap" }}>
+          {t("ontdekkenLetterKop", { letter })}
+        </span>
+        <span style={{ fontFamily: font.ui, fontSize: "clamp(9px, 2.9vw, 13px)", lineHeight: 1.2, color: colors.sub, marginTop: "3%", whiteSpace: "nowrap" }}>
+          {t("ontdekkenKaartenOntdekt", { n: discovered, total })}
+        </span>
+      </div>
+
+      {/* De voortgangsbalk: de gouden plaat komt van links tevoorschijn tot het
+          percentage, met een donkere baan eronder. Het cijfer staat ernaast en
+          niet erin, want in een balk van deze hoogte wordt het onleesbaar. */}
+      <div style={{ position: "absolute", ...VLAK.balk, display: "flex", alignItems: "center", gap: "3%" }}>
+        <div style={{ flex: 1, position: "relative", height: "40%", overflow: "hidden", borderRadius: 999, background: "rgba(0,0,0,.5)", border: `1px solid ${withAlpha(colors.gold, 0.28)}` }}>
+          <div style={{ position: "absolute", inset: 0, width: `${Math.max(percent, 0)}%`, overflow: "hidden", transition: "width .5s ease" }}>
+            <img src="/ontdek/plaat-goud.webp" alt="" style={{ position: "absolute", left: 0, top: 0, height: "100%", width: "auto", maxWidth: "none" }} />
+          </div>
+        </div>
+        <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: "clamp(11px, 3.6vw, 17px)", color: percent >= 100 ? colors.gold : colors.ink, whiteSpace: "nowrap" }}>
+          {percent}%
+        </span>
+      </div>
+    </div>
+  );
+}
+
+const GOUDLIJN = "linear-gradient(180deg, #FEEB81 0%, #F3B53E 45%, #B8791F 100%)";
+
+type Sortering = "az" | "nieuw";
+type Filter = "alles" | "ontdekt" | "mist";
+
+/** Sorteer- en filterknop: dezelfde vorm als de sectie, maar als pil. Eén
+ *  pil met twee of drie standen die je doorloopt, want een uitklapmenu voor
+ *  drie waarden is meer tikken zonder meer overzicht. */
+function Keuze({ label, onClick, icoon }: { label: string; onClick: () => void; icoon: React.ReactNode }) {
+  return (
+    <NeonKader radius={999} vulling="geen" dik={0.2} sterkte={0.3} lijn={GOUDLIJN} eindkap={false}
+      gloed="0 0 6px rgba(243,181,62,.16)"
+      binnen={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 13px" }}
+    >
+      <button
+        onClick={() => { sound.uiTap(); onClick(); }}
+        className="pressable"
+        style={{
+          display: "inline-flex", alignItems: "center", gap: 6,
+          background: "transparent", border: "none", padding: 0, cursor: "pointer",
+          fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: colors.sub,
+        }}
+      >
+        {label}
+        {icoon}
+      </button>
+    </NeonKader>
+  );
+}
+
+// Een kaart telt als NIEUW zolang je hem vandaag hebt gevonden. Dat is wat het
+// lint in het ontwerp betekent: kijk, deze is er net bij gekomen.
+const NIEUW_S = 24 * 60 * 60;
+
+function KaartTegel({ kaart, nu, onOpen, groot }: {
+  kaart: Kaart; nu: number; onOpen?: () => void; groot?: boolean;
+}) {
+  const { t } = useT();
+  const nieuw = kaart.discovered && kaart.discovered_at != null && nu - kaart.discovered_at < NIEUW_S;
+  if (!kaart.discovered) {
+    // Eigen art voor wat je nog niet hebt: de donkere stad met het paarse
+    // zwerk. Niet de achterkant, want die betekent "kaart ligt met de rug
+    // omhoog", en niet gedempt, want dit hoort er als volwaardige tegel te
+    // staan die je wilt omdraaien.
+    return (
+      <div
+        style={{ position: "relative", cursor: onOpen ? "pointer" : "default" }}
+        onClick={onOpen ? () => { sound.uiTap(); onOpen(); } : undefined}
+      >
+        <img
+          src="/static/cards/niet-gehaald.webp"
+          alt={t("ontdekkenNogNietOntdekt")}
+          loading="lazy"
+          style={{ width: "100%", aspectRatio: KAART_RATIO, display: "block" }}
+        />
+        <span
+          aria-hidden
+          style={{
+            position: "absolute", left: 0, right: 0, top: "38%", textAlign: "center",
+            fontFamily: font.display, fontWeight: 800, fontSize: groot ? 46 : "clamp(18px, 6vw, 30px)",
+            color: colors.gold, textShadow: `0 0 18px ${withAlpha(colors.gold, 0.55)}`,
+          }}
+        >
+          ?
+        </span>
+        <span
+          style={{
+            position: "absolute", left: "10%", right: "10%", bottom: "10%",
+            textAlign: "center", fontFamily: font.ui, fontSize: groot ? 13 : "clamp(7px, 2.1vw, 10px)",
+            fontWeight: 600, lineHeight: 1.2, color: colors.sub,
+          }}
+        >
+          {t("ontdekkenNogNietOntdekt")}
+        </span>
+      </div>
+    );
+  }
+  return (
+    <div
+      className={onOpen ? "pressable" : undefined}
+      style={{ position: "relative", cursor: onOpen ? "pointer" : "default" }}
+      onClick={onOpen ? () => { sound.uiTap(); onOpen(); } : undefined}
+    >
+      {/* Nog geen art voor deze kaart? Dan de LEGE voorkant, niet de
+          achterkant: die laatste betekent "nog niet ontdekt". */}
+      <img
+        src={kaart.image_path || "/static/cards/voorkant-leeg.webp"}
+        alt={kaart.word || ""}
+        loading="lazy"
+        style={{ width: "100%", aspectRatio: KAART_RATIO, display: "block" }}
+      />
+      {kaart.iso && (
+        <img
+          src={`/vlaggen/${kaart.iso}.webp`}
+          alt=""
+          loading="lazy"
+          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+          style={{
+            position: "absolute", right: "9%", top: "7%", width: "22%",
+            borderRadius: 3, border: `1px solid ${withAlpha(colors.gold, 0.65)}`,
+            boxShadow: "0 2px 6px rgba(0,0,0,.5)",
+          }}
+        />
+      )}
+      {nieuw && (
+        <span
+          style={{
+            position: "absolute", left: "4%", top: "5%",
+            padding: "2px 7px", borderRadius: 4,
+            background: `linear-gradient(180deg, ${colors.goldHi}, ${colors.gold})`,
+            fontFamily: font.ui, fontSize: groot ? 11 : 7.5, fontWeight: 800, letterSpacing: ".06em",
+            color: "#3B2300", boxShadow: "0 2px 6px rgba(0,0,0,.45)",
+          }}
+        >
+          {t("ontdekkenNieuw")}
+        </span>
+      )}
+      {/* Naamplaat in het paarse vlak onderin de art, waar het verloop dichtloopt. */}
+      <span
+        style={{
+          position: "absolute", left: "9%", right: "9%", bottom: "8%",
+          padding: "4px 6px", borderRadius: 6, textAlign: "center",
+          background: "rgba(10,4,26,.72)",
+          border: `1px solid ${withAlpha(colors.gold, 0.45)}`,
+          fontFamily: font.display, fontWeight: 700,
+          fontSize: groot ? 16 : "clamp(8px, 2.4vw, 12px)", lineHeight: 1.15,
+          color: colors.ink, pointerEvents: "none",
+        }}
+      >
+        {kaart.word}
+      </span>
+    </div>
+  );
+}
+
+function Letter({ data, onVerzameling }: { data: LetterView; onVerzameling: () => void }) {
+  const { t } = useT();
+  const [sortering, setSortering] = useState<Sortering>("az");
+  const [filter, setFilter] = useState<Filter>("alles");
+  const [open, setOpen] = useState<Kaart | null>(null);
+  const nu = Date.now() / 1000;
+
+  const compleet = data.total > 0 && data.discovered >= data.total;
+  const mist = data.total - data.discovered;
+  const percent = data.total ? Math.round((data.discovered / data.total) * 100) : 0;
+
+  const kaarten = useMemo(() => {
+    let k = data.cards;
+    if (filter === "ontdekt") k = k.filter((c) => c.discovered);
+    if (filter === "mist") k = k.filter((c) => !c.discovered);
+    if (sortering === "nieuw") {
+      // Onontdekte kaarten hebben geen datum en horen achteraan, anders
+      // schuiven ze op "nieuwste eerst" naar boven.
+      k = [...k].sort((a, b) => (b.discovered_at ?? -1) - (a.discovered_at ?? -1));
+    }
+    return k;
+  }, [data.cards, filter, sortering]);
+
+  const filterLabel = filter === "alles" ? t("ontdekkenFilterAlles")
+    : filter === "ontdekt" ? t("ontdekkenFilterOntdekt") : t("ontdekkenFilterMist");
+
+  return (
+    <>
+      <div style={{ marginBottom: 12 }}>
+        <Sectie letter={data.letter} discovered={data.discovered} total={data.total} percent={percent} />
+      </div>
+
+      <p style={{ margin: "0 0 12px", display: "flex", alignItems: "flex-start", gap: 7, fontFamily: font.ui, fontSize: 12, lineHeight: 1.35, color: compleet ? colors.gold : colors.sub }}>
+        <Lightbulb size={14} color={colors.gold} style={{ flexShrink: 0, marginTop: 1 }} />
+        {compleet ? t("ontdekkenLetterCompleet") : t("ontdekkenHint", { letter: data.letter })}
+      </p>
+
+      {/* Sorteren, filteren en het raster in EEN sectie: het zijn de knoppen
+          van deze verzameling, dus ze horen erbij en niet erboven te zweven.
+          Dezelfde vorm als de sectie erboven, met de dunst mogelijke lijn en
+          een doorzichtige vulling, zodat het decor eronder blijft staan. */}
+      <NeonKader hoek={13} vulling="geen" dik={0.2} sterkte={0.3} lijn={GOUDLIJN} eindkap={false}
+        gloed="0 0 8px rgba(243,181,62,.18)"
+        binnen={{ padding: 12, display: "flex", flexDirection: "column", gap: 12 }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+          <Keuze
+            label={`${t("ontdekkenSorteren")}: ${sortering === "az" ? t("ontdekkenSorteerAZ") : t("ontdekkenSorteerNieuw")}`}
+            icoon={<ChevronDown size={14} />}
+            onClick={() => setSortering((s) => (s === "az" ? "nieuw" : "az"))}
+          />
+          <Keuze
+            label={filterLabel}
+            icoon={<Filter size={13} />}
+            onClick={() => setFilter((f) => (f === "alles" ? "ontdekt" : f === "ontdekt" ? "mist" : "alles"))}
+          />
+        </div>
+
+        {kaarten.length === 0 ? (
+          <p style={{ fontFamily: font.ui, fontSize: 13, color: colors.sub, textAlign: "center", padding: "24px 0", margin: 0 }}>
+            {data.cards.length === 0 ? t("ontdekkenGeenKaarten") : t("ontdekkenNiets")}
+          </p>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+            {kaarten.map((k) => (
+              <KaartTegel key={k.id} kaart={k} nu={nu} onOpen={() => setOpen(k)} />
+            ))}
+          </div>
+        )}
+      </NeonKader>
+
+      <div
+        className="panel-neon"
+        style={{ ...panelStyle, padding: 14, marginTop: 14, display: "flex", alignItems: "center", gap: 12 }}
+      >
+        <Layers size={22} color={colors.gold} style={{ flexShrink: 0 }} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 14, color: compleet ? colors.gold : colors.ink }}>
+            {compleet
+              ? t("ontdekkenLetterCompleet")
+              : mist === 1 ? t("ontdekkenKaartOntbreekt") : t("ontdekkenKaartenOntbreken", { n: mist })}
+          </div>
+          {!compleet && (
+            <div style={{ fontFamily: font.ui, fontSize: 12, color: colors.sub, marginTop: 1 }}>
+              {t("ontdekkenBlijfOefenen")}
+            </div>
+          )}
+        </div>
+      </div>
+      <div style={{ marginTop: 10 }}>
+        <Button variant="gold" full onClick={onVerzameling}>{t("ontdekkenBekijkVerzameling")}</Button>
+      </div>
+
+      {open && <KaartGroot kaart={open} rijen={data.fact_schema} nu={nu} onSluit={() => setOpen(null)} />}
+    </>
+  );
+}
+
+/** De kaart op ware grootte, als overlay. */
+function KaartGroot({ kaart, rijen, nu, onSluit }: {
+  kaart: Kaart; rijen: FactRow[]; nu: number; onSluit: () => void;
+}) {
+  const { t } = useT();
+  // Escape sluit, zoals elke overlay in de app.
+  useEffect(() => {
+    const opToets = (e: KeyboardEvent) => { if (e.key === "Escape") onSluit(); };
+    window.addEventListener("keydown", opToets);
+    return () => window.removeEventListener("keydown", opToets);
+  }, [onSluit]);
+  const feiten = rijen.filter((r) => kaart.facts?.[r.key]);
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={kaart.word || t("ontdekkenNogNietOntdekt")}
+      onClick={onSluit}
+      style={{
+        position: "fixed", inset: 0, zIndex: 60, display: "grid", placeItems: "center",
+        background: "rgba(4,1,14,.82)", padding: 24,
+      }}
+    >
+      <div onClick={(e) => e.stopPropagation()} style={{ width: "min(78vw, 320px)" }}>
+        <KaartTegel kaart={kaart} nu={nu} groot />
+        {feiten.length > 0 && (
+          <div className="panel-neon" style={{ ...panelStyle, padding: 12, marginTop: 12 }}>
+            {feiten.map((r) => (
+              <div key={r.key} style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "3px 0" }}>
+                <span style={{ fontFamily: font.ui, fontSize: 12, color: colors.sub }}>{r.label}</span>
+                <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: colors.ink, textAlign: "right" }}>
+                  {kaart.facts?.[r.key]}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+        <div style={{ marginTop: 12 }}>
+          <Button variant="ghost" full onClick={onSluit}>{t("back")}</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---- shell ------------------------------------------------------------------
+
+type Stap =
+  | { soort: "hub" }
+  | { soort: "categorie"; category: string }
+  | { soort: "letter"; category: string; letter: string };
+
+export function Ontdekken({ onBack, onOefenen }: { onBack: () => void; onOefenen: () => void }) {
+  const { t } = useT();
+  const [stapel, setStapel] = useState<Stap[]>([{ soort: "hub" }]);
+  const stap = stapel[stapel.length - 1];
+
+  const [overview, setOverview] = useState<Overview | null>(null);
+  const [cat, setCat] = useState<CategoryView | null>(null);
+  const [letter, setLetter] = useState<LetterView | null>(null);
+  const [fout, setFout] = useState(false);
+
+  // Dezelfde achtergrond als de andere solo-schermen, zodat Ontdekken bij de
+  // app hoort en niet als een losse app voelt.
+  useEffect(() => {
+    document.body.classList.add("winkel");
+    return () => document.body.classList.remove("winkel");
+  }, []);
+
+  useEffect(() => {
+    let weg = false;
+    setFout(false);
+    (async () => {
+      try {
+        if (stap.soort === "hub") setOverview(await haal<Overview>("/api/discover/overview"));
+        if (stap.soort === "categorie") {
+          setCat(null);
+          const d = await haal<CategoryView>(`/api/discover/category/${stap.category}`);
+          if (!weg) setCat(d);
+        }
+        if (stap.soort === "letter") {
+          setLetter(null);
+          const d = await haal<LetterView>(
+            `/api/discover/category/${stap.category}/letter/${stap.letter}`,
+          );
+          if (!weg) setLetter(d);
+        }
+      } catch {
+        if (!weg) setFout(true);
+      }
+    })();
+    return () => { weg = true; };
+  }, [stap.soort, (stap as { category?: string }).category, (stap as { letter?: string }).letter]);
+
+  const terug = useCallback(() => {
+    if (stapel.length === 1) { onBack(); return; }
+    setStapel((s) => s.slice(0, -1));
+  }, [stapel.length, onBack]);
+
+  const titel =
+    stap.soort === "hub" ? t("ontdekkenTitel")
+      : stap.soort === "categorie" ? (cat?.label ?? t("ontdekkenLaden"))
+      : t("ontdekkenLetter", { letter: stap.letter });
+
+  const gast = overview?.guest ?? cat?.guest ?? letter?.guest ?? false;
+
+  return (
+    <div style={{ maxWidth: 520, margin: "0 auto", padding: "18px 16px calc(28px + var(--nav-h, 0px))" }}>
+      <Kop titel={titel} onBack={terug} />
+
+      {gast && (
+        <div
+          style={{
+            ...panelStyle, padding: 14, marginBottom: 14,
+            border: `1.5px solid ${withAlpha(colors.gold, 0.35)}`,
+          }}
+        >
+          <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15, color: colors.gold }}>
+            {t("ontdekkenGastTitel")}
+          </div>
+          <p style={{ margin: "4px 0 0", fontFamily: font.ui, fontSize: 12.5, lineHeight: 1.4, color: colors.sub }}>
+            {t("ontdekkenGastUitleg")}
+          </p>
+        </div>
+      )}
+
+      {fout ? (
+        <p style={{ fontFamily: font.ui, fontSize: 13, color: colors.sub, textAlign: "center", padding: "28px 0" }}>
+          {t("ontdekkenLaden")}
+        </p>
+      ) : stap.soort === "hub" ? (
+        overview && (
+          <Hub
+            data={overview}
+            onOefenen={onOefenen}
+            onCategorie={(c) => setStapel((s) => [...s, { soort: "categorie", category: c }])}
+          />
+        )
+      ) : stap.soort === "categorie" ? (
+        cat && (
+          <Categorie
+            data={cat}
+            onLetter={(l) => setStapel((s) => [...s, { soort: "letter", category: stap.category, letter: l }])}
+          />
+        )
+      ) : (
+        letter && <Letter data={letter} onVerzameling={terug} />
+      )}
+    </div>
+  );
+}

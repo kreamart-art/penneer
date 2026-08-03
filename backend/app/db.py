@@ -443,6 +443,64 @@ CREATE TABLE IF NOT EXISTS meldingen (
     created_at REAL NOT NULL,
     gelezen INTEGER NOT NULL DEFAULT 0
 );
+-- ---- Ontdekken -------------------------------------------------------------
+-- Elk woord uit de curated lijsten wordt een verzamelkaart. `cards` is de
+-- catalogus en is voor iedereen gelijk; `user_cards` is wat een speler ervan
+-- heeft. De catalogus staat in de DB en niet in een Python-lijst, omdat er
+-- facts, beeld en een kaartnummer aan hangen die los van een release wijzigen.
+--
+-- Geen jsonb en geen enum: dit is SQLite. facts en aliases zijn TEXT met JSON
+-- erin (net als `data` op meldingen), en de enums uit het ontwerp zijn TEXT met
+-- een CHECK. Tijden zijn REAL epoch, zoals overal hier; dagen zijn TEXT
+-- 'YYYY-MM-DD', zoals daily_scores.
+--
+-- `aliases` staat niet in het oorspronkelijke ontwerp maar is nodig: de
+-- woordenlijsten bevatten NL en EN door elkaar ("België" naast "Belgium",
+-- "aap" naast "monkey"). Zonder aliassen wordt elk land twee kaarten en klopt
+-- de teller nooit. Eén kaart per begrip, met de andere schrijfwijzen erbij.
+CREATE TABLE IF NOT EXISTS cards (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    category TEXT NOT NULL
+        CHECK (category IN ('land','stad','vrucht','dier','beroep')),
+    letter TEXT NOT NULL,                    -- 1 teken, A..Z of '#'
+    word TEXT NOT NULL,                      -- weergavevorm, zoals op de kaart
+    slug TEXT NOT NULL,                      -- genormaliseerd, sleutel in de categorie
+    aliases TEXT NOT NULL DEFAULT '[]',      -- JSON: andere vormen die deze kaart ontgrendelen
+    iso TEXT,                                -- landcode voor de vlag, alleen bij categorie land
+    facts TEXT NOT NULL DEFAULT '{}',        -- JSON, sleutels per categorie uit FACT_SCHEMA
+    image_path TEXT,                         -- leeg tot er beeld is
+    card_number INTEGER NOT NULL,            -- oplopend binnen de categorie, 1-based
+    sort_order INTEGER NOT NULL,
+    UNIQUE (category, slug)
+);
+CREATE INDEX IF NOT EXISTS idx_cards_cat_letter ON cards(category, letter, sort_order);
+CREATE TABLE IF NOT EXISTS user_cards (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    card_id INTEGER NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
+    discovered_at REAL NOT NULL,
+    source TEXT NOT NULL
+        CHECK (source IN ('practice','quiz','daily','review')),
+    correct_count INTEGER NOT NULL DEFAULT 0,
+    missed_count INTEGER NOT NULL DEFAULT 0,
+    box INTEGER NOT NULL DEFAULT 1           -- Leitner 1..3
+        CHECK (box BETWEEN 1 AND 3),
+    next_review_at REAL,                     -- NULL = klaar, niet meer herhalen
+    favorite INTEGER NOT NULL DEFAULT 0,
+    UNIQUE (user_id, card_id)
+);
+CREATE INDEX IF NOT EXISTS idx_user_cards_user ON user_cards(user_id, card_id);
+CREATE INDEX IF NOT EXISTS idx_user_cards_review ON user_cards(user_id, next_review_at);
+-- Eén rij per speler: welke dagletter hij vandaag heeft en hoe zijn reeks staat.
+-- daily_letter wordt bewaard en niet elke keer opnieuw berekend, zodat een
+-- wijziging aan de afleiding een lopende dag niet onder iemand vandaan trekt.
+CREATE TABLE IF NOT EXISTS user_discover_state (
+    user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    daily_letter TEXT,
+    daily_letter_date TEXT,                  -- 'YYYY-MM-DD'
+    streak_days INTEGER NOT NULL DEFAULT 0,
+    last_played_date TEXT
+);
 CREATE INDEX IF NOT EXISTS idx_meldingen_user ON meldingen(user_id, gelezen, created_at);
 CREATE INDEX IF NOT EXISTS idx_duels_a ON duels(a, status);
 CREATE INDEX IF NOT EXISTS idx_duels_b ON duels(b, status);
@@ -640,6 +698,12 @@ class Database:
         dcols = {r["name"] for r in self._conn.execute("PRAGMA table_info(daily_scores)").fetchall()}
         if dcols and "lenient" not in dcols:
             self._conn.execute("ALTER TABLE daily_scores ADD COLUMN lenient INTEGER NOT NULL DEFAULT 0")
+            self._conn.commit()
+        # Ontdekken: de landcode voor het vlaggetje op de kaart. Kwam er later
+        # bij, dus bestaande cards-tabellen moeten hem alsnog krijgen.
+        ccols = {r["name"] for r in self._conn.execute("PRAGMA table_info(cards)").fetchall()}
+        if ccols and "iso" not in ccols:
+            self._conn.execute("ALTER TABLE cards ADD COLUMN iso TEXT")
             self._conn.commit()
         # Voice memos in DMs: reference + duration on the message row.
         mcols = {r["name"] for r in self._conn.execute("PRAGMA table_info(dms)").fetchall()}
@@ -3777,6 +3841,250 @@ class Database:
                 self._exec("UPDATE users SET cash=cash+? WHERE id=?", (cash, user_id))
             rows = self._q("SELECT coins, cash FROM users WHERE id=?", (user_id,))
         return {"coins": int(rows[0]["coins"]), "cash": int(rows[0]["cash"])} if rows else None
+
+    # ---- Ontdekken ----------------------------------------------------------
+    # Read-only kant van de verzameling. De catalogus is voor iedereen gelijk en
+    # verandert alleen via het seed-script, dus die kant is puur SELECT.
+    #
+    # Elke query die kaarten teruggeeft filtert zelf wat een speler mag zien.
+    # Het woord en de facts van een kaart die hij nog niet heeft, verlaten deze
+    # laag niet: dat is de hele spanning van de modus, en één vergeten filter in
+    # main.py zou hem weggeven. Daarom zit de afscherming hier en niet daar.
+
+    def discover_totals(self) -> dict[str, int]:
+        """Aantal kaarten per categorie in de catalogus."""
+        rows = self._q("SELECT category, COUNT(*) AS n FROM cards GROUP BY category")
+        return {r["category"]: int(r["n"]) for r in rows}
+
+    def discover_owned_counts(self, user_id: str) -> dict[str, int]:
+        """Aantal ontdekte kaarten per categorie voor deze speler."""
+        rows = self._q(
+            "SELECT c.category AS category, COUNT(*) AS n"
+            " FROM user_cards uc JOIN cards c ON c.id = uc.card_id"
+            " WHERE uc.user_id = ? GROUP BY c.category",
+            (user_id,),
+        )
+        return {r["category"]: int(r["n"]) for r in rows}
+
+    def discover_letters(self, category: str, user_id: Optional[str]) -> list[dict]:
+        """Per letter hoeveel kaarten er zijn en hoeveel de speler er heeft.
+
+        Letters zonder kaarten komen NIET terug; de frontend tekent het raster
+        van A tot Z en vult aan met nul, want welke letters leeg zijn hoort bij
+        de layout en niet bij de data.
+        """
+        rows = self._q(
+            "SELECT c.letter AS letter, COUNT(*) AS total,"
+            "       COUNT(uc.id) AS discovered"
+            " FROM cards c"
+            " LEFT JOIN user_cards uc ON uc.card_id = c.id AND uc.user_id = ?"
+            " WHERE c.category = ?"
+            " GROUP BY c.letter ORDER BY c.letter",
+            (user_id or "", category),
+        )
+        return [
+            {"letter": r["letter"], "total": int(r["total"]), "discovered": int(r["discovered"])}
+            for r in rows
+        ]
+
+    def discover_cards_for_letter(
+        self, category: str, letter: str, user_id: Optional[str]
+    ) -> list[dict]:
+        """De kaarten van één letter, afgeschermd.
+
+        Een kaart die de speler niet heeft geeft alleen id, card_number en
+        discovered=False terug. Geen word, geen facts, geen slug en geen
+        image_path: uit elk daarvan is het antwoord af te leiden.
+        """
+        rows = self._q(
+            "SELECT c.id, c.word, c.slug, c.facts, c.image_path, c.card_number, c.iso,"
+            "       uc.id AS owned, uc.favorite, uc.discovered_at"
+            " FROM cards c"
+            " LEFT JOIN user_cards uc ON uc.card_id = c.id AND uc.user_id = ?"
+            " WHERE c.category = ? AND c.letter = ?"
+            " ORDER BY c.sort_order",
+            (user_id or "", category, letter),
+        )
+        out = []
+        for r in rows:
+            if r["owned"] is None:
+                out.append({
+                    "id": int(r["id"]),
+                    "card_number": int(r["card_number"]),
+                    "discovered": False,
+                })
+                continue
+            out.append({
+                "id": int(r["id"]),
+                "card_number": int(r["card_number"]),
+                "discovered": True,
+                "word": r["word"],
+                "slug": r["slug"],
+                "iso": r["iso"],
+                "facts": json.loads(r["facts"] or "{}"),
+                "image_path": r["image_path"],
+                "favorite": bool(r["favorite"]),
+                "discovered_at": r["discovered_at"],
+            })
+        return out
+
+    def discover_card(self, card_id: int, user_id: Optional[str]) -> Optional[dict]:
+        """Eén volledige kaart, of None als de speler hem niet heeft.
+
+        None betekent hier bewust zowel "bestaat niet" als "niet van jou": een
+        apart antwoord voor die twee zou verklappen welke kaartnummers bestaan.
+        """
+        rows = self._q(
+            "SELECT c.id, c.category, c.letter, c.word, c.slug, c.facts, c.image_path, c.iso,"
+            "       c.card_number, uc.favorite, uc.discovered_at, uc.box, uc.correct_count,"
+            "       uc.missed_count"
+            " FROM cards c JOIN user_cards uc ON uc.card_id = c.id AND uc.user_id = ?"
+            " WHERE c.id = ?",
+            (user_id or "", card_id),
+        )
+        if not rows:
+            return None
+        r = rows[0]
+        return {
+            "id": int(r["id"]),
+            "category": r["category"],
+            "letter": r["letter"],
+            "card_number": int(r["card_number"]),
+            "discovered": True,
+            "word": r["word"],
+            "slug": r["slug"],
+            "iso": r["iso"],
+            "facts": json.loads(r["facts"] or "{}"),
+            "image_path": r["image_path"],
+            "favorite": bool(r["favorite"]),
+            "discovered_at": r["discovered_at"],
+            "box": int(r["box"]),
+            "correct_count": int(r["correct_count"]),
+            "missed_count": int(r["missed_count"]),
+        }
+
+    def discover_due_count(self, user_id: str, now: Optional[float] = None) -> int:
+        """Hoeveel kaarten klaarstaan om te herhalen."""
+        rows = self._q(
+            "SELECT COUNT(*) AS n FROM user_cards"
+            " WHERE user_id = ? AND next_review_at IS NOT NULL AND next_review_at <= ?",
+            (user_id, now if now is not None else time.time()),
+        )
+        return int(rows[0]["n"]) if rows else 0
+
+    def discover_card_index(self, category: str) -> dict[str, int]:
+        """Genormaliseerde vorm -> card_id, voor één categorie.
+
+        De aliassen staan als JSON in de rij, dus dit kan niet in SQL. Dat mag:
+        een categorie is een paar honderd rijen en dit draait alleen aan het
+        eind van een ronde.
+        """
+        index: dict[str, int] = {}
+        for r in self._q("SELECT id, slug, aliases FROM cards WHERE category=?", (category,)):
+            cid = int(r["id"])
+            index[r["slug"]] = cid
+            # Slug is de genormaliseerde vorm zonder spaties, de aliassen staan
+            # er wel mee. Allebei opnemen, want een antwoord kan op beide lijken.
+            index.setdefault(r["slug"].replace("-", ""), cid)
+            for a in json.loads(r["aliases"] or "[]"):
+                index.setdefault(a, cid)
+                index.setdefault(a.replace(" ", ""), cid)
+        return index
+
+    def discover_owned_card_ids(self, user_id: str, category: str) -> set[int]:
+        """De card_ids die deze speler al heeft in één categorie."""
+        if not user_id:
+            return set()
+        return {
+            int(r["card_id"])
+            for r in self._q(
+                "SELECT uc.card_id FROM user_cards uc JOIN cards c ON c.id = uc.card_id"
+                " WHERE uc.user_id = ? AND c.category = ?",
+                (user_id, category),
+            )
+        }
+
+    def discover_unlock(
+        self,
+        user_id: str,
+        category: str,
+        norms: list[str],
+        source: str = "practice",
+        known: frozenset[str] = frozenset(),
+        now: Optional[float] = None,
+    ) -> list[dict]:
+        """Ken kaarten toe voor de woorden van een ronde, geef de NIEUWE terug.
+
+        `norms` is al gefilterd door discover.match_words, dus alles hier hoort
+        echt bij deze categorie en letter. `known` zijn de woorden die de speler
+        zelf noemde; de rest kreeg hij na afloop te zien. Dat verschil bepaalt
+        alleen correct_count en missed_count, niet of hij de kaart krijgt: ook
+        een woord dat je net leerde is een kaart, dat is de hele modus.
+
+        Alles onder één slot, zodat twee keer op verzenden tikken niet twee keer
+        telt. De UNIQUE op (user_id, card_id) doet de rest.
+        """
+        if not user_id or not norms:
+            return []
+        ts = now if now is not None else time.time()
+        index = self.discover_card_index(category)
+        wanted: list[tuple[int, bool]] = []
+        seen_ids: set[int] = set()
+        for n in norms:
+            cid = index.get(n) or index.get(n.replace(" ", ""))
+            if cid is None or cid in seen_ids:
+                continue
+            seen_ids.add(cid)
+            wanted.append((cid, n in known))
+        if not wanted:
+            return []
+        fresh: list[int] = []
+        with self._lock:
+            have = {
+                int(r["card_id"])
+                for r in self._q(
+                    "SELECT card_id FROM user_cards WHERE user_id=? AND card_id IN (%s)"
+                    % ",".join("?" * len(wanted)),
+                    (user_id, *[c for c, _ in wanted]),
+                )
+            }
+            for cid, was_known in wanted:
+                if cid in have:
+                    # Al in de verzameling: alleen de teller bijwerken. Box en
+                    # next_review_at blijven van de herhaling (fase 5), die
+                    # horen niet bij het opnieuw tegenkomen van een woord.
+                    col = "correct_count" if was_known else "missed_count"
+                    self._exec(
+                        f"UPDATE user_cards SET {col}={col}+1 WHERE user_id=? AND card_id=?",
+                        (user_id, cid),
+                    )
+                    continue
+                try:
+                    self._exec(
+                        "INSERT INTO user_cards (user_id, card_id, discovered_at, source,"
+                        " correct_count, missed_count, box) VALUES (?,?,?,?,?,?,1)",
+                        (user_id, cid, ts, source, 1 if was_known else 0, 0 if was_known else 1),
+                    )
+                except sqlite3.IntegrityError:
+                    continue  # race met een tweede tik, de ander was eerst
+                fresh.append(cid)
+        return [c for c in (self.discover_card(cid, user_id) for cid in fresh) if c]
+
+    def discover_state(self, user_id: str) -> dict:
+        """De dagletter-/streakrij van deze speler, met nullen als hij er nog geen heeft."""
+        rows = self._q("SELECT * FROM user_discover_state WHERE user_id = ?", (user_id,))
+        if not rows:
+            return {
+                "daily_letter": None, "daily_letter_date": None,
+                "streak_days": 0, "last_played_date": None,
+            }
+        r = rows[0]
+        return {
+            "daily_letter": r["daily_letter"],
+            "daily_letter_date": r["daily_letter_date"],
+            "streak_days": int(r["streak_days"]),
+            "last_played_date": r["last_played_date"],
+        }
 
 
 # Module-level singleton, created lazily so tests can use their own path.
