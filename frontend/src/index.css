@@ -1462,3 +1462,15 @@ body.ketenspel::after {
 }
 
 
+
+/* Ontdekken — "Bekijk verzameling" staat in de balk met wat er nog mist, dus
+   hij moet smal zijn. Het is dezelfde gouden knop; alleen het opschrift krimpt
+   zodat het op de plaat past in plaats van eroverheen te lopen.
+   `!important` is hier nodig en geen luiheid: Button zet zijn letterhoogte
+   inline op de binnenste span, en die wint van een gewone regel. */
+.ontdek-kleineknop button > span {
+  font-size: 11.5px !important;
+  padding-left: 10px !important;
+  padding-right: 10px !important;
+  line-height: 1.1 !important;
+}

@@ -15,6 +15,8 @@ export function GoudKader({
   hoek = 13,
   dik = 0.5,
   fade = false,
+  kleur = "goud",
+  gloed = false,
   padding = 12,
   style,
 }: {
@@ -29,6 +31,11 @@ export function GoudKader({
    *  echt te zien en verdwijnt de rest richting de bovenkant en omlaag, alsof
    *  het licht daar vandaan komt. */
   fade?: boolean;
+  /** Goud volgt de secties, violet is de kleur van de bedieningspillen. */
+  kleur?: "goud" | "violet";
+  /** Een neongloed onder de lijn: dezelfde vorm, dikker en vervaagd. Zo gloeit
+   *  er precies wat er staat, in plaats van een schaduw die ernaast ligt. */
+  gloed?: boolean;
   padding?: number | string;
   style?: React.CSSProperties;
 }) {
@@ -46,6 +53,10 @@ export function GoudKader({
   }, []);
 
   const id = useId().replace(/:/g, "");
+  const tint = kleur === "violet"
+    // Lavendel linksboven waar het licht vandaan komt, naar diep violet.
+    ? { hoog: "#D9C2FF", mid: "#9159E8", laag: "#4B2394" }
+    : { hoog: "#FEEB81", mid: "#F3B53E", laag: "#B8791F" };
   const { w, h } = maat;
   const k = Math.min(hoek, w / 2, h / 2);
   // De helft van de streek naar binnen, anders valt de andere helft buiten de
@@ -71,20 +82,35 @@ export function GoudKader({
               // dan de halve breedte, zodat de lijn halverwege de bovenrand op
               // is en langs de linkerkant nog net zichtbaar naar beneden loopt.
               <radialGradient id={id} gradientUnits="userSpaceOnUse" cx={0} cy={0} r={Math.max(w, h) * 0.62}>
-                <stop offset="0%" stopColor="#FEEB81" stopOpacity="0.95" />
-                <stop offset="35%" stopColor="#F3B53E" stopOpacity="0.5" />
-                <stop offset="70%" stopColor="#B8791F" stopOpacity="0.14" />
-                <stop offset="100%" stopColor="#B8791F" stopOpacity="0" />
+                <stop offset="0%" stopColor={tint.hoog} stopOpacity="0.95" />
+                <stop offset="35%" stopColor={tint.mid} stopOpacity="0.5" />
+                <stop offset="70%" stopColor={tint.laag} stopOpacity="0.14" />
+                <stop offset="100%" stopColor={tint.laag} stopOpacity="0" />
               </radialGradient>
             ) : (
-              <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#FEEB81" />
-                <stop offset="45%" stopColor="#F3B53E" />
-                <stop offset="100%" stopColor="#B8791F" />
+              // Diagonaal, want op een brede lage pil zie je een verticaal
+              // verloop nauwelijks: de zijkanten zijn te kort om iets te tonen.
+              <linearGradient id={id} x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor={tint.hoog} />
+                <stop offset="30%" stopColor={tint.mid} />
+                <stop offset="100%" stopColor={tint.laag} />
               </linearGradient>
             )}
+            {gloed && (
+              <filter id={`${id}g`} x="-40%" y="-40%" width="180%" height="180%">
+                <feGaussianBlur stdDeviation={Math.max(1.6, dik * 4)} />
+              </filter>
+            )}
           </defs>
-          <polygon points={punten} fill="none" stroke={`url(#${id})`} strokeWidth={dik} opacity={fade ? 1 : 0.55} />
+          {/* De gloed is dezelfde vorm, dikker en vervaagd, onder de lijn. */}
+          {gloed && (
+            <polygon
+              points={punten} fill="none" stroke={`url(#${id})`}
+              strokeWidth={Math.max(dik * 3, 1.6)} filter={`url(#${id}g)`}
+              opacity={fade ? 0.9 : 0.75}
+            />
+          )}
+          <polygon points={punten} fill="none" stroke={`url(#${id})`} strokeWidth={dik} opacity={fade ? 1 : 0.75} />
         </svg>
       )}
       <div style={{ position: "relative", padding }}>{children}</div>

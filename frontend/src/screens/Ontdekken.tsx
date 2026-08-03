@@ -347,7 +347,7 @@ type Filter = "alles" | "ontdekt" | "mist";
  *  drie waarden is meer tikken zonder meer overzicht. */
 function Keuze({ label, onClick, icoon }: { label: string; onClick: () => void; icoon: React.ReactNode }) {
   return (
-    <GoudKader hoek={9} padding="3px 13px" style={{ display: "inline-block" }}>
+    <GoudKader hoek={9} dik={0.7} kleur="violet" gloed padding="3px 13px" style={{ display: "inline-block" }}>
       <button
         onClick={() => { sound.uiTap(); onClick(); }}
         className="pressable"
@@ -510,7 +510,7 @@ function Letter({ data, onVerzameling }: { data: LetterView; onVerzameling: () =
           van deze verzameling, dus ze horen erbij en niet erboven te zweven.
           Dezelfde vorm als de sectie erboven, met de dunst mogelijke lijn en
           een doorzichtige vulling, zodat het decor eronder blijft staan. */}
-      <GoudKader hoek={13} fade padding={12} style={{ display: "flex", flexDirection: "column" }}>
+      <GoudKader hoek={13} fade gloed padding={12} style={{ display: "flex", flexDirection: "column" }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
           <Keuze
             label={`${t("ontdekkenSorteren")}: ${sortering === "az" ? t("ontdekkenSorteerAZ") : t("ontdekkenSorteerNieuw")}`}
@@ -537,26 +537,34 @@ function Letter({ data, onVerzameling }: { data: LetterView; onVerzameling: () =
         )}
       </GoudKader>
 
+      {/* Wat er nog mist, met de weg naar de verzameling ernaast. Eén balk en
+          niet twee, want het zijn twee kanten van hetzelfde: dit is de stand,
+          en daar ga je verder. */}
       <div
         className="panel-neon"
-        style={{ ...panelStyle, padding: 14, marginTop: 14, display: "flex", alignItems: "center", gap: 12 }}
+        style={{ ...panelStyle, padding: 12, marginTop: 14, display: "flex", alignItems: "center", gap: 10 }}
       >
-        <Layers size={22} color={colors.gold} style={{ flexShrink: 0 }} />
+        <Layers size={20} color={colors.gold} style={{ flexShrink: 0 }} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 14, color: compleet ? colors.gold : colors.ink }}>
+          <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 13.5, color: compleet ? colors.gold : colors.ink, lineHeight: 1.15 }}>
             {compleet
               ? t("ontdekkenLetterCompleet")
               : mist === 1 ? t("ontdekkenKaartOntbreekt") : t("ontdekkenKaartenOntbreken", { n: mist })}
           </div>
           {!compleet && (
-            <div style={{ fontFamily: font.ui, fontSize: 12, color: colors.sub, marginTop: 1 }}>
+            <div style={{ fontFamily: font.ui, fontSize: 11.5, color: colors.sub, marginTop: 1, lineHeight: 1.2 }}>
               {t("ontdekkenBlijfOefenen")}
             </div>
           )}
         </div>
-      </div>
-      <div style={{ marginTop: 10 }}>
-        <Button variant="gold" full onClick={onVerzameling}>{t("ontdekkenBekijkVerzameling")}</Button>
+        {/* Dezelfde gouden knop als altijd, alleen kleiner. De plaat-art zit
+            in Button alleen op `full`, dus die blijft staan en het VAK eromheen
+            bepaalt de maat. */}
+        <div className="ontdek-kleineknop" style={{ flexShrink: 0, width: 132 }}>
+          <Button variant="gold" full compact onClick={onVerzameling}>
+            {t("ontdekkenBekijkVerzameling")}
+          </Button>
+        </div>
       </div>
 
       {open && <KaartGroot kaart={open} rijen={data.fact_schema} nu={nu} onSluit={() => setOpen(null)} />}
