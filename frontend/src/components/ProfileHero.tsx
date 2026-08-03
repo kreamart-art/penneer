@@ -423,6 +423,7 @@ export function NeonKader({
   ademDuur,
   kernPlek,
   veeg = false,
+  hoeklicht = true,
   className,
 }: {
   children: ReactNode;
@@ -437,6 +438,10 @@ export function NeonKader({
    *  de binnenste er netjes in valt in plaats van ertegenaan te botsen. */
   radius?: number | string;
   /** Het verloop van de lijn. */
+  /** De warme wassing linksboven. Staat standaard aan, want die geeft het
+   *  paneel zijn lichtbron. Zet hem uit als de vulling "geen" is en het echt
+   *  doorzichtig moet blijven: anders vult die wassing alsnog het hele vlak. */
+  hoeklicht?: boolean;
   lijn?: string;
   /** De buitengloed. Een box-shadow, of het woord "verloop": dan wordt het een
    *  vervaagde kopie van de lijn zelf, met een rookmasker eroverheen. Gebruik
@@ -612,10 +617,12 @@ export function NeonKader({
         }}
       >
         {/* 3. hoekverlichting: warm, linksboven, want daar komt het licht vandaan */}
-        <span
-          aria-hidden
-          style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(70% 150% at 5% 0%, rgba(255,190,90,.10) 0%, transparent 55%)", pointerEvents: "none" }}
-        />
+        {hoeklicht && (
+          <span
+            aria-hidden
+            style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(70% 150% at 5% 0%, rgba(255,190,90,.10) 0%, transparent 55%)", pointerEvents: "none" }}
+          />
+        )}
         {/* 4. binnenglans: kort en alleen langs de bovenrand. Over de halve rand
             licht leest niet als licht maar als een gekleurd vlak. */}
         <span

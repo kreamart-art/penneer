@@ -349,7 +349,7 @@ type Filter = "alles" | "ontdekt" | "mist";
  *  drie waarden is meer tikken zonder meer overzicht. */
 function Keuze({ label, onClick, icoon }: { label: string; onClick: () => void; icoon: React.ReactNode }) {
   return (
-    <NeonKader radius={999} vulling="geen" dik={0.2} sterkte={0.3} lijn={GOUDLIJN} eindkap={false}
+    <NeonKader radius={999} vulling="geen" dik={0.2} sterkte={0.3} lijn={GOUDLIJN} eindkap={false} hoeklicht={false}
       gloed="0 0 6px rgba(243,181,62,.16)"
       binnen={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 13px" }}
     >
@@ -515,7 +515,7 @@ function Letter({ data, onVerzameling }: { data: LetterView; onVerzameling: () =
           van deze verzameling, dus ze horen erbij en niet erboven te zweven.
           Dezelfde vorm als de sectie erboven, met de dunst mogelijke lijn en
           een doorzichtige vulling, zodat het decor eronder blijft staan. */}
-      <NeonKader hoek={13} vulling="geen" dik={0.2} sterkte={0.3} lijn={GOUDLIJN} eindkap={false}
+      <NeonKader hoek={13} vulling="geen" dik={0.2} sterkte={0.3} lijn={GOUDLIJN} eindkap={false} hoeklicht={false}
         gloed="0 0 8px rgba(243,181,62,.18)"
         binnen={{ padding: 12, display: "flex", flexDirection: "column", gap: 12 }}
       >
@@ -679,7 +679,15 @@ export function Ontdekken({ onBack, onOefenen }: { onBack: () => void; onOefenen
   const gast = overview?.guest ?? cat?.guest ?? letter?.guest ?? false;
 
   return (
-    <div style={{ maxWidth: 520, margin: "0 auto", padding: "18px 16px calc(28px + var(--nav-h, 0px))" }}>
+    <div
+      style={{
+        maxWidth: 520, margin: "0 auto",
+        padding: "18px 16px calc(28px + var(--nav-h, 0px))",
+        // De veilige zone bovenaan, zoals elk ander scherm: zonder dit ligt de
+        // terugpijl op een iPhone onder de statusbalk en is hij niet te raken.
+        paddingTop: "calc(18px + env(safe-area-inset-top))",
+      }}
+    >
       <Kop titel={titel} onBack={terug} />
 
       {gast && (
