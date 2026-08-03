@@ -379,10 +379,10 @@ function KaartTegel({ kaart, nu, onOpen, groot }: {
     // omhoog", en niet gedempt, want dit hoort er als volwaardige tegel te
     // staan die je wilt omdraaien.
     return (
-      <div
-        style={{ position: "relative", cursor: onOpen ? "pointer" : "default" }}
-        onClick={onOpen ? () => { sound.uiTap(); onOpen(); } : undefined}
-      >
+      // Niet aan te tikken: er valt niets te zien op een kaart die je nog niet
+      // hebt, en een overlay die alleen hetzelfde vraagteken groot toont voelt
+      // als een deur die op niets uitkomt.
+      <div style={{ position: "relative" }}>
         <img
           src="/static/cards/niet-gehaald.webp"
           alt={t("ontdekkenNogNietOntdekt")}
@@ -392,8 +392,8 @@ function KaartTegel({ kaart, nu, onOpen, groot }: {
         <span
           aria-hidden
           style={{
-            position: "absolute", left: 0, right: 0, top: "38%", textAlign: "center",
-            fontFamily: font.display, fontWeight: 800, fontSize: groot ? 46 : "clamp(18px, 6vw, 30px)",
+            position: "absolute", left: 0, right: 0, top: "30%", textAlign: "center",
+            fontFamily: font.display, fontWeight: 800, fontSize: groot ? 78 : "clamp(34px, 11vw, 56px)",
             color: colors.gold, textShadow: `0 0 18px ${withAlpha(colors.gold, 0.55)}`,
           }}
         >
@@ -401,9 +401,13 @@ function KaartTegel({ kaart, nu, onOpen, groot }: {
         </span>
         <span
           style={{
-            position: "absolute", left: "10%", right: "10%", bottom: "10%",
-            textAlign: "center", fontFamily: font.ui, fontSize: groot ? 13 : "clamp(7px, 2.1vw, 10px)",
-            fontWeight: 600, lineHeight: 1.2, color: colors.sub,
+            position: "absolute", left: "8%", right: "8%", bottom: "9%",
+            textAlign: "center", fontFamily: font.display,
+            fontSize: groot ? 17 : "clamp(9px, 3vw, 13px)",
+            fontWeight: 700, lineHeight: 1.15, color: colors.sub,
+            // Twee regels, "Nog niet" boven "Ontdekt": op een smalle tegel
+            // leest dat rustiger dan een regel die zelf afbreekt waar het uitkomt.
+            whiteSpace: "pre-line",
           }}
         >
           {t("ontdekkenNogNietOntdekt")}
@@ -542,7 +546,7 @@ function Letter({ data, onVerzameling }: { data: LetterView; onVerzameling: () =
           en daar ga je verder. */}
       <div
         className="panel-neon"
-        style={{ ...panelStyle, padding: 12, marginTop: 14, display: "flex", alignItems: "center", gap: 10 }}
+        style={{ ...panelStyle, padding: "12px 18px", marginTop: 14, display: "flex", alignItems: "center", gap: 12 }}
       >
         <Layers size={20} color={colors.gold} style={{ flexShrink: 0 }} />
         <div style={{ flex: 1, minWidth: 0 }}>

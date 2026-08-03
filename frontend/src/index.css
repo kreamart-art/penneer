@@ -1468,10 +1468,17 @@ body.ketenspel::after {
    zodat het op de plaat past in plaats van eroverheen te lopen.
    `!important` is hier nodig en geen luiheid: Button zet zijn letterhoogte
    inline op de binnenste span, en die wint van een gewone regel. */
+.ontdek-kleineknop button {
+  /* Button houdt 26px aan weerszijden vrij voor de afschuining van de plaat.
+     Op een knop van deze maat blijft daar te weinig vlak over, dus hier minder,
+     en dan vult het opschrift de plaat wel. */
+  padding-left: 8px !important;
+  padding-right: 8px !important;
+}
 .ontdek-kleineknop button > span {
-  font-size: 9.5px !important;
-  padding-left: 6px !important;
-  padding-right: 6px !important;
+  font-size: 12.5px !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
   line-height: 1.1 !important;
   letter-spacing: 0 !important;
   /* Op EEN regel, want twee regels maken de plaat hoger dan de balk. */
