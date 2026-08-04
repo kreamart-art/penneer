@@ -94,17 +94,37 @@ export function PackOpenen({
           aria-hidden
           className={bezig ? "pack-gloed" : undefined}
           style={{
-            position: "absolute", left: "50%", top: "50%", width: 360, height: 360,
+            position: "absolute", left: "50%", top: "50%", width: 420, height: 420,
             transform: "translate(-50%,-50%)", borderRadius: "50%", opacity: 0,
-            // EEN WITTE KERN met een lange warme staart. Het hart is echt wit
-            // en niet crème: daar komt het licht vandaan, en een gebroken wit
-            // leest als een gele vlek in plaats van als licht.
+            // EEN WITTE KERN met een staart die tot NIETS loopt. Het hart is
+            // echt wit en niet creme: daar komt het licht vandaan, en een
+            // gebroken wit leest als een gele vlek in plaats van als licht.
             //
-            // De kern is wel KLEIN, en daarbuiten zakt hij ver uitgesmeerd weg
-            // naar goud en dan naar niets. Zou dat wit over de halve gloed
-            // doorlopen, dan ligt er een witte plek over de kaart heen in
-            // plaats van licht eromheen.
-            background: "radial-gradient(circle, rgba(255,255,255,.95) 0%, rgba(255,253,246,.6) 11%, rgba(255,226,150,.22) 30%, rgba(255,198,92,.07) 58%, rgba(255,180,60,0) 82%)",
+            // VEEL STOPS EN TOT 100 PROCENT. Met een handvol stops die op
+            // tachtig procent eindigen zie je twee dingen die er niet horen: de
+            // ringen tussen de stops, en de rand van de cirkel zelf, want daar
+            // springt hij ineens van iets naar niets. De stops volgen hier een
+            // derdemachtsafname (elke stap ongeveer de helft van de vorige) en
+            // de laatste staat op de rand van het vlak.
+            //
+            // En er gaat een VERVAGING overheen. Een verloop wordt in stappen
+            // van een 256e uitgerekend, en bij zulke lage waarden zie je die
+            // stappen als ringen; de vervaging smeert ze weg. Dat mag hier
+            // gerust ruim, want er staat geen vorm in die scherp hoort te zijn.
+            filter: "blur(14px)",
+            background: [
+              "radial-gradient(circle,",
+              "rgba(255,255,255,.95) 0%,",
+              "rgba(255,255,255,.78) 6%,",
+              "rgba(255,252,240,.55) 12%,",
+              "rgba(255,242,205,.36) 20%,",
+              "rgba(255,228,158,.22) 30%,",
+              "rgba(255,214,120,.13) 42%,",
+              "rgba(255,203,98,.07) 55%,",
+              "rgba(255,193,80,.032) 70%,",
+              "rgba(255,186,68,.012) 85%,",
+              "rgba(255,180,60,0) 100%)",
+            ].join(" "),
             animationDelay: `${GLOED_NA}ms`, pointerEvents: "none",
           }}
         />
