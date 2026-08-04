@@ -101,8 +101,10 @@ export function GoudKader({
 
   const id = useId().replace(/:/g, "");
   const tint = kleur === "violet"
-    // Lavendel linksboven waar het licht vandaan komt, naar diep violet.
-    ? { hoog: "#D9C2FF", mid: "#9159E8", laag: "#4B2394" }
+    // Overgenomen van de binnenlijn in de ondersectie: die is roziger dan het
+    // blauwviolet dat hier eerst stond. Opgemeten in die art: de lijn zelf is
+    // #9560B6, waar het licht erop valt #D190D4, en waar hij wegzakt #55276E.
+    ? { hoog: "#D9A6DF", mid: "#9560B6", laag: "#55276E" }
     : { hoog: "#FEEB81", mid: "#F3B53E", laag: "#B8791F" };
   const { w, h } = maat;
   const k = Math.min(hoek, w / 2, h / 2);
@@ -223,13 +225,20 @@ export function GoudKader({
               </linearGradient>
             )}
             {vulling && (
-              // Opgemeten in de mockup: van (30,15,66) bovenin naar (21,6,40)
-              // onderin. Donker genoeg dat witte tekst er gewoon op leest, en
-              // net licht genoeg dat het vak van de achtergrond loskomt.
+              // Overgenomen van de VULLING van de ondersectie (niet van de lijn,
+              // die is roziger): daar loopt het van #2B0D4C bovenin naar #1C0737
+              // onderin. Vier stops in plaats van twee, met een tintverloop van
+              // magenta-achtig boven naar blauwer onder; een rechte interpolatie
+              // tussen twee kleuren leest als een vlak in plaats van als diepte.
+              //
+              // "licht" is dezelfde familie, lichter en een tik meer violet, voor
+              // een vak dat OP zo'n sectie ligt. Met precies dezelfde vulling
+              // lopen de twee onderin in elkaar over.
               <linearGradient id={`${id}v`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={vulling === "licht" ? "#3A1F78" : "#2A1359"} />
-                <stop offset="55%" stopColor={vulling === "licht" ? "#2B1457" : "#200C38"} />
-                <stop offset="100%" stopColor={vulling === "licht" ? "#1E0B3D" : "#150628"} />
+                <stop offset="0%" stopColor={vulling === "licht" ? "#48186D" : "#35105A"} />
+                <stop offset="38%" stopColor={vulling === "licht" ? "#37115C" : "#290B4A"} />
+                <stop offset="72%" stopColor={vulling === "licht" ? "#2A0D4B" : "#210940"} />
+                <stop offset="100%" stopColor={vulling === "licht" ? "#200A3D" : "#1A0733"} />
               </linearGradient>
             )}
             {binnenlijn && HOEKEN4.map(([hx, hy], i) => (
