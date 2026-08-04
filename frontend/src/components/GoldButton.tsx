@@ -73,27 +73,29 @@ const PLATES: Record<PlateKind, Plate> = {
 // beide platen merkbaar rekt: goud een halve procent, paars een halve procent.
 // Op 4,4 (de oude waarde) zou de nieuwe art er 4,5% te hoog uit komen te zien.
 export const BUTTON_RATIO = 4.63;
-// DE MAAT VAN DE KNOP. Dit is de enige knop waaraan je hoeft te draaien: de
-// hoogte volgt uit de breedte via BUTTON_RATIO, dus hij schaalt altijd in
-// verhouding en de plaat rekt nooit.
+// DE MAAT VAN DE KNOP. Er valt maar aan één ding te draaien: de BREEDTE. De
+// hoogte volgt daaruit via BUTTON_RATIO, dus de knop schaalt altijd aan beide
+// kanten tegelijk en de plaat rekt nooit.
 //
-// Van 320 naar 280 naar 220. Op 320 besloeg de knop bijna de hele breedte van
-// het scherm en werd van een actie een balk; op 220 zit de tekst er strak in.
-// Het OPSCHRIFT schaalt niet mee: dat is een vast getal in Button.tsx, dus de
-// knop krimpt en de letters blijven leesbaar.
-export const BUTTON_FIT = "62%";
-export const BUTTON_MAX_WIDTH = 220;
+// En die breedte komt van het OPSCHRIFT, niet van het scherm. Een vaste maat
+// ging steeds van 320 naar 280 naar 220 en bleef te groot, want het probleem
+// was niet het getal: op "Start het spel" vulde de tekst 107px van een plaat
+// van 220, dus 113px stond leeg. Zo'n knop is geen knop meer maar een balk met
+// een woord erin. Nu is de plaat de tekst plus zijn lucht: diezelfde knop is
+// 159 breed en 34 hoog.
+//
+// BUTTON_MIN_WIDTH is alleen nog een bodem voor "Ja" of "OK", zodat een kort
+// woord geen knopje wordt. Naar boven is er geen grens behalve de ruimte zelf:
+// een lang opschrift maakt de knop breder in plaats van de tekst te breken.
+//
+// Het opschrift schaalt bewust NIET mee (vast getal in Button.tsx): de knop
+// krimpt, de letters blijven leesbaar.
+export const BUTTON_MIN_WIDTH = 150;
 
 /** Breedte-regels die elke knop op volle breedte deelt. */
 export const fullWidthButton = {
-  // DE KNOP IS ZO BREED ALS ZIJN OPSCHRIFT, niet als het scherm. Een vaste
-  // breedte doet één van twee dingen fout: op een kort woord blijft er een
-  // halve balk leeg over, en op een lang opschrift breekt de tekst in tweeën en
-  // valt hij buiten de plaat. Dus: fit-content voor de tekst plus zijn lucht,
-  // met de vaste maat als ONDERGRENS zodat "Ja" geen knopje wordt, en nooit
-  // breder dan de ruimte die er is.
   width: "fit-content",
-  minWidth: `min(${BUTTON_FIT}, ${BUTTON_MAX_WIDTH}px)`,
+  minWidth: `min(100%, ${BUTTON_MIN_WIDTH}px)`,
   maxWidth: "100%",
   whiteSpace: "nowrap",
   aspectRatio: `${BUTTON_RATIO}`,
@@ -108,12 +110,12 @@ export const fullWidthButton = {
 } as const;
 
 /** `compact`: een slag kleiner, voor een knop in een paneel met een vaste
- *  hoogte. Dit MOET onder BUTTON_MAX_WIDTH blijven, anders is "compact" juist
+ *  hoogte. Dit MOET onder BUTTON_MIN_WIDTH blijven, anders is "compact" juist
  *  de grootste knop op het scherm. Hij stond op 232 terwijl de gewone knop naar
  *  220 ging, en dat was precies waar de knop nog te groot uitzag. */
-export const COMPACT_MAX_WIDTH = 176;
+export const COMPACT_MIN_WIDTH = 120;
 export const compactButton = {
-  minWidth: `min(${BUTTON_FIT}, ${COMPACT_MAX_WIDTH}px)`,
+  minWidth: `min(100%, ${COMPACT_MIN_WIDTH}px)`,
 } as const;
 
 /** Waar de plaat moet liggen zodat zijn LICHTE VLAK precies het knopvak vult. */
