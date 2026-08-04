@@ -191,6 +191,28 @@ export function GoudKader({
     return `${d}Z`;
   };
 
+  /** Het midden van elke bocht, op de lijn zelf. Het hoekpunt uit
+   *  `hoekpunten` is alleen het stuurpunt van de bezier: de lijn buigt ervoor
+   *  al weg en RAAKT dat punt nooit. Een lichtpunt daar zet je dus naast de
+   *  lijn, en precies dat maakt de scherpe punt weer zichtbaar die de afronding
+   *  net had weggehaald. Voor een kwadratische bezier ligt het punt op t=0.5
+   *  op (a + 2V + b) / 4. */
+  const bochtmidden = (naarBinnen: number): [number, number][] => {
+    const p = hoekpunten(naarBinnen);
+    const n = p.length;
+    return p.map((punt, i) => {
+      const vorige = p[(i - 1 + n) % n];
+      const volgende = p[(i + 1) % n];
+      const inX = punt[0] - vorige[0], inY = punt[1] - vorige[1];
+      const uitX = volgende[0] - punt[0], uitY = volgende[1] - punt[1];
+      const lIn = Math.hypot(inX, inY) || 1, lUit = Math.hypot(uitX, uitY) || 1;
+      const r = Math.min(rond, lIn / 2, lUit / 2);
+      const ax = punt[0] - (inX / lIn) * r, ay = punt[1] - (inY / lIn) * r;
+      const bx = punt[0] + (uitX / lUit) * r, by = punt[1] + (uitY / lUit) * r;
+      return [(ax + 2 * punt[0] + bx) / 4, (ay + 2 * punt[1] + by) / 4];
+    });
+  };
+
   const punten = pad(0);
   // Zo dicht mogelijk erop: net genoeg lucht dat je twee lijnen ziet en niet
   // een dikke. Onder de 2px lopen ze op een gewoon scherm in elkaar over.
@@ -310,11 +332,19 @@ export function GoudKader({
                 <stop offset="100%" stopColor={hoekAccent} stopOpacity="0" />
               </radialGradient>
             ))}
-            {puntjes && (
-              <filter id={`${id}p`} x="-300%" y="-300%" width="700%" height="700%">
-                <feGaussianBlur stdDeviation={Math.max(0.7, dik * 1.6)} />
-              </filter>
-            )}
+            {puntjes && bochtmidden(0).map(([px, py], i) => (
+              // Klein: op zo'n tien pixel is hij al op, dus je ziet een kort
+              // stukje lijn oplichten dat naar beide kanten snel wegvalt.
+              <radialGradient
+                key={`p${i}`} id={`${id}p${i}`} gradientUnits="userSpaceOnUse"
+                cx={px} cy={py} r={Math.max(5, Math.min(Math.hypot(w, h) * 0.026, 14))}
+              >
+                <stop offset="0%" stopColor="#FFFFFF" stopOpacity="1" />
+                <stop offset="30%" stopColor="#FFFFFF" stopOpacity="0.55" />
+                <stop offset="65%" stopColor="#FFFFFF" stopOpacity="0.14" />
+                <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
+              </radialGradient>
+            ))}
             {gloed && (
               <filter id={`${id}g`} x="-40%" y="-40%" width="180%" height="180%">
                 <feGaussianBlur stdDeviation={Math.max(1.1, dik * 2.2) * gloedMaat} />
@@ -372,16 +402,15 @@ export function GoudKader({
               zien. Volgorde van hoekpunten(): boven-links, boven-rechts,
               rechts-boven, rechts-onder, onder-rechts, onder-links, links-onder,
               links-boven. */}
-          {puntjes && hoekpunten(0).map(([px, py], i) => {
-            const sterkte = [0.95, 0.5, 0.44, 0.24, 0.3, 0.55, 0.62, 0.88][i];
-            return (
-              <g key={`p${i}`}>
-                <circle cx={px} cy={py} r={Math.max(1.1, dik * 2.4)} fill="#FFFFFF"
-                  opacity={sterkte * 0.5} filter={`url(#${id}p)`} />
-                <circle cx={px} cy={py} r={Math.max(0.5, dik * 0.85)} fill="#FFFFFF" opacity={sterkte} />
-              </g>
-            );
-          })}
+          {puntjes && bochtmidden(0).map((_, i) => (
+            // Als STREEK over de omtrek en niet als losse stip: zo ligt het
+            // licht per definitie op de lijn en houdt het diens dikte.
+            <path
+              key={`p${i}`} d={punten} fill="none" stroke={`url(#${id}p${i})`}
+              strokeWidth={dik}
+              opacity={[0.95, 0.5, 0.44, 0.24, 0.3, 0.55, 0.62, 0.88][i]}
+            />
+          ))}
         </svg>
       )}
       <div style={{ position: "relative", padding }}>{children}</div>
