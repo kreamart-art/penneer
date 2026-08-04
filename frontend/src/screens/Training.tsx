@@ -38,10 +38,15 @@ interface CheckResult {
 }
 
 
-export function Training({ onBack, lenient = false, onOntdekken }: {
+export function Training({ onBack, lenient = false, onOntdekken, startLetter }: {
   onBack: () => void; lenient?: boolean;
   /** Alleen gezet als de admin-schakelaar aanstaat; anders bestaat de knop niet. */
   onOntdekken?: () => void;
+  /** De letter van vandaag, als je vanaf Ontdekken op "Speel de letter" tikt.
+   *  Dan slaan we het instelscherm over: je hebt de letter al gekozen door op
+   *  die knop te tikken, en er nog een keuzescherm tussen zetten voelt als een
+   *  knop die niet doet wat hij zegt. */
+  startLetter?: string | null;
 }) {
   const { t, tCat } = useT();
   const [phase, setPhase] = useState<"setup" | "round" | "result">("setup");
@@ -65,7 +70,9 @@ export function Training({ onBack, lenient = false, onOntdekken }: {
       const res = await fetch("/api/train/round", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ used, hard }),
+        // Alleen de eerste ronde krijgt de dagletter mee; daarna is het weer
+        // gewoon oefenen met een willekeurige letter.
+        body: JSON.stringify({ used, hard, letter: rounds === 0 ? startLetter || undefined : undefined }),
       });
       const data = await res.json();
       setLetter(data.letter);
@@ -77,6 +84,16 @@ export function Training({ onBack, lenient = false, onOntdekken }: {
       setBusy(false);
     }
   };
+
+  // Kom je binnen met een letter, dan begint de ronde vanzelf. Eenmalig: de
+  // ref voorkomt dat een herrender halverwege een tweede ronde afvuurt.
+  const gestart = useRef(false);
+  useEffect(() => {
+    if (!startLetter || gestart.current) return;
+    gestart.current = true;
+    void startRound();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startLetter]);
 
   // Hetzelfde decor als de lobby: de arena met de gouden hoekstukken en de
   // horizon die oplicht. Het hoort bij de schermen waar je een potje begint.

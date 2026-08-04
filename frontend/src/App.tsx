@@ -117,6 +117,11 @@ export default function App() {
   const [showTraining, setShowTraining] = useState(false);
   const [showOntdekken, setShowOntdekken] = useState(false);
   const [ontdekVrij, setOntdekVrij] = useState(ontdekAan());
+  // De letter waarmee Oefenen moet beginnen als je vanaf Ontdekken komt, en of
+  // je daar vandaan kwam: de terugpijl hoort je te brengen waar je vandaan
+  // kwam, niet altijd naar de hoofdpagina.
+  const [oefenLetter, setOefenLetter] = useState<string | null>(null);
+  const [oefenViaOntdek, setOefenViaOntdek] = useState(false);
   // De app heeft geen router; #ontdekken is het dichtste bij de route uit het
   // ontwerp en maakt het scherm deelbaar en direct te openen.
   useEffect(() => {
@@ -541,15 +546,20 @@ export default function App() {
     screen = (
       <Ontdekken
         onBack={() => setShowOntdekken(false)}
-        onOefenen={() => { setShowOntdekken(false); setShowTraining(true); }}
+        onOefenen={(letter) => { setOefenLetter(letter); setOefenViaOntdek(true); setShowOntdekken(false); setShowTraining(true); }}
       />
     );
   } else if (showTraining) {
     screen = (
       <Training
-        onBack={() => setShowTraining(false)}
+        onBack={() => {
+          setShowTraining(false);
+          setOefenLetter(null);
+          if (oefenViaOntdek) { setOefenViaOntdek(false); setShowOntdekken(true); }
+        }}
+        startLetter={oefenLetter}
         lenient={!!game.state.account?.lenient_spelling}
-        onOntdekken={ontdekVrij ? () => { setShowTraining(false); setShowOntdekken(true); } : undefined}
+        onOntdekken={ontdekVrij && !oefenViaOntdek ? () => { setShowTraining(false); setOefenLetter(null); setShowOntdekken(true); } : undefined}
       />
     );
   } else if (showShop) {
@@ -606,7 +616,11 @@ export default function App() {
       />
     );
   } else {
-    screen = <Landing game={game} onShowRules={() => setShowRules(true)} onShowSettings={() => setShowSettings(true)} onShowShop={() => setShowShop(true)} onShowTraining={() => setShowTraining(true)} onShowDaily={() => setShowDaily(true)} onShowDuel={() => setShowDuel(true)} onShowProfile={() => setShowHub("profile")} onShowInbox={() => setShowHub("inbox")} />;
+    screen = <Landing game={game} onShowRules={() => setShowRules(true)} onShowSettings={() => setShowSettings(true)} onShowShop={() => setShowShop(true)} // De Oefenen-tegel opent voortaan ONTDEKKEN: op de mockup begint alles
+          // daar, en oefenen zit erin via "Speel de letter". Staat de
+          // admin-schakelaar uit, dan komt de speler gewoon in Oefenen zoals
+          // altijd.
+          onShowTraining={() => { if (ontdekVrij) setShowOntdekken(true); else setShowTraining(true); }} onShowDaily={() => setShowDaily(true)} onShowDuel={() => setShowDuel(true)} onShowProfile={() => setShowHub("profile")} onShowInbox={() => setShowHub("inbox")} />;
   }
 
   // Which bar item is lit. Sub-flows that are not bar destinations (rules,

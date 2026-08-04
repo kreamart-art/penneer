@@ -386,7 +386,14 @@ async def train_round(request: Request) -> JSONResponse:
     body = await request.json()
     used = [str(x).strip().upper()[:1] for x in (body or {}).get("used") or []]
     hard = bool((body or {}).get("hard"))
-    letter = game.pick_letter(used, hard)
+    # Ontdekken stuurt de letter van vandaag mee: dan gaat de ronde over de
+    # letter waar de hub je op wijst in plaats van een willekeurige. De server
+    # keurt hem wel: alleen een letter die ook los te trekken zou zijn.
+    gevraagd = str((body or {}).get("letter") or "").strip().upper()[:1]
+    if gevraagd and gevraagd in game.letter_pool(True):
+        letter = gevraagd
+    else:
+        letter = game.pick_letter(used, hard)
     return JSONResponse({"letter": letter})
 
 

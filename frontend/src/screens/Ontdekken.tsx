@@ -9,7 +9,7 @@
 // verzameling die op twee toestellen anders staat is erger dan een verzameling
 // die een halve seconde later verschijnt.
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Apple, ArrowLeft, Briefcase, Building2, ChevronDown, ChevronLeft, ChevronRight, Filter, Globe, Layers, Lightbulb, PawPrint } from "lucide-react";
+import { Apple, ArrowLeft, Brain, Briefcase, Building2, Check, ChevronDown, ChevronLeft, ChevronRight, Filter, Flame, Globe, Layers, Lightbulb, PawPrint, Play } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "../components/Button";
 import { LetterTegel } from "../components/LetterTegel";
@@ -31,6 +31,7 @@ interface Overview {
   daily_speelbaar: boolean;
   streak_days: number;
   review_due: number;
+  recent: Kaart[];
   guest: boolean;
 }
 interface LetterRow { letter: string; total: number; discovered: number }
@@ -47,6 +48,8 @@ export interface Kaart {
   facts?: Record<string, string>;
   image_path?: string | null;
   iso?: string | null;
+  category?: string;
+  letter?: string;
   discovered_at?: number | null;
   favorite?: boolean;
 }
@@ -103,7 +106,7 @@ function Ring({ percent, size = 54 }: { percent: number; size?: number }) {
       {percent > 0 && (
         <circle
           cx={size / 2} cy={size / 2} r={r} fill="none"
-          stroke={vol ? colors.gold : colors.violet}
+          stroke={colors.gold}
           strokeWidth={5} strokeLinecap="round"
           strokeDasharray={`${(omtrek * percent) / 100} ${omtrek}`}
           transform={`rotate(-90 ${size / 2} ${size / 2})`}
@@ -129,113 +132,274 @@ function Paneel({ children, style }: { children: React.ReactNode; style?: React.
 }
 
 // ---- hub --------------------------------------------------------------------
+// De opbouw volgt de mockup: de dagletter in een eigen sectie, dan je
+// voortgang per categorie, de laatste vondsten, het herhaalblok en onderaan de
+// weg naar de hele verzameling.
+//
+// De sectie is art (hub-sectie.webp) met de medaille links, een donkere plaat
+// rechtsboven voor de reeks en een gouden knop rechtsonder. Opgemeten:
+//   medaille  midden (27.1%, 45.6%)  diameter 29.3% van de breedte
+//   plaat     x 51.1..96.9%   y  7.3..40.5%
+//   knop      x 47.4..94.1%   y 61.3..89.4%
+const HUB_RATIO = 1400 / 620;
+const HUB = {
+  letter:  { left: "18.0%", right: "68.9%", top: "23.0%", bottom: "23.0%" },
+  bovenop: { left: "10.0%", right: "60.0%", top: "3.0%",  bottom: "84.0%" },
+  plaat:   { left: "51.1%", right: "3.1%",  top: "7.3%",  bottom: "59.5%" },
+  uitleg:  { left: "50.0%", right: "4.0%",  top: "41.5%", bottom: "39.5%" },
+  knop:    { left: "47.4%", right: "5.9%",  top: "61.3%", bottom: "10.6%" },
+} as const;
 
-function Hub({ data, onCategorie, onOefenen, onQuiz }: {
-  data: Overview; onCategorie: (c: string) => void; onOefenen: () => void;
-  onQuiz: (mode: "letter" | "review", letter: string | null, category: string) => void;
+/** Het rijtje vinkjes onder de reeks, zoals in het ontwerp. */
+function Reeks({ dagen }: { dagen: number }) {
+  const punten = Math.max(5, Math.min(dagen, 7));
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "4%", width: "100%" }}>
+      {Array.from({ length: punten }, (_, i) => {
+        const aan = i < dagen;
+        return (
+          <span
+            key={i}
+            style={{
+              flex: "0 0 auto", width: "11%", aspectRatio: "1 / 1", borderRadius: "50%",
+              display: "grid", placeItems: "center",
+              border: `1.5px solid ${aan ? colors.gold : withAlpha(colors.gold, 0.3)}`,
+              background: aan ? withAlpha(colors.gold, 0.16) : "transparent",
+              boxShadow: aan ? `0 0 8px ${withAlpha(colors.gold, 0.45)}` : "none",
+            }}
+          >
+            {aan && <Check size={9} color={colors.gold} strokeWidth={3.5} />}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+function HubSectie({ letter, streak, onSpeel }: {
+  letter: string | null; streak: number; onSpeel: () => void;
 }) {
-  // De quiz vraagt naar FEITEN, dus hij draait op de categorie waar je de
-  // meeste kaarten van hebt. Heb je nog niets, dan is er ook niets te vragen
-  // en blijft de knop uit.
-  const sterkste = [...data.categories].sort((a, b) => b.discovered - a.discovered)[0];
   const { t } = useT();
   return (
-    <>
-      {data.daily_letter && (
-        <Paneel style={{ marginBottom: 14 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <div
-              style={{
-                width: 62, height: 62, borderRadius: "50%", display: "grid", placeItems: "center",
-                flexShrink: 0,
-                background: `radial-gradient(circle, ${withAlpha(colors.gold, 0.22)}, transparent 70%)`,
-                border: `2px solid ${withAlpha(colors.gold, 0.55)}`,
-                fontFamily: font.display, fontWeight: 800, fontSize: 30, color: colors.gold,
-                textShadow: `0 0 12px ${withAlpha(colors.gold, 0.6)}`,
-              }}
-            >
-              {data.daily_letter}
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontFamily: font.ui, fontSize: 11.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: colors.sub }}>
-                {t("ontdekkenLetterVanVandaag")}
-              </div>
-              {data.streak_days > 0 && (
-                <div style={{ fontFamily: font.ui, fontSize: 13, color: colors.ink, marginTop: 2 }}>
-                  {data.streak_days === 1 ? t("ontdekkenDagOpRij") : t("ontdekkenDagenOpRij", { n: data.streak_days })}
-                </div>
-              )}
-            </div>
-          </div>
-          <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
-            <Button variant="gold" full onClick={onOefenen}>{t("ontdekkenSpeelDeLetter")}</Button>
-            {/* De quiz alleen aanbieden als er van deze letter iets te vragen
-                valt. Anders is de volgorde: eerst verzamelen in Oefenen, dan
-                overhoren. */}
-            {data.daily_speelbaar && data.daily_letter && (
-              <Button
-                variant="primary" full
-                onClick={() => onQuiz("letter", data.daily_letter, sterkste.category)}
-              >
-                {data.daily_gespeeld ? t("ontdekkenNogEens") : t("ontdekkenQuizStart")}
-              </Button>
-            )}
-          </div>
-        </Paneel>
+    <div style={{ position: "relative", width: "100%", aspectRatio: `${HUB_RATIO}` }}>
+      {/* Schaduw als tweede kopie, zoals overal in de app: een box-shadow zou
+          een rechthoek werpen achter een vorm met afgeschuinde hoeken. */}
+      <img
+        src="/ontdek/hub-sectie.webp" alt="" aria-hidden draggable={false}
+        style={{
+          position: "absolute", inset: 0, width: "100%", height: "100%", display: "block",
+          filter: "brightness(0) blur(9px)", opacity: 0.5, transform: "translateY(6px)",
+          pointerEvents: "none",
+        }}
+      />
+      <img src="/ontdek/hub-sectie.webp" alt="" style={{ position: "relative", width: "100%", height: "100%", display: "block" }} />
+
+      <div style={{ position: "absolute", ...HUB.bovenop, display: "flex", alignItems: "flex-start" }}>
+        <span style={{ fontFamily: font.wide, fontSize: "clamp(8px, 2.9vw, 15px)", letterSpacing: ".08em", color: colors.gold, whiteSpace: "nowrap" }}>
+          {t("ontdekkenLetterVanVandaag")}
+        </span>
+      </div>
+
+      {letter && (
+        <div style={{ position: "absolute", ...HUB.letter }}>
+          <img
+            src={`/letters/${letter}.webp`} alt={letter}
+            style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
+          />
+        </div>
       )}
 
-      <Paneel style={{ marginBottom: 14 }}>
-        <h2 style={{ margin: "0 0 12px", fontFamily: font.ui, fontSize: 11.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: colors.sub }}>
-          {t("ontdekkenJouwVoortgang")}
-        </h2>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {data.categories.map((c) => (
+      {/* De donkere plaat: de reeks met zijn vinkjes. */}
+      <div style={{ position: "absolute", ...HUB.plaat, display: "flex", flexDirection: "column", justifyContent: "center", gap: "6%", padding: "0 5%" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "4%" }}>
+          <Flame size={15} color={colors.orange} style={{ flexShrink: 0 }} />
+          <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: "clamp(12px, 4vw, 22px)", lineHeight: 1, color: colors.ink }}>
+            {streak}
+          </span>
+          <span style={{ fontFamily: font.wide, fontSize: "clamp(7px, 2.4vw, 13px)", letterSpacing: ".06em", color: colors.sub, whiteSpace: "nowrap" }}>
+            {t("ontdekkenDagenOpRij", { n: "" }).replace(/^\s*/, "")}
+          </span>
+        </div>
+        <Reeks dagen={streak} />
+      </div>
+
+      <div style={{ position: "absolute", ...HUB.uitleg, display: "grid", placeItems: "center" }}>
+        <span style={{ fontFamily: font.ui, fontSize: "clamp(6.5px, 1.95vw, 11px)", lineHeight: 1.3, color: colors.sub, textAlign: "center", whiteSpace: "pre-line" }}>
+          {t("ontdekkenHubUitleg")}
+        </span>
+      </div>
+
+      {/* De gouden knop zit in de art; hier ligt alleen het opschrift erop. */}
+      <button
+        onClick={() => { sound.uiTap(); onSpeel(); }}
+        className="pressable"
+        style={{
+          position: "absolute", ...HUB.knop,
+          background: "transparent", border: "none", padding: 0, cursor: "pointer",
+          display: "flex", alignItems: "center", justifyContent: "center", gap: "3%",
+        }}
+      >
+        <Play size={13} fill="#3B2300" color="#3B2300" style={{ flexShrink: 0 }} />
+        <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: "clamp(9px, 3.1vw, 18px)", color: "#3B2300", whiteSpace: "nowrap" }}>
+          {t("ontdekkenSpeelDeLetter")}
+        </span>
+      </button>
+    </div>
+  );
+}
+
+/** Een kop met een ruitje links en rechts, zoals de secties in het ontwerp. */
+function SectieKop({ children, rechts }: { children: React.ReactNode; rechts?: React.ReactNode }) {
+  const lijn = (
+    <span aria-hidden style={{ flex: 1, height: 1, background: `linear-gradient(90deg, transparent, ${withAlpha(colors.gold, 0.35)})` }} />
+  );
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "0 0 10px" }}>
+      {lijn}
+      <span style={{ fontFamily: font.wide, fontSize: 13, letterSpacing: ".1em", color: colors.sub, whiteSpace: "nowrap" }}>
+        {children}
+      </span>
+      <span aria-hidden style={{ flex: 1, height: 1, background: `linear-gradient(90deg, ${withAlpha(colors.gold, 0.35)}, transparent)` }} />
+      {rechts}
+    </div>
+  );
+}
+
+function Hub({ data, onCategorie, onOefenen, onQuiz, onVerzameling }: {
+  data: Overview; onCategorie: (c: string) => void; onOefenen: (letter: string | null) => void;
+  onQuiz: (mode: "letter" | "review", letter: string | null, category: string) => void;
+  onVerzameling: () => void;
+}) {
+  const { t } = useT();
+  // De quiz vraagt naar FEITEN, dus hij draait op de categorie waar je de
+  // meeste kaarten van hebt. Heb je nog niets, dan valt er niets te vragen.
+  const sterkste = [...data.categories].sort((a, b) => b.discovered - a.discovered)[0];
+  const label = Object.fromEntries(data.categories.map((c) => [c.category, c.label]));
+
+  return (
+    <>
+      <div style={{ marginBottom: 16 }}>
+        <HubSectie letter={data.daily_letter} streak={data.streak_days} onSpeel={() => onOefenen(data.daily_letter)} />
+      </div>
+
+      <GoudKader hoek={13} fade gloed padding={12} style={{ marginBottom: 16 }}>
+        <SectieKop>{t("ontdekkenJouwVoortgang")}</SectieKop>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 5 }}>
+          {data.categories.map((c) => {
+            const Ico = CAT_ICON[c.category];
+            const actief = c.category === sterkste?.category && c.discovered > 0;
+            return (
+              <button
+                key={c.category}
+                onClick={() => { sound.uiTap(); onCategorie(c.category); }}
+                className="pressable"
+                style={{
+                  display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+                  padding: "8px 2px", borderRadius: 10, cursor: "pointer",
+                  background: "rgba(255,255,255,.04)",
+                  border: `1.5px solid ${actief ? withAlpha(colors.gold, 0.55) : colors.hairline}`,
+                }}
+              >
+                <span aria-hidden style={{ color: actief ? colors.gold : colors.violet, display: "flex" }}>
+                  {Ico ? <Ico size={16} /> : null}
+                </span>
+                <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: colors.ink }}>{c.label}</span>
+                <Ring percent={c.percent} size={38} />
+                <span style={{ fontFamily: font.ui, fontSize: 9, color: colors.faint, whiteSpace: "nowrap" }}>
+                  {c.discovered} / {c.total}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </GoudKader>
+
+      <GoudKader hoek={13} fade gloed padding={12} style={{ marginBottom: 16 }}>
+        <SectieKop
+          rechts={
             <button
-              key={c.category}
-              onClick={() => { sound.uiTap(); onCategorie(c.category); }}
+              onClick={() => { sound.uiTap(); onVerzameling(); }}
               className="pressable"
               style={{
-                display: "flex", alignItems: "center", gap: 12, width: "100%",
-                padding: "10px 12px", borderRadius: 14, cursor: "pointer",
-                background: "rgba(255,255,255,.04)",
-                border: `1.5px solid ${colors.hairline}`,
-                textAlign: "left",
+                display: "inline-flex", alignItems: "center", gap: 4, flexShrink: 0,
+                padding: "4px 9px", borderRadius: 999, cursor: "pointer",
+                background: "transparent", border: `1px solid ${withAlpha(colors.violet, 0.5)}`,
+                fontFamily: font.ui, fontSize: 10.5, fontWeight: 600, color: colors.sub,
               }}
             >
-              <span aria-hidden style={{ width: 24, display: "grid", placeItems: "center", flexShrink: 0, color: colors.violet }}>
-                {(() => { const Ico = CAT_ICON[c.category]; return Ico ? <Ico size={19} /> : null; })()}
-              </span>
-              <span style={{ flex: 1, minWidth: 0 }}>
-                <span style={{ display: "block", fontFamily: font.display, fontWeight: 700, fontSize: 15, color: colors.ink }}>
-                  {c.label}
-                </span>
-                <span style={{ display: "block", fontFamily: font.ui, fontSize: 12, color: colors.sub, marginTop: 1 }}>
-                  {t("ontdekkenKaartenOntdekt", { n: c.discovered, total: c.total })}
-                </span>
-              </span>
-              <Ring percent={c.percent} />
-              <ChevronRight size={16} color={colors.faint} style={{ flexShrink: 0 }} />
+              {t("ontdekkenBekijkAlle")}
+              <ChevronRight size={12} />
             </button>
-          ))}
-        </div>
-      </Paneel>
-
-      <Paneel>
-        <h2 style={{ margin: "0 0 6px", fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink }}>
-          {t("ontdekkenHerhalen")}
-        </h2>
-        <p style={{ margin: "0 0 12px", fontFamily: font.ui, fontSize: 13, lineHeight: 1.4, color: colors.sub }}>
-          {data.review_due > 0
-            ? t("ontdekkenHerhalenKlaar", { n: data.review_due })
-            : t("ontdekkenHerhalenLeeg")}
-        </p>
-        <Button
-          variant="primary" full disabled={data.review_due === 0 || !sterkste?.discovered}
-          onClick={() => onQuiz("review", null, sterkste?.category || "land")}
+          }
         >
-          {t("ontdekkenStartHerhaling")}
-        </Button>
-      </Paneel>
+          {t("ontdekkenRecent")}
+        </SectieKop>
+        {data.recent.length === 0 ? (
+          <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12, color: colors.sub, textAlign: "center", padding: "14px 0" }}>
+            {t("ontdekkenNogGeenKaarten")}
+          </p>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6 }}>
+            {data.recent.map((k) => (
+              <button
+                key={k.id}
+                onClick={() => { sound.uiTap(); if (k.category) onCategorie(k.category); }}
+                className="pressable"
+                style={{ background: "transparent", border: "none", padding: 0, cursor: "pointer" }}
+              >
+                <KaartTegel kaart={k} nu={Date.now() / 1000} chip={label[k.category || ""]} />
+              </button>
+            ))}
+          </div>
+        )}
+      </GoudKader>
+
+      <GoudKader hoek={13} fade gloed padding={12} style={{ marginBottom: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <Brain size={30} color={colors.violet} style={{ flexShrink: 0 }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: font.wide, fontSize: 14, letterSpacing: ".08em", color: colors.sub }}>
+              {t("ontdekkenHerhalen")}
+            </div>
+            <div style={{ fontFamily: font.ui, fontSize: 11.5, lineHeight: 1.3, color: colors.sub, marginTop: 2 }}>
+              {data.review_due > 0
+                ? `${t("ontdekkenHerhalenKlaar", { n: data.review_due })} ${t("ontdekkenHerhalenUitleg")}`
+                : t("ontdekkenHerhalenLeeg")}
+            </div>
+          </div>
+          <div style={{ flexShrink: 0, width: 122 }} className="ontdek-kleineknop">
+            <Button
+              variant="primary" full compact
+              disabled={data.review_due === 0 || !sterkste?.discovered}
+              onClick={() => onQuiz("review", null, sterkste?.category || "land")}
+            >
+              {t("ontdekkenStartHerhaling")}
+            </Button>
+          </div>
+        </div>
+      </GoudKader>
+
+      <GoudKader hoek={13} fade gloed padding={12}>
+        <button
+          onClick={() => { sound.uiTap(); onVerzameling(); }}
+          className="pressable"
+          style={{
+            display: "flex", alignItems: "center", gap: 12, width: "100%",
+            background: "transparent", border: "none", padding: 0, cursor: "pointer", textAlign: "left",
+          }}
+        >
+          <Layers size={26} color={colors.gold} style={{ flexShrink: 0 }} />
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ display: "block", fontFamily: font.display, fontWeight: 700, fontSize: 15, color: colors.gold }}>
+              {t("ontdekkenNaarVerzameling")}
+            </span>
+            <span style={{ display: "block", fontFamily: font.ui, fontSize: 11.5, color: colors.sub, marginTop: 1 }}>
+              {t("ontdekkenNaarVerzameling2")}
+            </span>
+          </span>
+          <ChevronRight size={18} color={colors.faint} style={{ flexShrink: 0 }} />
+        </button>
+      </GoudKader>
     </>
   );
 }
@@ -433,8 +597,12 @@ function Keuze({ label, onClick, icoon }: { label: string; onClick: () => void; 
 // lint in het ontwerp betekent: kijk, deze is er net bij gekomen.
 const NIEUW_S = 24 * 60 * 60;
 
-function KaartTegel({ kaart, nu, onOpen, groot }: {
+function KaartTegel({ kaart, nu, onOpen, groot, chip }: {
   kaart: Kaart; nu: number; onOpen?: () => void; groot?: boolean;
+  /** Het categorielabel dat in het ontwerp op de rand van het paarse vlak
+   *  ligt. Alleen de hub gebruikt het: op de letterpagina weet je al in welke
+   *  categorie je zit en zou het op elke kaart hetzelfde woord zijn. */
+  chip?: string;
 }) {
   const { t } = useT();
   const nieuw = kaart.discovered && kaart.discovered_at != null && nu - kaart.discovered_at < NIEUW_S;
@@ -539,6 +707,24 @@ function KaartTegel({ kaart, nu, onOpen, groot }: {
           }}
         >
           {t("ontdekkenNieuw")}
+        </span>
+      )}
+      {chip && (
+        <span
+          style={{
+            position: "absolute", left: "50%", bottom: "27%", transform: "translateX(-50%)",
+            display: "inline-flex", alignItems: "center", gap: 3,
+            padding: "1.5px 6px", borderRadius: 999, whiteSpace: "nowrap",
+            background: "rgba(10,4,26,.8)", border: `1px solid ${withAlpha(colors.violet, 0.75)}`,
+            fontFamily: font.wide, fontSize: groot ? 11 : 7, letterSpacing: ".06em",
+            color: colors.ink, pointerEvents: "none",
+          }}
+        >
+          {(() => {
+            const Ico = CAT_ICON[kaart.category || ""];
+            return Ico ? <Ico size={groot ? 11 : 7} color={colors.violet} /> : null;
+          })()}
+          {chip}
         </span>
       )}
       {/* Naamplaat in het paarse vlak onderin de art, waar het verloop dichtloopt. */}
@@ -822,7 +1008,7 @@ type Stap =
   | { soort: "letter"; category: string; letter: string }
   | { soort: "quiz"; category: string; letter: string | null; mode: "letter" | "review" };
 
-export function Ontdekken({ onBack, onOefenen }: { onBack: () => void; onOefenen: () => void }) {
+export function Ontdekken({ onBack, onOefenen }: { onBack: () => void; onOefenen: (letter: string | null) => void }) {
   const { t } = useT();
   const [stapel, setStapel] = useState<Stap[]>([{ soort: "hub" }]);
   const stap = stapel[stapel.length - 1];
@@ -918,6 +1104,7 @@ export function Ontdekken({ onBack, onOefenen }: { onBack: () => void; onOefenen
             onOefenen={onOefenen}
             onQuiz={(mode, letter, category) =>
               setStapel((s) => [...s, { soort: "quiz", category, letter, mode }])}
+            onVerzameling={() => setStapel((s) => [...s, { soort: "categorie", category: "land" }])}
             onCategorie={(c) => setStapel((s) => [...s, { soort: "categorie", category: c }])}
           />
         )
