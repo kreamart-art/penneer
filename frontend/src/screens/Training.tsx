@@ -6,6 +6,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Apple, Brain, Briefcase, Building2, Check, Globe, HelpCircle, Info, Layers, PawPrint, RotateCw, Shuffle, Target, X } from "lucide-react";
 import { GoudKader } from "../components/GoudKader";
+import { RondeVoltooid, type Beloning, type NieuweKaart } from "../components/RondeVoltooid";
 import { Tv } from "../components/Tv";
 import { HubSectie, VerzamelBalk } from "./Ontdekken";
 import { Chip } from "../components/Chip";
@@ -42,10 +43,14 @@ interface CheckResult {
   categories: Record<string, CheckCat>;
   correct: number;
   learned: number;
+  /** De kaarten die deze ronde vrijkwamen. Leeg voor een gast. */
+  new_cards?: NieuweKaart[];
+  /** XP, munten en waar je nu staat. Null voor een gast. */
+  beloning?: Beloning | null;
 }
 
 
-export function Training({ onBack, lenient = false, onOntdekken, startLetter, ontdekStijl = false, onVerzameling }: {
+export function Training({ onBack, lenient = false, onOntdekken, startLetter, ontdekStijl = false, onVerzameling, onQuiz }: {
   onBack: () => void; lenient?: boolean;
   /** Alleen gezet als de admin-schakelaar aanstaat; anders bestaat de knop niet. */
   onOntdekken?: () => void;
@@ -56,6 +61,9 @@ export function Training({ onBack, lenient = false, onOntdekken, startLetter, on
    *  aanstaat; anders blijft het oude scherm precies zoals het was. */
   ontdekStijl?: boolean;
   onVerzameling?: () => void;
+  /** Regelrecht de kennisquiz in, over de letter die je net oefende. Staat er
+   *  alleen als Ontdekken bereikbaar is, want daar woont de quiz. */
+  onQuiz?: (category: string, letter: string) => void;
 }) {
   const { t, tCat } = useT();
   const [phase, setPhase] = useState<"setup" | "round" | "result">("setup");
@@ -69,6 +77,12 @@ export function Training({ onBack, lenient = false, onOntdekken, startLetter, on
   const [rounds, setRounds] = useState(0);
   const [sessionCorrect, setSessionCorrect] = useState(0);
   const [sessionSeen, setSessionSeen] = useState(0);
+  // Wat er NIET goed was, over de hele sessie. De server telt alleen wat wel
+  // goed was, en zonder dit getal is er geen accuraatheid te tonen.
+  const [sessionFout, setSessionFout] = useState(0);
+  // De popup na een ronde. Los van `result`, want de uitslag eronder blijft
+  // staan als je de popup wegtikt: dat is de lijst die je nog wilt nalopen.
+  const [voltooid, setVoltooid] = useState<CheckResult | null>(null);
   const inputs = useRef<(HTMLInputElement | null)[]>([]);
 
   const cats = useMemo(() => TRAIN_CATS.filter((c) => selected.has(c)), [selected]);
@@ -95,6 +109,7 @@ export function Training({ onBack, lenient = false, onOntdekken, startLetter, on
       setUsed((u) => [...u, data.letter]);
       setAnswers(Object.fromEntries(cats.map((c) => [c, ""])));
       setResult(null);
+      setVoltooid(null);
       setPhase("round");
     } finally {
       setBusy(false);
@@ -129,9 +144,14 @@ export function Training({ onBack, lenient = false, onOntdekken, startLetter, on
   const submit = async () => {
     setBusy(true);
     try {
+      // MET HET TOKEN. Zonder deze regel ziet de server een gast: dan komen er
+      // geen kaarten vrij, is er geen beloning en blijft Ontdekken leeg, hoe
+      // vaak je ook oefent. Het stond er niet en dat is nooit opgevallen omdat
+      // de uitslag zelf er hetzelfde uitziet.
+      const token = localStorage.getItem("penneer.accountToken") || "";
       const res = await fetch("/api/train/check", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ letter, categories: cats, answers, lenient }),
       });
       const data: CheckResult = await res.json();
@@ -139,8 +159,13 @@ export function Training({ onBack, lenient = false, onOntdekken, startLetter, on
       setRounds((r) => r + 1);
       setSessionCorrect((c) => c + data.correct);
       setSessionSeen((s) => s + data.learned);
+      // Fout is: meegedaan aan een categorie en er niet het goede woord in
+      // gezet. Leeg telt dus mee, want een leeg veld is een gemist woord en
+      // geen onthouding.
+      setSessionFout((f) => f + Math.max(0, cats.length - data.correct));
       sound.results();
       setPhase("result");
+      setVoltooid(data);
     } finally {
       setBusy(false);
     }
@@ -160,7 +185,7 @@ export function Training({ onBack, lenient = false, onOntdekken, startLetter, on
           meteen het scherm uit: daar heb je net je categorieen gekozen, en dat
           is de stap waar je op terug wilt kunnen. */}
       <button
-        onClick={() => { if (phase === "setup") onBack(); else { setResult(null); setPhase("setup"); } }}
+        onClick={() => { if (phase === "setup") onBack(); else { setResult(null); setVoltooid(null); setPhase("setup"); } }}
         aria-label={t("back")} style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 2 }}>
         <ArrowLeft size={20} />
       </button>
@@ -405,8 +430,25 @@ export function Training({ onBack, lenient = false, onOntdekken, startLetter, on
   }
 
   // ---- result (reveal what you missed) ----
+  // De categorie waar de quiz over gaat: die waar deze ronde het meest
+  // gebeurde. De server zet hem vooraan in `voortgang`, dus die volgorde is
+  // hier de keuze en niet iets wat opnieuw uitgerekend hoeft te worden.
+  const quizCat = voltooid?.beloning?.voortgang.find((v) => v.soort === "categorie")?.sleutel;
   return (
     <Screen top={header}>
+      {voltooid && (
+        <RondeVoltooid
+          letter={voltooid.letter}
+          goed={sessionCorrect}
+          fout={sessionFout}
+          kaarten={voltooid.new_cards ?? []}
+          beloning={voltooid.beloning ?? null}
+          onSluit={() => setVoltooid(null)}
+          onOpnieuw={() => { setVoltooid(null); void startRound(); }}
+          onOntdekken={onOntdekken ? () => { setVoltooid(null); onOntdekken(); } : undefined}
+          onQuiz={onQuiz && quizCat ? () => { setVoltooid(null); onQuiz(quizCat, voltooid.letter); } : undefined}
+        />
+      )}
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <SchermTip id="oefenen" tekst={t("tipOefenen")} />
         {/* Ook op de uitslag de tv, want je loopt hier de woorden na die met
@@ -458,7 +500,7 @@ export function Training({ onBack, lenient = false, onOntdekken, startLetter, on
           </span>
         </Button>
         <div style={{ display: "flex", justifyContent: "center" }}>
-          <Button variant="ghost" onClick={() => setPhase("setup")}>{t("trainStop")}</Button>
+          <Button variant="ghost" onClick={() => { setVoltooid(null); setPhase("setup"); }}>{t("trainStop")}</Button>
         </div>
       </div>
     </Screen>

@@ -22,7 +22,7 @@ import { ArtIcoon } from "../components/ArtIcoon";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { NeonText } from "../components/NeonText";
-import { Paneel } from "../components/ProfileHero";
+import { Tv } from "../components/Tv";
 import { neonSkin, rampFrom } from "../theme/neon";
 import { colors, font, radius, withAlpha } from "../theme/tokens";
 
@@ -327,16 +327,12 @@ export function Topo({ game, onBack, onProfile, played }: { game: GameApi; onBac
   return (
     <Screen top={header}>
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        {/* Dezelfde sierlijst als bij het woordendeel: de score van de dag
-            hoort in de lijst van het profiel, niet op een kale kaart. De art
-            heeft een vaste verhouding, dus alleen het cijferblok gaat erin. */}
-        <Paneel>
-          <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, paddingInline: 14 }}>
-            <span style={{ fontFamily: font.ui, fontSize: 12, color: colors.sub }}>{t("topoYourScore")}</span>
-            <NeonText accent={colors.gold} blur={18} glow={0.7} style={{ fontFamily: font.display, fontWeight: 700, fontSize: 48, lineHeight: 1 }}>{r.score}</NeonText>
-            <span style={{ fontFamily: font.ui, fontSize: 11.5, color: colors.faint }}>{t("dailyScoreOf", { score: r.score, max: r.max_score })}</span>
-          </div>
-        </Paneel>
+        {/* DE TV, net als op elke andere uitslag. Het topografiedeel is een
+            deel van de dagronde, en daar staat de score ook op de tv; twee
+            verschillende lijsten voor dezelfde score maken er twee dingen van.
+            Een sectie en niet twee: het opschrift en de puntentelling horen op
+            het scherm, niet eromheen. */}
+        <Tv tekst={String(r.score)} label={t("topoYourScore")} onder={t("dailyScoreOf", { score: r.score, max: r.max_score })} />
 
         {(r.ranked || r.streak > 1 || (account && !r.ranked)) && (
           <Card style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>

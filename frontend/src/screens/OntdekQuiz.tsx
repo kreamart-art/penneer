@@ -12,6 +12,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Check, X } from "lucide-react";
 import { Button } from "../components/Button";
 import { GoudKader } from "../components/GoudKader";
+import { Tv } from "../components/Tv";
 import { useT } from "../i18n/i18n";
 import { colors, font, withAlpha } from "../theme/tokens";
 import { sound } from "../sound/sound";
@@ -134,15 +135,18 @@ export function OntdekQuiz({ category, letter, mode, onKlaar, onBack }: {
     return (
       <div style={doos}>
         {kop}
+        {/* De tv met je score erop, zoals op elke andere uitslag in de app. Het
+            opschrift en de telling staan op het scherm zelf, dus dit is een
+            sectie en niet een kop met een kaart eronder. */}
+        <Tv
+          tekst={`${uitslag.goed}/${uitslag.totaal}`}
+          label={t("ontdekkenQuizKlaar")}
+          onder={t("ontdekkenQuizScore", { goed: uitslag.goed, total: uitslag.totaal })}
+          style={{ marginBottom: 12 }}
+        />
         <GoudKader hoek={13} fade gloed padding={18}>
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontFamily: font.wide, fontSize: 24, letterSpacing: ".03em", color: colors.gold }}>
-              {t("ontdekkenQuizKlaar")}
-            </div>
-            <div style={{ fontFamily: font.display, fontWeight: 800, fontSize: 30, color: colors.ink, margin: "10px 0 4px" }}>
-              {t("ontdekkenQuizScore", { goed: uitslag.goed, total: uitslag.totaal })}
-            </div>
-            <div style={{ display: "flex", justifyContent: "center", gap: 16, marginTop: 12, fontFamily: font.ui, fontSize: 13, color: colors.sub }}>
+            <div style={{ display: "flex", justifyContent: "center", gap: 16, fontFamily: font.ui, fontSize: 13, color: colors.sub }}>
               <span>+{uitslag.xp} XP</span>
               <span>+{uitslag.munten} munten</span>
             </div>

@@ -122,6 +122,10 @@ export default function App() {
   // kwam, niet altijd naar de hoofdpagina.
   const [oefenLetter, setOefenLetter] = useState<string | null>(null);
   const [oefenViaOntdek, setOefenViaOntdek] = useState(false);
+  // Met welke quiz Ontdekken open moet gaan. Gezet door de "Ronde voltooid"-
+  // popup in Oefenen; daarna weer leeg, anders schiet Ontdekken bij elke
+  // volgende opening opnieuw de quiz in.
+  const [quizStart, setQuizStart] = useState<{ category: string; letter: string } | null>(null);
   // De app heeft geen router; #ontdekken is het dichtste bij de route uit het
   // ontwerp en maakt het scherm deelbaar en direct te openen.
   useEffect(() => {
@@ -545,8 +549,9 @@ export default function App() {
   } else if (showOntdekken) {
     screen = (
       <Ontdekken
-        onBack={() => setShowOntdekken(false)}
-        onOefenen={(letter) => { setOefenLetter(letter); setOefenViaOntdek(true); setShowOntdekken(false); setShowTraining(true); }}
+        onBack={() => { setShowOntdekken(false); setQuizStart(null); }}
+        startQuiz={quizStart}
+        onOefenen={(letter) => { setOefenLetter(letter); setOefenViaOntdek(true); setShowOntdekken(false); setQuizStart(null); setShowTraining(true); }}
       />
     );
   } else if (showTraining) {
@@ -561,7 +566,12 @@ export default function App() {
         ontdekStijl={ontdekVrij}
         onVerzameling={() => { setShowTraining(false); setOefenViaOntdek(false); setShowOntdekken(true); }}
         lenient={!!game.state.account?.lenient_spelling}
-        onOntdekken={ontdekVrij ? () => { setShowTraining(false); setOefenLetter(null); setOefenViaOntdek(false); setShowOntdekken(true); } : undefined}
+        onOntdekken={ontdekVrij ? () => { setShowTraining(false); setOefenLetter(null); setOefenViaOntdek(false); setQuizStart(null); setShowOntdekken(true); } : undefined}
+        onQuiz={ontdekVrij ? (category, letter) => {
+          setShowTraining(false); setOefenLetter(null); setOefenViaOntdek(false);
+          setQuizStart({ category, letter });
+          setShowOntdekken(true);
+        } : undefined}
       />
     );
   } else if (showShop) {

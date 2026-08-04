@@ -353,6 +353,17 @@ CREATE TABLE IF NOT EXISTS daily_retries (
     used_at REAL NOT NULL,
     PRIMARY KEY (day, user_id)
 );
+-- Wat een speler VANDAAG met Oefenen verdiend heeft. Oefenen is oneindig
+-- herhaalbaar, dus zonder plafond is XP daar gratis: dezelfde letter opnieuw
+-- doen zou blijven uitbetalen. Deze regel houdt de dagpot bij; is die op, dan
+-- gaat het oefenen gewoon door en levert het alleen geen munten meer op.
+CREATE TABLE IF NOT EXISTS practice_rewards (
+    day TEXT NOT NULL,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    xp INTEGER NOT NULL DEFAULT 0,
+    coins INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (day, user_id)
+);
 -- Vrienden werven. Een account krijgt een korte code; wie met die code een
 -- account maakt, komt hier als een regel te staan. Een nieuw account kan maar
 -- EEN keer geworven zijn, vandaar de primaire sleutel op de nieuwkomer.
@@ -3961,6 +3972,68 @@ class Database:
             (user_id,),
         )
         return {r["category"]: int(r["n"]) for r in rows}
+
+    def discover_letter_stand(self, letter: str, user_id: str) -> dict:
+        """Hoeveel kaarten er van EEN letter bestaan en hoeveel je er hebt, over
+        alle categorieen heen.
+
+        Een oefenronde gaat over een letter en niet over een categorie: je vult
+        er land, stad en vrucht op in. De stand die daarbij hoort telt dus ook
+        over de categorieen heen, anders zou de balk na een ronde met drie
+        categorieen op drie plekken een beetje bewegen in plaats van op een plek
+        zichtbaar.
+        """
+        rows = self._q(
+            "SELECT COUNT(*) AS total, COUNT(uc.id) AS discovered"
+            " FROM cards c LEFT JOIN user_cards uc ON uc.card_id = c.id AND uc.user_id = ?"
+            " WHERE c.letter = ?",
+            (user_id or "", (letter or "").upper()[:1]),
+        )
+        r = rows[0] if rows else {"total": 0, "discovered": 0}
+        return {"total": int(r["total"]), "discovered": int(r["discovered"])}
+
+    # Wat een oefenronde hoogstens per dag oplevert. Ruim genoeg voor een paar
+    # rondes achter elkaar, te weinig om er een baantje van te maken: Oefenen is
+    # oneindig herhaalbaar, dus zonder plafond is dit gratis XP.
+    PRACTICE_XP_DAG = 300
+    PRACTICE_COINS_DAG = 150
+
+    def practice_reward(self, user_id: str, day: str, xp: int, coins: int) -> dict:
+        """Betaal een oefenronde uit, tot de dagpot leeg is.
+
+        Geeft terug wat er ECHT bij kwam, niet wat er verdiend zou zijn: de
+        popup hoort te tonen wat er op je saldo staat en niet wat het had kunnen
+        zijn. `vol` zegt of het plafond de rem was, zodat dat uit te leggen is.
+
+        Alles onder EEN slot, en met de twee updates hier in plaats van via
+        add_bonus_xp/grant_coins: die pakken hun eigen slot en dat is niet
+        herintreedbaar.
+        """
+        xp = max(0, int(xp))
+        coins = max(0, int(coins))
+        if not user_id or (not xp and not coins):
+            return {"xp": 0, "munten": 0, "vol": False}
+        with self._lock:
+            rows = self._q(
+                "SELECT xp, coins FROM practice_rewards WHERE day=? AND user_id=?",
+                (day, user_id),
+            )
+            al_xp = int(rows[0]["xp"]) if rows else 0
+            al_coins = int(rows[0]["coins"]) if rows else 0
+            geef_xp = max(0, min(xp, self.PRACTICE_XP_DAG - al_xp))
+            geef_coins = max(0, min(coins, self.PRACTICE_COINS_DAG - al_coins))
+            if geef_xp or geef_coins:
+                self._exec(
+                    "INSERT INTO practice_rewards (day, user_id, xp, coins) VALUES (?,?,?,?)"
+                    " ON CONFLICT(day, user_id) DO UPDATE SET"
+                    " xp=xp+excluded.xp, coins=coins+excluded.coins",
+                    (day, user_id, geef_xp, geef_coins),
+                )
+                if geef_xp:
+                    self._exec("UPDATE users SET bonus_xp = bonus_xp + ? WHERE id=?", (geef_xp, user_id))
+                if geef_coins:
+                    self._exec("UPDATE users SET coins = coins + ? WHERE id=?", (geef_coins, user_id))
+        return {"xp": geef_xp, "munten": geef_coins, "vol": geef_xp < xp or geef_coins < coins}
 
     def discover_letters(self, category: str, user_id: Optional[str]) -> list[dict]:
         """Per letter hoeveel kaarten er zijn en hoeveel de speler er heeft.

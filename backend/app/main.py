@@ -455,6 +455,7 @@ async def train_check(request: Request) -> JSONResponse:
     # Alleen `shown` telt en niet `missed`, want je kunt niet verzamelen wat je
     # nooit gezien hebt: de reveal is afgekapt op TRAIN_REVEAL_CAP.
     new_cards: list[dict] = []
+    beloning: dict | None = None
     if uid:
         for cat, own, shown in seen:
             dcat = discover.LIST_TO_CAT.get(cat)
@@ -464,13 +465,71 @@ async def train_check(request: Request) -> JSONResponse:
             norms = discover.match_words(dcat, letter, words)
             known = frozenset(discover.match_words(dcat, letter, [own])) if own else frozenset()
             new_cards.extend(db.discover_unlock(uid, dcat, norms, source="practice", known=known))
+        beloning = _oefen_beloning(db, uid, letter, cats, correct, new_cards)
     return JSONResponse({
         "letter": letter,
         "categories": out,
         "correct": correct,
         "learned": learned,
         "new_cards": new_cards,
+        # Alleen voor een account: een gast verzamelt niets en verdient niets,
+        # en een blok vol nullen is geen beloning maar een verwijt.
+        "beloning": beloning,
     })
+
+
+def _oefen_beloning(db, uid: str, letter: str, cats: list[str], correct: int, new_cards: list[dict]) -> dict:
+    """Wat de ronde opleverde: XP, munten, en waar je nu staat.
+
+    De waarde van Oefenen zit in de KAARTEN, dus die wegen het zwaarst. Een goed
+    antwoord telt ook mee, anders loont het om niets in te vullen en alleen de
+    onthulling af te wachten. Het plafond zit in db.practice_reward.
+    """
+    xp = correct * 5 + len(new_cards) * 3
+    munten = correct * 3 + len(new_cards) * 2
+    pot = db.practice_reward(uid, discover.today(), xp, munten)
+
+    # De stand na afloop, per categorie waar deze ronde iets bijkwam, plus de
+    # letter zelf. Alleen de categorieen die meededen: een balk voor een
+    # categorie die je niet speelde beweegt niet en leidt dus alleen maar af.
+    erbij: dict[str, int] = {}
+    for k in new_cards:
+        erbij[k["category"]] = erbij.get(k["category"], 0) + 1
+    totalen = db.discover_totals()
+    bezit = db.discover_owned_counts(uid)
+    voortgang = []
+    for cat in cats:
+        dcat = discover.LIST_TO_CAT.get(cat)
+        if not dcat:
+            continue
+        voortgang.append({
+            "soort": "categorie",
+            "sleutel": dcat,
+            "label": discover.CAT_LABEL[dcat],
+            "have": bezit.get(dcat, 0),
+            "total": totalen.get(dcat, 0),
+            "plus": erbij.get(dcat, 0),
+        })
+    # Alleen de categorie waar deze ronde het meest gebeurde, plus de letter:
+    # vijf balken onder elkaar is een tabel en geen voortgang.
+    voortgang.sort(key=lambda v: (-v["plus"], v["label"]))
+    voortgang = voortgang[:1]
+    stand = db.discover_letter_stand(letter, uid)
+    voortgang.append({
+        "soort": "letter",
+        "sleutel": letter,
+        "label": letter,
+        "have": stand["discovered"],
+        "total": stand["total"],
+        "plus": len(new_cards),
+    })
+    return {
+        "xp": pot["xp"],
+        "munten": pot["munten"],
+        "vol": pot["vol"],
+        "voortgang": voortgang,
+        "streak_days": db.discover_state(uid).get("streak_days", 0),
+    }
 
 
 # ---- Ontdekken (discover: every practised word becomes a collectible card) --

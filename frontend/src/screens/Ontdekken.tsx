@@ -1238,9 +1238,20 @@ type Stap =
   | { soort: "letter"; category: string; letter: string }
   | { soort: "quiz"; category: string; letter: string | null; mode: "letter" | "review" };
 
-export function Ontdekken({ onBack, onOefenen }: { onBack: () => void; onOefenen: (letter: string | null) => void }) {
+export function Ontdekken({ onBack, onOefenen, startQuiz }: {
+  onBack: () => void;
+  onOefenen: (letter: string | null) => void;
+  /** Meteen de quiz in, over deze categorie en letter. Voor de knop op de
+   *  "Ronde voltooid"-popup: die staat in Oefenen, maar de quiz woont hier.
+   *  De hub blijft eronder in de stapel, dus terug komt gewoon op de hub uit. */
+  startQuiz?: { category: string; letter: string } | null;
+}) {
   const { t } = useT();
-  const [stapel, setStapel] = useState<Stap[]>([{ soort: "hub" }]);
+  const [stapel, setStapel] = useState<Stap[]>(
+    startQuiz
+      ? [{ soort: "hub" }, { soort: "quiz", category: startQuiz.category, letter: startQuiz.letter, mode: "letter" }]
+      : [{ soort: "hub" }],
+  );
   const stap = stapel[stapel.length - 1];
 
   const [overview, setOverview] = useState<Overview | null>(null);
