@@ -228,8 +228,8 @@ export function GoudKader({
               // net licht genoeg dat het vak van de achtergrond loskomt.
               <linearGradient id={`${id}v`} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor={vulling === "licht" ? "#3A1F78" : "#2A1359"} />
-                <stop offset="55%" stopColor={vulling === "licht" ? "#301763" : "#200C38"} />
-                <stop offset="100%" stopColor={vulling === "licht" ? "#28114F" : "#150628"} />
+                <stop offset="55%" stopColor={vulling === "licht" ? "#2B1457" : "#200C38"} />
+                <stop offset="100%" stopColor={vulling === "licht" ? "#1E0B3D" : "#150628"} />
               </linearGradient>
             )}
             {binnenlijn && HOEKEN4.map(([hx, hy], i) => (
