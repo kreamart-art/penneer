@@ -432,14 +432,24 @@ function Hub({ data, onCategorie, onOefenen, onQuiz, onVerzameling }: {
 
       <GoudKader hoek={13} kleur="violet" dik={0.6} gloed vulling binnenlijn padding={12} style={{ marginBottom: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <Brain size={30} color={colors.violet} style={{ flexShrink: 0 }} />
+          <Brain
+            size={42} color={colors.violet}
+            style={{
+              flexShrink: 0,
+              // Neon in zijn eigen kleur: gestapelde drop-shadows volgen de
+              // lijnen van het icoon, waar een blur het alleen vaag maakt.
+              filter: `drop-shadow(0 0 3px ${withAlpha(colors.violet, 0.9)})`
+                + ` drop-shadow(0 0 9px ${withAlpha(colors.violet, 0.6)})`
+                + ` drop-shadow(0 0 18px ${withAlpha(colors.violet, 0.35)})`,
+            }}
+          />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontFamily: font.wide, fontSize: 14, letterSpacing: ".08em", color: colors.sub }}>
+            <div style={{ fontFamily: font.wide, fontSize: 17, letterSpacing: ".08em", color: colors.sub }}>
               {t("ontdekkenHerhalen")}
             </div>
             <div style={{ fontFamily: font.ui, fontSize: 11.5, lineHeight: 1.3, color: colors.sub, marginTop: 2 }}>
               {data.review_due > 0
-                ? `${t("ontdekkenHerhalenKlaar", { n: data.review_due })} ${t("ontdekkenHerhalenUitleg")}`
+                ? t("ontdekkenHerhalenKlaar", { n: data.review_due })
                 : t("ontdekkenHerhalenLeeg")}
             </div>
           </div>
