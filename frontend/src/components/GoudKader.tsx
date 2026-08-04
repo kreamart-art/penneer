@@ -244,16 +244,27 @@ export function GoudKader({
               // 111 bleef er zo'n twaalf pixel lijn over en dat leest als een
               // stipje in de hoek in plaats van als een verdiepte hoek. Nu
               // dooft hij altijd over minstens 26px uit.
-              <radialGradient
-                key={i} id={`${id}b${i}`} gradientUnits="userSpaceOnUse"
-                cx={hx * w} cy={hy * h}
-                r={Math.max(26, Math.min(Math.hypot(w, h) * 0.22, 95))}
-              >
-                <stop offset="0%" stopColor={tint.hoog} stopOpacity="1" />
-                <stop offset="25%" stopColor={tint.hoog} stopOpacity="0.75" />
-                <stop offset="58%" stopColor={tint.mid} stopOpacity="0.3" />
-                <stop offset="100%" stopColor={tint.laag} stopOpacity="0" />
-              </radialGradient>
+              <>
+                <radialGradient
+                  key={i} id={`${id}b${i}`} gradientUnits="userSpaceOnUse"
+                  cx={hx * w} cy={hy * h}
+                  r={Math.max(26, Math.min(Math.hypot(w, h) * 0.22, 95))}
+                >
+                  <stop offset="0%" stopColor={tint.hoog} stopOpacity="1" />
+                  <stop offset="25%" stopColor={tint.hoog} stopOpacity="0.75" />
+                  <stop offset="58%" stopColor={tint.mid} stopOpacity="0.3" />
+                  <stop offset="100%" stopColor={tint.laag} stopOpacity="0" />
+                </radialGradient>
+                <radialGradient
+                  key={`k${i}`} id={`${id}k${i}`} gradientUnits="userSpaceOnUse"
+                  cx={hx * w} cy={hy * h}
+                  r={Math.max(11, Math.min(Math.hypot(w, h) * 0.075, 32))}
+                >
+                  <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.9" />
+                  <stop offset="35%" stopColor={tint.hoog} stopOpacity="0.75" />
+                  <stop offset="100%" stopColor={tint.hoog} stopOpacity="0" />
+                </radialGradient>
+              </>
             ))}
             {gloed && (
               <filter id={`${id}g`} x="-40%" y="-40%" width="180%" height="180%">
@@ -292,6 +303,13 @@ export function GoudKader({
               )}
               <path d={binnen} fill="none" stroke={`url(#${id}b${i})`} strokeWidth={dik} />
             </g>
+          ))}
+
+          {/* De highlights zelf staan BUITEN die groep, want die is gedimd op
+              binnenSterkte en dan zou het accent net zo hard meedoven als de
+              lijn eronder. Een accent hoort juist boven de lijn uit te komen. */}
+          {binnenlijn && HOEKEN4.map((_, i) => (
+            <path key={`k${i}`} d={binnen} fill="none" stroke={`url(#${id}k${i})`} strokeWidth={dik} opacity={0.85} />
           ))}
         </svg>
       )}

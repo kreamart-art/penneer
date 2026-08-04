@@ -324,7 +324,7 @@ function Hub({ data, onCategorie, onOefenen, onQuiz, onVerzameling }: {
         <HubSectie letter={data.daily_letter} streak={data.streak_days} onSpeel={() => onOefenen(data.daily_letter)} />
       </div>
 
-      <GoudKader hoek={13} kleur="violet" dik={1} gloed vulling binnenlijn padding={12} style={{ marginBottom: 16 }}>
+      <GoudKader hoek={13} kleur="violet" dik={0.6} gloed vulling padding={12} style={{ marginBottom: 16 }}>
         <SectieKop>{t("ontdekkenJouwVoortgang")}</SectieKop>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 5 }}>
           {data.categories.map((c) => {
@@ -406,7 +406,7 @@ function Hub({ data, onCategorie, onOefenen, onQuiz, onVerzameling }: {
         )}
       </div>
 
-      <GoudKader hoek={13} kleur="violet" dik={1} gloed vulling binnenlijn padding={12} style={{ marginBottom: 16 }}>
+      <GoudKader hoek={13} kleur="violet" dik={0.6} gloed vulling padding={12} style={{ marginBottom: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <Brain size={30} color={colors.violet} style={{ flexShrink: 0 }} />
           <div style={{ flex: 1, minWidth: 0 }}>
