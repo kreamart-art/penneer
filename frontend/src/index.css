@@ -272,7 +272,8 @@ body.winkel::after {
    nog niets gebeurt. De ellips volgt de verhouding van het scherm.
 
    De waarden komen uit de mockup: daar is de achtergrond in de marges #050118
-   en in de hoeken #040114, terwijl het hart #1A0938 is. Dat is een ZWARE
+   en in de hoeken #040114, terwijl het hart #19033D is: dat blauwt net iets
+   meer weg dan de paars-magenta van de secties. Dat is een ZWARE
    vignette, en aan de rand loopt hij hier nog een stuk verder door dan de
    mockup, tot bijna zwart. */
 body.ontdekken::after {
@@ -288,7 +289,7 @@ body.ontdekken::after {
   background-color: #010006;
   background-image:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
-    radial-gradient(ellipse 70% 46% at 50% 40%, #1A0938 0%, #140628 34%, #0A0319 58%, #050110 78%, #020008 92%, #010006 100%);
+    radial-gradient(ellipse 70% 46% at 50% 40%, #19033D 0%, #12032B 34%, #09021A 58%, #050110 78%, #020008 92%, #010006 100%);
   background-repeat: repeat, no-repeat;
   background-position: top left, top;
   background-size: 160px 160px, 100% 100%;
