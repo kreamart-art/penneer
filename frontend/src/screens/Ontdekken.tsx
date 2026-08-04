@@ -8,7 +8,7 @@
 // Voortgang komt ALTIJD van de server en gaat nooit in localStorage. Een
 // verzameling die op twee toestellen anders staat is erger dan een verzameling
 // die een halve seconde later verschijnt.
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { Apple, ArrowLeft, Brain, Briefcase, Building2, Check, ChevronDown, ChevronLeft, ChevronRight, Filter, Flame, Globe, Layers, Lightbulb, PawPrint } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "../components/Button";
@@ -93,24 +93,71 @@ function Kop({ titel, onBack }: { titel: string; onBack: () => void }) {
   );
 }
 
-/** Ring met het percentage erin. Puur SVG, geen extra afhankelijkheid. */
+/** Ring met het percentage erin. Puur SVG, geen extra afhankelijkheid.
+ *
+ *  Neon-opbouw, net als de secties: de lege baan krijgt een haarlijn wit langs
+ *  allebei zijn randen, en de gevulde boog een witte omtrek om het goud. Die
+ *  omtrek is een BREDERE boog eronder en geen tweede streek ernaast: zo blijft
+ *  hij precies even dik aan beide kanten en loopt hij netjes om de ronde
+ *  uiteinden heen, wat met twee losse bogen niet lukt. */
 function Ring({ percent, size = 54 }: { percent: number; size?: number }) {
-  const r = (size - 7) / 2;
+  const id = useId().replace(/:/g, "");
+  const dik = size * 0.13;
+  const r = (size - dik - 2) / 2;
   const omtrek = 2 * Math.PI * r;
   const vol = percent >= 100;
+  // Zo dun als op een scherm met dubbele pixeldichtheid nog een hele lijn is.
+  const rand = 0.4;
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden style={{ display: "block" }}>
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,.10)" strokeWidth={5} />
-      {/* Bij 0% helemaal geen boog: met ronde uiteinden geeft lengte 0 toch
-          een puntje, en dat leest als "er staat al iets". */}
+      <defs>
+        {/* Hetzelfde goud als de knop, opgemeten in knop-goud.webp: het vlak is
+            #FFC32C, met een lichte kop naar #FFFCC0 en een diepe voet op
+            #D37500. Verticaal, zodat de boog boven licht is en onder zwaar,
+            net als de knop. */}
+        <linearGradient id={`${id}g`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#FFE68C" />
+          <stop offset="45%" stopColor="#FFC32C" />
+          <stop offset="100%" stopColor="#D37500" />
+        </linearGradient>
+        {/* De witte lijnen zijn niet overal even fel: diagonaal, met de nadruk
+            linksboven waar het licht vandaan komt. Dat is wat een lijn van
+            metaal maakt in plaats van een getrokken streep. Ze doven niet
+            helemaal uit, anders lijkt de ring onderaan onderbroken. */}
+        <linearGradient id={`${id}w`} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.4" />
+          <stop offset="42%" stopColor="#FFFFFF" stopOpacity="0.16" />
+          <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0.07" />
+        </linearGradient>
+        <linearGradient id={`${id}r`} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#FFFFFF" stopOpacity="1" />
+          <stop offset="45%" stopColor="#FFFFFF" stopOpacity="0.72" />
+          <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0.42" />
+        </linearGradient>
+      </defs>
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,.09)" strokeWidth={dik} />
+      {/* De twee randen van de lege baan. */}
+      <circle cx={size / 2} cy={size / 2} r={r - dik / 2} fill="none" stroke={`url(#${id}w)`} strokeWidth={rand} />
+      <circle cx={size / 2} cy={size / 2} r={r + dik / 2} fill="none" stroke={`url(#${id}w)`} strokeWidth={rand} />
+      {/* Bij 0% helemaal geen boog: ook met rechte uiteinden tekent een lengte
+          van nul nog een streepje, en dat leest als "er staat al iets". */}
       {percent > 0 && (
-        <circle
-          cx={size / 2} cy={size / 2} r={r} fill="none"
-          stroke={colors.gold}
-          strokeWidth={5} strokeLinecap="round"
-          strokeDasharray={`${(omtrek * percent) / 100} ${omtrek}`}
-          transform={`rotate(-90 ${size / 2} ${size / 2})`}
-        />
+        <>
+          <circle
+            cx={size / 2} cy={size / 2} r={r} fill="none"
+            stroke={`url(#${id}r)`}
+            strokeWidth={dik + rand * 2} strokeLinecap="butt"
+            strokeDasharray={`${(omtrek * percent) / 100} ${omtrek}`}
+            transform={`rotate(-90 ${size / 2} ${size / 2})`}
+          />
+          <circle
+            cx={size / 2} cy={size / 2} r={r} fill="none"
+            stroke={`url(#${id}g)`}
+            strokeWidth={dik} strokeLinecap="butt"
+            strokeDasharray={`${(omtrek * percent) / 100} ${omtrek}`}
+            transform={`rotate(-90 ${size / 2} ${size / 2})`}
+          />
+        </>
       )}
       <text
         x="50%" y="50%" textAnchor="middle" dominantBaseline="central"
@@ -438,14 +485,16 @@ function Hub({ data, onCategorie, onOefenen, onQuiz, onVerzameling }: {
       <GoudKader hoek={13} kleur="violet" dik={0.6} gloed vulling binnenlijn padding={12} style={{ marginBottom: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <Brain
-            size={42} color={colors.violet}
+            size={42} color="#C45FFA"
             style={{
               flexShrink: 0,
-              // Neon in zijn eigen kleur: gestapelde drop-shadows volgen de
-              // lijnen van het icoon, waar een blur het alleen vaag maakt.
-              filter: `drop-shadow(0 0 3px ${withAlpha(colors.violet, 0.9)})`
-                + ` drop-shadow(0 0 9px ${withAlpha(colors.violet, 0.6)})`
-                + ` drop-shadow(0 0 18px ${withAlpha(colors.violet, 0.35)})`,
+              // Neon: gestapelde drop-shadows volgen de lijnen van het icoon,
+              // waar een blur het alleen vaag maakt. De gloed is de lichtere
+              // tint (#DF92FF), zodat het icoon zelf de kleur houdt en het
+              // licht eromheen oplicht in plaats van dat allebei hetzelfde is.
+              filter: "drop-shadow(0 0 3px rgba(223,146,255,.95))"
+                + " drop-shadow(0 0 9px rgba(223,146,255,.6))"
+                + " drop-shadow(0 0 18px rgba(223,146,255,.35))",
             }}
           />
           <div style={{ flex: 1, minWidth: 0 }}>
