@@ -10,6 +10,7 @@
 // lijn van één pixel een lijn die aan de zijkanten dikker is dan boven.
 import { useEffect, useId, useRef, useState } from "react";
 
+
 export function GoudKader({
   children,
   hoek = 13,
@@ -62,12 +63,27 @@ export function GoudKader({
   // De helft van de streek naar binnen, anders valt de andere helft buiten de
   // SVG en oogt de lijn aan de randen dunner dan in het midden.
   const o = dik / 2;
-  const punten = w && h
+  const hoeken: [number, number][] = w && h
     ? [
-        `${k},${o}`, `${w - k},${o}`, `${w - o},${k}`, `${w - o},${h - k}`,
-        `${w - k},${h - o}`, `${k},${h - o}`, `${o},${h - k}`, `${o},${k}`,
-      ].join(" ")
-    : "";
+        [k, o], [w - k, o], [w - o, k], [w - o, h - k],
+        [w - k, h - o], [k, h - o], [o, h - k], [o, k],
+      ]
+    : [];
+  const punten = hoeken.map(([x, y]) => `${x},${y}`).join(" ");
+
+  // WAAR DE LIJN OPLICHT. Drie plekken: de hoek linksboven, het midden van de
+  // bovenrand, en een stuk op de linkerrand onder de hoek. Daartussen valt hij
+  // weg. De stralen staan in delen van de KORTSTE zijde: op een lang vak zou
+  // een straal in delen van de breedte de hele linkerrand oplichten.
+  const kort = Math.min(w, h) || 1;
+  const vlekken = w && h
+    ? [
+        { x: 0, y: 0, r: kort * 0.62 },              // de hoek zelf
+        { x: w * 0.5, y: 0, r: kort * 0.5 },         // midden van de bovenrand
+        { x: 0, y: h * 0.52, r: kort * 0.5 },        // de linkerrand, onder de hoek
+      ]
+    : [];
+
 
   return (
     <div ref={doos} style={{ position: "relative", ...style }}>
@@ -78,21 +94,20 @@ export function GoudKader({
         >
           <defs>
             {fade ? (
-              // ALLEEN EEN STUKJE HOEK, linksboven. De lijn begint vol in die
-              // hoek en is een eindje verderop al weg: wat je ziet is de hoek
-              // zelf plus een klein stukje van de boven- en de linkerrand, en
-              // de rest van het vak heeft geen lijn.
+              // DE LIJN LICHT OP EEN PAAR PLEKKEN OP en valt ertussen weg. Niet
+              // met een verloop OVER de lijn (dat kan niet: een verloop rekent
+              // met afstand tot een punt, en een achthoek buigt om zijn hoeken
+              // heen), maar met een MASKER: de lijn wordt overal even goud
+              // getekend, en het masker bepaalt waar je hem ziet.
               //
-              // De straal is de diagonaal, zodat de stops in delen van het hele
-              // vak staan en niet van de langste zijde. Bij een lang vak zou de
-              // hoek anders veel verder doorlopen dan bij een kort vak, terwijl
-              // je in beide gevallen hetzelfde stukje hoort te zien.
-              <radialGradient id={id} gradientUnits="userSpaceOnUse" cx={0} cy={0} r={Math.hypot(w, h)}>
-                <stop offset="0%" stopColor={tint.hoog} stopOpacity="0.5" />
-                <stop offset="3%" stopColor={tint.hoog} stopOpacity="0.4" />
-                <stop offset="9%" stopColor={tint.mid} stopOpacity="0.15" />
-                <stop offset="15%" stopColor={tint.laag} stopOpacity="0" />
-                <stop offset="100%" stopColor={tint.laag} stopOpacity="0" />
+              // Het masker is zwart met een paar witte vlekken erin. Wit laat
+              // door, zwart houdt tegen, en omdat elke vlek zelf een verloop is
+              // dooft de lijn aan de randen van een vlek vanzelf uit. Waar de
+              // vlekken staan bepaalt VLEKKEN hieronder.
+              <radialGradient id={`${id}v`}>
+                <stop offset="0%" stopColor="#ffffff" stopOpacity="1" />
+                <stop offset="45%" stopColor="#ffffff" stopOpacity="0.9" />
+                <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
               </radialGradient>
             ) : (
               // Diagonaal, want op een brede lage pil zie je een verticaal
@@ -103,6 +118,14 @@ export function GoudKader({
                 <stop offset="100%" stopColor={tint.laag} />
               </linearGradient>
             )}
+            {fade && (
+              <mask id={`${id}m`} maskUnits="userSpaceOnUse" x="0" y="0" width={w} height={h}>
+                <rect x="0" y="0" width={w} height={h} fill="black" />
+                {vlekken.map((v, i) => (
+                  <circle key={i} cx={v.x} cy={v.y} r={v.r} fill={`url(#${id}v)`} />
+                ))}
+              </mask>
+            )}
             {gloed && (
               <filter id={`${id}g`} x="-40%" y="-40%" width="180%" height="180%">
                 <feGaussianBlur stdDeviation={Math.max(1.6, dik * 4)} />
@@ -112,12 +135,17 @@ export function GoudKader({
           {/* De gloed is dezelfde vorm, dikker en vervaagd, onder de lijn. */}
           {gloed && (
             <polygon
-              points={punten} fill="none" stroke={`url(#${id})`}
+              points={punten} fill="none" stroke={fade ? tint.hoog : `url(#${id})`}
               strokeWidth={Math.max(dik * 3, 1.6)} filter={`url(#${id}g)`}
-              opacity={fade ? 0.9 : 0.75}
+              mask={fade ? `url(#${id}m)` : undefined}
+              opacity={fade ? 0.42 : 0.75}
             />
           )}
-          <polygon points={punten} fill="none" stroke={`url(#${id})`} strokeWidth={dik} opacity={fade ? 1 : 0.75} />
+          <polygon
+            points={punten} fill="none" stroke={fade ? tint.hoog : `url(#${id})`}
+            strokeWidth={dik} mask={fade ? `url(#${id}m)` : undefined}
+            opacity={fade ? 0.5 : 0.75}
+          />
         </svg>
       )}
       <div style={{ position: "relative", padding }}>{children}</div>
