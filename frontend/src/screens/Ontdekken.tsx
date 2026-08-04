@@ -301,23 +301,31 @@ const KAART_RATIO = "658 / 1012";
 //              uitgemiddeld op het rechterblok, zie scripts)
 //   plaat 1    x 47.4..93.2%   y 10.0..39.9%   -> titel en telling
 //   plaat 2    x 47.4..93.2%   y 58.7..85.1%   -> de voortgangsbalk
-const SECTIE_RATIO = 1400 / 493;
+const SECTIE_RATIO = 1400 / 415;
 
-// De sectie is EEN afbeelding: het gouden kader, de gloeiende ring links en
-// het kosmische paars ertussen zitten er al in. De inhoud gaat er als laag
-// overheen, op plekken die met de goud-kleur zijn opgemeten en niet geschat:
+// Afgelezen van sectie.webp (1400x415), niet geschat:
+//   ring        midden (15.4%, 46.5%)  buitendiameter 17.9%, binnenschijf 14.6%
+//   hintpil     x 30.4..71.8%   y 64.6..89.2%
+//   kistpaneel  x 73.6..96.1%   y  6.7..92.8%
+//   kistplaat   x 78.9..92.1%   y 72.8..85.5%
 //
-//   ring   midden (17.07%, 48.48%)   buitendiameter 25.6% van de breedte
-//
-// De letter krijgt 70% van de ring, zodat hij de gouden band niet raakt.
+// De vrije ruimte in het midden loopt van 30% tot 72% breed en van 6% tot 62%
+// hoog, boven de hintpil. Daar passen de kop, de telling en de balk in, met
+// lucht ertussen: alles wat tegen een lijn aan komt te staan leest als een
+// fout, ook als het er net binnen valt.
 const VLAK = {
-  letter: { left: "8.5%", right: "74.4%", top: "24.1%", bottom: "27.2%" },
-  tekst:  { left: "44.0%", right: "5.0%", top: "16.0%", bottom: "52.0%" },
-  balk:   { left: "44.0%", right: "5.0%", top: "58.0%", bottom: "20.0%" },
+  // De letter mag over de binnenschijf heen lopen: netjes erbinnen oogt hij
+  // verloren in de ring.
+  letter: { left: "7.9%",  right: "77.1%", top: "21.2%", bottom: "28.2%" },
+  kop:    { left: "32.0%", right: "30.0%", top: "10.0%", bottom: "56.0%" },
+  balk:   { left: "32.0%", right: "30.0%", top: "45.0%", bottom: "38.0%" },
+  hint:   { left: "32.5%", right: "30.3%", top: "68.5%", bottom: "14.5%" },
+  beloning:  { left: "74.5%", right: "4.5%", top: "10.0%", bottom: "80.0%" },
+  kistplaat: { left: "79.5%", right: "8.5%", top: "73.5%", bottom: "15.0%" },
 } as const;
 
-function Sectie({ letter, discovered, total, percent }: {
-  letter: string; discovered: number; total: number; percent: number;
+function Sectie({ letter, discovered, total, percent, compleet }: {
+  letter: string; discovered: number; total: number; percent: number; compleet: boolean;
 }) {
   const { t } = useT();
   return (
@@ -328,33 +336,51 @@ function Sectie({ letter, discovered, total, percent }: {
           afmetingen rekt niet mee met left/right/top/bottom. */}
       <div style={{ position: "absolute", ...VLAK.letter }}>
         <img
-          src={`/letters/${letter}.webp`}
-          alt={letter}
+          src={`/letters/${letter}.webp`} alt={letter}
           style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
         />
       </div>
 
-      {/* Kop en telling in het lege deel rechts. */}
-      <div style={{ position: "absolute", ...VLAK.tekst, display: "flex", flexDirection: "column", justifyContent: "flex-end", overflow: "hidden" }}>
-        <span style={{ fontFamily: font.wide, fontSize: "clamp(15px, 5.4vw, 26px)", lineHeight: 1, letterSpacing: ".03em", color: colors.ink, whiteSpace: "nowrap" }}>
+      {/* Kop en telling */}
+      <div style={{ position: "absolute", ...VLAK.kop, display: "flex", flexDirection: "column", justifyContent: "flex-start", overflow: "hidden" }}>
+        <span style={{ fontFamily: font.wide, fontSize: "clamp(10px, 4.2vw, 26px)", lineHeight: 1, letterSpacing: ".03em", color: colors.ink, whiteSpace: "nowrap" }}>
           {t("ontdekkenLetterKop", { letter })}
         </span>
-        <span style={{ fontFamily: font.ui, fontSize: "clamp(9px, 2.9vw, 13px)", lineHeight: 1.2, color: colors.sub, marginTop: "3%", whiteSpace: "nowrap" }}>
+        <span style={{ fontFamily: font.ui, fontSize: "clamp(6.5px, 2.2vw, 12px)", lineHeight: 1.15, color: colors.sub, marginTop: "3%", whiteSpace: "nowrap" }}>
           {t("ontdekkenKaartenOntdekt", { n: discovered, total })}
         </span>
       </div>
 
-      {/* De voortgangsbalk: de gouden plaat komt van links tevoorschijn tot het
-          percentage, met een donkere baan eronder. Het cijfer staat ernaast en
-          niet erin, want in een balk van deze hoogte wordt het onleesbaar. */}
-      <div style={{ position: "absolute", ...VLAK.balk, display: "flex", alignItems: "center", gap: "3%" }}>
-        <div style={{ flex: 1, position: "relative", height: "40%", overflow: "hidden", borderRadius: 999, background: "rgba(0,0,0,.5)", border: `1px solid ${withAlpha(colors.gold, 0.28)}` }}>
+      {/* De voortgangsbalk met het percentage ernaast, zoals in het ontwerp. */}
+      <div style={{ position: "absolute", ...VLAK.balk, display: "flex", alignItems: "center", gap: "4%" }}>
+        <div style={{ flex: 1, position: "relative", height: "34%", overflow: "hidden", borderRadius: 999, background: "rgba(0,0,0,.5)", border: `1px solid ${withAlpha(colors.gold, 0.3)}` }}>
           <div style={{ position: "absolute", inset: 0, width: `${Math.max(percent, 0)}%`, overflow: "hidden", transition: "width .5s ease" }}>
             <img src="/ontdek/plaat-goud.webp" alt="" style={{ position: "absolute", left: 0, top: 0, height: "100%", width: "auto", maxWidth: "none" }} />
           </div>
         </div>
-        <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: "clamp(11px, 3.6vw, 17px)", color: percent >= 100 ? colors.gold : colors.ink, whiteSpace: "nowrap" }}>
+        <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: "clamp(7.5px, 2.6vw, 16px)", lineHeight: 1, color: compleet ? colors.gold : colors.ink, whiteSpace: "nowrap" }}>
           {percent}%
+        </span>
+      </div>
+
+      {/* De hintregel in de pil die in de art zit. */}
+      <div style={{ position: "absolute", ...VLAK.hint, display: "flex", alignItems: "center", gap: "3%", overflow: "hidden" }}>
+        <Lightbulb size={11} color={colors.gold} style={{ flexShrink: 0 }} />
+        <span style={{ fontFamily: font.ui, fontSize: "clamp(5.5px, 1.85vw, 11px)", lineHeight: 1.2, color: compleet ? colors.gold : colors.sub }}>
+          {compleet ? t("ontdekkenLetterCompleet") : t("ontdekkenHint", { letter })}
+        </span>
+      </div>
+
+      {/* Het kistpaneel: het opschrift erboven, de stand op de plaat eronder.
+          De kist zelf zit al in de art. */}
+      <div style={{ position: "absolute", ...VLAK.beloning, display: "flex", justifyContent: "center", alignItems: "flex-start" }}>
+        <span style={{ fontFamily: font.ui, fontSize: "clamp(5px, 1.6vw, 10px)", fontWeight: 600, lineHeight: 1.1, color: colors.sub, textAlign: "center" }}>
+          {t("ontdekkenBeloning", { letter })}
+        </span>
+      </div>
+      <div style={{ position: "absolute", ...VLAK.kistplaat, display: "grid", placeItems: "center" }}>
+        <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: "clamp(6.5px, 2.1vw, 13px)", color: compleet ? colors.gold : colors.ink }}>
+          {discovered} / {total}
         </span>
       </div>
     </div>
@@ -528,13 +554,8 @@ function Letter({ data, onVerzameling }: { data: LetterView; onVerzameling: () =
   return (
     <>
       <div style={{ marginBottom: 12 }}>
-        <Sectie letter={data.letter} discovered={data.discovered} total={data.total} percent={percent} />
+        <Sectie letter={data.letter} discovered={data.discovered} total={data.total} percent={percent} compleet={compleet} />
       </div>
-
-      <p style={{ margin: "0 0 12px", display: "flex", alignItems: "flex-start", gap: 7, fontFamily: font.ui, fontSize: 12, lineHeight: 1.35, color: compleet ? colors.gold : colors.sub }}>
-        <Lightbulb size={14} color={colors.gold} style={{ flexShrink: 0, marginTop: 1 }} />
-        {compleet ? t("ontdekkenLetterCompleet") : t("ontdekkenHint", { letter: data.letter })}
-      </p>
 
       {/* Sorteren, filteren en het raster in EEN sectie: het zijn de knoppen
           van deze verzameling, dus ze horen erbij en niet erboven te zweven.
@@ -559,7 +580,7 @@ function Letter({ data, onVerzameling }: { data: LetterView; onVerzameling: () =
             {data.cards.length === 0 ? t("ontdekkenGeenKaarten") : t("ontdekkenNiets")}
           </p>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6 }}>
             {kaarten.map((k) => (
               <KaartTegel key={k.id} kaart={k} nu={nu} onOpen={() => setOpenIdx(ontdekt.findIndex((c) => c.id === k.id))} />
             ))}
@@ -567,33 +588,47 @@ function Letter({ data, onVerzameling }: { data: LetterView; onVerzameling: () =
         )}
       </GoudKader>
 
-      {/* Wat er nog mist, met de weg naar de verzameling ernaast. Eén balk en
-          niet twee, want het zijn twee kanten van hetzelfde: dit is de stand,
-          en daar ga je verder. */}
+      {/* Wat er nog mist, met de weg naar de verzameling ernaast. VAST aan de
+          onderkant van het scherm: het raster kan honderden kaarten lang worden,
+          en dan staat de belangrijkste knop pas na eindeloos scrollen. Zo blijft
+          hij in beeld en scrollt alleen de verzameling.
+
+          De hoogte gaat als variabele naar de pagina, zodat de laatste rij
+          kaarten er niet achter verdwijnt. */}
       <div
-        className="panel-neon"
-        style={{ ...panelStyle, padding: "12px 18px", marginTop: 14, display: "flex", alignItems: "center", gap: 12 }}
+        style={{
+          position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 20,
+          padding: "10px 16px calc(10px + var(--nav-h, 0px) + env(safe-area-inset-bottom))",
+          background: "linear-gradient(180deg, rgba(6,2,18,0) 0%, rgba(6,2,18,.92) 38%, rgba(6,2,18,.98) 100%)",
+          pointerEvents: "none",
+        }}
       >
-        <Layers size={20} color={colors.gold} style={{ flexShrink: 0 }} />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 13.5, color: compleet ? colors.gold : colors.ink, lineHeight: 1.15 }}>
-            {compleet
-              ? t("ontdekkenLetterCompleet")
-              : mist === 1 ? t("ontdekkenKaartOntbreekt") : t("ontdekkenKaartenOntbreken", { n: mist })}
-          </div>
-          {!compleet && (
-            <div style={{ fontFamily: font.ui, fontSize: 11.5, color: colors.sub, marginTop: 1, lineHeight: 1.2 }}>
-              {t("ontdekkenBlijfOefenen")}
+        <div
+          className="panel-neon"
+          style={{
+            ...panelStyle, padding: "10px 16px", maxWidth: 520, margin: "0 auto",
+            display: "flex", alignItems: "center", gap: 12,
+            background: "rgba(10,4,26,.86)", pointerEvents: "auto",
+          }}
+        >
+          <Layers size={20} color={colors.gold} style={{ flexShrink: 0 }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 13.5, color: compleet ? colors.gold : colors.ink, lineHeight: 1.15 }}>
+              {compleet
+                ? t("ontdekkenLetterCompleet")
+                : mist === 1 ? t("ontdekkenKaartOntbreekt") : t("ontdekkenKaartenOntbreken", { n: mist })}
             </div>
-          )}
-        </div>
-        {/* Dezelfde gouden knop als altijd, alleen kleiner. De plaat-art zit
-            in Button alleen op `full`, dus die blijft staan en het VAK eromheen
-            bepaalt de maat. */}
-        <div className="ontdek-kleineknop" style={{ flexShrink: 0, width: 132 }}>
-          <Button variant="gold" full compact onClick={onVerzameling}>
-            {t("ontdekkenBekijkVerzameling")}
-          </Button>
+            {!compleet && (
+              <div style={{ fontFamily: font.ui, fontSize: 11.5, color: colors.sub, marginTop: 1, lineHeight: 1.2 }}>
+                {t("ontdekkenBlijfOefenen")}
+              </div>
+            )}
+          </div>
+          <div className="ontdek-kleineknop" style={{ flexShrink: 0, width: 132 }}>
+            <Button variant="gold" full compact onClick={onVerzameling}>
+              {t("ontdekkenBekijkVerzameling")}
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -808,7 +843,9 @@ export function Ontdekken({ onBack, onOefenen }: { onBack: () => void; onOefenen
     <div
       style={{
         maxWidth: 520, margin: "0 auto",
-        padding: "18px 16px calc(28px + var(--nav-h, 0px))",
+        // Ruimte onderaan voor de vaste balk, anders valt de laatste rij
+        // kaarten erachter.
+        padding: "18px 16px calc(104px + var(--nav-h, 0px) + env(safe-area-inset-bottom))",
         // De veilige zone bovenaan, zoals elk ander scherm: zonder dit ligt de
         // terugpijl op een iPhone onder de statusbalk en is hij niet te raken.
         paddingTop: "calc(18px + env(safe-area-inset-top))",
