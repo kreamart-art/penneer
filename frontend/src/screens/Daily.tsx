@@ -16,6 +16,7 @@ import { GlasVeld } from "../components/GlasVeld";
 import { GOUD, Paneel, PlekWapen } from "../components/ProfileHero";
 import { GlasRij, Lijst } from "./Hub";
 import { DagSectie } from "../components/DagSectie";
+import { DagKop } from "../components/DagKop";
 import { SchermTip } from "../components/SchermTip";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
@@ -79,7 +80,11 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
   const { t, tCat, lang } = useT();
   const account = game.state.account;
   const [phase, setPhase] = useState<"intro" | "play" | "result">("intro");
-  const [info, setInfo] = useState<{ players: number; played: boolean; streak: number; day: string; seconds_left: number; topo_played: boolean; topo_players: number } | null>(null);
+  const [info, setInfo] = useState<{
+    players: number; played: boolean; streak: number; day: string; seconds_left: number;
+    topo_played: boolean; topo_players: number; arena_played?: boolean;
+    prijs_top?: { kist: string | null; coins: number; cash: number };
+  } | null>(null);
   // De Dagronde bestaat uit twee losse onderdelen. Null = de keuze staat open.
   const [part, setPart] = useState<"words" | "topo" | "arena" | null>(null);
   const [letter, setLetter] = useState("");
@@ -309,15 +314,22 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
           {/* De kop op de sierlijst van het profiel: dit is de voordeur van de
               dagronde, en die mag er als een sectie uitzien in plaats van als
               twee losse regels boven een lijst. */}
-          <Paneel>
-            <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 5, paddingInline: 14 }}>
-              <span style={{ fontFamily: font.wide, fontSize: 15, letterSpacing: 1.6, textTransform: "uppercase", color: colors.ink }}>{t("partPickTitle")}</span>
-              <span style={{ textAlign: "center", fontFamily: font.ui, fontSize: 12, color: colors.sub, lineHeight: 1.4 }}>{t("partPickHint")}</span>
-              {!!info?.streak && info.streak > 0 && (
-                <span style={{ marginTop: 2 }}>{chip(<ArtIcoon naam="vlam" size={15} />, t("dailyStreakLine", { n: info.streak }))}</span>
-              )}
-            </div>
-          </Paneel>
+          {/* De kop op zijn eigen plaat. Zie components/DagKop.tsx: de ring,
+              het prijsvak en de voortgangsbalk zitten in de art, de tekst wordt
+              er alleen overheen gezet. */}
+          <DagKop
+            reeks={info?.streak ?? 0}
+            prijs={info?.prijs_top ?? null}
+            gedaan={[wordsPlayed, !!info?.topo_played, !!info?.arena_played].filter(Boolean).length}
+            totaal={3}
+            titel={t("partPickTitle")}
+            uitleg={t("partPickHint")}
+            reeksLabel={t("dagKopReeks")}
+            prijsLabel={t("dagKopPrijs")}
+            voortgangLabel={t("dagKopVoortgang")}
+            aansporing={t("dagKopAansporing")}
+            aansporingVet={t("dagKopAansporingVet")}
+          />
           {/* De drie spelsecties op hun eigen plaat. Zie components/DagSectie.tsx:
               de illustratie, de spelerspil en het standvak zitten in de art, de
               tekst wordt er alleen overheen gezet. */}

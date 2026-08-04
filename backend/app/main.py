@@ -889,6 +889,11 @@ async def daily_info(request: Request) -> JSONResponse:
         # Waar JIJ staat, zodat de popup je eigen plek kan aanwijzen zonder de
         # hele lijst te hoeven doorzoeken (je kunt buiten de top 25 vallen).
         "rank": (db.dag_totaal_rank(uid, day)[0] if uid else 0),
+        # Wat er vandaag bovenaan te winnen valt. Uit dezelfde ladder als de
+        # uitbetaling, want een kop die zijn eigen bedragen bijhoudt gaat vroeg
+        # of laat iets beloven wat niet wordt uitbetaald. Het bord kan leeg zijn
+        # (nog niemand gespeeld), dus dit kan niet uit rij een van het bord.
+        "prijs_top": dagprijzen.prijs_voor(1),
     })
 
 
