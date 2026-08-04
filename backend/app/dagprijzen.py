@@ -46,7 +46,7 @@ class Prijs(TypedDict):
 # GEEN CASH MEER in de dagronde. Cash is de schaarse munt van de app (een
 # scheidsrechter kost er 250) en hoort bij mijlpalen, niet bij iets wat elke dag
 # opnieuw te halen is; wie hier elke dag twee pakte liep de hele economie
-# voorbij. In de plaats daarvan krijgen de eerste drie een kaartpack.
+# voorbij. In de plaats daarvan krijgen de eerste drie een rood kaartpack.
 LADDER: list[tuple[int, Optional[str], int, int]] = [
     (1, "kist5", 500, 1),
     (2, "kist4", 350, 1),

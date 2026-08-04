@@ -267,7 +267,7 @@ export function DagKop({
             </span>
             {!!prijs?.pack && (
               <span style={{ display: "flex", alignItems: "center", gap: b * 0.008 }}>
-                <img src="/ui/dag/pack-oranje.webp" alt="" aria-hidden draggable={false} style={{ height: prijsMaat * 1.25, width: "auto", display: "block" }} />
+                <img src="/ui/dag/pack-rood.webp" alt="" aria-hidden draggable={false} style={{ height: prijsMaat * 1.25, width: "auto", display: "block" }} />
                 <span style={{ fontFamily: font.wide, fontWeight: 700, fontSize: prijsMaat, lineHeight: 1, color: "#FFF3D0" }}>
                   {prijs.pack}
                 </span>
