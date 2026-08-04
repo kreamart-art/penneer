@@ -484,19 +484,44 @@ function Hub({ data, onCategorie, onOefenen, onQuiz, onVerzameling }: {
 
       <GoudKader hoek={13} kleur="violet" dik={0.6} gloed vulling binnenlijn padding={12} style={{ marginBottom: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <Brain
-            size={42} color="#C45FFA"
-            style={{
-              flexShrink: 0,
-              // Neon: gestapelde drop-shadows volgen de lijnen van het icoon,
-              // waar een blur het alleen vaag maakt. De gloed is de lichtere
-              // tint (#DF92FF), zodat het icoon zelf de kleur houdt en het
-              // licht eromheen oplicht in plaats van dat allebei hetzelfde is.
-              filter: "drop-shadow(0 0 3px rgba(223,146,255,.95))"
-                + " drop-shadow(0 0 9px rgba(223,146,255,.6))"
-                + " drop-shadow(0 0 18px rgba(223,146,255,.35))",
-            }}
-          />
+          <span style={{ position: "relative", flexShrink: 0, width: 42, height: 42, display: "block" }}>
+            {/* Dezelfde truc als bij de voortgangsring: een BREDERE witte kopie
+                eronder in plaats van een tweede lijn ernaast. Zo is de witte
+                rand overal even dik en loopt hij netjes om de bochten mee. Een
+                halve pixel over de hele breedte, dus een kwart per kant. */}
+            <Brain
+              size={42} color="rgba(255,255,255,.3)" strokeWidth={2.5}
+              style={{ position: "absolute", inset: 0 }}
+            />
+            {/* Het verloop loopt van RECHTSBOVEN naar LINKSONDER: daar komt het
+                licht vandaan, dus daar is de lijn het lichtst en aan de andere
+                kant zakt hij terug naar de opgegeven #C45FFA.
+                lucide zet stroke="currentColor" op de wortel-svg en de paden
+                erven dat, dus een eigen stroke op die wortel verft het hele
+                icoon; met `color` alleen kan een verloop niet. */}
+            <svg width="0" height="0" aria-hidden style={{ position: "absolute" }}>
+              <defs>
+                <linearGradient id="ontdek-brein" x1="1" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#EBB2FF" />
+                  <stop offset="45%" stopColor="#D986FC" />
+                  <stop offset="100%" stopColor="#C45FFA" />
+                </linearGradient>
+              </defs>
+            </svg>
+            <Brain
+              size={42} stroke="url(#ontdek-brein)" strokeWidth={2}
+              style={{
+                position: "absolute", inset: 0,
+                // WIJD en ZACHT. Een strakke laag vlak om de lijnen waste het
+                // icoon wit uit; hem daarna kleiner maken maakte het dof. Dus
+                // grote stralen met weinig dekking: het licht hangt ver om het
+                // icoon heen zonder de lijnen zelf aan te raken.
+                filter: "drop-shadow(0 0 11px rgba(223,146,255,.3))"
+                  + " drop-shadow(0 0 24px rgba(196,95,250,.22))"
+                  + " drop-shadow(0 0 42px rgba(196,95,250,.14))",
+              }}
+            />
+          </span>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontFamily: font.wide, fontSize: 17, letterSpacing: ".08em", color: colors.sub }}>
               {t("ontdekkenHerhalen")}
