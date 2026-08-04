@@ -630,12 +630,19 @@ export function Duel({ game, onBack, onProfile, openId, onGeopend }: {
             Hij blijft de enige gouden knop op dit scherm, dus hij valt genoeg
             op zonder de rij op te eten. */}
         <div style={{ display: "flex", justifyContent: "center" }}>
-          <div style={{ width: "68%", maxWidth: 250 }}>
-            {/* De knop houdt zijn maat (de plaat bepaalt die uit zijn eigen
-                verhouding); de TEKST vult hem. Groter zetten liet eerder de
-                knop meegroeien, en dan stond er precies weer even weinig in. */}
+          {/* KLEINER ALS GEHEEL, met een schaal over de hele knop heen. De knop
+              alleen maar smaller maken werkt niet: de opvulling binnen de plaat
+              staat in vaste pixels, dus er blijft dan naar verhouding minder
+              ruimte voor de tekst over en die valt op een tweede regel. Een
+              schaal pakt de plaat, de letter en die opvulling in een keer, dus
+              de verhoudingen blijven precies zoals ze waren.
+
+              De negatieve marge haalt de ruimte weg die de schaal overlaat: een
+              transform verandert wel wat je ziet maar niet hoeveel plek het
+              inneemt. */}
+          <div style={{ width: "68%", maxWidth: 250, transform: `scale(${KNOP_SCHAAL})`, transformOrigin: "center top", marginBottom: -KNOP_GAT }}>
             <Button variant="gold" full disabled={busy} onClick={() => { sound.uiTap(); setNote(""); setPickOpen(true); }}>
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 23, letterSpacing: 0.4 }}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 23, letterSpacing: 0.4, whiteSpace: "nowrap" }}>
                 <Swords size={21} /> {t("duelNew")}
               </span>
             </Button>
@@ -1173,6 +1180,12 @@ function Section({ title, items, onOpen, t, mij, rechts }: { title: string; item
  *  lijst groeit met elk duel door, en een pagina die met je speelgeschiedenis
  *  meegroeit is na een week niet meer te scrollen. */
 const TOON_POTJES = 5;
+
+/** Hoeveel kleiner de gouden knop staat dan zijn eigen maat, en hoeveel ruimte
+ *  dat onder hem overlaat. De plaat is 663 bij 150, dus op 250 breed is hij
+ *  ruim 56 hoog; wat de schaal daarvan afhaalt is de marge die eronder weg mag. */
+const KNOP_SCHAAL = 0.82;
+const KNOP_GAT = Math.round(250 * (150 / 663) * (1 - KNOP_SCHAAL));
 
 /** De kopregel boven een lijst. Staat apart omdat de knop ernaast er precies
  *  hetzelfde uit moet zien: zelfde kleur, zelfde letter, zelfde maat. */
