@@ -146,10 +146,14 @@ function Paneel({ children, style }: { children: React.ReactNode; style?: React.
 //   het play-driehoekje zit AL in de knop, van 56.6% tot 60.7% breed
 const HUB_RATIO = 894 / 407;
 const HUB = {
-  // Een vierkant vak midden in het donkere vlak van de ring, op ruim
-  // driekwart van de opening: op vol formaat raakt de letter de rand.
-  letter:  { left: "18.4%", right: "61.6%", top: "29.7%", bottom: "26.3%" },
-  bovenop: { left: "8.0%",  right: "50.0%", top: "1.5%",  bottom: "84.5%" },
+  // Een VIERKANT vak van 234px midden op de ring (28.4%, 51.7%). De letter-art
+  // is 256x256 met de glyph in de middelste 59%, dus bij objectFit contain
+  // wordt de glyph 137px: ruim zestig procent van de opening van 229px, en
+  // breed genoeg dat zelfs een W (92% van zijn vak) nog binnen de ring past.
+  letter:  { left: "15.3%", right: "58.5%", top: "23.0%", bottom: "19.5%" },
+  // Gecentreerd BOVEN de ring: die begint op 18.1% van de hoogte en zijn
+  // midden ligt op 28.4% van de breedte, dus dit vak loopt van 4% tot 52.8%.
+  bovenop: { left: "4.0%",  right: "47.2%", top: "2.0%",  bottom: "84.0%" },
   plaat:   { left: "52.8%", right: "5.3%",  top: "9.6%",  bottom: "59.5%" },
   uitleg:  { left: "50.0%", right: "3.5%", top: "42.0%", bottom: "34.0%" },
   knop:    { left: "48.9%", right: "4.8%",  top: "67.1%", bottom: "6.6%" },
@@ -197,9 +201,29 @@ function HubSectie({ letter, streak, onSpeel }: {
           pointerEvents: "none",
         }}
       />
+      {/* Dezelfde warme gloed als onder de kaarten: de VORM van de sectie in
+          goud, vervaagd, eronder. De art zelf vervagen zou de medaille en de
+          paarse hemel uitsmeren; als masker over een verloop gloeit precies de
+          omtrek. */}
+      <span
+        aria-hidden
+        style={{
+          // In PIXELS naar buiten en niet in procenten: de sectie is ruim twee
+          // keer zo breed als hoog, dus een halo van 8% zou boven en onder maar
+          // half zo dik zijn als links en rechts. Het masker vult dit hele vak,
+          // dus de vorm is overal precies 8px groter dan de art.
+          position: "absolute", inset: -8,
+          background: `radial-gradient(55% 60% at 50% 55%, ${colors.gold}, ${colors.orange} 65%, ${colors.orange} 100%)`,
+          WebkitMaskImage: "url(/ontdek/hub-sectie.webp)", maskImage: "url(/ontdek/hub-sectie.webp)",
+          WebkitMaskSize: "100% 100%", maskSize: "100% 100%",
+          WebkitMaskPosition: "center", maskPosition: "center",
+          WebkitMaskRepeat: "no-repeat", maskRepeat: "no-repeat",
+          filter: "blur(10px)", opacity: 0.5, pointerEvents: "none",
+        }}
+      />
       <img src="/ontdek/hub-sectie.webp" alt="" style={{ position: "relative", width: "100%", height: "100%", display: "block" }} />
 
-      <div style={{ position: "absolute", ...HUB.bovenop, display: "flex", alignItems: "flex-start" }}>
+      <div style={{ position: "absolute", ...HUB.bovenop, display: "grid", placeItems: "center" }}>
         <span style={{ fontFamily: font.wide, fontSize: "clamp(8px, 2.9vw, 15px)", letterSpacing: ".08em", color: colors.gold, whiteSpace: "nowrap" }}>
           {t("ontdekkenLetterVanVandaag")}
         </span>
@@ -251,7 +275,7 @@ function HubSectie({ letter, streak, onSpeel }: {
           display: "flex", alignItems: "center", justifyContent: "center",
         }}
       >
-        <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: "clamp(9px, 3.1vw, 18px)", color: "#3B2300", whiteSpace: "nowrap" }}>
+        <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: "clamp(11px, 4vw, 24px)", color: "#3B2300", whiteSpace: "nowrap" }}>
           {t("ontdekkenSpeelDeLetter")}
         </span>
       </button>
@@ -260,18 +284,22 @@ function HubSectie({ letter, streak, onSpeel }: {
 }
 
 /** Een kop met een ruitje links en rechts, zoals de secties in het ontwerp. */
-function SectieKop({ children, rechts }: { children: React.ReactNode; rechts?: React.ReactNode }) {
-  const lijn = (
-    <span aria-hidden style={{ flex: 1, height: 1, background: `linear-gradient(90deg, transparent, ${withAlpha(colors.gold, 0.35)})` }} />
-  );
+function SectieKop({ children, onder }: {
+  children: React.ReactNode;
+  /** Wat er ONDER de kop komt, gecentreerd. Naast de kop zou het de titel uit
+   *  het midden duwen, en die hoort midden boven wat eronder staat. */
+  onder?: React.ReactNode;
+}) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "0 0 10px" }}>
-      {lijn}
-      <span style={{ fontFamily: font.wide, fontSize: 13, letterSpacing: ".1em", color: colors.sub, whiteSpace: "nowrap" }}>
-        {children}
-      </span>
-      <span aria-hidden style={{ flex: 1, height: 1, background: `linear-gradient(90deg, ${withAlpha(colors.gold, 0.35)}, transparent)` }} />
-      {rechts}
+    <div style={{ margin: "0 0 10px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span aria-hidden style={{ flex: 1, height: 1, background: `linear-gradient(90deg, transparent, ${withAlpha(colors.gold, 0.35)})` }} />
+        <span style={{ fontFamily: font.wide, fontSize: 13, letterSpacing: ".1em", color: colors.sub, whiteSpace: "nowrap" }}>
+          {children}
+        </span>
+        <span aria-hidden style={{ flex: 1, height: 1, background: `linear-gradient(90deg, ${withAlpha(colors.gold, 0.35)}, transparent)` }} />
+      </div>
+      {onder && <div style={{ display: "flex", justifyContent: "center", marginTop: 8 }}>{onder}</div>}
     </div>
   );
 }
@@ -337,7 +365,7 @@ function Hub({ data, onCategorie, onOefenen, onQuiz, onVerzameling }: {
           vier vormen zetten die zelf al een rand hebben. */}
       <div style={{ marginBottom: 16 }}>
         <SectieKop
-          rechts={
+          onder={
             <button
               onClick={() => { sound.uiTap(); onVerzameling(); }}
               className="pressable"
@@ -368,7 +396,7 @@ function Hub({ data, onCategorie, onOefenen, onQuiz, onVerzameling }: {
                 className="pressable"
                 style={{ background: "transparent", border: "none", padding: 0, cursor: "pointer" }}
               >
-                <KaartTegel kaart={k} nu={Date.now() / 1000} chip={label[k.category || ""]} gloed />
+                <KaartTegel kaart={k} nu={Date.now() / 1000} chip={label[k.category || ""]} />
               </button>
             ))}
           </div>
@@ -618,11 +646,8 @@ function Keuze({ label, onClick, icoon }: { label: string; onClick: () => void; 
 // lint in het ontwerp betekent: kijk, deze is er net bij gekomen.
 const NIEUW_S = 24 * 60 * 60;
 
-function KaartTegel({ kaart, nu, onOpen, groot, chip, gloed }: {
+function KaartTegel({ kaart, nu, onOpen, groot, chip }: {
   kaart: Kaart; nu: number; onOpen?: () => void; groot?: boolean;
-  /** Een warme gloed onder de kaart. Alleen voor kaarten die je HEBT: een
-   *  kaart die je nog niet ontdekt hebt, hoort niet te stralen. */
-  gloed?: boolean;
   /** Het categorielabel dat in het ontwerp op de rand van het paarse vlak
    *  ligt. Alleen de hub gebruikt het: op de letterpagina weet je al in welke
    *  categorie je zit en zou het op elke kaart hetzelfde woord zijn. */
@@ -707,21 +732,21 @@ function KaartTegel({ kaart, nu, onOpen, groot, chip, gloed }: {
           Vandaar de art als masker over een egaal warm verloop, zodat precies
           de omtrek gloeit. En geen box-shadow: die werpt een RECHTHOEK achter
           een kaart met afgeschuinde hoeken. */}
-      {gloed && (
-        <span
-          aria-hidden
-          style={{
-            position: "absolute", left: "-6%", right: "-6%", top: "-4%", bottom: "-4%",
-            background: `radial-gradient(60% 55% at 50% 55%, ${colors.gold}, ${colors.orange} 65%, ${colors.orange} 100%)`,
-            WebkitMaskImage: `url(${kaart.image_path || "/static/cards/voorkant-leeg.webp"})`,
-            maskImage: `url(${kaart.image_path || "/static/cards/voorkant-leeg.webp"})`,
-            WebkitMaskSize: "88% 92%", maskSize: "88% 92%",
-            WebkitMaskPosition: "center", maskPosition: "center",
-            WebkitMaskRepeat: "no-repeat", maskRepeat: "no-repeat",
-            filter: "blur(7px)", opacity: 0.55, pointerEvents: "none",
-          }}
-        />
-      )}
+      {/* Op ELKE kaart die je hebt. Op een kaart die je nog niet ontdekt hebt
+          niet: die staat in de andere tak hierboven en hoort niet te stralen. */}
+      <span
+        aria-hidden
+        style={{
+          position: "absolute", left: "-6%", right: "-6%", top: "-4%", bottom: "-4%",
+          background: `radial-gradient(60% 55% at 50% 55%, ${colors.gold}, ${colors.orange} 65%, ${colors.orange} 100%)`,
+          WebkitMaskImage: `url(${kaart.image_path || "/static/cards/voorkant-leeg.webp"})`,
+          maskImage: `url(${kaart.image_path || "/static/cards/voorkant-leeg.webp"})`,
+          WebkitMaskSize: "88% 92%", maskSize: "88% 92%",
+          WebkitMaskPosition: "center", maskPosition: "center",
+          WebkitMaskRepeat: "no-repeat", maskRepeat: "no-repeat",
+          filter: "blur(7px)", opacity: 0.55, pointerEvents: "none",
+        }}
+      />
       <img
         src={kaart.image_path || "/static/cards/voorkant-leeg.webp"}
         alt={kaart.word || ""}
