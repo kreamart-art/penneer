@@ -317,11 +317,14 @@ const VLAK = {
   // De letter mag over de binnenschijf heen lopen: netjes erbinnen oogt hij
   // verloren in de ring.
   letter: { left: "7.9%",  right: "77.1%", top: "21.2%", bottom: "28.2%" },
-  kop:    { left: "32.0%", right: "30.0%", top: "10.0%", bottom: "56.0%" },
+  // De kop zakt naar beneden zodat hij tegen de balk aan staat in plaats
+  // van hoog in het lege vlak te zweven.
+  kop:    { left: "32.0%", right: "30.0%", top: "14.0%", bottom: "55.0%" },
   balk:   { left: "32.0%", right: "30.0%", top: "45.0%", bottom: "38.0%" },
-  hint:   { left: "32.5%", right: "30.3%", top: "68.5%", bottom: "14.5%" },
-  beloning:  { left: "74.5%", right: "4.5%", top: "10.0%", bottom: "80.0%" },
-  kistplaat: { left: "79.5%", right: "8.5%", top: "73.5%", bottom: "15.0%" },
+  // Iets lager dan de bovenlijn van de pil, anders plakt de tekst eraan.
+  hint:   { left: "32.5%", right: "30.3%", top: "70.5%", bottom: "12.5%" },
+  beloning:  { left: "74.5%", right: "4.5%", top: "12.5%", bottom: "74.0%" },
+  kistplaat: { left: "78.9%", right: "7.9%", top: "72.8%", bottom: "14.5%" },
 } as const;
 
 function Sectie({ letter, discovered, total, percent, compleet }: {
@@ -330,7 +333,17 @@ function Sectie({ letter, discovered, total, percent, compleet }: {
   const { t } = useT();
   return (
     <div style={{ position: "relative", width: "100%", aspectRatio: `${SECTIE_RATIO}` }}>
-      <img src="/ontdek/sectie.webp" alt="" style={{ width: "100%", height: "100%", display: "block" }} />
+      {/* De schaduw als tweede kopie van dezelfde art: een drop-shadow-filter
+          rastert Safari apart en dan zie je de doos van de laag over de plaat. */}
+      <img
+        src="/ontdek/sectie.webp" alt="" aria-hidden draggable={false}
+        style={{
+          position: "absolute", inset: 0, width: "100%", height: "100%", display: "block",
+          filter: "brightness(0) blur(9px)", opacity: 0.55, transform: "translateY(6px)",
+          pointerEvents: "none",
+        }}
+      />
+      <img src="/ontdek/sectie.webp" alt="" style={{ position: "relative", width: "100%", height: "100%", display: "block" }} />
 
       {/* De gouden letter in de ring. In een eigen vak, want een img met eigen
           afmetingen rekt niet mee met left/right/top/bottom. */}
@@ -343,7 +356,7 @@ function Sectie({ letter, discovered, total, percent, compleet }: {
 
       {/* Kop en telling */}
       <div style={{ position: "absolute", ...VLAK.kop, display: "flex", flexDirection: "column", justifyContent: "flex-start", overflow: "hidden" }}>
-        <span style={{ fontFamily: font.wide, fontSize: "clamp(10px, 4.2vw, 26px)", lineHeight: 1, letterSpacing: ".03em", color: colors.ink, whiteSpace: "nowrap" }}>
+        <span style={{ fontFamily: font.wide, fontSize: "clamp(9px, 3.8vw, 26px)", lineHeight: 1, letterSpacing: ".03em", color: colors.ink, whiteSpace: "nowrap" }}>
           {t("ontdekkenLetterKop", { letter })}
         </span>
         <span style={{ fontFamily: font.ui, fontSize: "clamp(6.5px, 2.2vw, 12px)", lineHeight: 1.15, color: colors.sub, marginTop: "3%", whiteSpace: "nowrap" }}>
@@ -374,8 +387,8 @@ function Sectie({ letter, discovered, total, percent, compleet }: {
       {/* Het kistpaneel: het opschrift erboven, de stand op de plaat eronder.
           De kist zelf zit al in de art. */}
       <div style={{ position: "absolute", ...VLAK.beloning, display: "flex", justifyContent: "center", alignItems: "flex-start" }}>
-        <span style={{ fontFamily: font.ui, fontSize: "clamp(5px, 1.6vw, 10px)", fontWeight: 600, lineHeight: 1.1, color: colors.sub, textAlign: "center" }}>
-          {t("ontdekkenBeloning", { letter })}
+        <span style={{ fontFamily: font.ui, fontSize: "clamp(7px, 2.3vw, 13px)", fontWeight: 700, lineHeight: 1.1, color: colors.sub, textAlign: "center" }}>
+          {t("ontdekkenBeloning")}
         </span>
       </div>
       <div style={{ position: "absolute", ...VLAK.kistplaat, display: "grid", placeItems: "center" }}>
@@ -432,10 +445,18 @@ function KaartTegel({ kaart, nu, onOpen, groot }: {
       // als een deur die op niets uitkomt.
       <div style={{ position: "relative" }}>
         <img
+          src="/static/cards/niet-gehaald.webp" alt="" aria-hidden draggable={false} loading="lazy"
+          style={{
+            position: "absolute", inset: 0, width: "100%", aspectRatio: KAART_RATIO,
+            display: "block", filter: "brightness(0) blur(5px)", opacity: 0.5,
+            transform: "translateY(4px)", pointerEvents: "none",
+          }}
+        />
+        <img
           src="/static/cards/niet-gehaald.webp"
           alt={t("ontdekkenNogNietOntdekt")}
           loading="lazy"
-          style={{ width: "100%", aspectRatio: KAART_RATIO, display: "block" }}
+          style={{ position: "relative", width: "100%", aspectRatio: KAART_RATIO, display: "block" }}
         />
         <span
           aria-hidden
@@ -469,13 +490,26 @@ function KaartTegel({ kaart, nu, onOpen, groot }: {
       style={{ position: "relative", cursor: onOpen ? "pointer" : "default" }}
       onClick={onOpen ? () => { sound.uiTap(); onOpen(); } : undefined}
     >
-      {/* Nog geen art voor deze kaart? Dan de LEGE voorkant, niet de
+      {/* Zelfde truc als bij de sectie: een zwarte vervaagde kopie eronder. Een
+          box-shadow zou een RECHTHOEK werpen, en de kaart heeft afgeschuinde
+          hoeken, dus dan hangt er een blok achter de punten.
+
+          Nog geen art voor deze kaart? Dan de LEGE voorkant, niet de
           achterkant: die laatste betekent "nog niet ontdekt". */}
+      <img
+        src={kaart.image_path || "/static/cards/voorkant-leeg.webp"}
+        alt="" aria-hidden draggable={false} loading="lazy"
+        style={{
+          position: "absolute", inset: 0, width: "100%", aspectRatio: KAART_RATIO,
+          display: "block", filter: "brightness(0) blur(5px)", opacity: 0.5,
+          transform: "translateY(4px)", pointerEvents: "none",
+        }}
+      />
       <img
         src={kaart.image_path || "/static/cards/voorkant-leeg.webp"}
         alt={kaart.word || ""}
         loading="lazy"
-        style={{ width: "100%", aspectRatio: KAART_RATIO, display: "block" }}
+        style={{ position: "relative", width: "100%", aspectRatio: KAART_RATIO, display: "block" }}
       />
       {kaart.iso && (
         <img
