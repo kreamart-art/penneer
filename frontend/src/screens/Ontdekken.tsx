@@ -9,7 +9,7 @@
 // verzameling die op twee toestellen anders staat is erger dan een verzameling
 // die een halve seconde later verschijnt.
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Apple, ArrowLeft, Brain, Briefcase, Building2, Check, ChevronDown, ChevronLeft, ChevronRight, Filter, Flame, Globe, Layers, Lightbulb, PawPrint, Play } from "lucide-react";
+import { Apple, ArrowLeft, Brain, Briefcase, Building2, Check, ChevronDown, ChevronLeft, ChevronRight, Filter, Flame, Globe, Layers, Lightbulb, PawPrint } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "../components/Button";
 import { LetterTegel } from "../components/LetterTegel";
@@ -136,18 +136,23 @@ function Paneel({ children, style }: { children: React.ReactNode; style?: React.
 // voortgang per categorie, de laatste vondsten, het herhaalblok en onderaan de
 // weg naar de hele verzameling.
 //
-// De sectie is art (hub-sectie.webp) met de medaille links, een donkere plaat
-// rechtsboven voor de reeks en een gouden knop rechtsonder. Opgemeten:
-//   medaille  midden (27.1%, 45.6%)  diameter 29.3% van de breedte
-//   plaat     x 51.1..96.9%   y  7.3..40.5%
-//   knop      x 47.4..94.1%   y 61.3..89.4%
-const HUB_RATIO = 1400 / 620;
+// De sectie is art (hub-sectie.webp, 894x407) met de medaille links, een
+// donkere plaat rechtsboven voor de reeks en een gouden knop rechtsonder.
+// Opgemeten in de bron:
+//   ring      midden (28.4%, 51.7%)  buitendiameter 30.7% van de breedte
+//   binnenvlak van de ring: diameter 229px, dus 25.6% van de breedte
+//   plaat     x 52.8..94.7%   y  9.6..40.5%
+//   knop      x 48.9..95.2%   y 67.1..93.4%
+//   het play-driehoekje zit AL in de knop, van 56.6% tot 60.7% breed
+const HUB_RATIO = 894 / 407;
 const HUB = {
-  letter:  { left: "18.0%", right: "68.9%", top: "23.0%", bottom: "23.0%" },
-  bovenop: { left: "10.0%", right: "60.0%", top: "3.0%",  bottom: "84.0%" },
-  plaat:   { left: "51.1%", right: "3.1%",  top: "7.3%",  bottom: "59.5%" },
-  uitleg:  { left: "50.0%", right: "4.0%",  top: "41.5%", bottom: "39.5%" },
-  knop:    { left: "47.4%", right: "5.9%",  top: "61.3%", bottom: "10.6%" },
+  // Een vierkant vak midden in het donkere vlak van de ring, op ruim
+  // driekwart van de opening: op vol formaat raakt de letter de rand.
+  letter:  { left: "18.4%", right: "61.6%", top: "29.7%", bottom: "26.3%" },
+  bovenop: { left: "8.0%",  right: "50.0%", top: "1.5%",  bottom: "84.5%" },
+  plaat:   { left: "52.8%", right: "5.3%",  top: "9.6%",  bottom: "59.5%" },
+  uitleg:  { left: "50.0%", right: "3.5%", top: "42.0%", bottom: "34.0%" },
+  knop:    { left: "48.9%", right: "4.8%",  top: "67.1%", bottom: "6.6%" },
 } as const;
 
 /** Het rijtje vinkjes onder de reeks, zoals in het ontwerp. */
@@ -230,16 +235,22 @@ function HubSectie({ letter, streak, onSpeel }: {
       </div>
 
       {/* De gouden knop zit in de art; hier ligt alleen het opschrift erop. */}
+      {/* De hele gouden knop is aan te tikken. Het play-driehoekje zit in de
+          art, dus hier staat alleen het opschrift; de linkermarge houdt de
+          ruimte vrij waar dat driehoekje staat. */}
       <button
         onClick={() => { sound.uiTap(); onSpeel(); }}
         className="pressable"
         style={{
           position: "absolute", ...HUB.knop,
-          background: "transparent", border: "none", padding: 0, cursor: "pointer",
-          display: "flex", alignItems: "center", justifyContent: "center", gap: "3%",
+          // Let op: procenten in padding rekenen tegen de SECTIE, niet tegen de
+          // knop, want dat is het blok waarin deze knop absoluut staat. Het
+          // driehoekje loopt tot 60.7% van de sectie en de knop begint op
+          // 48.9%, dus 11.9% is precies tot waar het driehoekje komt.
+          background: "transparent", border: "none", padding: "0 2% 0 11.9%", cursor: "pointer",
+          display: "flex", alignItems: "center", justifyContent: "center",
         }}
       >
-        <Play size={13} fill="#3B2300" color="#3B2300" style={{ flexShrink: 0 }} />
         <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: "clamp(9px, 3.1vw, 18px)", color: "#3B2300", whiteSpace: "nowrap" }}>
           {t("ontdekkenSpeelDeLetter")}
         </span>
@@ -321,7 +332,10 @@ function Hub({ data, onCategorie, onOefenen, onQuiz, onVerzameling }: {
         </div>
       </GoudKader>
 
-      <GoudKader hoek={13} fade gloed padding={12} style={{ marginBottom: 16 }}>
+      {/* Geen kader hier: de kaarten hebben hun eigen gloed en staan daarmee al
+          los van de achtergrond. Een sectie eromheen zou een tweede rand om
+          vier vormen zetten die zelf al een rand hebben. */}
+      <div style={{ marginBottom: 16 }}>
         <SectieKop
           rechts={
             <button
@@ -354,12 +368,12 @@ function Hub({ data, onCategorie, onOefenen, onQuiz, onVerzameling }: {
                 className="pressable"
                 style={{ background: "transparent", border: "none", padding: 0, cursor: "pointer" }}
               >
-                <KaartTegel kaart={k} nu={Date.now() / 1000} chip={label[k.category || ""]} />
+                <KaartTegel kaart={k} nu={Date.now() / 1000} chip={label[k.category || ""]} gloed />
               </button>
             ))}
           </div>
         )}
-      </GoudKader>
+      </div>
 
       <GoudKader hoek={13} kleur="violet" dik={1} gloed vulling binnenlijn padding={12} style={{ marginBottom: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -604,8 +618,11 @@ function Keuze({ label, onClick, icoon }: { label: string; onClick: () => void; 
 // lint in het ontwerp betekent: kijk, deze is er net bij gekomen.
 const NIEUW_S = 24 * 60 * 60;
 
-function KaartTegel({ kaart, nu, onOpen, groot, chip }: {
+function KaartTegel({ kaart, nu, onOpen, groot, chip, gloed }: {
   kaart: Kaart; nu: number; onOpen?: () => void; groot?: boolean;
+  /** Een warme gloed onder de kaart. Alleen voor kaarten die je HEBT: een
+   *  kaart die je nog niet ontdekt hebt, hoort niet te stralen. */
+  gloed?: boolean;
   /** Het categorielabel dat in het ontwerp op de rand van het paarse vlak
    *  ligt. Alleen de hub gebruikt het: op de letterpagina weet je al in welke
    *  categorie je zit en zou het op elke kaart hetzelfde woord zijn. */
@@ -684,6 +701,27 @@ function KaartTegel({ kaart, nu, onOpen, groot, chip }: {
           transform: "translateY(4px)", pointerEvents: "none",
         }}
       />
+      {/* De gloed is de VORM van de kaart in warm goud, vervaagd, eronder.
+          Niet de art zelf vervagen: dat is een foto, dus dan waaieren er
+          groene luchten en grijze gebouwen naar buiten in plaats van goud.
+          Vandaar de art als masker over een egaal warm verloop, zodat precies
+          de omtrek gloeit. En geen box-shadow: die werpt een RECHTHOEK achter
+          een kaart met afgeschuinde hoeken. */}
+      {gloed && (
+        <span
+          aria-hidden
+          style={{
+            position: "absolute", left: "-6%", right: "-6%", top: "-4%", bottom: "-4%",
+            background: `radial-gradient(60% 55% at 50% 55%, ${colors.gold}, ${colors.orange} 65%, ${colors.orange} 100%)`,
+            WebkitMaskImage: `url(${kaart.image_path || "/static/cards/voorkant-leeg.webp"})`,
+            maskImage: `url(${kaart.image_path || "/static/cards/voorkant-leeg.webp"})`,
+            WebkitMaskSize: "88% 92%", maskSize: "88% 92%",
+            WebkitMaskPosition: "center", maskPosition: "center",
+            WebkitMaskRepeat: "no-repeat", maskRepeat: "no-repeat",
+            filter: "blur(7px)", opacity: 0.55, pointerEvents: "none",
+          }}
+        />
+      )}
       <img
         src={kaart.image_path || "/static/cards/voorkant-leeg.webp"}
         alt={kaart.word || ""}
