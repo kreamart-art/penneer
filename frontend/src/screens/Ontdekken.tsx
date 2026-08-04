@@ -478,8 +478,8 @@ function Hub({ data, onCategorie, onOefenen, onQuiz, onVerzameling }: {
                 <span
                   style={{
                     position: "absolute", inset: 0, display: "grid", placeItems: "center",
-                    padding: "0 9%", fontFamily: font.display, fontWeight: 800,
-                    fontSize: "clamp(9px, 2.9vw, 15px)", color: "#3B2300", whiteSpace: "nowrap",
+                    padding: "0 7%", fontFamily: font.display, fontWeight: 800,
+                    fontSize: "clamp(11px, 3.5vw, 18px)", color: "#3B2300", whiteSpace: "nowrap",
                   }}
                 >
                   {t("ontdekkenStartHerhaling")}
