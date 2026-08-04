@@ -323,8 +323,12 @@ const VLAK = {
   balk:   { left: "32.0%", right: "30.0%", top: "45.0%", bottom: "38.0%" },
   // Iets lager dan de bovenlijn van de pil, anders plakt de tekst eraan.
   hint:   { left: "32.5%", right: "30.3%", top: "70.5%", bottom: "12.5%" },
-  beloning:  { left: "74.5%", right: "4.5%", top: "12.5%", bottom: "74.0%" },
-  kistplaat: { left: "78.9%", right: "7.9%", top: "72.8%", bottom: "14.5%" },
+  // Mag een stukje over de kist vallen, dat leest beter dan een opschrift
+  // dat tegen de bovenlijn van het paneel geperst staat.
+  beloning:  { left: "74.0%", right: "4.0%", top: "11.0%", bottom: "70.0%" },
+  // Exact de maten van de plaat, op 3x vergroting van de art afgelezen.
+  // Een halve procent ernaast is op deze maat al zichtbaar scheef.
+  kistplaat: { left: "78.9%", right: "8.8%", top: "72.8%", bottom: "13.7%" },
 } as const;
 
 function Sectie({ letter, discovered, total, percent, compleet }: {
@@ -387,7 +391,7 @@ function Sectie({ letter, discovered, total, percent, compleet }: {
       {/* Het kistpaneel: het opschrift erboven, de stand op de plaat eronder.
           De kist zelf zit al in de art. */}
       <div style={{ position: "absolute", ...VLAK.beloning, display: "flex", justifyContent: "center", alignItems: "flex-start" }}>
-        <span style={{ fontFamily: font.ui, fontSize: "clamp(7px, 2.3vw, 13px)", fontWeight: 700, lineHeight: 1.1, color: colors.sub, textAlign: "center" }}>
+        <span style={{ fontFamily: font.ui, fontSize: "clamp(9px, 3vw, 17px)", fontWeight: 700, lineHeight: 1.05, color: colors.ink, textAlign: "center" }}>
           {t("ontdekkenBeloning")}
         </span>
       </div>
