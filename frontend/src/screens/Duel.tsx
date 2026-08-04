@@ -155,8 +155,11 @@ export function Duel({ game, onBack, onProfile, openId, onGeopend }: {
   // Hetzelfde decor als de lobby, de dagronde en het oefenen: de arena met de
   // gouden hoekstukken en de horizon die oplicht.
   useEffect(() => {
-    document.body.classList.add("arena");
-    return () => document.body.classList.remove("arena");
+    // Plus een donkere laag eroverheen: zie body.duelzaal in index.css. Dit
+    // scherm is een lijst met portretten en gekleurde uitslagen, en die
+    // verdrinken in een decor dat zelf al paars oplicht.
+    document.body.classList.add("arena", "duelzaal");
+    return () => document.body.classList.remove("arena", "duelzaal");
   }, []);
 
   useEffect(() => { void refresh(); }, [refresh]);
@@ -627,34 +630,18 @@ export function Duel({ game, onBack, onProfile, openId, onGeopend }: {
             Hij blijft de enige gouden knop op dit scherm, dus hij valt genoeg
             op zonder de rij op te eten. */}
         <div style={{ display: "flex", justifyContent: "center" }}>
-          <div style={{ width: "78%", maxWidth: 290 }}>
+          <div style={{ width: "68%", maxWidth: 250 }}>
+            {/* De knop houdt zijn maat (de plaat bepaalt die uit zijn eigen
+                verhouding); de TEKST vult hem. Groter zetten liet eerder de
+                knop meegroeien, en dan stond er precies weer even weinig in. */}
             <Button variant="gold" full disabled={busy} onClick={() => { sound.uiTap(); setNote(""); setPickOpen(true); }}>
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 9, fontSize: 19, letterSpacing: 0.6 }}>
-                <Swords size={19} /> {t("duelNew")}
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 23, letterSpacing: 0.4 }}>
+                <Swords size={21} /> {t("duelNew")}
               </span>
             </Button>
           </div>
         </div>
 
-        {/* Iemand halen die er nog niet is. Deelt een LINK en geen uitnodiging
-            in de app: wie je wil hebben zit per definitie nog niet in de app,
-            dus het moet via waar hij wel zit. */}
-        <div style={{ display: "flex", justifyContent: "center" }}>
-          <GoudKader hoek={9} dik={0.7} kleur="violet" gloed padding="3px 15px" style={{ display: "inline-block" }}>
-            <button
-              type="button"
-              onClick={() => { sound.uiTap(); void nodigUit(); }}
-              className="pressable"
-              style={{
-                display: "inline-flex", alignItems: "center", gap: 7,
-                background: "transparent", border: "none", padding: "6px 2px", cursor: "pointer",
-                fontFamily: font.ui, fontSize: 13, fontWeight: 700, color: colors.ink,
-              }}
-            >
-              <UserPlus size={14} /> {t("duelVriendUitnodigen")}
-            </button>
-          </GoudKader>
-        </div>
         {!!note && <p style={{ margin: 0, textAlign: "center", fontFamily: font.ui, fontSize: 13, color: colors.orange }}>{note}</p>}
 
         {mine.length > 0 && <Section title={t("duelYourTurn")} items={mine} onOpen={openDuel} t={t} mij={{ ...account, level: account.level.level }} />}
@@ -675,26 +662,49 @@ export function Duel({ game, onBack, onProfile, openId, onGeopend }: {
               onOpen={openDuel}
               t={t}
               mij={{ ...account, level: account.level.level }}
-            />
-            {past.length > TOON_POTJES && (
-              <div style={{ display: "flex", justifyContent: "center" }}>
+              rechts={past.length > TOON_POTJES ? (
+                // Naast de kop en niet eronder: het hoort bij die lijst, en een
+                // knop onder de rijen leest als een zesde rij. Zelfde kleur en
+                // letter als de kop zelf, want het is een bijschrift en geen
+                // oproep.
                 <button
                   type="button"
                   onClick={() => { sound.uiTap(); setAllePotjes((v) => !v); }}
                   className="pressable"
                   style={{
-                    display: "inline-flex", alignItems: "center", gap: 6,
-                    background: "transparent", border: "none", cursor: "pointer", padding: "4px 10px",
-                    fontFamily: font.ui, fontSize: 12.5, fontWeight: 700, color: colors.gold,
+                    ...KOPREGEL,
+                    display: "inline-flex", alignItems: "center", gap: 4,
+                    background: "transparent", border: "none", cursor: "pointer", padding: 0,
                   }}
                 >
                   {allePotjes ? t("duelToonMinder") : t("duelToonAlles")}
-                  <ChevronDown size={14} style={{ transform: allePotjes ? "rotate(180deg)" : undefined, transition: "transform .2s ease" }} />
+                  <ChevronDown size={12} style={{ transform: allePotjes ? "rotate(180deg)" : undefined, transition: "transform .2s ease" }} />
                 </button>
-              </div>
-            )}
+              ) : undefined}
+            />
           </GoudKader>
         )}
+        {/* HELEMAAL ONDERAAN. Iemand halen die er nog niet is doe je pas als je
+            gezien hebt wat er te doen valt, niet als eerste keuze. Deelt een
+            LINK en geen uitnodiging in de app: wie je wil hebben zit per
+            definitie nog niet in de app. */}
+        <div style={{ display: "flex", justifyContent: "center", marginTop: 2 }}>
+          <GoudKader hoek={9} dik={0.7} kleur="violet" gloed padding="3px 15px" style={{ display: "inline-block" }}>
+            <button
+              type="button"
+              onClick={() => { sound.uiTap(); void nodigUit(); }}
+              className="pressable"
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 7,
+                background: "transparent", border: "none", padding: "6px 2px", cursor: "pointer",
+                fontFamily: font.ui, fontSize: 13, fontWeight: 700, color: colors.ink,
+              }}
+            >
+              <UserPlus size={14} /> {t("duelVriendUitnodigen")}
+            </button>
+          </GoudKader>
+        </div>
+
         {duels.length === 0 && list && (
           <p style={{ margin: 0, textAlign: "center", fontFamily: font.ui, fontSize: 13.5, color: colors.faint }}>{t("duelEmpty")}</p>
         )}
@@ -1141,10 +1151,15 @@ function DuelRij({ d, i, eerste, onOpen, t, mij }: {
   );
 }
 
-function Section({ title, items, onOpen, t, mij }: { title: string; items: DuelState[]; onOpen: (d: DuelState) => void; t: (k: string, v?: Record<string, string | number>) => string; mij: Person }) {
+function Section({ title, items, onOpen, t, mij, rechts }: { title: string; items: DuelState[]; onOpen: (d: DuelState) => void; t: (k: string, v?: Record<string, string | number>) => string; mij: Person; rechts?: React.ReactNode }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <span style={{ fontFamily: font.ui, fontSize: 11.5, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint, marginLeft: 4 }}>{title}</span>
+    // De tegels bijna tegen elkaar: het is EEN lijst, en een gat tussen de
+    // rijen maakt er losse kaartjes van.
+    <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, marginLeft: 4, marginBottom: 4 }}>
+        <span style={KOPREGEL}>{title}</span>
+        {rechts}
+      </div>
       {items.map((d, i) => (
         <DuelRij key={d.id} d={d} i={i} eerste={i === 0} onOpen={onOpen} t={t} mij={mij} />
       ))}
@@ -1158,6 +1173,13 @@ function Section({ title, items, onOpen, t, mij }: { title: string; items: DuelS
  *  lijst groeit met elk duel door, en een pagina die met je speelgeschiedenis
  *  meegroeit is na een week niet meer te scrollen. */
 const TOON_POTJES = 5;
+
+/** De kopregel boven een lijst. Staat apart omdat de knop ernaast er precies
+ *  hetzelfde uit moet zien: zelfde kleur, zelfde letter, zelfde maat. */
+const KOPREGEL: React.CSSProperties = {
+  fontFamily: font.ui, fontSize: 11.5, fontWeight: 600,
+  letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint,
+};
 
 const DUEL_STAKES = [0, 50, 100, 250, 500, 1000];
 

@@ -1566,3 +1566,22 @@ body.ketenspel::after {
   .pack-wipt, .pack-gloed, .pack-streep { animation: none; }
   .pack-kaart { animation: pack-kaart 1ms linear forwards; }
 }
+
+/* ---- Het duelscherm is donkerder --------------------------------------------
+   Dezelfde arena als de lobby en de dagronde, maar een stuk dieper weggedraaid.
+   Op dit scherm staat een lijst met portretten en gekleurde uitslagen, en die
+   verdrinkt in een decor dat zelf al paars oplicht. In de mockup is de
+   achtergrond bijna zwart, en dan pas springen de rijen eruit.
+
+   Een LAAG over het decor en niet een andere achtergrond: het decor met zijn
+   gouden hoekstukken en oplichtende horizon hoort erbij, hij mag alleen niet
+   even hard meepraten. */
+body.duelzaal::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(120% 80% at 50% 8%, rgba(6, 3, 16, 0.42) 0%, rgba(6, 3, 16, 0.78) 55%, rgba(4, 2, 11, 0.92) 100%);
+}

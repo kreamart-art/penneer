@@ -10,6 +10,14 @@
 // lijn van één pixel een lijn die aan de zijkanten dikker is dan boven.
 import { useEffect, useId, useRef, useState } from "react";
 
+/** Welke hoeken oplichten, in delen van de breedte en de hoogte. Linksboven en
+ *  rechtsonder: twee tegenover elkaar, zodat het vak aan beide kanten een punt
+ *  heeft in plaats van aan een kant te beginnen en aan de andere te verdwijnen. */
+const HOEKEN: [number, number][] = [
+  [0, 0],
+  [1, 1],
+];
+
 export function GoudKader({
   children,
   hoek = 13,
@@ -78,26 +86,38 @@ export function GoudKader({
         >
           <defs>
             {fade ? (
-              // ALLEEN EEN STUKJE HOEK, linksboven. De lijn begint vol in die
-              // hoek en is een eindje verderop al weg: wat je ziet is de hoek
-              // zelf plus een klein stukje van de boven- en de linkerrand, en
-              // de rest van het vak heeft geen lijn.
+              // EEN STUKJE HOEK, en dat twee keer: linksboven en rechtsonder.
+              // De lijn begint vol in zo'n hoek en is een eindje verderop al
+              // weg, dus wat je ziet is de hoek zelf plus een klein stukje van
+              // de twee randen die erop uitkomen. Daartussen is er geen lijn.
+              //
+              // TWEE VERLOPEN EN TWEE KEER DEZELFDE OMTREK. Een verloop rekent
+              // met de afstand tot EEN punt, dus twee lichte hoeken passen niet
+              // in een verloop; ze overlappen elkaar ook niet, want elk is al
+              // op voordat het andere begint.
               //
               // De straal is de diagonaal, zodat de stops in delen van het hele
               // vak staan en niet van de langste zijde. Bij een lang vak zou de
               // hoek anders veel verder doorlopen dan bij een kort vak, terwijl
               // je in beide gevallen hetzelfde stukje hoort te zien.
-              <radialGradient id={id} gradientUnits="userSpaceOnUse" cx={0} cy={0} r={Math.hypot(w, h)}>
-                <stop offset="0%" stopColor={tint.hoog} stopOpacity="0.5" />
-                <stop offset="3%" stopColor={tint.hoog} stopOpacity="0.4" />
-                <stop offset="9%" stopColor={tint.mid} stopOpacity="0.15" />
-                <stop offset="15%" stopColor={tint.laag} stopOpacity="0" />
-                <stop offset="100%" stopColor={tint.laag} stopOpacity="0" />
-              </radialGradient>
+              <>
+                {HOEKEN.map(([hx, hy], i) => (
+                  <radialGradient
+                    key={i} id={`${id}h${i}`} gradientUnits="userSpaceOnUse"
+                    cx={hx * w} cy={hy * h} r={Math.hypot(w, h)}
+                  >
+                    <stop offset="0%" stopColor={tint.hoog} stopOpacity="0.5" />
+                    <stop offset="3%" stopColor={tint.hoog} stopOpacity="0.4" />
+                    <stop offset="9%" stopColor={tint.mid} stopOpacity="0.15" />
+                    <stop offset="15%" stopColor={tint.laag} stopOpacity="0" />
+                    <stop offset="100%" stopColor={tint.laag} stopOpacity="0" />
+                  </radialGradient>
+                ))}
+              </>
             ) : (
               // Diagonaal, want op een brede lage pil zie je een verticaal
               // verloop nauwelijks: de zijkanten zijn te kort om iets te tonen.
-              <linearGradient id={id} x1="0" y1="0" x2="1" y2="1">
+              <linearGradient id={`${id}h0`} x1="0" y1="0" x2="1" y2="1">
                 <stop offset="0%" stopColor={tint.hoog} />
                 <stop offset="30%" stopColor={tint.mid} />
                 <stop offset="100%" stopColor={tint.laag} />
@@ -109,15 +129,19 @@ export function GoudKader({
               </filter>
             )}
           </defs>
-          {/* De gloed is dezelfde vorm, dikker en vervaagd, onder de lijn. */}
-          {gloed && (
-            <polygon
-              points={punten} fill="none" stroke={`url(#${id})`}
-              strokeWidth={Math.max(dik * 3, 1.6)} filter={`url(#${id}g)`}
-              opacity={fade ? 0.9 : 0.75}
-            />
-          )}
-          <polygon points={punten} fill="none" stroke={`url(#${id})`} strokeWidth={dik} opacity={fade ? 1 : 0.75} />
+          {(fade ? HOEKEN.map((_, i) => i) : [0]).map((i) => (
+            <g key={i}>
+              {/* De gloed is dezelfde vorm, dikker en vervaagd, onder de lijn. */}
+              {gloed && (
+                <polygon
+                  points={punten} fill="none" stroke={`url(#${id}h${i})`}
+                  strokeWidth={Math.max(dik * 3, 1.6)} filter={`url(#${id}g)`}
+                  opacity={fade ? 0.9 : 0.75}
+                />
+              )}
+              <polygon points={punten} fill="none" stroke={`url(#${id}h${i})`} strokeWidth={dik} opacity={fade ? 1 : 0.75} />
+            </g>
+          ))}
         </svg>
       )}
       <div style={{ position: "relative", padding }}>{children}</div>
