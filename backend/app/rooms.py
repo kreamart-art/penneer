@@ -361,6 +361,21 @@ class RoomManager:
             msg["emote"] = emote_id
         if image_id:
             msg["image_id"] = image_id
+        # Antwoord je op iets, dan gaat er een AFDRUK van dat bericht mee en
+        # niet alleen een verwijzing. Twee redenen: het origineel kan verwijderd
+        # worden of uit de lijst van zestig lopen, en dan hoort jouw antwoord nog
+        # steeds te laten zien waar het over ging.
+        antwoord = payload.get("reply_to")
+        if isinstance(antwoord, int) and not isinstance(antwoord, bool):
+            bron = next((c for c in room.chat if c["id"] == antwoord), None)
+            if bron is not None:
+                msg["reply"] = {
+                    "id": bron["id"],
+                    "name": bron["name"],
+                    "text": bron.get("text") or "",
+                    "soort": ("emote" if bron.get("emote") else "image" if bron.get("image_id")
+                              else "voice" if bron.get("voice_id") else "text"),
+                }
         room.chat.append(msg)
         if len(room.chat) > 60:
             room.chat = room.chat[-60:]
@@ -374,6 +389,26 @@ class RoomManager:
             ))
             if done:
                 await accounts.push_missions(p.user_id, done)
+
+    async def chat_delete(self, player_id: str, payload: dict) -> None:
+        """Haal je EIGEN bericht weg. Van iemand anders kan niet, ook niet als
+        je de host bent: een gesprek waarin een ander jouw woorden kan wissen is
+        geen gesprek meer.
+
+        Het bericht gaat echt weg en krijgt geen "verwijderd"-plaatsje. Dat past
+        bij een room: de chat leeft zolang het potje duurt en niemand bewaart hem.
+        Antwoorden die eraan hingen blijven staan met hun eigen afdruk erin."""
+        room = self.room_of_player(player_id)
+        if room is None:
+            return
+        mid = payload.get("id")
+        if not isinstance(mid, int) or isinstance(mid, bool):
+            return
+        over = [c for c in room.chat if not (c["id"] == mid and c["player_id"] == player_id)]
+        if len(over) == len(room.chat):
+            return
+        room.chat = over
+        await self.broadcast(room, {"type": "chat_delete", "id": mid})
 
     async def chat_typing(self, player_id: str, payload: dict) -> None:
         """Relay a typing signal to everyone else in the room. Best-effort; the

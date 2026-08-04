@@ -7,13 +7,14 @@ import { CloseIcon } from "./CloseIcon";
 import { TelHex } from "./TelHex";
 import { ChatIcoon } from "./ChatIcoon";
 import { WALLPAPERS, wallpaperKlasse, wallpaperStijl, wallpaperVan, wallpaperZet, type WallpaperId } from "./Wallpaper";
-import type { GameApi } from "../net/socket";
+import type { ChatMessage, GameApi } from "../net/socket";
 import { MicButton } from "./MicButton";
 import { BeeldKnop } from "./BeeldKnop";
 import { VerstuurKnop } from "./VerstuurKnop";
 import { KNOP_GOUD_VERLOOP, goudHaarlijn } from "./GlasKnop";
 import { CANVAS, useCanvasKleur } from "../lib/canvaskleur";
 import { useBlijfOnderaan, useVakLaag, useZichtbaarVak } from "../lib/zichtbaarvak";
+import { AntwoordBalk, BerichtHuls, Citaat, citaatTekst } from "./Berichtgebaren";
 import { Livestream } from "./Livestream";
 import { VoiceNote } from "./VoiceNote";
 import { EmotePicker } from "./EmotePicker";
@@ -71,6 +72,12 @@ export function ChatButton({ game }: { game: GameApi }) {
   );
 }
 
+/** Hangt dit bericht KAAL in de lijst, zonder pil eromheen? Een sticker of een
+ *  foto wel, want een knipsel in een pil met een rand eromheen ziet eruit als
+ *  een fout. Staat er een citaat boven, dan niet: dat citaat heeft iets nodig
+ *  om op te liggen. */
+const kaal = (m: ChatMessage) => !!(m.emote || m.image_id) && !m.reply;
+
 function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
   const { t } = useT();
   const [draft, setDraft] = useState("");
@@ -94,6 +101,9 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
   // je ook maar iets gedaan had.
   const vak = useZichtbaarVak();
   const { laag, onder } = useVakLaag();
+  // Waar je op gaat antwoorden, of niets. Blijft staan tot je verstuurt of het
+  // kruisje raakt, want tussendoor mag je gewoon je zin afmaken.
+  const [antwoord, setAntwoord] = useState<ChatMessage | null>(null);
   // De strook onder de pagina krijgt de kleur van de invulbalk: op iOS valt de
   // onderrand van het scherm soms buiten de pagina, en dan hoort daar de balk
   // door te lopen en niet het decor van het scherm erachter.
@@ -202,8 +212,9 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
     e.preventDefault();
     const text = draft.trim();
     if (!text) return;
-    game.sendChat(text);
+    game.sendChat(text, undefined, undefined, undefined, antwoord?.id);
     setDraft("");
+    setAntwoord(null);
     stopTyping();
   }
 
@@ -407,7 +418,7 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
             chat.map((m) => {
               const mine = m.player_id === myId;
               return (
-                <div key={m.id} style={{ display: "flex", flexDirection: "column", alignItems: mine ? "flex-end" : "flex-start" }}>
+                <div key={m.id} style={{ display: "flex", flexDirection: "column", alignItems: mine ? "flex-end" : "flex-start", maxWidth: "100%" }}>
                   {mine ? (
                     <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 700, color: colors.gold, padding: "0 4px 2px" }}>
                       {t("chatYou")}
@@ -421,21 +432,31 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
                       {m.name}
                     </button>
                   )}
+                  <BerichtHuls
+                    mine={mine}
+                    breedte="82%"
+                    onReageer={() => { sound.uiTap(); setAntwoord(m); inputRef.current?.focus(); }}
+                    onVerwijder={() => { sound.uiTap(); game.deleteChat(m.id); }}
+                    labels={{ reageer: t("berichtReageer"), verwijder: t("berichtVerwijder") }}
+                  >
                   <div
                     style={{
-                      maxWidth: "82%",
-                      padding: m.emote || m.image_id ? 4 : m.voice_id ? "8px 12px" : "9px 14px",
+                      // Een sticker of een foto hangt KAAL in de lijst: een
+                      // knipsel in een pil met een rand eromheen ziet eruit als
+                      // een fout. Behalve als er een citaat boven staat, want
+                      // dat citaat heeft wel iets nodig om op te liggen.
+                      padding: kaal(m) ? 4 : m.voice_id ? "8px 12px" : "9px 14px",
                       // Dezelfde pil als in de privéberichten, zodat een bericht
                       // er overal in de app hetzelfde uitziet.
-                      borderRadius: m.emote || m.image_id ? 14 : 20,
-                      borderTopRightRadius: m.emote || m.image_id ? 14 : mine ? 6 : 20,
-                      borderTopLeftRadius: m.emote || m.image_id ? 14 : mine ? 20 : 6,
-                      background: m.emote || m.image_id
+                      borderRadius: kaal(m) ? 14 : 20,
+                      borderTopRightRadius: kaal(m) ? 14 : mine ? 6 : 20,
+                      borderTopLeftRadius: kaal(m) ? 14 : mine ? 20 : 6,
+                      background: kaal(m)
                         ? "transparent"
                         : mine
                           ? `linear-gradient(180deg, ${withAlpha(colors.gold, 0.22)}, ${withAlpha(colors.gold, 0.12)})`
                           : "linear-gradient(180deg, rgba(24,12,50,.88), rgba(14,7,34,.88))",
-                      boxShadow: m.emote || m.image_id
+                      boxShadow: kaal(m)
                         ? undefined
                         : mine
                           ? `inset 0 0 0 1.4px ${withAlpha("#FFC23D", 0.75)}, 0 0 12px ${withAlpha("#FFC23D", 0.22)}`
@@ -448,11 +469,18 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
                       whiteSpace: "pre-wrap",
                     }}
                   >
+                    {/* Waar dit een antwoord op was. Ook boven een sticker of
+                        een spraakbericht, want ook daarmee kun je reageren. */}
+                    {m.reply && (
+                      <Citaat
+                        naam={m.reply.name}
+                        tekst={citaatTekst(m.reply.text, m.reply.soort, { spraak: t("voiceMemo"), foto: t("berichtFoto"), sticker: t("stickerOne") })}
+                        kleur={mine ? colors.gold : "#C79BFF"}
+                      />
+                    )}
                     {m.emote ? (
                       <img src={EMOTE_SRC(m.emote)} alt="" width={84} height={84} style={{ width: 84, height: 84, display: "block", objectFit: "contain" }} />
                     ) : m.image_id ? (
-                      // Kaal, zoals een sticker: een stickerknipsel in een pil
-                      // met een rand eromheen ziet eruit als een fout.
                       <img
                         src={`/api/image/${roomCode}/${m.image_id}`}
                         alt=""
@@ -464,6 +492,7 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
                       m.text
                     )}
                   </div>
+                  </BerichtHuls>
                 </div>
               );
             })
@@ -482,8 +511,19 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
         {emotesOpen && (
           <EmotePicker
             unlocked={new Set(game.state.account?.emote_packs ?? FREE_EMOTE_PACKS)}
-            onPick={(id) => { game.sendChat("", undefined, id); setEmotesOpen(false); }}
+            onPick={(id) => { game.sendChat("", undefined, id, undefined, antwoord?.id); setAntwoord(null); setEmotesOpen(false); }}
             onClose={() => setEmotesOpen(false)}
+          />
+        )}
+
+        {/* Waar je op gaat antwoorden. Boven het invulveld en niet erin: hij
+            hoort bij wat je gaat sturen, niet bij wat je typt. */}
+        {antwoord && (
+          <AntwoordBalk
+            naam={antwoord.player_id === myId ? t("chatYou") : antwoord.name}
+            tekst={citaatTekst(antwoord.text, antwoord.emote ? "emote" : antwoord.image_id ? "image" : antwoord.voice_id ? "voice" : "text", { spraak: t("voiceMemo"), foto: t("berichtFoto"), sticker: t("stickerOne") })}
+            onWeg={() => setAntwoord(null)}
+            weg={t("berichtAntwoordWeg")}
           />
         )}
 
@@ -552,8 +592,8 @@ function ChatPanel({ game, onClose }: { game: GameApi; onClose: () => void }) {
             <VerstuurKnop submit label={t("chatSend")} />
           ) : (
             <>
-              <BeeldKnop upload={uploadBeeld} onSent={(id) => game.sendChat("", undefined, undefined, id)} />
-              <MicButton upload={uploadVoice} onSent={(id, dur) => game.sendChat("", { id, dur })} />
+              <BeeldKnop upload={uploadBeeld} onSent={(id) => { game.sendChat("", undefined, undefined, id, antwoord?.id); setAntwoord(null); }} />
+              <MicButton upload={uploadVoice} onSent={(id, dur) => { game.sendChat("", { id, dur }, undefined, undefined, antwoord?.id); setAntwoord(null); }} />
             </>
           )}
         </form>

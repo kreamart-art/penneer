@@ -24,6 +24,7 @@ import { MicButton } from "../components/MicButton";
 import { BeeldKnop } from "../components/BeeldKnop";
 import { goudHaarlijn } from "../components/GlasKnop";
 import { useBlijfOnderaan, useVakLaag, useZichtbaarVak } from "../lib/zichtbaarvak";
+import { AntwoordBalk, BerichtHuls, Citaat, citaatTekst } from "../components/Berichtgebaren";
 import { VerstuurKnop } from "../components/VerstuurKnop";
 import { VoiceNote } from "../components/VoiceNote";
 import { EmotePicker } from "../components/EmotePicker";
@@ -31,7 +32,7 @@ import { EMOTE_SRC, FREE_EMOTE_PACKS } from "../components/emotes";
 import { HexPlate } from "../components/HexPlate";
 import { Toggle } from "../components/Toggle";
 import { Screen, Card } from "../components/Layout";
-import type { AccountStats, Friend, GameApi, InboxItem, LeaderboardRow, LevelInfo } from "../net/socket";
+import type { AccountStats, DmMessage, Friend, GameApi, InboxItem, LeaderboardRow, LevelInfo } from "../net/socket";
 import { LANDEN, landNaam } from "../util/landen";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
@@ -781,6 +782,8 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
   const me = game.state.account?.id;
   const [text, setText] = useState("");
   const [dmEmotesOpen, setDmEmotesOpen] = useState(false);
+  // Waar je op gaat antwoorden, of niets.
+  const [dmAntwoord, setDmAntwoord] = useState<DmMessage | null>(null);
   // Het behang staat op dit TOESTEL en niet op je account: het is hoe JIJ je
   // gesprekken wilt zien, niet iets wat de ander hoort te merken.
   const [behang, setBehang] = useState<WallpaperId>(wallpaperVan);
@@ -810,8 +813,9 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
 
   const sendNow = () => {
     if (!text.trim()) return;
-    game.dmSend(partnerId, text);
+    game.dmSend(partnerId, text, undefined, undefined, undefined, dmAntwoord?.id);
     setText("");
+    setDmAntwoord(null);
   };
 
   // Upload a memo (Bearer-authed), then send it as a DM.
@@ -961,8 +965,17 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
           )}
           {messages.map((m) => {
             const mine = m.from_user === me;
+            // Een sticker of een foto hangt kaal in de lijst; met een citaat
+            // erboven niet, want dat citaat heeft iets nodig om op te liggen.
+            const bloot = !!(m.emote || m.image_id) && !m.reply_id;
             return (
               <div key={m.id} style={{ alignSelf: mine ? "flex-end" : "flex-start", maxWidth: "78%" }}>
+              <BerichtHuls
+                mine={mine}
+                onReageer={() => { sound.uiTap(); setDmAntwoord(m); }}
+                onVerwijder={() => { sound.uiTap(); game.dmDelete(m.id); }}
+                labels={{ reageer: t("berichtReageer"), verwijder: t("berichtVerwijder") }}
+              >
                 {/* De bel heeft de afgeschuinde hoek van een glasrij, met de
                     punt aan de kant waar hij vandaan komt. Een gewone bubbel
                     met een randje hoort bij een chat-app; deze app is van glas
@@ -973,22 +986,31 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
                     kant waar hij vandaan komt, en met een lijn die je ziet:
                     tegen behang verdwijnt een fluistering. */}
                 <div style={{
-                  padding: m.emote || m.image_id ? 4 : m.voice_id ? "8px 12px" : "10px 15px",
-                  borderRadius: m.emote || m.image_id ? 14 : 20,
-                  borderBottomRightRadius: m.emote || m.image_id ? 14 : mine ? 6 : 20,
-                  borderBottomLeftRadius: m.emote || m.image_id ? 14 : mine ? 20 : 6,
-                  background: m.emote || m.image_id
+                  padding: bloot ? 4 : m.voice_id ? "8px 12px" : "10px 15px",
+                  borderRadius: bloot ? 14 : 20,
+                  borderBottomRightRadius: bloot ? 14 : mine ? 6 : 20,
+                  borderBottomLeftRadius: bloot ? 14 : mine ? 20 : 6,
+                  background: bloot
                     ? "transparent"
                     : mine
                       ? `linear-gradient(180deg, ${withAlpha(colors.gold, 0.22)}, ${withAlpha(colors.gold, 0.12)})`
                       : "linear-gradient(180deg, rgba(24,12,50,.88), rgba(14,7,34,.88))",
-                  boxShadow: m.emote || m.image_id
+                  boxShadow: bloot
                     ? undefined
                     : mine
                       ? `inset 0 0 0 1.4px ${withAlpha(GOUD[2], 0.75)}, 0 0 12px ${withAlpha(GOUD[2], 0.24)}`
                       : `inset 0 0 0 1.4px ${withAlpha("#A868F5", 0.65)}, 0 0 12px ${withAlpha("#8B45E8", 0.22)}`,
                   fontFamily: font.ui, fontSize: 14, color: colors.ink, lineHeight: 1.45, wordBreak: "break-word",
                 }}>
+                  {/* Waar dit een antwoord op was. De naam komt uit wie het
+                      stuurde: in een gesprek van twee is dat jij of de ander. */}
+                  {m.reply_id && (
+                    <Citaat
+                      naam={m.reply_from === me ? t("chatYou") : (partner?.name ?? "")}
+                      tekst={citaatTekst(m.reply_text ?? "", m.reply_soort, { spraak: t("voiceMemo"), foto: t("berichtFoto"), sticker: t("stickerOne") })}
+                      kleur={m.reply_from === me ? colors.gold : "#C79BFF"}
+                    />
+                  )}
                   {m.emote ? (
                     <img src={EMOTE_SRC(m.emote)} alt="" width={84} height={84} style={{ width: 84, height: 84, display: "block", objectFit: "contain" }} />
                   ) : m.image_id ? (
@@ -1004,6 +1026,7 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
                   )}
                 </div>
                 <div style={{ fontFamily: font.ui, fontSize: 10, color: colors.faint, marginTop: 2, textAlign: mine ? "right" : "left" }}>{fmt(m.created_at)}</div>
+              </BerichtHuls>
               </div>
             );
           })}
@@ -1012,8 +1035,18 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
         {dmEmotesOpen && (
           <EmotePicker
             unlocked={new Set(game.state.account?.emote_packs ?? FREE_EMOTE_PACKS)}
-            onPick={(id) => { game.dmSend(partnerId, "", undefined, id); setDmEmotesOpen(false); }}
+            onPick={(id) => { game.dmSend(partnerId, "", undefined, id, undefined, dmAntwoord?.id); setDmAntwoord(null); setDmEmotesOpen(false); }}
             onClose={() => setDmEmotesOpen(false)}
+          />
+        )}
+
+        {/* Waar je op gaat antwoorden. */}
+        {dmAntwoord && (
+          <AntwoordBalk
+            naam={dmAntwoord.from_user === me ? t("chatYou") : (partner?.name ?? "")}
+            tekst={citaatTekst(dmAntwoord.text, dmAntwoord.emote ? "emote" : dmAntwoord.image_id ? "image" : dmAntwoord.voice_id ? "voice" : "text", { spraak: t("voiceMemo"), foto: t("berichtFoto"), sticker: t("stickerOne") })}
+            onWeg={() => setDmAntwoord(null)}
+            weg={t("berichtAntwoordWeg")}
           />
         )}
 
@@ -1059,8 +1092,8 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
             <VerstuurKnop onClick={sendNow} label={t("chatSend")} />
           ) : (
             <>
-              <BeeldKnop upload={uploadBeeld} onSent={(id) => game.dmSend(partnerId, "", undefined, undefined, id)} />
-              <MicButton upload={uploadVoice} onSent={(id, dur) => game.dmSend(partnerId, "", { id, dur })} />
+              <BeeldKnop upload={uploadBeeld} onSent={(id) => { game.dmSend(partnerId, "", undefined, undefined, id, dmAntwoord?.id); setDmAntwoord(null); }} />
+              <MicButton upload={uploadVoice} onSent={(id, dur) => { game.dmSend(partnerId, "", { id, dur }, undefined, undefined, dmAntwoord?.id); setDmAntwoord(null); }} />
             </>
           )}
         </div>

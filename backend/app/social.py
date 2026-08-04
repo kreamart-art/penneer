@@ -341,6 +341,7 @@ class AccountManager:
             "profile_view": self.profile_view,
             "history_get": self.history_get,
             "dm_send": self.dm_send,
+            "dm_delete": self.dm_delete,
             "dm_thread": self.dm_thread,
             "dm_threads": self.dm_threads,
             "friends_list": self.friends_list,
@@ -608,6 +609,7 @@ class AccountManager:
             voice_dur=int(data.get("voice_dur") or 0),
             emote=emote,
             image_id=data.get("image_id") or None,
+            reply_to=data.get("reply_to") or None,
         )
         if msg is None:
             return
@@ -625,6 +627,20 @@ class AccountManager:
         # de meldingenlijst staan.
         await self.stuur(to, "bericht", data={"user_id": uid},
                          naam=sender["name"] if sender else "Iemand", tekst=preview)
+
+    async def dm_delete(self, ws: Any, data: dict) -> None:
+        """Haal je eigen bericht weg, bij jou en bij de ander. De database kijkt
+        of het bericht echt van jou is; van iemand anders wissen kan niet."""
+        uid = self.user_of(ws)
+        mid = data.get("id") or ""
+        if not uid or not isinstance(mid, str):
+            return
+        ander = self.db.dm_delete(uid, mid)
+        if ander is None:
+            return
+        payload = {"type": "dm_delete", "id": mid}
+        await self._push(uid, payload)
+        await self._push(ander, payload)
 
     async def dm_thread(self, ws: Any, data: dict) -> None:
         uid = self.user_of(ws)

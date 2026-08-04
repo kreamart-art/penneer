@@ -60,6 +60,10 @@ const nl: Dict = {
   // chat
   chat: "Chat",
   chatEmpty: "Nog geen berichten. Vraag gerust wat een woord betekent.",
+  berichtReageer: "Reageer",
+  berichtVerwijder: "Verwijder",
+  berichtAntwoordWeg: "Antwoord annuleren",
+  berichtFoto: "Afbeelding",
   chatPlaceholder: "Typ een bericht",
   chatSend: "Stuur",
   chatYou: "jij",
@@ -1095,6 +1099,11 @@ const nl: Dict = {
   ontdekkenAdminTitel: "Ontdekken (in aanbouw)",
   ontdekkenAdminUitleg: "Zet de verzamelmodus aan op dit toestel. Alleen jij ziet hem, spelers niet.",
   ontdekkenOpenen: "Open Ontdekken",
+  ontdekkenDraaiOm: "Draai om",
+  ontdekkenVorige: "Vorige kaart",
+  ontdekkenVolgende: "Volgende kaart",
+  ontdekkenKaartVan: "{n} van {total}",
+  ontdekkenGeenFeiten: "Voor deze kaart zijn nog geen feiten ingevuld.",
 };
 
 const en: Dict = {
@@ -1145,6 +1154,10 @@ const en: Dict = {
   // chat
   chat: "Chat",
   chatEmpty: "No messages yet. Feel free to ask what a word means.",
+  berichtReageer: "Reply",
+  berichtVerwijder: "Delete",
+  berichtAntwoordWeg: "Cancel reply",
+  berichtFoto: "Image",
   chatPlaceholder: "Type a message",
   chatSend: "Send",
   chatYou: "you",
@@ -2155,6 +2168,11 @@ const en: Dict = {
   ontdekkenAdminTitel: "Discover (work in progress)",
   ontdekkenAdminUitleg: "Turn the collection mode on for this device. Only you see it, players do not.",
   ontdekkenOpenen: "Open Discover",
+  ontdekkenDraaiOm: "Flip",
+  ontdekkenVorige: "Previous card",
+  ontdekkenVolgende: "Next card",
+  ontdekkenKaartVan: "{n} of {total}",
+  ontdekkenGeenFeiten: "No facts filled in for this card yet.",
 };
 
 const dict: Record<Lang, Dict> = { nl, en };

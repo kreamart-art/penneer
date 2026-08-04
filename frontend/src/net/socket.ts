@@ -75,6 +75,13 @@ export interface DmMessage {
   voice_dur?: number;
   emote?: string | null;   // chat-emote id; replaces text when set
   image_id?: string | null; // foto of sticker; vervangt de tekst net als een emote
+  // Waar dit een antwoord op is, als AFDRUK en niet als verwijzing: het
+  // origineel kan verwijderd worden en dan hoort het antwoord nog steeds te
+  // laten zien waar het over ging.
+  reply_id?: string | null;
+  reply_from?: string | null;
+  reply_text?: string | null;
+  reply_soort?: string | null; // text | voice | emote | image
 }
 
 export interface DmThreadSummary {
@@ -374,6 +381,8 @@ export interface ChatMessage {
   voice_dur?: number;
   emote?: string;   // chat-emote id (ceNN); replaces text when set
   image_id?: string; // foto of sticker, opgehaald via /api/image/<code>/<id>
+  /** Waar dit een antwoord op is, als afdruk: het origineel kan weg zijn. */
+  reply?: { id: number; name: string; text: string; soort: string };
 }
 
 export interface ClientState {
@@ -491,6 +500,7 @@ type ServerMessage =
   | { type: "shop_result"; ok: boolean; reason: string }
   | { type: "coins_result"; ok: boolean; reason: string; item?: string }
   | { type: "chat"; message: ChatMessage }
+  | { type: "chat_delete"; id: number }
   | { type: "chat_history"; messages: ChatMessage[] }
   | { type: "account"; account: Account | null; token?: string; deleted?: boolean }
   | { type: "friends"; friends: Friend[] }
@@ -504,6 +514,7 @@ type ServerMessage =
   | { type: "melding"; melding: Melding; ongelezen: number }
   | { type: "history"; games: HistoryGame[] }
   | { type: "dm"; message: DmMessage }
+  | { type: "dm_delete"; id: string }
   | { type: "dm_thread"; user_id: string; messages: DmMessage[] }
   | { type: "dm_threads"; threads: DmThreadSummary[] }
   | { type: "leaderboard"; period: "all" | "week" | "month"; rows: LeaderboardRow[]; climb: number | null }
@@ -799,6 +810,13 @@ function reducer(state: ClientState, action: Action): ClientState {
       const dmBanner = incoming && !openMatches ? m : state.dmBanner;
       return { ...state, dmMessages, dmThreads: found ? dmThreads : state.dmThreads, account, dmBanner };
     }
+    case "dm_delete": {
+      const dmMessages = state.dmMessages.filter((m) => m.id !== msg.id);
+      // De bovenste regel in de gesprekkenlijst kan nu het verkeerde bericht
+      // tonen; die haalt hij zelf opnieuw op als je terugloopt naar de lijst.
+      const dmBanner = state.dmBanner?.id === msg.id ? null : state.dmBanner;
+      return { ...state, dmMessages, dmBanner };
+    }
     case "dm_thread":
       return { ...state, dmOpenWith: msg.user_id, dmMessages: msg.messages, dmBanner: null };
     case "dm_threads":
@@ -841,6 +859,13 @@ function reducer(state: ClientState, action: Action): ClientState {
       delete chatTyping[msg.message.player_id];
       // Keep the badge clear while the panel is open.
       return { ...state, chat, chatTyping, chatSeen: state.chatOpen ? chat.length : state.chatSeen };
+    }
+    case "chat_delete": {
+      const chat = state.chat.filter((m) => m.id !== msg.id);
+      if (chat.length === state.chat.length) return state;
+      // De teller mag niet boven het aantal berichten uitkomen, want dan telt
+      // hij ongelezen berichten die er niet meer zijn.
+      return { ...state, chat, chatSeen: Math.min(state.chatSeen, chat.length) };
     }
     case "chat_typing": {
       const chatTyping = { ...state.chatTyping };
@@ -900,7 +925,8 @@ export interface GameApi {
   adminCatDelete: (id: string) => void;
   redeemAiCode: (code: string) => void;
   clearShopResult: () => void;
-  sendChat: (text: string, voice?: { id: string; dur: number }, emote?: string, imageId?: string) => void;
+  sendChat: (text: string, voice?: { id: string; dur: number }, emote?: string, imageId?: string, replyTo?: number) => void;
+  deleteChat: (id: number) => void;
   sendChatTyping: (typing: boolean) => void;
   openChat: () => void;
   closeChat: () => void;
@@ -918,7 +944,8 @@ export interface GameApi {
   searchUsers: (query: string) => void;
   viewProfile: (user_id: string) => void;
   historyGet: () => void;
-  dmSend: (user_id: string, text: string, voice?: { id: string; dur: number }, emote?: string, imageId?: string) => void;
+  dmSend: (user_id: string, text: string, voice?: { id: string; dur: number }, emote?: string, imageId?: string, replyTo?: string) => void;
+  dmDelete: (id: string) => void;
   dmOpen: (user_id: string) => void;
   dmClose: () => void;
   clearDmBanner: () => void;
@@ -1137,15 +1164,19 @@ export function useGame(): GameApi {
       if (c) send({ type: "shop_redeem", code: c });
     },
     clearShopResult: () => dispatch({ type: "clearShopResult" }),
-    sendChat: (text, voice, emote, imageId) => {
+    sendChat: (text, voice, emote, imageId, replyTo) => {
       const t = text.trim().slice(0, 280);
+      // Het antwoord hangt aan elke soort bericht: je kunt met een sticker of
+      // een spraakbericht net zo goed ergens op reageren als met tekst.
+      const op = typeof replyTo === "number" ? { reply_to: replyTo } : {};
       // Dezelfde volgorde als op de server: een bericht is precies EEN soort,
       // dus wie meerdere velden meestuurt krijgt de eerste die past.
-      if (emote) send({ type: "chat_send", emote });
-      else if (imageId) send({ type: "chat_send", image_id: imageId });
-      else if (voice) send({ type: "chat_send", text: t, voice_id: voice.id, voice_dur: voice.dur });
-      else if (t) send({ type: "chat_send", text: t });
+      if (emote) send({ type: "chat_send", emote, ...op });
+      else if (imageId) send({ type: "chat_send", image_id: imageId, ...op });
+      else if (voice) send({ type: "chat_send", text: t, voice_id: voice.id, voice_dur: voice.dur, ...op });
+      else if (t) send({ type: "chat_send", text: t, ...op });
     },
+    deleteChat: (id) => send({ type: "chat_delete", id }),
     sendChatTyping: (typing) => send({ type: "chat_typing", typing }),
     openChat: () => dispatch({ type: "chatOpen", open: true }),
     closeChat: () => dispatch({ type: "chatOpen", open: false }),
@@ -1173,13 +1204,15 @@ export function useGame(): GameApi {
     searchUsers: (query) => send({ type: "user_search", query }),
     viewProfile: (user_id) => send({ type: "profile_view", user_id }),
     historyGet: () => send({ type: "history_get" }),
-    dmSend: (user_id, text, voice, emote, imageId) => {
+    dmSend: (user_id, text, voice, emote, imageId, replyTo) => {
       const t = text.trim().slice(0, 500);
-      if (emote) send({ type: "dm_send", user_id, emote });
-      else if (imageId) send({ type: "dm_send", user_id, image_id: imageId });
-      else if (voice) send({ type: "dm_send", user_id, text: t, voice_id: voice.id, voice_dur: voice.dur });
-      else if (t) send({ type: "dm_send", user_id, text: t });
+      const op = replyTo ? { reply_to: replyTo } : {};
+      if (emote) send({ type: "dm_send", user_id, emote, ...op });
+      else if (imageId) send({ type: "dm_send", user_id, image_id: imageId, ...op });
+      else if (voice) send({ type: "dm_send", user_id, text: t, voice_id: voice.id, voice_dur: voice.dur, ...op });
+      else if (t) send({ type: "dm_send", user_id, text: t, ...op });
     },
+    dmDelete: (id) => send({ type: "dm_delete", id }),
     dmOpen: (user_id) => send({ type: "dm_thread", user_id }),
     dmClose: () => dispatch({ type: "dmClose" }),
     clearDmBanner: () => dispatch({ type: "clearDmBanner" }),

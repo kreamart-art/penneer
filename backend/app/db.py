@@ -785,6 +785,16 @@ class Database:
         if dcols2 and "image_id" not in dcols2:
             self._conn.execute("ALTER TABLE dms ADD COLUMN image_id TEXT")
             self._conn.commit()
+        # Antwoorden op een bericht. Er gaat een AFDRUK mee van waar je op
+        # antwoordt en niet alleen een verwijzing: de ander kan zijn bericht
+        # weghalen, en dan hoort jouw antwoord nog steeds te laten zien waar het
+        # over ging. Vandaar de tekst en de soort erbij, niet alleen het id.
+        if dcols2 and "reply_id" not in dcols2:
+            self._conn.execute("ALTER TABLE dms ADD COLUMN reply_id TEXT")
+            self._conn.execute("ALTER TABLE dms ADD COLUMN reply_from TEXT")
+            self._conn.execute("ALTER TABLE dms ADD COLUMN reply_text TEXT")
+            self._conn.execute("ALTER TABLE dms ADD COLUMN reply_soort TEXT")
+            self._conn.commit()
         # Wie in een club WAT mag. Standaard mag iedereen uitnodigen (een club
         # groeit door zijn leden, niet door zijn eigenaar) maar alleen de
         # eigenaar verandert de naam en het embleem: dat is de identiteit.
@@ -2849,7 +2859,8 @@ class Database:
 
     def dm_send(self, from_user: str, to_user: str, text: str,
                 voice_id: Optional[str] = None, voice_dur: int = 0,
-                emote: Optional[str] = None, image_id: Optional[str] = None) -> Optional[dict]:
+                emote: Optional[str] = None, image_id: Optional[str] = None,
+                reply_to: Optional[str] = None) -> Optional[dict]:
         text = (text or "").strip()[: self.DM_MAX_LEN]
         if emote:
             # The caller has already checked the sender owns this emote's pack.
@@ -2882,23 +2893,58 @@ class Database:
             return None
         if from_user == to_user:
             return None
+        # Waar dit een antwoord op is. Het bericht moet uit DIT gesprek komen,
+        # anders kon je met een gegokt id een stuk uit andermans gesprek in het
+        # jouwe citeren.
+        r_id = r_van = r_tekst = r_soort = None
+        if reply_to:
+            with self._lock:
+                bron = self._q(
+                    "SELECT id, from_user, to_user, text, voice_id, emote, image_id FROM dms WHERE id=?",
+                    (reply_to,),
+                )
+            if bron and {bron[0]["from_user"], bron[0]["to_user"]} == {from_user, to_user}:
+                b = bron[0]
+                r_id = b["id"]
+                r_van = b["from_user"]
+                r_tekst = b["text"] or ""
+                r_soort = ("emote" if b["emote"] else "image" if b["image_id"]
+                           else "voice" if b["voice_id"] else "text")
         mid = _new_id()
         now = time.time()
         with self._lock:
             self._exec(
-                "INSERT INTO dms (id, from_user, to_user, text, created_at, voice_id, voice_dur, emote, image_id) VALUES (?,?,?,?,?,?,?,?,?)",
-                (mid, from_user, to_user, text, now, voice_id, voice_dur if voice_id else 0, emote, image_id),
+                "INSERT INTO dms (id, from_user, to_user, text, created_at, voice_id, voice_dur, emote, image_id,"
+                " reply_id, reply_from, reply_text, reply_soort) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (mid, from_user, to_user, text, now, voice_id, voice_dur if voice_id else 0, emote, image_id,
+                 r_id, r_van, r_tekst, r_soort),
             )
         return {"id": mid, "from_user": from_user, "to_user": to_user, "text": text,
                 "created_at": now, "voice_id": voice_id, "voice_dur": voice_dur if voice_id else 0,
-                "emote": emote, "image_id": image_id}
+                "emote": emote, "image_id": image_id,
+                "reply_id": r_id, "reply_from": r_van, "reply_text": r_tekst, "reply_soort": r_soort}
+
+    def dm_delete(self, user_id: str, mid: str) -> Optional[str]:
+        """Haal je EIGEN bericht weg. Geeft terug met wie het gesprek was, zodat
+        de server ook die kant kan bijwerken; None als het bericht niet bestaat
+        of niet van jou is.
+
+        Het bericht verdwijnt echt uit de tabel. Antwoorden die eraan hingen
+        blijven staan, want die dragen hun eigen afdruk van de tekst."""
+        with self._lock:
+            rij = self._q("SELECT from_user, to_user FROM dms WHERE id=?", (mid,))
+            if not rij or rij[0]["from_user"] != user_id:
+                return None
+            self._exec("DELETE FROM dms WHERE id=?", (mid,))
+            return rij[0]["to_user"]
 
     def dm_thread(self, user_id: str, other_id: str, limit: int = 60) -> list[dict]:
         """Conversation between two users, oldest first. Marks the incoming
         half as read."""
         with self._lock:
             rows = self._q(
-                "SELECT id, from_user, to_user, text, created_at, voice_id, voice_dur, emote, image_id FROM dms "
+                "SELECT id, from_user, to_user, text, created_at, voice_id, voice_dur, emote, image_id,"
+                " reply_id, reply_from, reply_text, reply_soort FROM dms "
                 "WHERE (from_user=? AND to_user=?) OR (from_user=? AND to_user=?) "
                 "ORDER BY created_at DESC LIMIT ?",
                 (user_id, other_id, other_id, user_id, limit),
