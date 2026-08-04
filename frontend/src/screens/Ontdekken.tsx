@@ -324,7 +324,7 @@ function Hub({ data, onCategorie, onOefenen, onQuiz, onVerzameling }: {
         <HubSectie letter={data.daily_letter} streak={data.streak_days} onSpeel={() => onOefenen(data.daily_letter)} />
       </div>
 
-      <GoudKader hoek={13} kleur="violet" dik={0.6} gloed vulling padding={12} style={{ marginBottom: 16 }}>
+      <GoudKader hoek={13} kleur="violet" dik={0.6} gloed vulling binnenlijn padding={12} style={{ marginBottom: 16 }}>
         <SectieKop>{t("ontdekkenJouwVoortgang")}</SectieKop>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 5 }}>
           {data.categories.map((c) => {
@@ -343,8 +343,8 @@ function Hub({ data, onCategorie, onOefenen, onQuiz, onVerzameling }: {
                     afronding van de punten en de binnenlijn blijven gelijk.
                     Goud markeert de categorie waar je het verst in bent. */}
                 <GoudKader
-                  hoek={8} kleur={actief ? "goud" : "violet"} dik={1} vulling="licht" binnenlijn
-                  binnenSterkte={0.4} gloed={actief} padding="8px 2px"
+                  hoek={8} kleur={actief ? "goud" : "violet"} dik={1} vulling="licht"
+                  binnenlijn={actief} binnenSterkte={0.4} gloed={actief} padding="8px 2px"
                 >
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
                     <span aria-hidden style={{ color: actief ? colors.gold : colors.violet, display: "flex" }}>
@@ -406,7 +406,7 @@ function Hub({ data, onCategorie, onOefenen, onQuiz, onVerzameling }: {
         )}
       </div>
 
-      <GoudKader hoek={13} kleur="violet" dik={0.6} gloed vulling padding={12} style={{ marginBottom: 16 }}>
+      <GoudKader hoek={13} kleur="violet" dik={0.6} gloed vulling binnenlijn padding={12} style={{ marginBottom: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <Brain size={30} color={colors.violet} style={{ flexShrink: 0 }} />
           <div style={{ flex: 1, minWidth: 0 }}>

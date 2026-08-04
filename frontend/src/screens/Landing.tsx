@@ -65,6 +65,7 @@ export function Landing({
   onShowSettings,
   onShowShop,
   onShowTraining,
+  ontdekVrij = false,
   onShowDaily,
   onShowDuel,
   onShowProfile,
@@ -75,6 +76,10 @@ export function Landing({
   onShowSettings: () => void;
   onShowShop: () => void;
   onShowTraining: () => void;
+  /** Staat de admin-schakelaar aan, dan opent deze tegel Ontdekken en hoort er
+   *  ook Ontdekken op te staan. Staat hij uit, dan is het gewoon Oefenen en
+   *  merkt een speler er niets van. */
+  ontdekVrij?: boolean;
   onShowDaily: () => void;
   onShowProfile: () => void;
   onShowDuel: () => void;
@@ -666,7 +671,7 @@ export function Landing({
                 }}
                 art="train"
                 icon={<GraduationCap size={30} strokeWidth={2.2} />}
-                label={t("trainTitle")}
+                label={ontdekVrij ? t("ontdekkenTitel") : t("trainTitle")}
               />
               {/* Duel is (nog) een oneven vijfde: hij loopt over beide kolommen
                   tot Toernooi de zesde slot vult, en dan wordt dit vanzelf een

@@ -620,7 +620,7 @@ export default function App() {
           // daar, en oefenen zit erin via "Speel de letter". Staat de
           // admin-schakelaar uit, dan komt de speler gewoon in Oefenen zoals
           // altijd.
-          onShowTraining={() => { if (ontdekVrij) setShowOntdekken(true); else setShowTraining(true); }} onShowDaily={() => setShowDaily(true)} onShowDuel={() => setShowDuel(true)} onShowProfile={() => setShowHub("profile")} onShowInbox={() => setShowHub("inbox")} />;
+          onShowTraining={() => { if (ontdekVrij) setShowOntdekken(true); else setShowTraining(true); }} ontdekVrij={ontdekVrij} onShowDaily={() => setShowDaily(true)} onShowDuel={() => setShowDuel(true)} onShowProfile={() => setShowHub("profile")} onShowInbox={() => setShowHub("inbox")} />;
   }
 
   // Which bar item is lit. Sub-flows that are not bar destinations (rules,
