@@ -276,7 +276,12 @@ function HubSectie({ letter, streak, onSpeel }: {
           de rij erboven de hele resterende hoogte en staat die er netjes in het
           midden van, in plaats van dat beide blokken samen om een gat heen
           gecentreerd zijn. */}
-      <div style={{ position: "absolute", ...HUB.plaat, display: "flex", flexDirection: "column", padding: "2% 5% 6%" }}>
+      {/* Let op: procenten in padding rekenen tegen de BREEDTE van de sectie en
+          niet tegen deze plaat. 6% onderin werd 22px op een plaat van 50px hoog
+          en duwde de vinkjes juist omhoog; vandaar pixels boven en onder.
+          Zeven onderin, niet drie: de vinkjes horen net BOVEN de lijn te
+          zweven en er niet tegenaan te liggen. */}
+      <div style={{ position: "absolute", ...HUB.plaat, display: "flex", flexDirection: "column", padding: "3px 5% 7px" }}>
         <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "4%" }}>
           <Flame size={15} color={colors.orange} style={{ flexShrink: 0 }} />
           <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: "clamp(12px, 4vw, 22px)", lineHeight: 1, color: colors.ink }}>
