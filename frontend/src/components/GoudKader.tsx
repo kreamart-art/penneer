@@ -167,7 +167,7 @@ export function GoudKader({
       {w > 0 && (
         <svg
           width={w} height={h} viewBox={`0 0 ${w} ${h}`} aria-hidden
-          style={{ position: "absolute", inset: 0, pointerEvents: "none", display: "block" }}
+          style={{ position: "absolute", inset: 0, pointerEvents: "none", display: "block", overflow: "visible" }}
         >
           <defs>
             {fade ? (
@@ -233,20 +233,27 @@ export function GoudKader({
               // vier keer dezelfde omtrek, elk met een verloop dat om zijn
               // eigen hoek heen licht is en verderop niets meer doet. Wat je
               // overhoudt zijn vier verdiepte hoeken met lucht ertussen.
+              //
+              // De straal is de UITDOOFAFSTAND in pixels, met een ondergrens.
+              // Eerst stond hier de diagonaal met de stops op een paar procent,
+              // en dan krimpt de hoek mee met het vak: op een tegel van 63 bij
+              // 111 bleef er zo'n twaalf pixel lijn over en dat leest als een
+              // stipje in de hoek in plaats van als een verdiepte hoek. Nu
+              // dooft hij altijd over minstens 26px uit.
               <radialGradient
                 key={i} id={`${id}b${i}`} gradientUnits="userSpaceOnUse"
-                cx={hx * w} cy={hy * h} r={Math.hypot(w, h)}
+                cx={hx * w} cy={hy * h}
+                r={Math.max(26, Math.min(Math.hypot(w, h) * 0.22, 95))}
               >
                 <stop offset="0%" stopColor={tint.hoog} stopOpacity="1" />
-                <stop offset="5%" stopColor={tint.hoog} stopOpacity="0.75" />
-                <stop offset="12%" stopColor={tint.mid} stopOpacity="0.28" />
-                <stop offset="20%" stopColor={tint.laag} stopOpacity="0" />
+                <stop offset="25%" stopColor={tint.hoog} stopOpacity="0.75" />
+                <stop offset="58%" stopColor={tint.mid} stopOpacity="0.3" />
                 <stop offset="100%" stopColor={tint.laag} stopOpacity="0" />
               </radialGradient>
             ))}
             {gloed && (
               <filter id={`${id}g`} x="-40%" y="-40%" width="180%" height="180%">
-                <feGaussianBlur stdDeviation={Math.max(1.6, dik * 4)} />
+                <feGaussianBlur stdDeviation={Math.max(1.1, dik * 2.2)} />
               </filter>
             )}
           </defs>
@@ -260,7 +267,7 @@ export function GoudKader({
               {gloed && (
                 <path
                   d={punten} fill="none" stroke={`url(#${id}h${i})`}
-                  strokeWidth={Math.max(dik * 3, 1.6)} filter={`url(#${id}g)`}
+                  strokeWidth={Math.max(dik * 2.2, 1.4)} filter={`url(#${id}g)`}
                   opacity={fade ? 0.9 : 0.75}
                 />
               )}
@@ -272,7 +279,15 @@ export function GoudKader({
               het verloop van hoek naar midden hetzelfde blijft en alleen de
               lijn zwaarder of lichter wordt. */}
           {binnenlijn && HOEKEN4.map((_, i) => (
-            <path key={i} d={binnen} fill="none" stroke={`url(#${id}b${i})`} strokeWidth={dik} opacity={binnenSterkte} />
+            <g key={i} opacity={binnenSterkte}>
+              {gloed && (
+                <path
+                  d={binnen} fill="none" stroke={`url(#${id}b${i})`}
+                  strokeWidth={Math.max(dik * 2.2, 1.4)} filter={`url(#${id}g)`} opacity={0.9}
+                />
+              )}
+              <path d={binnen} fill="none" stroke={`url(#${id}b${i})`} strokeWidth={dik} />
+            </g>
           ))}
         </svg>
       )}

@@ -150,11 +150,16 @@ const HUB_RATIO = 894 / 407;
 // rechtermarge van het opschrift houdt die vrij.
 const ONDER_RATIO = 887 / 143;
 const HUB = {
-  // Een VIERKANT vak van 234px midden op de ring (28.4%, 51.7%). De letter-art
-  // is 256x256 met de glyph in de middelste 59%, dus bij objectFit contain
-  // wordt de glyph 137px: ruim zestig procent van de opening van 229px, en
-  // breed genoeg dat zelfs een W (92% van zijn vak) nog binnen de ring past.
-  letter:  { left: "15.3%", right: "58.5%", top: "23.0%", bottom: "19.5%" },
+  // Een VIERKANT vak van 236px op het midden van de medaille: (28.45%, 52.25%).
+  // Dat midden komt van een cirkelpassing op de BUITENRAND van de ring, want
+  // die is gesloten. De binnenrand kon niet: daar zitten streepjes met donkere
+  // gaten ertussen, en een straal die door zo'n gat gaat loopt gewoon door.
+  // De passing zit strak (straal 136..142 over 720 richtingen).
+  // De art is 256x256 met de glyph in de middelste 59%, dus bij objectFit
+  // contain wordt de glyph 138px hoog in een opening van 230px. De maat is
+  // bepaald door de BREEDSTE letter: een W vult 92% van zijn vak en wordt zo
+  // 217px, met zes pixel lucht aan weerskanten.
+  letter:  { left: "15.25%", right: "58.35%", top: "23.26%", bottom: "18.76%" },
   // Gecentreerd BOVEN de ring: die begint op 18.1% van de hoogte en zijn
   // midden ligt op 28.4% van de breedte, dus dit vak loopt van 4% tot 52.8%.
   bovenop: { left: "4.0%",  right: "47.2%", top: "2.0%",  bottom: "84.0%" },
@@ -205,27 +210,16 @@ function HubSectie({ letter, streak, onSpeel }: {
           pointerEvents: "none",
         }}
       />
-      {/* Dezelfde warme gloed als onder de kaarten: de VORM van de sectie in
-          goud, vervaagd, eronder. De art zelf vervagen zou de medaille en de
-          paarse hemel uitsmeren; als masker over een verloop gloeit precies de
-          omtrek. */}
-      <span
-        aria-hidden
-        style={{
-          // In PIXELS naar buiten en niet in procenten: de sectie is ruim twee
-          // keer zo breed als hoog, dus een halo van 8% zou boven en onder maar
-          // half zo dik zijn als links en rechts. Het masker vult dit hele vak,
-          // dus de vorm is overal precies 8px groter dan de art.
-          position: "absolute", inset: -8,
-          background: `radial-gradient(55% 60% at 50% 55%, ${colors.gold}, ${colors.orange} 65%, ${colors.orange} 100%)`,
-          WebkitMaskImage: "url(/ontdek/hub-sectie.webp)", maskImage: "url(/ontdek/hub-sectie.webp)",
-          WebkitMaskSize: "100% 100%", maskSize: "100% 100%",
-          WebkitMaskPosition: "center", maskPosition: "center",
-          WebkitMaskRepeat: "no-repeat", maskRepeat: "no-repeat",
-          filter: "blur(10px)", opacity: 0.5, pointerEvents: "none",
-        }}
+      {/* De gloed staat als gestapelde drop-shadows OP de art. Die volgen de
+          alfa van de vorm, dus ook de afgeschuinde hoeken, en doven naar
+          buiten uit: een strakke kern in goud en twee wijdere in oranje. Een
+          gemaskerde kopie eronder kan dat niet, want die heeft een vaste vorm
+          en geeft dus een randje in plaats van een verloop. */}
+      <img
+        src="/ontdek/hub-sectie.webp" alt=""
+        style={{ position: "relative", width: "100%", height: "100%", display: "block",
+          filter: "drop-shadow(0 0 1.5px rgba(154,120,255,.9)) drop-shadow(0 0 4px rgba(122,103,255,.5))" }}
       />
-      <img src="/ontdek/hub-sectie.webp" alt="" style={{ position: "relative", width: "100%", height: "100%", display: "block" }} />
 
       <div style={{ position: "absolute", ...HUB.bovenop, display: "grid", placeItems: "center" }}>
         <span style={{ fontFamily: font.wide, fontSize: "clamp(8px, 2.9vw, 15px)", letterSpacing: ".08em", color: colors.gold, whiteSpace: "nowrap" }}>
@@ -303,7 +297,7 @@ function SectieKop({ children, onder }: {
         </span>
         <span aria-hidden style={{ flex: 1, height: 1, background: `linear-gradient(90deg, ${withAlpha(colors.gold, 0.35)}, transparent)` }} />
       </div>
-      {onder && <div style={{ display: "flex", justifyContent: "center", marginTop: 8 }}>{onder}</div>}
+      {onder && <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 6 }}>{onder}</div>}
     </div>
   );
 }
@@ -345,7 +339,7 @@ function Hub({ data, onCategorie, onOefenen, onQuiz, onVerzameling }: {
                     Goud markeert de categorie waar je het verst in bent. */}
                 <GoudKader
                   hoek={8} kleur={actief ? "goud" : "violet"} dik={1} vulling binnenlijn
-                  binnenSterkte={0.4} padding="8px 2px"
+                  binnenSterkte={0.4} gloed={actief} padding="8px 2px"
                 >
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
                     <span aria-hidden style={{ color: actief ? colors.gold : colors.violet, display: "flex" }}>
@@ -374,10 +368,10 @@ function Hub({ data, onCategorie, onOefenen, onQuiz, onVerzameling }: {
               onClick={() => { sound.uiTap(); onVerzameling(); }}
               className="pressable"
               style={{
-                display: "inline-flex", alignItems: "center", gap: 4, flexShrink: 0,
-                padding: "4px 9px", borderRadius: 999, cursor: "pointer",
-                background: "transparent", border: `1px solid ${withAlpha(colors.violet, 0.5)}`,
-                fontFamily: font.ui, fontSize: 10.5, fontWeight: 600, color: colors.sub,
+                display: "inline-flex", alignItems: "center", gap: 3, flexShrink: 0,
+                padding: "2px 0", cursor: "pointer",
+                background: "transparent", border: "none",
+                fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: colors.sub,
               }}
             >
               {t("ontdekkenBekijkAlle")}
@@ -450,22 +444,11 @@ function Hub({ data, onCategorie, onOefenen, onQuiz, onVerzameling }: {
             pointerEvents: "none",
           }}
         />
-        {/* Dezelfde warme gloed als onder de bovensectie, in pixels naar buiten
-            zodat hij op een balk die zes keer zo breed is als hoog boven en
-            onder net zo dik is als links en rechts. */}
-        <span
-          aria-hidden
-          style={{
-            position: "absolute", inset: -7,
-            background: `radial-gradient(55% 60% at 50% 55%, ${colors.gold}, ${colors.orange} 65%, ${colors.orange} 100%)`,
-            WebkitMaskImage: "url(/ontdek/onder-sectie.webp)", maskImage: "url(/ontdek/onder-sectie.webp)",
-            WebkitMaskSize: "100% 100%", maskSize: "100% 100%",
-            WebkitMaskPosition: "center", maskPosition: "center",
-            WebkitMaskRepeat: "no-repeat", maskRepeat: "no-repeat",
-            filter: "blur(9px)", opacity: 0.5, pointerEvents: "none",
-          }}
+        <img
+          src="/ontdek/onder-sectie.webp" alt=""
+          style={{ position: "relative", width: "100%", height: "100%", display: "block",
+            filter: "drop-shadow(0 0 1.5px rgba(154,120,255,.9)) drop-shadow(0 0 4px rgba(122,103,255,.5))" }}
         />
-        <img src="/ontdek/onder-sectie.webp" alt="" style={{ position: "relative", width: "100%", height: "100%", display: "block" }} />
 
         {/* De chevron zit in de art; hier ligt alleen het opschrift erop. De
             rechtermarge van 11% houdt die chevron vrij. */}
@@ -763,32 +746,16 @@ function KaartTegel({ kaart, nu, onOpen, groot, chip }: {
           transform: "translateY(4px)", pointerEvents: "none",
         }}
       />
-      {/* De gloed is de VORM van de kaart in warm goud, vervaagd, eronder.
-          Niet de art zelf vervagen: dat is een foto, dus dan waaieren er
-          groene luchten en grijze gebouwen naar buiten in plaats van goud.
-          Vandaar de art als masker over een egaal warm verloop, zodat precies
-          de omtrek gloeit. En geen box-shadow: die werpt een RECHTHOEK achter
-          een kaart met afgeschuinde hoeken. */}
-      {/* Op ELKE kaart die je hebt. Op een kaart die je nog niet ontdekt hebt
-          niet: die staat in de andere tak hierboven en hoort niet te stralen. */}
-      <span
-        aria-hidden
-        style={{
-          position: "absolute", left: "-6%", right: "-6%", top: "-4%", bottom: "-4%",
-          background: `radial-gradient(60% 55% at 50% 55%, ${colors.gold}, ${colors.orange} 65%, ${colors.orange} 100%)`,
-          WebkitMaskImage: `url(${kaart.image_path || "/static/cards/voorkant-leeg.webp"})`,
-          maskImage: `url(${kaart.image_path || "/static/cards/voorkant-leeg.webp"})`,
-          WebkitMaskSize: "88% 92%", maskSize: "88% 92%",
-          WebkitMaskPosition: "center", maskPosition: "center",
-          WebkitMaskRepeat: "no-repeat", maskRepeat: "no-repeat",
-          filter: "blur(7px)", opacity: 0.55, pointerEvents: "none",
-        }}
-      />
+      {/* Dezelfde gestapelde drop-shadows als op de secties: die volgen de
+          afgeschuinde vorm van de kaart en doven geleidelijk uit. Alleen hier,
+          in de tak voor kaarten die je HEBT: een kaart die je nog niet ontdekt
+          hebt, hoort niet te stralen. */}
       <img
         src={kaart.image_path || "/static/cards/voorkant-leeg.webp"}
         alt={kaart.word || ""}
         loading="lazy"
-        style={{ position: "relative", width: "100%", aspectRatio: KAART_RATIO, display: "block" }}
+        style={{ position: "relative", width: "100%", aspectRatio: KAART_RATIO, display: "block",
+          filter: "drop-shadow(0 0 2px rgba(255,194,61,.95)) drop-shadow(0 0 6px rgba(255,159,69,.55))" }}
       />
       {kaart.iso && (
         <img
