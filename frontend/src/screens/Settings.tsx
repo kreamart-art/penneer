@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { ArrowLeft, ChevronRight, Compass, Download, Globe, HelpCircle, Mail, Music, Share, Trash2, UserCog, Volume2 } from "lucide-react";
 import { Logo } from "../components/Logo";
+import { KnopPlaat } from "../components/KnopPlaat";
 import { Paneel, SierKop } from "../components/ProfileHero";
 import { PilKeuze } from "./Hub";
 import { Button } from "../components/Button";
@@ -161,7 +162,7 @@ function AdminCategories({ game }: { game: GameApi }) {
             placeholder="0"
           />
           <span style={{ flex: 1, fontFamily: font.ui, fontSize: 12, color: colors.faint }}>{t("catPriceHint")}</span>
-          <Button variant="primary" disabled={name.trim().length < 2} onClick={create}>{t("catCreate")}</Button>
+          <KnopPlaat kleur="paars" breed={96} uit={name.trim().length < 2} onClick={create} label={t("catCreate")} />
         </div>
       </div>
     </div>
@@ -457,9 +458,7 @@ export function Settings({ game, onBack, onShowRules, onShowTour, onShowLegal, o
                 type="password"
                 style={{ flex: 1, minWidth: 0, fontFamily: font.ui, fontSize: 14, color: colors.ink, background: withAlpha("#000000", 0.25), border: `1.5px solid ${colors.panelBorder}`, borderRadius: 10, padding: "10px 12px" }}
               />
-              <Button variant="primary" disabled={!adminCode.trim()} onClick={() => { game.adminLogin(adminCode.trim()); setAdminCode(""); }}>
-                {t("login")}
-              </Button>
+              <KnopPlaat kleur="paars" breed={96} uit={!adminCode.trim()} onClick={() => { game.adminLogin(adminCode.trim()); setAdminCode(""); }} label={t("login")} />
             </div>
           ) : (
             <>

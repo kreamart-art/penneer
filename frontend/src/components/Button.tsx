@@ -6,7 +6,7 @@
 // vrienden" en "Maak een room". De hero-TEGEL op de main page hoort er niet
 // bij: dat is een vierkante tegel, geen balk, en die houdt zijn eigen goud.
 import React, { useState } from "react";
-import { PlateArt, PLATE_CHAMFER, fullWidthButton, plateMetrics, type PlateKind } from "./GoldButton";
+import { PlateArt, PLATE_CHAMFER, fullWidthButton, compactButton, plateMetrics, type PlateKind } from "./GoldButton";
 import { colors, font, radius } from "../theme/tokens";
 
 type Variant = "primary" | "gold" | "danger" | "ghost";
@@ -110,8 +110,7 @@ export function Button({ variant = "primary", full, compact, style, children, di
           // een BLOK. Vandaar grid: dan pakken de automatische marges wel.
           display: full ? "grid" : "inline-grid",
           ...(full ? fullWidthButton : null),
-        ...(full && compact ? { width: `min(100%, 232px)` } : null),
-          ...(full && compact ? { width: `min(100%, 232px)` } : null),
+          ...(full && compact ? compactButton : null),
           boxShadow: down
             ? "0 2px 6px rgba(0,0,0,.45), 0 1px 0 rgba(80,12,6,.9)"
             : "0 5px 12px rgba(0,0,0,.45), 0 3px 0 rgba(80,12,6,.9)",
@@ -180,7 +179,7 @@ export function Button({ variant = "primary", full, compact, style, children, di
         // uitrekken), de breedte laat ruimte over voor de gloed naast de plaat,
         // en het plafond houdt de knop op een tablet normaal van formaat.
         ...(full ? fullWidthButton : null),
-        ...(full && compact ? { width: `min(100%, 232px)` } : null),
+        ...(full && compact ? compactButton : null),
         display: full ? "grid" : undefined,
         placeItems: full ? "center" : undefined,
         textAlign: "center",

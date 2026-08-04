@@ -550,14 +550,14 @@ function Hub({ data, onCategorie, onOefenen, onQuiz, onVerzameling }: {
                 }}
               >
                 <img
-                  src="/btn-gold.webp" alt="" aria-hidden draggable={false}
+                  src="/btn-gold.webp?v=2" alt="" aria-hidden draggable={false}
                   style={{
                     position: "absolute", inset: 0, width: "100%", height: "100%", display: "block",
                     filter: "brightness(0) blur(5px)", opacity: 0.5, transform: "translateY(4px)",
                     pointerEvents: "none",
                   }}
                 />
-                <img src="/btn-gold.webp" alt="" style={{ position: "relative", width: "100%", height: "100%", display: "block" }} />
+                <img src="/btn-gold.webp?v=2" alt="" style={{ position: "relative", width: "100%", height: "100%", display: "block" }} />
                 <span
                   style={{
                     position: "absolute", inset: 0, display: "grid", placeItems: "center",

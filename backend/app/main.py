@@ -507,7 +507,12 @@ async def discover_overview(request: Request) -> JSONResponse:
         })
     state = db.discover_state(uid) if uid else {}
     dag = discover.today()
-    dagletter = discover.daily_letter(uid, dag) if uid else None
+    # OOK VOOR EEN GAST. De dagletter is per speler, maar zonder speler stond
+    # er None en dan tekende de hub zijn ring leeg: een sectie met de kop
+    # "letter van vandaag", een knop eronder, en er middenin niets. Dat leest
+    # als kapot terwijl rondkijken juist mag. Een gast deelt daarom één letter
+    # per dag; spelen kan hij nog steeds, alleen bewaren niet.
+    dagletter = discover.daily_letter(uid or "gast", dag)
     # Kan de speler de dagletter ook echt spelen? Zonder eigen kaarten van die
     # letter valt er niets te vragen, en dan hoort er geen quizknop te staan
     # maar de weg naar Oefenen: eerst verzamelen, dan overhoren.

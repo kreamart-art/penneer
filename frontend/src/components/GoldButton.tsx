@@ -44,14 +44,14 @@ interface Plate {
 // afschuining eromheen niet, dus die sprong is de rand.
 const PLATES: Record<PlateKind, Plate> = {
   gold: {
-    src: "/btn-gold.webp",
+    src: "/btn-gold.webp?v=2",
     w: 1000, h: 269,
     fx: 36, fy: 28, fw: 930, fh: 202,
     text: "#4A2E04",
     shine: "0 1px 0 rgba(255,240,190,.45)",
   },
   violet: {
-    src: "/btn-violet.webp",
+    src: "/btn-violet.webp?v=2",
     w: 1000, h: 269,
     fx: 36, fy: 29, fw: 930, fh: 200,
     text: colors.ink,
@@ -73,19 +73,47 @@ const PLATES: Record<PlateKind, Plate> = {
 // beide platen merkbaar rekt: goud een halve procent, paars een halve procent.
 // Op 4,4 (de oude waarde) zou de nieuwe art er 4,5% te hoog uit komen te zien.
 export const BUTTON_RATIO = 4.63;
-// KLEINER dan eerst (was 87% en 320px). De knop besloeg bijna de hele breedte
-// van het scherm en dat maakt van een actie een balk. Het OPSCHRIFT blijft op
-// zijn eigen maat staan: dat is een vast getal in Button.tsx en hangt niet aan
-// de knop, dus de knop krimpt en de tekst niet.
-export const BUTTON_FIT = "78%";
-export const BUTTON_MAX_WIDTH = 280;
+// DE MAAT VAN DE KNOP. Dit is de enige knop waaraan je hoeft te draaien: de
+// hoogte volgt uit de breedte via BUTTON_RATIO, dus hij schaalt altijd in
+// verhouding en de plaat rekt nooit.
+//
+// Van 320 naar 280 naar 220. Op 320 besloeg de knop bijna de hele breedte van
+// het scherm en werd van een actie een balk; op 220 zit de tekst er strak in.
+// Het OPSCHRIFT schaalt niet mee: dat is een vast getal in Button.tsx, dus de
+// knop krimpt en de letters blijven leesbaar.
+export const BUTTON_FIT = "62%";
+export const BUTTON_MAX_WIDTH = 220;
 
 /** Breedte-regels die elke knop op volle breedte deelt. */
 export const fullWidthButton = {
-  width: `min(${BUTTON_FIT}, ${BUTTON_MAX_WIDTH}px)`,
+  // DE KNOP IS ZO BREED ALS ZIJN OPSCHRIFT, niet als het scherm. Een vaste
+  // breedte doet één van twee dingen fout: op een kort woord blijft er een
+  // halve balk leeg over, en op een lang opschrift breekt de tekst in tweeën en
+  // valt hij buiten de plaat. Dus: fit-content voor de tekst plus zijn lucht,
+  // met de vaste maat als ONDERGRENS zodat "Ja" geen knopje wordt, en nooit
+  // breder dan de ruimte die er is.
+  width: "fit-content",
+  minWidth: `min(${BUTTON_FIT}, ${BUTTON_MAX_WIDTH}px)`,
+  maxWidth: "100%",
+  whiteSpace: "nowrap",
   aspectRatio: `${BUTTON_RATIO}`,
+  // ANDERS REKT DE PLAAT ALSNOG. Een knop in een flex-kolom (elke popup, elk
+  // paneel) krijgt van de browser `min-height: auto`, en die ondergrens is
+  // hoger dan wat de verhouding wil: opgemeten 48px waar 39px hoorde, dus de
+  // plaat werd 4,63 breed en 3,7 hoog getekend. Met 0 wint de verhouding en
+  // blijft de art overal in proportie.
+  minHeight: 0,
   marginLeft: "auto",
   marginRight: "auto",
+} as const;
+
+/** `compact`: een slag kleiner, voor een knop in een paneel met een vaste
+ *  hoogte. Dit MOET onder BUTTON_MAX_WIDTH blijven, anders is "compact" juist
+ *  de grootste knop op het scherm. Hij stond op 232 terwijl de gewone knop naar
+ *  220 ging, en dat was precies waar de knop nog te groot uitzag. */
+export const COMPACT_MAX_WIDTH = 176;
+export const compactButton = {
+  minWidth: `min(${BUTTON_FIT}, ${COMPACT_MAX_WIDTH}px)`,
 } as const;
 
 /** Waar de plaat moet liggen zodat zijn LICHTE VLAK precies het knopvak vult. */

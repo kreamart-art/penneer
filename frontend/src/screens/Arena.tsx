@@ -19,7 +19,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft, LogOut } from "lucide-react";
 import { Avatar } from "../components/Avatar";
-import { Button } from "../components/Button";
+import { KnopPlaat } from "../components/KnopPlaat";
 import { Screen } from "../components/Layout";
 import { NeonText } from "../components/NeonText";
 import { ArtSchaduw, GOUD, KADER_LIJN_ROOD, NeonKader, Paneel, PlekWapen } from "../components/ProfileHero";
@@ -649,7 +649,7 @@ export function ArenaDeel({ game, onBack }: { game: GameApi; onBack: () => void 
         ) : info?.af ? (
           // Onbeperkt en gratis: elke knoptekst die naar kosten riekt hoort
           // hier niet. De 24 uur zijn de grens, de beste poging telt.
-          <Button variant="primary" onClick={start}>{fase === "klaar" ? t("arenaOpnieuw") : t("arenaStart")}</Button>
+          <KnopPlaat kleur="paars" breed={150} onClick={start} label={fase === "klaar" ? t("arenaOpnieuw") : t("arenaStart")} />
         ) : null}
 
         {bord}

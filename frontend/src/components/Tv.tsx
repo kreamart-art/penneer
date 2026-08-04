@@ -229,7 +229,7 @@ export function Tv({
   const plaat = (
     <div style={{ position: "relative", width: "100%", aspectRatio: `${VERHOUDING}`, ...style }}>
       <img
-        src="/ui/tv.webp" alt="" aria-hidden draggable={false}
+        src="/ui/tv.webp?v=2" alt="" aria-hidden draggable={false}
         style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }}
       />
       <span

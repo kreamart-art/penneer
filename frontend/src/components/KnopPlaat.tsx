@@ -26,8 +26,8 @@ import { font } from "../theme/tokens";
  *  0,269. De tekst niet: die hangt aan de BREEDTE (breed * 0.15), dus die blijft
  *  precies zoals hij was. */
 const PLAAT = {
-  goud: { src: "/btn-gold.webp", verh: 269 / 1000, hart: "48.0%", tekst: "#3A2405", glans: "rgba(255,240,190,.5)" },
-  paars: { src: "/btn-violet.webp", verh: 269 / 1000, hart: "48.0%", tekst: "#FFFFFF", glans: "rgba(60,20,110,.55)" },
+  goud: { src: "/btn-gold.webp?v=2", verh: 269 / 1000, hart: "48.0%", tekst: "#3A2405", glans: "rgba(255,240,190,.5)" },
+  paars: { src: "/btn-violet.webp?v=2", verh: 269 / 1000, hart: "48.0%", tekst: "#FFFFFF", glans: "rgba(60,20,110,.55)" },
 } as const;
 
 export function KnopPlaat({
