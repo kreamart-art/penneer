@@ -325,10 +325,10 @@ const VLAK = {
   hint:   { left: "32.5%", right: "30.3%", top: "70.5%", bottom: "12.5%" },
   // Mag een stukje over de kist vallen, dat leest beter dan een opschrift
   // dat tegen de bovenlijn van het paneel geperst staat.
-  beloning:  { left: "74.0%", right: "4.0%", top: "11.0%", bottom: "70.0%" },
+  beloning:  { left: "74.0%", right: "4.0%", top: "17.0%", bottom: "64.0%" },
   // Exact de maten van de plaat, op 3x vergroting van de art afgelezen.
   // Een halve procent ernaast is op deze maat al zichtbaar scheef.
-  kistplaat: { left: "78.9%", right: "8.8%", top: "72.8%", bottom: "13.7%" },
+  kistplaat: { left: "78.9%", right: "8.8%", top: "74.2%", bottom: "12.3%" },
 } as const;
 
 function Sectie({ letter, discovered, total, percent, compleet }: {
