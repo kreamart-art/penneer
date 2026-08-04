@@ -92,7 +92,7 @@ export function DagKop({
   /** Hoeveel dagen op rij je meedeed. */
   reeks: number;
   /** Wat er vandaag bovenaan te winnen valt; komt van de server. */
-  prijs: { kist: string | null; coins: number; cash: number; pack?: number } | null;
+  prijs: { kist: string | null; coins: number; cash: number; xp?: number } | null;
   /** Hoeveel van de drie onderdelen je vandaag al deed. */
   gedaan: number;
   totaal: number;
@@ -125,11 +125,31 @@ export function DagKop({
   const [vakKrimp, setVakKrimp] = useState(1);
   useLayoutEffect(() => {
     const d = vakDoos.current, i = vakInhoud.current;
-    if (!d || !i || !i.offsetWidth) return;
-    const kist = d.querySelector("img");
-    const vrij = d.clientWidth - (kist ? kist.offsetWidth : 0) - b * 0.054;
-    setVakKrimp(Math.min(1, vrij / i.offsetWidth));
-  }, [b, prijs?.coins, prijs?.pack, prijsLabel]);
+    if (!d || !i) return;
+    const meet = () => {
+      if (!i.offsetWidth) return;
+      const kist = d.querySelector("img");
+      // De vrije ruimte uit de DOM halen en niet uitrekenen: de opvulling en de
+      // tussenruimte staan in pixels die van de plaatbreedte afhangen, en die
+      // hier nog een keer natrekken is een tweede plek waar het mis kan gaan.
+      const stijl = getComputedStyle(d);
+      const vrij = d.clientWidth
+        - parseFloat(stijl.paddingLeft) - parseFloat(stijl.paddingRight)
+        - (kist ? kist.offsetWidth : 0) - parseFloat(stijl.columnGap || "0");
+      setVakKrimp(Math.min(1, vrij / i.offsetWidth));
+    };
+    meet();
+    // MEEKIJKEN en niet eenmalig meten. Er komt van alles later binnen dan de
+    // eerste opmaak: het eigen lettertype (met de terugvalletter is de tekst
+    // smaller), de prijs van de server, en de KIST, die pas breedte heeft als
+    // zijn plaatje geladen is. Wie een keer meet ziet daar niets van en laat de
+    // tekst daarna over de rand lopen.
+    const ro = new ResizeObserver(meet);
+    ro.observe(i);
+    ro.observe(d);
+    d.querySelectorAll("img").forEach((el) => ro.observe(el));
+    return () => ro.disconnect();
+  }, [b, prijs?.kist]);
 
   // Lettergroottes uit de kaphoogtes die in de mockup gemeten zijn.
   const reeksMaat = uitKap(0.0711, b);
@@ -265,11 +285,11 @@ export function DagKop({
                 {prijs?.coins ?? 0}
               </span>
             </span>
-            {!!prijs?.pack && (
+            {!!prijs?.xp && (
               <span style={{ display: "flex", alignItems: "center", gap: b * 0.008 }}>
-                <img src="/ui/dag/pack-rood.webp" alt="" aria-hidden draggable={false} style={{ height: prijsMaat * 1.25, width: "auto", display: "block" }} />
-                <span style={{ fontFamily: font.wide, fontWeight: 700, fontSize: prijsMaat, lineHeight: 1, color: "#FFF3D0" }}>
-                  {prijs.pack}
+                <ArtIcoon naam="ster" size={prijsMaat * 1.2} />
+                <span style={{ fontFamily: font.wide, fontWeight: 700, fontSize: prijsMaat, lineHeight: 1, color: "#FFF3D0", whiteSpace: "nowrap" }}>
+                  {prijs.xp} XP
                 </span>
               </span>
             )}

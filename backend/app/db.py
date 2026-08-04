@@ -785,6 +785,13 @@ class Database:
         if dcols2 and "image_id" not in dcols2:
             self._conn.execute("ALTER TABLE dms ADD COLUMN image_id TEXT")
             self._conn.commit()
+        # De XP die bij een dagprijs hoort. Staat op de BON en niet alleen in de
+        # ladder: een bon die je later terugziet hoort te laten zien wat je toen
+        # echt gekregen hebt, ook als de ladder daarna verandert.
+        pcols = {r["name"] for r in self._conn.execute("PRAGMA table_info(dag_prijzen)").fetchall()}
+        if pcols and "xp" not in pcols:
+            self._conn.execute("ALTER TABLE dag_prijzen ADD COLUMN xp INTEGER NOT NULL DEFAULT 0")
+            self._conn.commit()
         # Antwoorden op een bericht. Er gaat een AFDRUK mee van waar je op
         # antwoordt en niet alleen een verwijzing: de ander kan zijn bericht
         # weghalen, en dan hoort jouw antwoord nog steeds te laten zien waar het
@@ -1756,15 +1763,18 @@ class Database:
             # binnenkomen betalen zo samen precies een keer uit.
             cur = self._conn.execute(
                 """INSERT OR IGNORE INTO dag_prijzen
-                   (day, user_id, plek, spelers, score, coins, cash, kist, created_at)
-                   VALUES (?,?,?,?,?,?,?,?,?)""",
-                (day, user_id, plek, spelers, score, prijs["coins"], prijs["cash"], prijs["kist"], now),
+                   (day, user_id, plek, spelers, score, coins, cash, kist, xp, created_at)
+                   VALUES (?,?,?,?,?,?,?,?,?,?)""",
+                (day, user_id, plek, spelers, score, prijs["coins"], prijs["cash"], prijs["kist"],
+                 prijs.get("xp", 0), now),
             )
             nieuw = bool(cur.rowcount)
             if nieuw:
+                # In EEN update, samen met de INSERT in dezelfde transactie: zo
+                # kan er nooit een bon bestaan waarvan de XP niet is bijgeboekt.
                 self._conn.execute(
-                    "UPDATE users SET coins = coins + ?, cash = cash + ? WHERE id=?",
-                    (prijs["coins"], prijs["cash"], user_id),
+                    "UPDATE users SET coins = coins + ?, cash = cash + ?, bonus_xp = bonus_xp + ? WHERE id=?",
+                    (prijs["coins"], prijs["cash"], prijs.get("xp", 0), user_id),
                 )
             self._conn.commit()
         if nieuw and prijs["kist"]:

@@ -33,39 +33,43 @@ class Prijs(TypedDict):
     kist: Optional[str]
     coins: int
     cash: int
-    # Hoeveel kaartpacks er bij de prijs horen. De dagronde betaalt GEEN cash
-    # meer: die is de schaarse munt van de app en hoort bij mijlpalen, niet bij
-    # iets wat elke dag opnieuw te halen valt. Wat ervoor in de plaats komt is
-    # een pack met een kaart erin.
-    pack: int
+    # XP bovenop de kist en de munten. De dagronde betaalt GEEN cash meer: die
+    # is de schaarse munt van de app en hoort bij mijlpalen, niet bij iets wat
+    # elke dag opnieuw te halen valt.
+    #
+    # Hier stond even een kaartpack. Dat komt terug zodra er een kaartinventaris
+    # is om hem in te stoppen; de animatie en de art liggen klaar (zie
+    # frontend/src/components/PackOpenen.tsx en het testscherm op /?pack).
+    xp: int
 
 
-# (tot en met welke plek, kist, munten, packs). De laatste regel is de staart en
+# (tot en met welke plek, kist, munten, XP). De laatste regel is de staart en
 # geldt voor alles daaronder.
 #
 # GEEN CASH MEER in de dagronde. Cash is de schaarse munt van de app (een
 # scheidsrechter kost er 250) en hoort bij mijlpalen, niet bij iets wat elke dag
 # opnieuw te halen is; wie hier elke dag twee pakte liep de hele economie
-# voorbij. In de plaats daarvan krijgen de eerste drie een rood kaartpack.
+# voorbij. Er komt XP voor in de plaats: die telt mee voor je level en is dus
+# wel iets waard, maar niemand kan er iets mee kopen.
 LADDER: list[tuple[int, Optional[str], int, int]] = [
-    (1, "kist5", 500, 1),
-    (2, "kist4", 350, 1),
-    (3, "kist3", 250, 1),
-    (4, "kist2", 200, 0),
-    (10, "kist1", 150, 0),
-    (25, None, 100, 0),
-    (50, None, 75, 0),
+    (1, "kist5", 500, 250),
+    (2, "kist4", 350, 180),
+    (3, "kist3", 250, 140),
+    (4, "kist2", 200, 100),
+    (10, "kist1", 150, 75),
+    (25, None, 100, 50),
+    (50, None, 75, 35),
 ]
 # Alles onder de laatste regel: nog steeds munten, want meedoen hoort iets waard
 # te zijn, maar zonder kist.
-STAART: Prijs = {"kist": None, "coins": 50, "cash": 0, "pack": 0}
+STAART: Prijs = {"kist": None, "coins": 50, "cash": 0, "xp": 25}
 
 
 def prijs_voor(plek: int) -> Prijs:
     """De prijs bij een plek in de dagranglijst. Plek 1 is de hoogste."""
     if plek < 1:
-        return {"kist": None, "coins": 0, "cash": 0, "pack": 0}
-    for tot, kist, coins, pack in LADDER:
+        return {"kist": None, "coins": 0, "cash": 0, "xp": 0}
+    for tot, kist, coins, xp in LADDER:
         if plek <= tot:
-            return {"kist": kist, "coins": coins, "cash": 0, "pack": pack}
+            return {"kist": kist, "coins": coins, "cash": 0, "xp": xp}
     return dict(STAART)  # type: ignore[return-value]
