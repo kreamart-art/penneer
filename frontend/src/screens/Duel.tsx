@@ -155,11 +155,8 @@ export function Duel({ game, onBack, onProfile, openId, onGeopend }: {
   // Hetzelfde decor als de lobby, de dagronde en het oefenen: de arena met de
   // gouden hoekstukken en de horizon die oplicht.
   useEffect(() => {
-    // Plus een donkere laag eroverheen: zie body.duelzaal in index.css. Dit
-    // scherm is een lijst met portretten en gekleurde uitslagen, en die
-    // verdrinken in een decor dat zelf al paars oplicht.
-    document.body.classList.add("arena", "duelzaal");
-    return () => document.body.classList.remove("arena", "duelzaal");
+    document.body.classList.add("arena");
+    return () => document.body.classList.remove("arena");
   }, []);
 
   useEffect(() => { void refresh(); }, [refresh]);

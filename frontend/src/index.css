@@ -218,13 +218,24 @@ body.arena::after {
   pointer-events: none;
   background-color: #06040e;
   background-image:
+    /* DIEPER WEGGEDRAAID. Op de schermen met dit decor (de lobby, het duel, de
+       dagronde en het oefenen) staan lijsten met portretten, platen en
+       gekleurde uitslagen, en die verdrinken in een achtergrond die zelf al
+       paars oplicht. In de mockups is hij bijna zwart en springt de inhoud er
+       pas dan uit.
+
+       Als BOVENSTE laag binnen ditzelfde decor en niet als eigen element: het
+       decor staat op z-index -1, dus een aparte laag zou of eronder vallen (en
+       niets doen) of erboven (en over de inhoud heen liggen). Hier ligt hij
+       gegarandeerd op de art en onder alles wat je leest. */
+    radial-gradient(125% 85% at 50% 6%, rgba(6, 3, 16, 0.44) 0%, rgba(6, 3, 16, 0.76) 55%, rgba(4, 2, 11, 0.9) 100%),
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
     radial-gradient(120% 58% at 50% 30%, rgba(3, 1, 10, 0) 0%, rgba(3, 1, 10, 0.14) 48%, rgba(3, 1, 10, 0.44) 74%, rgba(3, 1, 10, 0.66) 100%),
     url("/ui/lobby-bg.webp"),
     linear-gradient(180deg, #150e2e 0%, #100a24 50%, #06040e 100%);
-  background-repeat: repeat, no-repeat, no-repeat, no-repeat;
-  background-position: bottom left, bottom, bottom, bottom;
-  background-size: 160px 160px, 100% 100%, 100% 100%, 100% 100%;
+  background-repeat: no-repeat, repeat, no-repeat, no-repeat, no-repeat;
+  background-position: bottom, bottom left, bottom, bottom, bottom;
+  background-size: 100% 100%, 160px 160px, 100% 100%, 100% 100%, 100% 100%;
 }
 
 /* De winkel draagt de achtergrond van de main page: hij hoort daarbij, dus hij
@@ -1537,17 +1548,15 @@ body.ketenspel::after {
 /* De gloed zwelt op terwijl de kaart nog klein is en dooft als hij er staat. */
 @keyframes pack-gloed {
   0%   { opacity: 0; transform: translate(-50%,-50%) scale(.35); }
-  45%  { opacity: 1; transform: translate(-50%,-50%) scale(1.05); }
-  100% { opacity: 0; transform: translate(-50%,-50%) scale(1.5); }
+  35%  { opacity: .85; transform: translate(-50%,-50%) scale(1); }
+  /* De staart is bijna de halve animatie. Een gloed die net zo snel weggaat als
+     hij komt leest als een flits; deze zakt weg terwijl de kaart al staat, en
+     dan zie je alleen dat er iets nagloeit. */
+  70%  { opacity: .3; transform: translate(-50%,-50%) scale(1.3); }
+  100% { opacity: 0; transform: translate(-50%,-50%) scale(1.65); }
 }
-.pack-gloed { animation: pack-gloed 1400ms ease-out forwards; }
+.pack-gloed { animation: pack-gloed 2000ms cubic-bezier(.2,.7,.3,1) forwards; }
 
-@keyframes pack-streep {
-  0%   { opacity: 0; transform: translate(-50%,-50%) scaleY(.2) scaleX(.5); }
-  35%  { opacity: 1; transform: translate(-50%,-50%) scaleY(1) scaleX(1); }
-  100% { opacity: 0; transform: translate(-50%,-50%) scaleY(1.25) scaleX(2.4); }
-}
-.pack-streep { animation: pack-streep 1200ms ease-out forwards; }
 
 /* DE KAART: van bijna niets naar zijn maat, met een zetje voorbij het eind.
    Dat laatste stukje is wat het gevoel geeft dat er iets uit het pack geduwd
@@ -1563,25 +1572,7 @@ body.ketenspel::after {
 
 /* Wie beweging heeft uitgezet krijgt het resultaat zonder de rit. */
 @media (prefers-reduced-motion: reduce) {
-  .pack-wipt, .pack-gloed, .pack-streep { animation: none; }
+  .pack-wipt, .pack-gloed { animation: none; }
   .pack-kaart { animation: pack-kaart 1ms linear forwards; }
 }
 
-/* ---- Het duelscherm is donkerder --------------------------------------------
-   Dezelfde arena als de lobby en de dagronde, maar een stuk dieper weggedraaid.
-   Op dit scherm staat een lijst met portretten en gekleurde uitslagen, en die
-   verdrinkt in een decor dat zelf al paars oplicht. In de mockup is de
-   achtergrond bijna zwart, en dan pas springen de rijen eruit.
-
-   Een LAAG over het decor en niet een andere achtergrond: het decor met zijn
-   gouden hoekstukken en oplichtende horizon hoort erbij, hij mag alleen niet
-   even hard meepraten. */
-body.duelzaal::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(120% 80% at 50% 8%, rgba(6, 3, 16, 0.42) 0%, rgba(6, 3, 16, 0.78) 55%, rgba(4, 2, 11, 0.92) 100%);
-}

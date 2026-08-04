@@ -85,27 +85,22 @@ export function PackOpenen({
       {/* Het toneel: gloed, pack en kaart liggen op elkaar, allemaal om hetzelfde
           midden. Zo komt de kaart uit de scheur en niet ergens ernaast. */}
       <div style={{ position: "relative", width: 230, height: 288, display: "grid", placeItems: "center" }}>
-        {/* DE GLOED. Twee lagen: een brede zachte en een smalle felle kolom, want
-            in de art komt het licht als een streep uit de scheur en niet als een
-            bol. */}
+        {/* DE GLOED, EEN laag. Hier stond ook een smalle witte kolom, maar die
+            deed over wat de art zelf al doet: in de bronvideo komt het licht als
+            een streep uit de scheur. Twee keer dezelfde streep leest als een
+            fout in het beeld. Wat overblijft is de halo eromheen, en die zit
+            niet in de art. */}
         <span
           aria-hidden
           className={bezig ? "pack-gloed" : undefined}
           style={{
-            position: "absolute", left: "50%", top: "50%", width: 300, height: 300,
+            position: "absolute", left: "50%", top: "50%", width: 360, height: 360,
             transform: "translate(-50%,-50%)", borderRadius: "50%", opacity: 0,
-            background: "radial-gradient(circle, rgba(255,252,235,.95), rgba(255,214,120,.45) 38%, rgba(255,180,60,0) 70%)",
+            // Ver uitgesmeerd en zwak: dit is een HALO om wat er uit het pack
+            // komt, geen tweede lichtbron. Uit de art komt al licht; een gloed
+            // die daar tegenop wil leest als een witte vlek over de kaart.
+            background: "radial-gradient(circle, rgba(255,248,225,.34) 0%, rgba(255,214,120,.16) 34%, rgba(255,190,80,.05) 60%, rgba(255,180,60,0) 82%)",
             animationDelay: `${GLOED_NA}ms`, pointerEvents: "none",
-          }}
-        />
-        <span
-          aria-hidden
-          className={bezig ? "pack-streep" : undefined}
-          style={{
-            position: "absolute", left: "50%", top: "50%", width: 34, height: 300,
-            transform: "translate(-50%,-50%)", opacity: 0,
-            background: "linear-gradient(90deg, rgba(255,250,230,0), rgba(255,255,255,.95) 50%, rgba(255,250,230,0))",
-            filter: "blur(3px)", animationDelay: `${GLOED_NA}ms`, pointerEvents: "none",
           }}
         />
 
