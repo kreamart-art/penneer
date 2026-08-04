@@ -1,20 +1,35 @@
-// Een gouden lijn in de achthoek van de secties, en verder niets.
+// Een lijn in de achthoek van de secties, en verder wat het vak nodig heeft.
 //
-// Geen glas, geen vulling, geen gloedlaag: de inhoud van het vak kijkt recht op
-// de achtergrond van de app uit. Dat kan met CSS niet netjes, want een rand met
-// afgeschuinde hoeken maak je met `clip-path`, en die knipt ook de rand zelf
-// weg. Vandaar een SVG-omtrek: één pad, één streek, en de rest is lucht.
+// De kern is nog steeds: geen glas en geen gloedlaag, alleen een omtrek. Dat
+// kan met CSS niet netjes, want een rand met afgeschuinde hoeken maak je met
+// `clip-path`, en die knipt ook de rand zelf weg. Vandaar een SVG-omtrek: een
+// pad, een streek, en de rest is lucht.
+//
+// Daar bovenop kan een vak twee dingen krijgen die het diepte geven:
+//   `vulling`     een paars verloop van licht boven naar donker onder
+//   `binnenlijn`  een tweede omtrek vlak binnen de eerste, alleen sterk in de
+//                 hoeken; dat leest als een afgeschuinde rand.
 //
 // De punten staan in echte pixels en niet in procenten, want een viewBox die in
 // twee richtingen anders schaalt maakt van 45 graden iets anders en van een
 // lijn van één pixel een lijn die aan de zijkanten dikker is dan boven.
 import { useEffect, useId, useRef, useState } from "react";
 
-/** Welke hoeken oplichten, in delen van de breedte en de hoogte. Linksboven en
- *  rechtsonder: twee tegenover elkaar, zodat het vak aan beide kanten een punt
- *  heeft in plaats van aan een kant te beginnen en aan de andere te verdwijnen. */
+/** Welke hoeken oplichten bij `fade`, in delen van de breedte en de hoogte.
+ *  Linksboven en rechtsonder: twee tegenover elkaar, zodat het vak aan beide
+ *  kanten een punt heeft in plaats van aan een kant te beginnen en aan de
+ *  andere te verdwijnen. */
 const HOEKEN: [number, number][] = [
   [0, 0],
+  [1, 1],
+];
+
+/** De binnenlijn licht in ALLE VIER de hoeken op, want die hoort de hele vorm
+ *  te verdiepen en niet één kant ervan. */
+const HOEKEN4: [number, number][] = [
+  [0, 0],
+  [1, 0],
+  [0, 1],
   [1, 1],
 ];
 
@@ -25,6 +40,8 @@ export function GoudKader({
   fade = false,
   kleur = "goud",
   gloed = false,
+  vulling = false,
+  binnenlijn = false,
   padding = 12,
   style,
 }: {
@@ -37,13 +54,21 @@ export function GoudKader({
   dik?: number;
   /** Laat de lijn uitdoven vanaf de linkerbovenhoek. Dan is alleen die hoek
    *  echt te zien en verdwijnt de rest richting de bovenkant en omlaag, alsof
-   *  het licht daar vandaan komt. */
+   *  het licht daar vandaan komt. Uit betekent: een hele omtrek. */
   fade?: boolean;
   /** Goud volgt de secties, violet is de kleur van de bedieningspillen. */
   kleur?: "goud" | "violet";
   /** Een neongloed onder de lijn: dezelfde vorm, dikker en vervaagd. Zo gloeit
    *  er precies wat er staat, in plaats van een schaduw die ernaast ligt. */
   gloed?: boolean;
+  /** Vul het vak met een paars verloop, licht boven en donker onder. Zet dit
+   *  aan als de sectie een binnenkant hoort te hebben in plaats van recht op
+   *  de achtergrond van de app uit te kijken. */
+  vulling?: boolean;
+  /** Een tweede omtrek vlak binnen de eerste, sterk in de hoeken en weg in het
+   *  midden van elke zijde. Twee lijnen zo dicht op elkaar lezen als een rand
+   *  met dikte in plaats van als een streep. */
+  binnenlijn?: boolean;
   padding?: number | string;
   style?: React.CSSProperties;
 }) {
@@ -70,12 +95,29 @@ export function GoudKader({
   // De helft van de streek naar binnen, anders valt de andere helft buiten de
   // SVG en oogt de lijn aan de randen dunner dan in het midden.
   const o = dik / 2;
-  const punten = w && h
-    ? [
-        `${k},${o}`, `${w - k},${o}`, `${w - o},${k}`, `${w - o},${h - k}`,
-        `${w - k},${h - o}`, `${k},${h - o}`, `${o},${h - k}`, `${o},${k}`,
-      ].join(" ")
-    : "";
+
+  /** De achthoek, `in` pixels naar binnen geschoven. Een vorm die overal even
+   *  ver naar binnen gaat, krijgt een kleinere schuine hoek: die loopt onder 45
+   *  graden, dus hij verliest `in * (√2 - 1)` aan beide kanten. Reken je dat
+   *  niet mee, dan lopen de twee lijnen in de hoeken uit elkaar en precies daar
+   *  moeten ze juist strak op elkaar liggen. */
+  const pad = (naarBinnen: number) => {
+    if (!w || !h) return "";
+    const x0 = o + naarBinnen;
+    const y0 = o + naarBinnen;
+    const x1 = w - o - naarBinnen;
+    const y1 = h - o - naarBinnen;
+    const kk = Math.max(2, k - naarBinnen * (Math.SQRT2 - 1));
+    return [
+      `${x0 + kk},${y0}`, `${x1 - kk},${y0}`, `${x1},${y0 + kk}`, `${x1},${y1 - kk}`,
+      `${x1 - kk},${y1}`, `${x0 + kk},${y1}`, `${x0},${y1 - kk}`, `${x0},${y0 + kk}`,
+    ].join(" ");
+  };
+
+  const punten = pad(0);
+  // Zo dicht mogelijk erop: net genoeg lucht dat je twee lijnen ziet en niet
+  // een dikke. Onder de 2px lopen ze op een gewoon scherm in elkaar over.
+  const binnen = pad(dik + 2);
 
   return (
     <div ref={doos} style={{ position: "relative", ...style }}>
@@ -114,6 +156,16 @@ export function GoudKader({
                   </radialGradient>
                 ))}
               </>
+            ) : vulling ? (
+              // Staat er een binnenkant onder, dan komt het licht van BOVEN en
+              // hoort de lijn dat te volgen: licht op de bovenrand, donker op
+              // de onderrand. Zo zijn de rand en de vulling het over dezelfde
+              // lichtbron eens.
+              <linearGradient id={`${id}h0`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={tint.hoog} />
+                <stop offset="45%" stopColor={tint.mid} />
+                <stop offset="100%" stopColor={tint.laag} />
+              </linearGradient>
             ) : (
               // Diagonaal, want op een brede lage pil zie je een verticaal
               // verloop nauwelijks: de zijkanten zijn te kort om iets te tonen.
@@ -123,12 +175,42 @@ export function GoudKader({
                 <stop offset="100%" stopColor={tint.laag} />
               </linearGradient>
             )}
+            {vulling && (
+              // Opgemeten in de mockup: van (30,15,66) bovenin naar (21,6,40)
+              // onderin. Donker genoeg dat witte tekst er gewoon op leest, en
+              // net licht genoeg dat het vak van de achtergrond loskomt.
+              <linearGradient id={`${id}v`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#2A1359" />
+                <stop offset="55%" stopColor="#200C38" />
+                <stop offset="100%" stopColor="#150628" />
+              </linearGradient>
+            )}
+            {binnenlijn && HOEKEN4.map(([hx, hy], i) => (
+              // Dezelfde truc als bij `fade`, maar dan in alle vier de hoeken:
+              // vier keer dezelfde omtrek, elk met een verloop dat om zijn
+              // eigen hoek heen licht is en verderop niets meer doet. Wat je
+              // overhoudt zijn vier verdiepte hoeken met lucht ertussen.
+              <radialGradient
+                key={i} id={`${id}b${i}`} gradientUnits="userSpaceOnUse"
+                cx={hx * w} cy={hy * h} r={Math.hypot(w, h)}
+              >
+                <stop offset="0%" stopColor={tint.hoog} stopOpacity="1" />
+                <stop offset="5%" stopColor={tint.hoog} stopOpacity="0.75" />
+                <stop offset="12%" stopColor={tint.mid} stopOpacity="0.28" />
+                <stop offset="20%" stopColor={tint.laag} stopOpacity="0" />
+                <stop offset="100%" stopColor={tint.laag} stopOpacity="0" />
+              </radialGradient>
+            ))}
             {gloed && (
               <filter id={`${id}g`} x="-40%" y="-40%" width="180%" height="180%">
                 <feGaussianBlur stdDeviation={Math.max(1.6, dik * 4)} />
               </filter>
             )}
           </defs>
+
+          {/* De binnenkant eerst, want alles wat lijn is hoort erbovenop. */}
+          {vulling && <polygon points={punten} fill={`url(#${id}v)`} />}
+
           {(fade ? HOEKEN.map((_, i) => i) : [0]).map((i) => (
             <g key={i}>
               {/* De gloed is dezelfde vorm, dikker en vervaagd, onder de lijn. */}
@@ -141,6 +223,10 @@ export function GoudKader({
               )}
               <polygon points={punten} fill="none" stroke={`url(#${id}h${i})`} strokeWidth={dik} opacity={fade ? 1 : 0.75} />
             </g>
+          ))}
+
+          {binnenlijn && HOEKEN4.map((_, i) => (
+            <polygon key={i} points={binnen} fill="none" stroke={`url(#${id}b${i})`} strokeWidth={dik} />
           ))}
         </svg>
       )}
