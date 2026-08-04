@@ -368,7 +368,7 @@ function Hub({ data, onCategorie, onOefenen, onQuiz, onVerzameling }: {
                     Goud markeert de categorie waar je het verst in bent. */}
                 <GoudKader
                   hoek={8} kleur={actief ? "goud" : "violet"} dik={actief ? 1.9 : 1} binnenDik={1} vulling="licht"
-                  binnenlijn={actief} binnenSterkte={0.4} gloed={actief} padding="8px 2px"
+                  binnenlijn={actief} binnenSterkte={0.4} gloed={actief} gloedKleur="#D46427" gloedMaat={0.35} padding="8px 2px"
                 >
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
                     <span aria-hidden style={{ color: actief ? colors.gold : colors.violet, display: "flex" }}>
@@ -809,7 +809,7 @@ function KaartTegel({ kaart, nu, onOpen, groot, chip }: {
         alt={kaart.word || ""}
         loading="lazy"
         style={{ position: "relative", width: "100%", aspectRatio: KAART_RATIO, display: "block",
-          filter: "drop-shadow(0 0 1.5px rgba(255,194,61,.6)) drop-shadow(0 0 5px rgba(255,159,69,.3))" }}
+          filter: "drop-shadow(0 0 1.5px rgba(212,100,39,.8)) drop-shadow(0 0 5px rgba(212,100,39,.45))" }}
       />
       {kaart.iso && (
         <img

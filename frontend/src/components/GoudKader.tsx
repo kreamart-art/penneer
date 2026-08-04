@@ -42,6 +42,8 @@ export function GoudKader({
   fade = false,
   kleur = "goud",
   gloed = false,
+  gloedKleur,
+  gloedMaat = 1,
   vulling = false,
   binnenlijn = false,
   binnenSterkte = 0.2,
@@ -72,6 +74,12 @@ export function GoudKader({
   /** Een neongloed onder de lijn: dezelfde vorm, dikker en vervaagd. Zo gloeit
    *  er precies wat er staat, in plaats van een schaduw die ernaast ligt. */
   gloed?: boolean;
+  /** Kleur van die gloed, als die los moet staan van de lijn. Zonder deze
+   *  volgt de gloed het verloop van de lijn zelf. */
+  gloedKleur?: string;
+  /** Hoe ver die gloed reikt, als factor. Op een tegel van een vijfde breed
+   *  wordt een gloed die op een sectie klopt al gauw een waas om het hele vak. */
+  gloedMaat?: number;
   /** Vul het vak met een paars verloop, licht boven en donker onder. Zet dit
    *  aan als de sectie een binnenkant hoort te hebben in plaats van recht op
    *  de achtergrond van de app uit te kijken.
@@ -106,10 +114,9 @@ export function GoudKader({
 
   const id = useId().replace(/:/g, "");
   const tint = kleur === "violet"
-    // Overgenomen van de binnenlijn in de ondersectie: die is roziger dan het
-    // blauwviolet dat hier eerst stond. Opgemeten in die art: de lijn zelf is
-    // #9560B6, waar het licht erop valt #D190D4, en waar hij wegzakt #55276E.
-    ? { hoog: "#D9A6DF", mid: "#9560B6", laag: "#55276E" }
+    // Door de gebruiker opgegeven: de lijn is #572D7C, met #87618D waar het
+    // licht erop valt en #291348 waar hij wegzakt.
+    ? { hoog: "#87618D", mid: "#572D7C", laag: "#291348" }
     : { hoog: "#FEEB81", mid: "#F3B53E", laag: "#B8791F" };
   const { w, h } = maat;
   const k = Math.min(hoek, w / 2, h / 2);
@@ -231,20 +238,12 @@ export function GoudKader({
               </linearGradient>
             )}
             {vulling && (
-              // Overgenomen van de VULLING van de ondersectie (niet van de lijn,
-              // die is roziger): daar loopt het van #2B0D4C bovenin naar #1C0737
-              // onderin. Vier stops in plaats van twee, met een tintverloop van
-              // magenta-achtig boven naar blauwer onder; een rechte interpolatie
-              // tussen twee kleuren leest als een vlak in plaats van als diepte.
-              //
-              // "licht" is dezelfde familie, lichter en een tik meer violet, voor
-              // een vak dat OP zo'n sectie ligt. Met precies dezelfde vulling
-              // lopen de twee onderin in elkaar over.
+              // Door de gebruiker opgegeven. De sectie loopt van #1D0E3E naar
+              // #100629; "licht" is voor een vak dat OP zo'n sectie ligt en
+              // loopt van #1F0A45 naar #1A0938.
               <linearGradient id={`${id}v`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={vulling === "licht" ? "#48186D" : "#35105A"} />
-                <stop offset="38%" stopColor={vulling === "licht" ? "#37115C" : "#290B4A"} />
-                <stop offset="72%" stopColor={vulling === "licht" ? "#2A0D4B" : "#210940"} />
-                <stop offset="100%" stopColor={vulling === "licht" ? "#200A3D" : "#1A0733"} />
+                <stop offset="0%" stopColor={vulling === "licht" ? "#1F0A45" : "#1D0E3E"} />
+                <stop offset="100%" stopColor={vulling === "licht" ? "#1A0938" : "#100629"} />
               </linearGradient>
             )}
             {binnenlijn && HOEKEN4.map(([hx, hy], i) => (
@@ -283,7 +282,7 @@ export function GoudKader({
             ))}
             {gloed && (
               <filter id={`${id}g`} x="-40%" y="-40%" width="180%" height="180%">
-                <feGaussianBlur stdDeviation={Math.max(1.1, dik * 2.2)} />
+                <feGaussianBlur stdDeviation={Math.max(1.1, dik * 2.2) * gloedMaat} />
               </filter>
             )}
           </defs>
@@ -296,8 +295,8 @@ export function GoudKader({
               {/* De gloed is dezelfde vorm, dikker en vervaagd, onder de lijn. */}
               {gloed && (
                 <path
-                  d={punten} fill="none" stroke={`url(#${id}h${i})`}
-                  strokeWidth={Math.max(dik * 2.2, 1.4)} filter={`url(#${id}g)`}
+                  d={punten} fill="none" stroke={gloedKleur || `url(#${id}h${i})`}
+                  strokeWidth={Math.max(dik * 2.2, 1.4) * gloedMaat} filter={`url(#${id}g)`}
                   opacity={fade ? 0.9 : 0.75}
                 />
               )}
@@ -312,8 +311,8 @@ export function GoudKader({
             <g key={i} opacity={binnenSterkte}>
               {gloed && (
                 <path
-                  d={binnen} fill="none" stroke={`url(#${id}b${i})`}
-                  strokeWidth={Math.max(bDik * 2.2, 1.4)} filter={`url(#${id}g)`} opacity={0.9}
+                  d={binnen} fill="none" stroke={gloedKleur || `url(#${id}b${i})`}
+                  strokeWidth={Math.max(bDik * 2.2, 1.4) * gloedMaat} filter={`url(#${id}g)`} opacity={0.9}
                 />
               )}
               <path d={binnen} fill="none" stroke={`url(#${id}b${i})`} strokeWidth={bDik} />
