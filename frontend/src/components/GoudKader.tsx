@@ -225,12 +225,12 @@ export function GoudKader({
             </g>
           ))}
 
-          {/* Op 40%: de hoeken houden hun vorm, maar de tweede lijn blijft een
+          {/* Op 20%: de hoeken houden hun vorm, maar de tweede lijn blijft een
               suggestie van diepte in plaats van een lijn die om aandacht vraagt.
               Als opacity op de vorm en niet in de stops, zodat het verloop van
-              hoek naar midden hetzelfde blijft. */}
+              hoek naar midden hetzelfde blijft en alleen de sterkte zakt. */}
           {binnenlijn && HOEKEN4.map((_, i) => (
-            <polygon key={i} points={binnen} fill="none" stroke={`url(#${id}b${i})`} strokeWidth={dik} opacity={0.4} />
+            <polygon key={i} points={binnen} fill="none" stroke={`url(#${id}b${i})`} strokeWidth={dik} opacity={0.2} />
           ))}
         </svg>
       )}
