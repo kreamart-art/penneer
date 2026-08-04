@@ -6,11 +6,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Apple, Brain, Briefcase, Building2, Check, Globe, HelpCircle, Info, Layers, PawPrint, RotateCw, Shuffle, Target, X } from "lucide-react";
 import { GoudKader } from "../components/GoudKader";
+import { Tv } from "../components/Tv";
 import { HubSectie, VerzamelBalk } from "./Ontdekken";
 import { Chip } from "../components/Chip";
 import { GlasVeld } from "../components/GlasVeld";
-import { NeonText } from "../components/NeonText";
-import { Paneel } from "../components/ProfileHero";
 import { Button } from "../components/Button";
 import { Screen, Card } from "../components/Layout";
 import { SierKop } from "../components/ProfileHero";
@@ -373,15 +372,9 @@ export function Training({ onBack, lenient = false, onOntdekken, startLetter, on
     return (
       <Screen top={header}>
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <Paneel>
-            <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 1 }}>
-              <span style={{ fontFamily: font.ui, fontSize: 11.5, letterSpacing: 0.6, color: colors.sub }}>{t("letterIs")}</span>
-              {/* Zelfde behandeling als de letter op de rol: een gouden verloop
-                  met de gloed als vervaagde kopie erachter, niet een gekleurde
-                  letter met een schaduw eromheen. */}
-              <NeonText accent={colors.gold} blur={18} glow={0.72} style={{ fontFamily: font.display, fontWeight: 700, fontSize: "clamp(52px, 17vw, 74px)", lineHeight: 1 }}>{letter}</NeonText>
-            </div>
-          </Paneel>
+          {/* Dezelfde tv als in een potje: de letter is hier hetzelfde ding als
+              daar, dus hij hoort er hetzelfde uit te zien. */}
+          <Tv letter={letter} label={t("letterIs")} />
 
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {cats.map((cat, i) => (
@@ -416,9 +409,10 @@ export function Training({ onBack, lenient = false, onOntdekken, startLetter, on
     <Screen top={header}>
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <SchermTip id="oefenen" tekst={t("tipOefenen")} />
-        <div style={{ textAlign: "center", fontFamily: font.ui, fontSize: 13, color: colors.sub }}>
-          {t("trainLetterWas")} <span style={{ fontFamily: font.display, fontWeight: 700, color: colors.gold, fontSize: 16 }}>{letter}</span>
-        </div>
+        {/* Ook op de uitslag de tv, want je loopt hier de woorden na die met
+            deze letter beginnen. Een regeltje "de letter was B" deed hetzelfde
+            werk, maar dan als voetnoot. */}
+        <Tv letter={letter} label={t("trainLetterWas")} />
 
         {cats.map((cat) => {
           const r = result!.categories[cat];

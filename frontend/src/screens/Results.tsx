@@ -7,6 +7,7 @@ import { Button } from "../components/Button";
 import { Scoreboard } from "../components/Scoreboard";
 import { Screen, Card } from "../components/Layout";
 import { TopBar } from "../components/TopBar";
+import { Tv } from "../components/Tv";
 import type { GameApi } from "../net/socket";
 import { ArtIcoon } from "../components/ArtIcoon";
 import { KADER_LIJN_GOUD, NeonKader, SierKop } from "../components/ProfileHero";
@@ -70,6 +71,12 @@ export function Results({ game }: { game: GameApi }) {
   return (
     <Screen top={<TopBar code={room.code} roundNo={room.round_no} totalRounds={room.settings.rounds} connected={game.state.status === "open"} onLeave={game.leaveRoom} game={game} />}>
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        {/* DE LETTER STOND HIER HELEMAAL NIET. Je kwam van de invulpagina, waar
+            hij groot in beeld was, en op de uitslag was hij ineens weg terwijl
+            je juist dan woord voor woord terugkijkt of alles wel met die letter
+            begon. Nu draagt dezelfde tv hem, van draaien tot nakijken. */}
+        {!!round?.letter && <Tv letter={round.letter} label={t("letterIs")} />}
+
         {/* De kop is de gouden sierkop van het profiel. Grijze kapitalen zijn
             wat een formulier doet; dit is de uitslag van een ronde. */}
         <Card>

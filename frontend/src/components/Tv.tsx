@@ -149,6 +149,21 @@ function Letter({ teken }: { teken: string }) {
   );
 }
 
+/** Eén gouden letter als art, los van de tv, op de hoogte die je meegeeft.
+ *
+ *  Voor lijstjes waar een tv niet past: de uitslag van een duel heeft vijf
+ *  rondes met elk hun eigen letter, en vijf tv's onder elkaar is geen lijst
+ *  meer. Zelfde art, zelfde schaduw, zelfde gloed, alleen klein. */
+export function LetterTeken({ teken, hoogte }: { teken: string; hoogte: number }) {
+  const c = (teken || "").toUpperCase().slice(0, 1);
+  if (c < "A" || c > "Z") return null;
+  return (
+    <span style={{ display: "block", height: hoogte, flexShrink: 0 }}>
+      <Letter teken={c} />
+    </span>
+  );
+}
+
 export function Tv({
   letter,
   code,
@@ -221,11 +236,21 @@ export function Tv({
         }}
       >
         {!!label && (
+          // HET OPSCHRIFT LOS VAN DE RIJ, absoluut bovenin het scherm. In de
+          // kolom telde het mee voor het midden en dan hing de letter eronder
+          // scheef: nagemeten 59px lucht boven en 36 onder, dus elf pixel onder
+          // het hart van het scherm. Nu staat de letter in het midden en het
+          // opschrift erboven, los van elkaar.
           <span
             style={{
+              // Niet tegen de bovenrand: op nul plakt hij aan de neonlijst.
+              // Twaalf procent van de schermhoogte is op een telefoon zo'n
+              // twintig pixel lucht, genoeg om als opschrift IN het scherm te
+              // staan in plaats van eraan te hangen.
+              position: "absolute", top: "12%", left: 0, right: 0, textAlign: "center",
               fontFamily: font.ui, fontSize: "clamp(8.5px, 2.7vw, 12px)", fontWeight: 600,
               letterSpacing: 1.4, marginRight: -1.4, textTransform: "uppercase",
-              color: colors.faint, marginBottom: "2.5%",
+              color: colors.faint,
             }}
           >
             {label}

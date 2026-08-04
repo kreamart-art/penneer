@@ -5,6 +5,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, Check, HelpCircle, Share2, X } from "lucide-react";
 import { Avatar } from "../components/Avatar";
+import { Tv } from "../components/Tv";
 import { Button } from "../components/Button";
 import { Screen, Card } from "../components/Layout";
 import { NeonText } from "../components/NeonText";
@@ -424,13 +425,8 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
             {Math.ceil(remaining)}s
           </div>
 
-          <Paneel>
-            <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 1 }}>
-              <span style={{ fontFamily: font.ui, fontSize: 11.5, letterSpacing: 0.6, color: colors.sub }}>{t("letterIs")}</span>
-              {/* Zelfde behandeling als de letter op de rol, in goud. */}
-              <NeonText accent={colors.gold} blur={18} glow={0.72} style={{ fontFamily: font.display, fontWeight: 700, fontSize: "clamp(52px, 17vw, 74px)", lineHeight: 1 }}>{letter}</NeonText>
-            </div>
-          </Paneel>
+          {/* Dezelfde tv als in een potje en in Oefenen. */}
+          <Tv letter={letter} label={t("letterIs")} />
 
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {cats.map((cat, i) => (
@@ -487,6 +483,10 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
   return (
     <Screen top={header}>
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        {/* De letter van vandaag, boven je score: hieronder loop je woord voor
+            woord na wat je had, en dat gaat allemaal over deze letter. */}
+        {!!r.letter && <Tv letter={r.letter} label={t("letterIs")} />}
+
         {/* De uitslag staat in de sierlijst van het profiel, net als de voordeur
             van de dagronde. Dit is de plek waar je score staat, en dat verdient
             dezelfde lijst als je level op je profiel. De art heeft een VASTE

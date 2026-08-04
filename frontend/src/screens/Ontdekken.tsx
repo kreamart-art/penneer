@@ -466,13 +466,13 @@ function Hub({ data, onCategorie, onOefenen, onQuiz, onVerzameling }: {
         >
           {t("ontdekkenRecent")}
         </SectieKop>
-        {data.recent.length === 0 ? (
+        {(data.recent ?? []).length === 0 ? (
           <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12, color: colors.sub, textAlign: "center", padding: "14px 0" }}>
             {t("ontdekkenNogGeenKaarten")}
           </p>
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6 }}>
-            {data.recent.map((k) => (
+            {(data.recent ?? []).map((k) => (
               <button
                 key={k.id}
                 onClick={() => { sound.uiTap(); if (k.category) onCategorie(k.category); }}

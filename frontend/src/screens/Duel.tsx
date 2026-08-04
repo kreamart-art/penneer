@@ -8,14 +8,14 @@
 //
 // De server is de baas over de klok: elke ronde wordt apart OPGEHAALD en dan
 // pas begint zijn 15 seconden, dus de app herladen koopt geen denktijd.
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { CloseIcon } from "../components/CloseIcon";
 import { ArrowLeft, Check, ChevronDown, ChevronLeft, ChevronRight, Clock as ClockIcon, Hourglass, RotateCcw, Search, Swords, UserPlus } from "lucide-react";
 import { Avatar } from "../components/Avatar";
 import { NeonText } from "../components/NeonText";
 import { Button } from "../components/Button";
 import { GoldButton } from "../components/GoldButton";
-import { Arena, ArenaPlate, ARENA } from "../components/Arena";
+import { Arena } from "../components/Arena";
 import { Screen, Card } from "../components/Layout";
 import type { GameApi } from "../net/socket";
 import { ArtIcoon } from "../components/ArtIcoon";
@@ -25,6 +25,7 @@ import { GlasRij } from "./Hub";
 import { SchermTip } from "../components/SchermTip";
 import { DuelKop } from "../components/DuelKop";
 import { GoudKader } from "../components/GoudKader";
+import { Tv, LetterTeken } from "../components/Tv";
 import { CANVAS } from "../lib/canvaskleur";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
@@ -424,7 +425,14 @@ export function Duel({ game, onBack, onProfile, openId, onGeopend }: {
             <>
               <TimeBar frac={frac} tint={tint} />
               <Clock left={left} tint={tint} />
-              <LetterStage letter={round.letter} category={tCat(round.category)} hint={t("duelRarityHint")} />
+              {/* De tv in plaats van het eigen letterpodium: dezelfde letter
+                  hoort er overal hetzelfde uit te zien, van de lobby tot hier.
+                  Het opschrift is de CATEGORIE, want in een duel is de vraag
+                  "een dier met een B" en niet alleen de letter. */}
+              <Tv letter={round.letter} label={tCat(round.category)} />
+              <p style={{ margin: "8px 0 0", textAlign: "center", fontFamily: font.ui, fontSize: 13, color: withAlpha(colors.violet, 0.95), filter: "brightness(1.5)" }}>
+                {t("duelRarityHint")}
+              </p>
 
               <div
                 style={{
@@ -557,7 +565,12 @@ export function Duel({ game, onBack, onProfile, openId, onGeopend }: {
           <Card style={{ display: "flex", flexDirection: "column", gap: 3, padding: "13px 7px 14px" }}>
             {duel.detail.map((row) => (
               <GlasRij key={row.idx}>
-                <span style={{ width: 30, flexShrink: 0, fontFamily: font.display, fontWeight: 700, fontSize: 20, color: colors.gold, textAlign: "center" }}>{row.letter}</span>
+                {/* De letter als art, net als op de tv. Geen tv per rij: vijf
+                    rondes zijn vijf regels en dan is het een lijst, geen vijf
+                    schermen onder elkaar. */}
+                <span style={{ width: 30, flexShrink: 0, display: "flex", justifyContent: "center" }}>
+                  <LetterTeken teken={row.letter} hoogte={26} />
+                </span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontFamily: font.ui, fontSize: 10.5, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase", color: colors.faint }}>{tCat(row.category)}</div>
                   <WordLine slot={row.mine} mine />
@@ -843,160 +856,7 @@ function Clock({ left, tint }: { left: number; tint: string }) {
 
 // De kleur van de omlijning: exact dezelfde als de rand van de letterkaart,
 // zodat de tab en het vak één doorlopend frame zijn.
-const FRAME_LINE = withAlpha(colors.violet, 0.65);
 
-/** De categorie-tab: een zeshoek die met zijn PUNTEN precies op de bovenlijn van
- *  de letterkaart rust, met een doorzichtig binnenvak zodat je de arena erdoor
- *  ziet lopen.
- *
- *  Getekend als SVG-lijn en niet als geknipt blokje: een clip-path kan alleen
- *  een vorm VULLEN, dus met die aanpak was het binnenvak altijd dicht. Een
- *  polygon met `fill: none` geeft wel een echte omlijning. De breedte hangt van
- *  de tekst af en wordt daarom gemeten; de zeshoek wordt daarna exact op die
- *  maat getekend, zodat de punten links en rechts scherp blijven in plaats van
- *  uitgerekt. */
-function CategoryTab({ label, onWidth }: { label: string; onWidth?: (w: number) => void }) {
-  const box = useRef<HTMLDivElement | null>(null);
-  const [w, setW] = useState(150);
-  useLayoutEffect(() => {
-    if (!box.current) return;
-    const next = box.current.offsetWidth;
-    setW(next);
-    onWidth?.(next);
-  }, [label, onWidth]);
-
-  const H = 30;      // hoogte van de tab
-  const C = 13;      // hoe ver de punt naar binnen loopt
-  const pts = `${C},1.5 ${w - C},1.5 ${w - 1},${H / 2} ${w - C},${H - 1.5} ${C},${H - 1.5} 1,${H / 2}`;
-  return (
-    <div
-      ref={box}
-      style={{
-        position: "absolute",
-        // De punten zitten op halve hoogte, dus het MIDDEN van de tab moet op
-        // de bovenlijn van de kaart liggen: die lijn is hier top 0.
-        top: 0,
-        left: "50%",
-        transform: "translate(-50%, -50%)",
-        zIndex: 2,
-        height: H,
-        padding: "0 24px",
-        display: "grid",
-        placeItems: "center",
-      }}
-    >
-      <svg width={w} height={H} viewBox={`0 0 ${w} ${H}`} style={{ position: "absolute", left: 0, top: 0, overflow: "visible" }} aria-hidden>
-        {/* dikke, doorzichtige lijn eronder = de gloed, zonder filter */}
-        <polygon points={pts} fill="none" stroke={FRAME_LINE} strokeWidth={5} opacity={0.3} />
-        <polygon points={pts} fill="none" stroke={FRAME_LINE} strokeWidth={1.5} />
-      </svg>
-      <span
-        style={{
-          position: "relative",
-          fontFamily: font.ui,
-          fontSize: 12.5,
-          fontWeight: 800,
-          letterSpacing: 2.4,
-          textTransform: "uppercase",
-          color: "#FFFFFF",
-          textShadow: `0 0 8px ${withAlpha(colors.violet, 0.95)}, 0 0 18px ${withAlpha(colors.violet, 0.7)}`,
-        }}
-      >
-        {label}
-      </span>
-    </div>
-  );
-}
-
-/** De letter op zijn voetstuk: neon-omlijsting, hexagonale categorie-tab die op
- *  de rand rust, opstijgende stralen en een gloeiende schijf onder de letter. */
-function LetterStage({ letter, category, hint }: { letter: string; category: string; hint: string }) {
-  // De omlijning van de kaart is een SVG-pad met een GAT bovenin, precies zo
-  // breed als de tab. Met een gewone `border` liep die lijn dwars door de tab
-  // heen; nu houdt hij op waar de tab begint en pakt hij erna weer op, zodat
-  // tab en vak als een doorlopende vorm lezen.
-  const card = useRef<HTMLDivElement | null>(null);
-  const [box, setBox] = useState({ w: 0, h: 0 });
-  const [tabW, setTabW] = useState(0);
-  useLayoutEffect(() => {
-    const measure = () => {
-      if (card.current) setBox({ w: card.current.offsetWidth, h: card.current.offsetHeight });
-    };
-    measure();
-    window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
-  }, [letter, category, hint]);
-
-  const R = 22;
-  const gap = tabW + 6;                       // beetje lucht naast de punten
-  const { w, h } = box;
-  const outline =
-    w && h
-      ? `M ${w / 2 + gap / 2} 0 H ${w - R} A ${R} ${R} 0 0 1 ${w} ${R} V ${h - R} ` +
-        `A ${R} ${R} 0 0 1 ${w - R} ${h} H ${R} A ${R} ${R} 0 0 1 0 ${h - R} ` +
-        `V ${R} A ${R} ${R} 0 0 1 ${R} 0 H ${w / 2 - gap / 2}`
-      : "";
-
-  return (
-    <div style={{ position: "relative", marginTop: 12 }}>
-      <CategoryTab label={category} onWidth={setTabW} />
-
-      <div
-        ref={card}
-        style={{
-          position: "relative",
-          borderRadius: R,
-          padding: "46px 18px 20px",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: 6,
-          // Bewust bijna doorzichtig: het podium en de stralen van de arena
-          // moeten er dwars doorheen te zien zijn, anders staat de letter op een
-          // dichte kaart in plaats van op het toneel.
-          background: `linear-gradient(180deg, ${withAlpha(colors.violet, 0.1)}, ${withAlpha(ARENA.base, 0.22)})`,
-          boxShadow: `0 0 26px ${withAlpha(colors.violet, 0.35)}, inset 0 0 34px ${withAlpha(colors.violet, 0.12)}`,
-        }}
-      >
-        {/* De plaat hangt aan de KAART, niet aan het scherm: het podium hoort
-            onder de letter en dat is een verhouding van de kaart. Aan het scherm
-            opgehangen schoof hij zodra het toetsenbord opengaat. Hij is breder
-            dan de kaart en steekt er dus buiten, zoals bedoeld. */}
-        <ArenaPlate src="/duel-bg.webp" podium={PODIUM_Y} at="58%" width="215%" />
-        {!!outline && (
-          <svg
-            aria-hidden
-            width={w}
-            height={h}
-            viewBox={`0 0 ${w} ${h}`}
-            style={{ position: "absolute", left: 0, top: 0, overflow: "visible", pointerEvents: "none", zIndex: 1 }}
-          >
-            <path d={outline} fill="none" stroke={FRAME_LINE} strokeWidth={1.5} />
-          </svg>
-        )}
-        <div style={{ position: "relative", zIndex: 1, display: "grid", placeItems: "center", width: "100%" }}>
-          {/* Zelfde behandeling als de letter op de rol: een verloop over het
-              glyph met de gloed als vervaagde kopie erachter, in het goud dat de
-              letter al had. */}
-          <NeonText
-            accent={colors.gold}
-            blur={26}
-            glow={0.7}
-            style={{ fontFamily: font.display, fontWeight: 700, fontSize: 86, lineHeight: 1 }}
-          >
-            {letter}
-          </NeonText>
-        </div>
-        <span style={{ position: "relative", zIndex: 1, marginTop: 46, fontFamily: font.ui, fontSize: 13, color: withAlpha(colors.violet, 0.95), textAlign: "center", filter: "brightness(1.5)" }}>
-          {hint}
-        </span>
-      </div>
-    </div>
-  );
-}
-
-// Grote trede-kaart direct na je antwoord: dit is het moment waarop je ziet of
-// je iets zeldzaams te pakken had.
 function TierFlash({ slot }: { slot: Slot }) {
   const { t } = useT();
   const col = TIER_COLOR[slot.tier] ?? colors.sub;
