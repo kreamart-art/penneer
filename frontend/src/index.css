@@ -1484,3 +1484,34 @@ body.ketenspel::after {
   /* Op EEN regel, want twee regels maken de plaat hoger dan de balk. */
   white-space: nowrap !important;
 }
+
+/* Ontdekken — de kaart die omdraait.
+   De draaiing zit op een binnenlaag en niet op de doos zelf, want de doos
+   houdt het perspectief vast: draai je die mee, dan draait het perspectief
+   mee en ziet de kaart eruit alsof hij plat wegklapt in plaats van om zijn
+   as gaat. */
+.ontdek-flip {
+  position: relative;
+  perspective: 1200px;
+}
+.ontdek-flip-binnen {
+  position: relative;
+  width: 100%;
+  transition: transform .55s cubic-bezier(.2, .7, .2, 1);
+  transform-style: preserve-3d;
+}
+.ontdek-flip.om .ontdek-flip-binnen {
+  transform: rotateY(180deg);
+}
+.ontdek-flip-kant {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.ontdek-flip-achter {
+  position: absolute;
+  inset: 0;
+  transform: rotateY(180deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ontdek-flip-binnen { transition: none; }
+}

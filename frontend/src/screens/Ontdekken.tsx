@@ -9,7 +9,7 @@
 // verzameling die op twee toestellen anders staat is erger dan een verzameling
 // die een halve seconde later verschijnt.
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Apple, ArrowLeft, Briefcase, Building2, ChevronDown, ChevronRight, Filter, Globe, Layers, Lightbulb, PawPrint } from "lucide-react";
+import { Apple, ArrowLeft, Briefcase, Building2, ChevronDown, ChevronLeft, ChevronRight, Filter, Globe, Layers, Lightbulb, PawPrint } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "../components/Button";
 import { LetterTegel } from "../components/LetterTegel";
@@ -477,7 +477,7 @@ function Letter({ data, onVerzameling }: { data: LetterView; onVerzameling: () =
   const { t } = useT();
   const [sortering, setSortering] = useState<Sortering>("az");
   const [filter, setFilter] = useState<Filter>("alles");
-  const [open, setOpen] = useState<Kaart | null>(null);
+  const [openIdx, setOpenIdx] = useState<number | null>(null);
   const nu = Date.now() / 1000;
 
   const compleet = data.total > 0 && data.discovered >= data.total;
@@ -495,6 +495,10 @@ function Letter({ data, onVerzameling }: { data: LetterView; onVerzameling: () =
     }
     return k;
   }, [data.cards, filter, sortering]);
+
+  // De pager loopt langs de kaarten die je HEBT, in de volgorde die nu op het
+  // scherm staat, zodat bladeren doet wat je ziet.
+  const ontdekt = useMemo(() => kaarten.filter((k) => k.discovered), [kaarten]);
 
   const filterLabel = filter === "alles" ? t("ontdekkenFilterAlles")
     : filter === "ontdekt" ? t("ontdekkenFilterOntdekt") : t("ontdekkenFilterMist");
@@ -535,7 +539,7 @@ function Letter({ data, onVerzameling }: { data: LetterView; onVerzameling: () =
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
             {kaarten.map((k) => (
-              <KaartTegel key={k.id} kaart={k} nu={nu} onOpen={() => setOpen(k)} />
+              <KaartTegel key={k.id} kaart={k} nu={nu} onOpen={() => setOpenIdx(ontdekt.findIndex((c) => c.id === k.id))} />
             ))}
           </div>
         )}
@@ -571,51 +575,145 @@ function Letter({ data, onVerzameling }: { data: LetterView; onVerzameling: () =
         </div>
       </div>
 
-      {open && <KaartGroot kaart={open} rijen={data.fact_schema} nu={nu} onSluit={() => setOpen(null)} />}
+      {openIdx !== null && openIdx >= 0 && (
+        <KaartGroot
+          kaarten={ontdekt} index={openIdx} rijen={data.fact_schema} nu={nu}
+          onGa={setOpenIdx} onSluit={() => setOpenIdx(null)}
+        />
+      )}
     </>
   );
 }
 
 /** De kaart op ware grootte, als overlay. */
-function KaartGroot({ kaart, rijen, nu, onSluit }: {
-  kaart: Kaart; rijen: FactRow[]; nu: number; onSluit: () => void;
+/** De kaart op ware grootte: voorkant met het beeld, achterkant met de feiten.
+ *
+ *  Tikken draait hem om. De feiten staan op de ACHTERKANT en niet in een
+ *  paneel eronder, want dat is wat een verzamelkaart is: beeld aan de ene kant,
+ *  wat je erover weet aan de andere. Een lijstje eronder maakt er een
+ *  productpagina van.
+ *
+ *  De pager loopt alleen langs kaarten die je HEBT. Bladeren naar een kaart die
+ *  je niet hebt zou de spanning van het raster weghalen. */
+function KaartGroot({ kaarten, index, rijen, nu, onGa, onSluit }: {
+  kaarten: Kaart[]; index: number; rijen: FactRow[]; nu: number;
+  onGa: (i: number) => void; onSluit: () => void;
 }) {
   const { t } = useT();
-  // Escape sluit, zoals elke overlay in de app.
+  const [om, setOm] = useState(false);
+  const kaart = kaarten[index];
+
+  // Bij het bladeren altijd met de voorkant beginnen: anders zie je de feiten
+  // van de volgende kaart voordat je hem gezien hebt.
+  useEffect(() => { setOm(false); }, [index]);
+
   useEffect(() => {
-    const opToets = (e: KeyboardEvent) => { if (e.key === "Escape") onSluit(); };
+    const opToets = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onSluit();
+      if (e.key === "ArrowLeft" && index > 0) onGa(index - 1);
+      if (e.key === "ArrowRight" && index < kaarten.length - 1) onGa(index + 1);
+      if (e.key === " " || e.key === "Enter") { e.preventDefault(); setOm((v) => !v); }
+    };
     window.addEventListener("keydown", opToets);
     return () => window.removeEventListener("keydown", opToets);
-  }, [onSluit]);
+  }, [onSluit, onGa, index, kaarten.length]);
+
+  if (!kaart) return null;
   const feiten = rijen.filter((r) => kaart.facts?.[r.key]);
+
+  const blader = (naar: number, label: string, kant: "links" | "rechts") => {
+    const kan = naar >= 0 && naar < kaarten.length;
+    return (
+      <button
+        onClick={() => { if (kan) { sound.uiTap(); onGa(naar); } }}
+        disabled={!kan}
+        aria-label={label}
+        style={{
+          background: "transparent", border: "none", padding: 8,
+          cursor: kan ? "pointer" : "default", opacity: kan ? 1 : 0.25,
+          color: colors.ink, display: "flex", flexShrink: 0,
+        }}
+      >
+        {kant === "links" ? <ChevronLeft size={26} /> : <ChevronRight size={26} />}
+      </button>
+    );
+  };
+
   return (
     <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={kaart.word || t("ontdekkenNogNietOntdekt")}
+      role="dialog" aria-modal="true" aria-label={kaart.word || ""}
       onClick={onSluit}
       style={{
         position: "fixed", inset: 0, zIndex: 60, display: "grid", placeItems: "center",
-        background: "rgba(4,1,14,.82)", padding: 24,
+        background: "rgba(4,1,14,.86)", padding: 18,
       }}
     >
-      <div onClick={(e) => e.stopPropagation()} style={{ width: "min(78vw, 320px)" }}>
-        <KaartTegel kaart={kaart} nu={nu} groot />
-        {feiten.length > 0 && (
-          <div className="panel-neon" style={{ ...panelStyle, padding: 12, marginTop: 12 }}>
-            {feiten.map((r) => (
-              <div key={r.key} style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "3px 0" }}>
-                <span style={{ fontFamily: font.ui, fontSize: 12, color: colors.sub }}>{r.label}</span>
-                <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: colors.ink, textAlign: "right" }}>
-                  {kaart.facts?.[r.key]}
-                </span>
-              </div>
-            ))}
+      <div onClick={(e) => e.stopPropagation()} style={{ display: "flex", alignItems: "center", gap: 2 }}>
+        {blader(index - 1, t("ontdekkenVorige"), "links")}
+
+        <div style={{ width: "min(66vw, 290px)" }}>
+          <div className={`ontdek-flip${om ? " om" : ""}`}>
+            <div className="ontdek-flip-binnen" style={{ aspectRatio: KAART_RATIO }}>
+              <button
+                onClick={() => { sound.uiTap(); setOm((v) => !v); }}
+                aria-label={t("ontdekkenDraaiOm")}
+                className="ontdek-flip-kant"
+                style={{ position: "absolute", inset: 0, padding: 0, border: "none", background: "transparent", cursor: "pointer" }}
+              >
+                <KaartTegel kaart={kaart} nu={nu} groot />
+              </button>
+
+              {/* De achterkant: het pen-embleem als ondergrond, de feiten erop. */}
+              <button
+                onClick={() => { sound.uiTap(); setOm((v) => !v); }}
+                aria-label={t("ontdekkenDraaiOm")}
+                className="ontdek-flip-kant ontdek-flip-achter"
+                style={{ padding: 0, border: "none", background: "transparent", cursor: "pointer" }}
+              >
+                <img
+                  src="/static/cards/achterkant.webp" alt=""
+                  style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }}
+                />
+                {/* Een donker vlak over het embleem. Zonder dit valt de tekst
+                    midden in de gouden ring en is er geen woord te lezen: de
+                    achterkant is mooi, maar hier moet hij vooral ondergrond
+                    zijn. */}
+                <div
+                  style={{
+                    position: "absolute", left: "13%", right: "13%", top: "16%", bottom: "14%",
+                    display: "flex", flexDirection: "column", justifyContent: "center", gap: 2,
+                    padding: "10px 12px", borderRadius: 10,
+                    background: "linear-gradient(180deg, rgba(8,3,20,.86), rgba(8,3,20,.93))",
+                    border: `1px solid ${withAlpha(colors.gold, 0.35)}`,
+                    boxShadow: "0 8px 24px rgba(0,0,0,.5)",
+                  }}
+                >
+                  <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: "clamp(13px, 4.6vw, 19px)", color: colors.gold, textAlign: "center", marginBottom: 8, textShadow: "0 2px 8px rgba(0,0,0,.8)" }}>
+                    {kaart.word}
+                  </span>
+                  {feiten.length === 0 ? (
+                    <span style={{ fontFamily: font.ui, fontSize: 11.5, color: colors.sub, textAlign: "center", lineHeight: 1.35 }}>
+                      {t("ontdekkenGeenFeiten")}
+                    </span>
+                  ) : feiten.map((r) => (
+                    <div key={r.key} style={{ display: "flex", justifyContent: "space-between", gap: 8, padding: "3px 0", borderTop: `1px solid ${withAlpha(colors.gold, 0.18)}` }}>
+                      <span style={{ fontFamily: font.ui, fontSize: "clamp(9px, 2.9vw, 12px)", color: colors.sub }}>{r.label}</span>
+                      <span style={{ fontFamily: font.ui, fontSize: "clamp(9px, 2.9vw, 12px)", fontWeight: 700, color: colors.ink, textAlign: "right" }}>
+                        {kaart.facts?.[r.key]}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </button>
+            </div>
           </div>
-        )}
-        <div style={{ marginTop: 12 }}>
-          <Button variant="ghost" full onClick={onSluit}>{t("back")}</Button>
+
+          <div style={{ marginTop: 10, textAlign: "center", fontFamily: font.ui, fontSize: 11.5, color: colors.faint }}>
+            {t("ontdekkenKaartVan", { n: index + 1, total: kaarten.length })} · {t("ontdekkenDraaiOm")}
+          </div>
         </div>
+
+        {blader(index + 1, t("ontdekkenVolgende"), "rechts")}
       </div>
     </div>
   );
