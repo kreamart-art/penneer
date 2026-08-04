@@ -368,7 +368,7 @@ function Hub({ data, onCategorie, onOefenen, onQuiz, onVerzameling }: {
                     Goud markeert de categorie waar je het verst in bent. */}
                 <GoudKader
                   hoek={8} kleur={actief ? "goud" : "violet"} dik={actief ? 1.9 : 1} binnenDik={1} vulling="licht"
-                  binnenlijn={actief} binnenSterkte={0.4} gloed={actief} gloedKleur="#D46427" gloedMaat={0.35} padding="8px 2px"
+                  binnenlijn={actief} binnenSterkte={0.4} gloed={actief} gloedKleur="#D46427" gloedMaat={0.7} binnenKleur="#D46427" padding="8px 2px"
                 >
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
                     <span aria-hidden style={{ color: actief ? colors.gold : colors.violet, display: "flex" }}>

@@ -47,6 +47,7 @@ export function GoudKader({
   vulling = false,
   binnenlijn = false,
   binnenSterkte = 0.2,
+  binnenKleur,
   padding = 12,
   style,
 }: {
@@ -96,6 +97,8 @@ export function GoudKader({
    *  zijn; op een tegel van een vijfde breed is er zo weinig lijn te zien dat
    *  hij daar meer moet aanzetten om nog als diepte te lezen. */
   binnenSterkte?: number;
+  /** Kleur van de binnenlijn, als die los moet staan van de buitenlijn. */
+  binnenKleur?: string;
   padding?: number | string;
   style?: React.CSSProperties;
 }) {
@@ -264,10 +267,10 @@ export function GoudKader({
                   cx={hx * w} cy={hy * h}
                   r={Math.max(26, Math.min(Math.hypot(w, h) * 0.22, 95))}
                 >
-                  <stop offset="0%" stopColor={tint.hoog} stopOpacity="1" />
-                  <stop offset="25%" stopColor={tint.hoog} stopOpacity="0.75" />
-                  <stop offset="58%" stopColor={tint.mid} stopOpacity="0.3" />
-                  <stop offset="100%" stopColor={tint.laag} stopOpacity="0" />
+                  <stop offset="0%" stopColor={binnenKleur || tint.hoog} stopOpacity="1" />
+                  <stop offset="25%" stopColor={binnenKleur || tint.hoog} stopOpacity="0.75" />
+                  <stop offset="58%" stopColor={binnenKleur || tint.mid} stopOpacity="0.3" />
+                  <stop offset="100%" stopColor={binnenKleur || tint.laag} stopOpacity="0" />
                 </radialGradient>
                 <radialGradient
                   key={`k${i}`} id={`${id}k${i}`} gradientUnits="userSpaceOnUse"
@@ -275,8 +278,8 @@ export function GoudKader({
                   r={Math.max(11, Math.min(Math.hypot(w, h) * 0.075, 32))}
                 >
                   <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.9" />
-                  <stop offset="35%" stopColor={tint.hoog} stopOpacity="0.75" />
-                  <stop offset="100%" stopColor={tint.hoog} stopOpacity="0" />
+                  <stop offset="35%" stopColor={binnenKleur || tint.hoog} stopOpacity="0.75" />
+                  <stop offset="100%" stopColor={binnenKleur || tint.hoog} stopOpacity="0" />
                 </radialGradient>
               </>
             ))}
@@ -309,12 +312,8 @@ export function GoudKader({
               lijn zwaarder of lichter wordt. */}
           {binnenlijn && HOEKEN4.map((_, i) => (
             <g key={i} opacity={binnenSterkte}>
-              {gloed && (
-                <path
-                  d={binnen} fill="none" stroke={gloedKleur || `url(#${id}b${i})`}
-                  strokeWidth={Math.max(bDik * 2.2, 1.4) * gloedMaat} filter={`url(#${id}g)`} opacity={0.9}
-                />
-              )}
+              {/* Geen gloed op de binnenlijn: die hoort een lijn te zijn en
+                  geen tweede lichtbron. Alleen de buitenlijn gloeit. */}
               <path d={binnen} fill="none" stroke={`url(#${id}b${i})`} strokeWidth={bDik} />
             </g>
           ))}
