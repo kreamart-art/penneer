@@ -46,6 +46,7 @@ export function GoudKader({
   gloedMaat = 1,
   gloedKlasse,
   vulling = false,
+  vullingArt,
   binnenlijn = false,
   binnenSterkte = 0.2,
   binnenKleur,
@@ -94,6 +95,19 @@ export function GoudKader({
    *  een vak dat OP zo'n sectie ligt: met dezelfde vulling lopen de twee
    *  onderin in elkaar over en verdwijnt de onderrand van het bovenste vak. */
   vulling?: boolean | "licht";
+  /** Vul het vak met ART in plaats van met het verloop hierboven.
+   *
+   *  DE AFBEELDING WORDT OP DE ACHTHOEK GEKNIPT. Een plaatje in een gewone doos
+   *  eronder leggen werkt niet: dat is een rechthoek, dus in elke afgesneden
+   *  hoek zou een driehoekje art buiten de lijn uitsteken. Hier ligt hij binnen
+   *  precies hetzelfde pad als de lijn zelf, dus de hoeken van de vulling zijn
+   *  de hoeken van de vorm.
+   *
+   *  Er gaat een SLUIER overheen, licht boven en donker onder. Twee redenen: de
+   *  lichtbron van het huis staat boven, en de art alleen is donkerder dan de
+   *  vulling die hij vervangt. De sluier is zo gekozen dat het vak uitkomt op
+   *  dezelfde twee kleuren als het verloop: #1D0E3E bovenin, #100629 onderin. */
+  vullingArt?: string;
   /** Een tweede omtrek vlak binnen de eerste, sterk in de hoeken en weg in het
    *  midden van elke zijde. Twee lijnen zo dicht op elkaar lezen als een rand
    *  met dikte in plaats van als een streep. */
@@ -139,6 +153,10 @@ export function GoudKader({
   // SVG en oogt de lijn aan de randen dunner dan in het midden.
   const o = dik / 2;
   const bDik = binnenDik ?? dik;
+  // Een vak met art erin is net zo goed een vak met een binnenkant: de lijn
+  // eromheen hoort dus hetzelfde licht te volgen (van boven), of de binnenkant
+  // nu een verloop is of een plaatje.
+  const heeftVulling = !!vulling || !!vullingArt;
 
   /** De acht punten van de achthoek, `naarBinnen` pixels naar binnen geschoven.
    *  Een vorm die overal even ver naar binnen gaat, krijgt een kleinere schuine
@@ -255,7 +273,7 @@ export function GoudKader({
                   </radialGradient>
                 ))}
               </>
-            ) : vulling ? (
+            ) : heeftVulling ? (
               // Staat er een binnenkant onder, dan komt het licht van BOVEN en
               // hoort de lijn dat te volgen: licht op de bovenrand, donker op
               // de onderrand. Zo zijn de rand en de vulling het over dezelfde
@@ -282,6 +300,23 @@ export function GoudKader({
                 <stop offset="0%" stopColor={vulling === "licht" ? "#1F0A45" : "#1D0E3E"} />
                 <stop offset="100%" stopColor={vulling === "licht" ? "#1A0938" : "#100629"} />
               </linearGradient>
+            )}
+            {vullingArt && (
+              <>
+                {/* Hetzelfde pad als de lijn, maar dan als schaar. */}
+                <clipPath id={`${id}c`}>
+                  <path d={punten} />
+                </clipPath>
+                {/* Nagemeten op de art zelf: de band die je in een popup ziet is
+                    bovenin rgb(17,1,54) en onderin rgb(13,1,48). Met deze twee
+                    sluiers komt dat uit op rgb(30,14,65) en rgb(15,5,40), en dat
+                    zijn op een paar punten na de kleuren van het verloop dat hij
+                    vervangt: #1D0E3E en #100629. */}
+                <linearGradient id={`${id}s`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#372554" stopOpacity="0.35" />
+                  <stop offset="100%" stopColor="#110821" stopOpacity="0.55" />
+                </linearGradient>
+              </>
             )}
             {binnenlijn && HOEKEN4.map(([hx, hy], i) => (
               // Dezelfde truc als bij `fade`, maar dan in alle vier de hoeken:
@@ -353,7 +388,16 @@ export function GoudKader({
           </defs>
 
           {/* De binnenkant eerst, want alles wat lijn is hoort erbovenop. */}
-          {vulling && <path d={punten} fill={`url(#${id}v)`} />}
+          {vulling && !vullingArt && <path d={punten} fill={`url(#${id}v)`} />}
+          {vullingArt && (
+            // `slice` is wat `cover` is voor een achtergrond: vullen en de rest
+            // eraf, in plaats van uitrekken. Een sterrenveld dat in één richting
+            // is uitgerekt geeft ovale sterren.
+            <g clipPath={`url(#${id}c)`}>
+              <image href={vullingArt} x={0} y={0} width={w} height={h} preserveAspectRatio="xMidYMid slice" />
+              <rect x={0} y={0} width={w} height={h} fill={`url(#${id}s)`} />
+            </g>
+          )}
 
           {(fade ? HOEKEN.map((_, i) => i) : [0]).map((i) => (
             <g key={i}>

@@ -558,8 +558,10 @@ export default function App() {
           if (oefenViaOntdek) { setOefenViaOntdek(false); setShowOntdekken(true); }
         }}
         startLetter={oefenLetter}
+        ontdekStijl={ontdekVrij}
+        onVerzameling={() => { setShowTraining(false); setOefenViaOntdek(false); setShowOntdekken(true); }}
         lenient={!!game.state.account?.lenient_spelling}
-        onOntdekken={ontdekVrij && !oefenViaOntdek ? () => { setShowTraining(false); setOefenLetter(null); setShowOntdekken(true); } : undefined}
+        onOntdekken={ontdekVrij ? () => { setShowTraining(false); setOefenLetter(null); setOefenViaOntdek(false); setShowOntdekken(true); } : undefined}
       />
     );
   } else if (showShop) {

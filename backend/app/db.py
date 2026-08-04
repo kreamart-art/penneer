@@ -21,7 +21,13 @@ import threading
 import time
 from typing import Any, Optional
 
+from . import meldingen
+
 DB_PATH = os.environ.get("PENNEER_DB_PATH", "penneer.db")
+
+# De vraagtekens voor `soort NOT IN (...)`. Uit de lijst zelf gerekend en niet
+# met de hand geteld: komt er een soort bij, dan klopt de query nog steeds.
+_VERBORGEN_Q = ",".join("?" for _ in meldingen.VERBORGEN)
 
 NAME_RE = re.compile(r"^[A-Za-z0-9À-ÿ_\- ]{2,20}$")
 # Small blunt blocklist for public profile names (substring match, lowercase).
@@ -3200,17 +3206,31 @@ class Database:
         with self._lock:
             rows = self._q(
                 "SELECT id, soort, titel, body, icoon, naar, data, created_at, gelezen"
-                " FROM meldingen WHERE user_id=? ORDER BY created_at DESC LIMIT ?",
-                (user_id, limit),
+                f" FROM meldingen WHERE user_id=? AND soort NOT IN ({_VERBORGEN_Q})"
+                " ORDER BY created_at DESC LIMIT ?",
+                (user_id, *meldingen.VERBORGEN, limit),
             )
         return [{**dict(r), "gelezen": bool(r["gelezen"])} for r in rows]
 
     def meldingen_ongelezen(self, user_id: str) -> int:
+        """Hoeveel er ONGELEZEN in de lijst staan.
+
+        Dezelfde uitsluiting als hierboven, en dat is precies het punt: een
+        teller die iets meetelt wat niet in de lijst staat, krijg je nooit meer
+        leeg. Zie meldingen.VERBORGEN.
+        """
         with self._lock:
-            rows = self._q("SELECT COUNT(*) AS n FROM meldingen WHERE user_id=? AND gelezen=0", (user_id,))
+            rows = self._q(
+                "SELECT COUNT(*) AS n FROM meldingen WHERE user_id=? AND gelezen=0"
+                f" AND soort NOT IN ({_VERBORGEN_Q})",
+                (user_id, *meldingen.VERBORGEN),
+            )
         return int(rows[0]["n"]) if rows else 0
 
     def meldingen_gelezen(self, user_id: str) -> None:
+        # Hier juist ZONDER uitsluiting: de verborgen soorten tellen nergens
+        # meer mee, maar een rij die nooit meer op gelezen komt te staan blijft
+        # rommel in de tabel.
         self._exec("UPDATE meldingen SET gelezen=1 WHERE user_id=? AND gelezen=0", (user_id,))
 
     def melding_weg(self, user_id: str, melding_id: int) -> None:

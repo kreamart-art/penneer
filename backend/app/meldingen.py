@@ -192,6 +192,20 @@ SOORTEN: dict[str, dict] = {
     },
 }
 
+# Soorten die WEL bewaard worden maar NIET in de meldingenlijst horen.
+#
+# Een bericht staat al in je inbox, met het gesprek eronder. Een tweede regel
+# "je hebt een bericht" naast dat gesprek is dubbelop, dus de app liet ze daar
+# altijd al weg. Alleen: de teller telde ze wél mee. Gevolg: je las het bericht,
+# de bel bleef branden, en er was niets zichtbaars om aan te tikken waarmee je
+# hem uit kreeg. Vandaar dat de lijst en de teller nu allebei op deze ene lijst
+# staan in plaats van dat de app hem apart nog eens toepast.
+#
+# Ze blijven wel in de tabel staan, want daar hangen twee dingen aan: de push
+# naar iemand die de app dicht heeft, en het dagslot van de herinneringen (dat
+# kijkt wanneer dezelfde soort voor het laatst verstuurd is).
+VERBORGEN = ("bericht", "herinnering_bericht")
+
 
 def maak(soort: str, **vars) -> Optional[dict]:
     """De melding als dictionary, of None als de soort niet bestaat.

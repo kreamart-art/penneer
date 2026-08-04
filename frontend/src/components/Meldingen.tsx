@@ -128,9 +128,20 @@ export function MeldingBanner({
  *  de tik ging meteen ergens heen, dus je kon nooit lezen wat er stond: je werd
  *  weggestuurd voor je het gelezen had. Nu klapt hij open, staat de hele tekst
  *  er, en pas dan kun je met de knop eronder naar waar hij over gaat. */
-export function MeldingRij({ melding, onOpen, onWeg }: { melding: Melding; onOpen: () => void; onWeg?: () => void }) {
+export function MeldingRij({
+  melding, nieuw, onOpen, onWeg,
+}: {
+  melding: Melding;
+  /** Overschrijft het gelezen-vlaggetje voor het OOG. Het vak zet zijn meldingen op
+   *  gelezen zodra je erop staat, en dan zou de gouden stip verdwijnen op het
+   *  moment dat je hem las. Met deze vlag blijft hij staan zolang je er bent. */
+  nieuw?: boolean;
+  onOpen: () => void;
+  onWeg?: () => void;
+}) {
   const { t } = useT();
   const [open, setOpen] = useState(false);
+  const gelezen = nieuw ? false : melding.gelezen;
 
   // Vegen om weg te gooien. De rij schuift naar links tot de prullenbak eronder
   // vandaan komt en STOPT daar: hij mag de sectie niet uit. Een rij die je van
@@ -218,8 +229,8 @@ export function MeldingRij({ melding, onOpen, onWeg }: { melding: Melding; onOpe
       )}
     <NeonKader
       hoek={9}
-      dik={melding.gelezen && !open ? 0.26 : 0.42}
-      sterkte={melding.gelezen && !open ? 0.24 : 0.55}
+      dik={gelezen && !open ? 0.26 : 0.42}
+      sterkte={gelezen && !open ? 0.24 : 0.55}
       vulling="geen"
       eindkap
       style={{
@@ -246,9 +257,9 @@ export function MeldingRij({ melding, onOpen, onWeg }: { melding: Melding; onOpe
         aria-expanded={open}
         style={{ width: "100%", minWidth: 0, display: "flex", alignItems: "center", gap: 9, background: "transparent", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }}
       >
-        <ArtIcoon naam={icoonVan(melding.icoon)} size={20} gloed={!melding.gelezen} />
+        <ArtIcoon naam={icoonVan(melding.icoon)} size={20} gloed={!gelezen} />
         <span style={{ flex: 1, minWidth: 0 }}>
-          <span style={{ display: "block", fontFamily: font.ui, fontWeight: melding.gelezen ? 600 : 700, fontSize: 13, color: melding.gelezen ? colors.sub : colors.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <span style={{ display: "block", fontFamily: font.ui, fontWeight: gelezen ? 600 : 700, fontSize: 13, color: gelezen ? colors.sub : colors.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {melding.titel}
           </span>
           <span
@@ -268,7 +279,7 @@ export function MeldingRij({ melding, onOpen, onWeg }: { melding: Melding; onOpe
         </span>
         <span style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 6 }}>
           <span style={{ fontFamily: font.ui, fontSize: 10.5, color: colors.faint }}>{geleden(melding.created_at, t)}</span>
-          {!melding.gelezen && (
+          {!gelezen && (
             <span style={{ width: 7, height: 7, borderRadius: "50%", background: colors.gold, boxShadow: `0 0 7px ${withAlpha(colors.gold, 0.8)}` }} />
           )}
           <ChevronDown

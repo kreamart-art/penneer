@@ -3606,6 +3606,24 @@ function InboxTab({ game, onGaNaar }: { game: GameApi; onGaNaar: (naar: string) 
   const account = game.state.account;
   const threads = game.state.dmThreads;
 
+  // KIJKEN IS LEZEN. De teller stond eerst pas uit als je een aparte knop in de
+  // sectiekop aantikte, dus je kon je meldingen doorlezen, weglopen en de bel
+  // zag nog steeds branden. Nu gaat hij uit zodra je op dit vak staat.
+  //
+  // WELKE ER NIEUW WAREN bewaart hij eerst. De server stuurt de lijst daarna
+  // terug met alles op gelezen, en zonder deze momentopname zou de gouden stip
+  // verdwijnen op het moment dat je ernaar keek. Zo blijft hij staan zolang je
+  // op dit vak bent, en is hij weg als je terugkomt.
+  const [warenNieuw, setWarenNieuw] = useState<Set<number>>(new Set());
+  useEffect(() => {
+    if (vak !== "meld" || !account) return;
+    const nieuw = game.state.meldingen.filter((m) => !m.gelezen).map((m) => m.id);
+    if (nieuw.length === 0) return;
+    setWarenNieuw((oud) => new Set([...oud, ...nieuw]));
+    game.meldingenLezen();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vak, !!account, game.state.meldingen]);
+
   // Load the DM thread list alongside the invites, plus the notifications.
   useEffect(() => {
     if (account) {
@@ -3646,12 +3664,10 @@ function InboxTab({ game, onGaNaar }: { game: GameApi; onGaNaar: (naar: string) 
 
     {vak === "meld" && (
       <Card style={{ display: "flex", flexDirection: "column", gap: 3, padding: "13px 7px 14px" }}>
-        <SectieKop
-          style={{ paddingInline: 6 }}
-          label={t("meldingenTitle")}
-          actie={ongelezenMeld > 0 ? t("meldingenLees") : undefined}
-          onActie={ongelezenMeld > 0 ? () => { sound.uiTap(); game.meldingenLezen(); } : undefined}
-        />
+        {/* Geen "markeer als gelezen" meer: dat gebeurt hierboven vanzelf zodra
+            je op dit vak staat. Een knop om iets te bevestigen wat je zojuist
+            gedaan hebt (kijken) is werk dat de app zelf hoort te doen. */}
+        <SectieKop style={{ paddingInline: 6 }} label={t("meldingenTitle")} />
         {meldingen.length === 0 ? (
           <p style={{ margin: "8px 0 0", paddingInline: 8, fontFamily: font.ui, fontSize: 13, color: colors.faint }}>{t("meldingenLeeg")}</p>
         ) : (
@@ -3661,7 +3677,7 @@ function InboxTab({ game, onGaNaar }: { game: GameApi; onGaNaar: (naar: string) 
           // al was. De kaart zelf scrollt mee met de pagina.
           <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
             {meldingen.map((m) => (
-              <MeldingRij key={m.id} melding={m} onOpen={() => onMelding(m)} onWeg={() => game.meldingWeg(m.id)} />
+              <MeldingRij key={m.id} melding={m} nieuw={warenNieuw.has(m.id)} onOpen={() => onMelding(m)} onWeg={() => game.meldingWeg(m.id)} />
             ))}
           </div>
         )}

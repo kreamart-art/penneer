@@ -123,8 +123,12 @@ class AccountManager:
             return
         rij = self.db.melding_add(user_id, m, json.dumps(data) if data else None)
         if self.online(user_id):
-            await self._push(user_id, {"type": "melding", "melding": rij,
-                                       "ongelezen": self.db.meldingen_ongelezen(user_id)})
+            # Een verborgen soort krijgt GEEN balk in de app. Bij een bericht is
+            # het bericht zelf er al, met zijn eigen balk waar je meteen op kunt
+            # antwoorden; een tweede balk erboven gaat over hetzelfde.
+            if soort not in meldingen.VERBORGEN:
+                await self._push(user_id, {"type": "melding", "melding": rij,
+                                           "ongelezen": self.db.meldingen_ongelezen(user_id)})
         elif m["push"]:
             asyncio.create_task(push.notify(user_id, m["titel"], m["body"], tag=m["tag"],
                                             url=meldingen.link(m["naar"], data)))

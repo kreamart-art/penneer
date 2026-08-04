@@ -249,8 +249,12 @@ function Reeks({ dagen }: { dagen: number }) {
   );
 }
 
-function HubSectie({ letter, streak, onSpeel }: {
+export function HubSectie({ letter, streak, onSpeel, uitleg, knopTekst }: {
   letter: string | null; streak: number; onSpeel: () => void;
+  /** Andere uitleg naast de reeks. Zonder deze staat er de tekst van de hub. */
+  uitleg?: string;
+  /** Ander opschrift op de knop. */
+  knopTekst?: string;
 }) {
   const { t } = useT();
   return (
@@ -328,7 +332,7 @@ function HubSectie({ letter, streak, onSpeel }: {
 
       <div style={{ position: "absolute", ...HUB.uitleg, display: "grid", placeItems: "center" }}>
         <span style={{ fontFamily: font.ui, fontSize: "clamp(6.5px, 1.95vw, 11px)", lineHeight: 1.3, color: colors.sub, textAlign: "center", whiteSpace: "pre-line" }}>
-          {t("ontdekkenHubUitleg")}
+          {uitleg ?? t("ontdekkenHubUitleg")}
         </span>
       </div>
 
@@ -350,7 +354,7 @@ function HubSectie({ letter, streak, onSpeel }: {
         }}
       >
         <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: "clamp(9px, 3.4vw, 20px)", color: "#3B2300", whiteSpace: "nowrap" }}>
-          {t("ontdekkenSpeelDeLetter")}
+          {knopTekst ?? t("ontdekkenSpeelDeLetter")}
         </span>
       </button>
     </div>
@@ -569,8 +573,18 @@ function Hub({ data, onCategorie, onOefenen, onQuiz, onVerzameling }: {
         </div>
       </GoudKader>
 
+      <VerzamelBalk onClick={onVerzameling} />
+    </>
+  );
+}
+
+/** De paarse balk onderaan met de gouden chevron: de weg naar de verzameling.
+ *  Eigen component, want Oefenen sluit er net zo goed mee af als de hub. */
+export function VerzamelBalk({ onClick }: { onClick: () => void }) {
+  const { t } = useT();
+  return (
       <button
-        onClick={() => { sound.uiTap(); onVerzameling(); }}
+        onClick={() => { sound.uiTap(); onClick(); }}
         className="pressable"
         style={{
           position: "relative", width: "100%", aspectRatio: `${ONDER_RATIO}`,
@@ -612,7 +626,6 @@ function Hub({ data, onCategorie, onOefenen, onQuiz, onVerzameling }: {
           </span>
         </span>
       </button>
-    </>
   );
 }
 

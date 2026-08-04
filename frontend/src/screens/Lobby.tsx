@@ -11,7 +11,8 @@ import { InfoDot } from "../components/InfoDot";
 import { Toggle } from "../components/Toggle";
 import { Screen, Card } from "../components/Layout";
 import { TopBar } from "../components/TopBar";
-import { GlasRij, Lijst, ProfileViewModal, ZoekKnop } from "./Hub";
+import { GlasRij, ProfileViewModal, ZoekKnop } from "./Hub";
+import { GoudKader } from "../components/GoudKader";
 import { KADER_LIJN_ROOD, NeonKader, Paneel } from "../components/ProfileHero";
 import { GlasVeld } from "../components/GlasVeld";
 import { KnopPlaat } from "../components/KnopPlaat";
@@ -69,11 +70,27 @@ function Rij({
   );
 }
 
-// Invite online friends into this room (accounts only; guests see nothing).
+/** Het kopje boven een lijstje in de popup. */
+function Kopje({ children }: { children: React.ReactNode }) {
+  return (
+    <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint, display: "flex", alignItems: "center", gap: 6 }}>
+      {children}
+    </span>
+  );
+}
+
+// Vrienden uitnodigen (alleen met een profiel; een gast ziet hier niets).
+//
+// EEN KNOP EN EEN POPUP, en niet meer een sectie in de lobby zelf. De lijst met
+// vrienden plus die met oud-medespelers besloeg een half scherm, terwijl je hem
+// hooguit één keer per potje nodig hebt: je nodigt uit en dan ben je klaar. In
+// de lobby staat nu alleen de knop, en de lijst komt erboven te liggen op het
+// moment dat je hem vraagt.
 function InviteFriends({ game }: { game: GameApi }) {
   const { t } = useT();
   const account = game.state.account;
   const room = game.state.room!;
+  const [open, setOpen] = useState(false);
   const [sent, setSent] = useState<Record<string, boolean>>({});
   const [q, setQ] = useState("");
 
@@ -84,6 +101,15 @@ function InviteFriends({ game }: { game: GameApi }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [!!account]);
 
+  // Escape sluit hem ook. De knop en de tik naast het venster doen hetzelfde;
+  // dit is er voor wie op een toetsenbord speelt.
+  useEffect(() => {
+    if (!open) return;
+    const toets = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    window.addEventListener("keydown", toets);
+    return () => window.removeEventListener("keydown", toets);
+  }, [open]);
+
   if (!account) return null;
   const inRoom = new Set(room.players.map((p) => p.user_id).filter(Boolean));
   const candidates = game.state.friends.filter((f) => f.status === "accepted" && !inRoom.has(f.id));
@@ -92,50 +118,94 @@ function InviteFriends({ game }: { game: GameApi }) {
   // Search only earns its place once there are more than three to scroll through.
   const searchable = candidates.length > 3;
   const shown = q.trim() ? candidates.filter((f) => f.name.toLowerCase().includes(q.trim().toLowerCase())) : candidates;
+  const nodig = (id: string) => { game.inviteSend(id, "invite"); setSent((s) => ({ ...s, [id]: true })); };
+  const titel = candidates.length ? t("inviteFriends") : t("invitePeople");
 
   return (
-    <Card style={{ padding: "11px 7px 13px" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, minHeight: 30, paddingInline: 6 }}>
-        <span style={{ flex: 1, fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint, display: "flex", alignItems: "center", gap: 6 }}>
-          <UserPlus size={13} /> {candidates.length ? t("inviteFriends") : t("invitePeople")}
+    <>
+      {/* De marge zit HIER en niet op een wikkel eromheen: is er niemand om uit
+          te nodigen, dan valt deze component in zijn geheel weg, en een lege
+          wikkel zou een gat in de kaart achterlaten. */}
+      <Button variant="ghost" style={{ marginTop: 12 }} onClick={() => { sound.uiTap(); setOpen(true); }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
+          <UserPlus size={16} /> {titel}
         </span>
-        {searchable && <ZoekKnop waarde={q} onWaarde={setQ} />}
-      </div>
-      <Lijst n={shown.length} rij={38} toon={3}>
-        {shown.length === 0 && (
-          <span style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint, padding: "4px 6px" }}>{t("searchNoMatch")}</span>
-        )}
-        {shown.map((f) => (
-          <Rij key={f.id} u={f} sent={!!sent[f.id]} onInvite={() => { game.inviteSend(f.id, "invite"); setSent((s) => ({ ...s, [f.id]: true })); }} />
-        ))}
-      </Lijst>
+      </Button>
 
-      {/* Oud-medespelers. Speel je een leuk potje met iemand die je niet als
-          vriend hebt, dan is die daarna onvindbaar: je zou zijn naam moeten
-          onthouden, hem opzoeken, een verzoek sturen en wachten tot hij
-          accepteert. Hier staat hij gewoon. */}
-      {oud.length > 0 && (
-        <>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "13px 6px 8px" }}>
-            <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint, display: "flex", alignItems: "center", gap: 6 }}>
-              <History size={13} /> {t("invitePlayedBefore")}
-            </span>
-            <span style={{ flex: 1, height: 1, background: colors.hairline }} />
+      {open && (
+        <div
+          onClick={() => { sound.uiTap(); setOpen(false); }}
+          style={{
+            position: "fixed", inset: 0, zIndex: 94,
+            background: "rgba(6,3,18,.82)", backdropFilter: "blur(5px)", WebkitBackdropFilter: "blur(5px)",
+            display: "grid", placeItems: "center", padding: 18,
+          }}
+        >
+          {/* De achthoek van de voortgangssectie op Ontdekken, met dezelfde
+              gouden hoeken en lichtpunten. Alleen de binnenkant is anders: daar
+              zit art in plaats van het verloop, op de vorm geknipt. */}
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 360 }}>
+            <GoudKader
+              hoek={13} kleur="violet" dik={0.6} gloed
+              vullingArt="/ui/profile-bg.webp"
+              binnenlijn hoekAccent="#F3B53E" puntjes padding={12}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 9, minHeight: 30 }}>
+                <Kopje>
+                  <UserPlus size={13} /> {titel}
+                </Kopje>
+                <span style={{ flex: 1 }} />
+                {searchable && <ZoekKnop waarde={q} onWaarde={setQ} />}
+                <button
+                  onClick={() => { sound.uiTap(); setOpen(false); }}
+                  aria-label={t("ontdekkenSluiten")}
+                  className="pressable"
+                  style={{ background: "transparent", border: "none", padding: 0, cursor: "pointer", color: colors.faint, display: "flex", lineHeight: 0 }}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* EEN scroller en niet één per lijstje: twee schuifvakken onder
+                  elkaar in een venster dat zelf al kan schuiven is niet te
+                  bedienen met een duim. */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: "min(60vh, 430px)", overflowY: "auto", overscrollBehavior: "contain" }}>
+                {shown.length === 0 && (
+                  <span style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint, padding: "4px 2px" }}>{t("searchNoMatch")}</span>
+                )}
+                {shown.map((f) => (
+                  <Rij key={f.id} u={f} sent={!!sent[f.id]} onInvite={() => nodig(f.id)} />
+                ))}
+
+                {/* Oud-medespelers. Speel je een leuk potje met iemand die je
+                    niet als vriend hebt, dan is die daarna onvindbaar: je zou
+                    zijn naam moeten onthouden, hem opzoeken, een verzoek sturen
+                    en wachten tot hij accepteert. Hier staat hij gewoon. */}
+                {oud.length > 0 && (
+                  <>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "7px 0 1px" }}>
+                      <Kopje>
+                        <History size={13} /> {t("invitePlayedBefore")}
+                      </Kopje>
+                      <span style={{ flex: 1, height: 1, background: colors.hairline }} />
+                    </div>
+                    {oud.map((c) => (
+                      <Rij
+                        key={c.id}
+                        u={c}
+                        sent={!!sent[c.id]}
+                        bij={c.samen > 1 ? t("invitePlayedN", { n: c.samen }) : undefined}
+                        onInvite={() => nodig(c.id)}
+                      />
+                    ))}
+                  </>
+                )}
+              </div>
+            </GoudKader>
           </div>
-          <Lijst n={oud.length} rij={38} toon={3}>
-            {oud.map((c) => (
-              <Rij
-                key={c.id}
-                u={c}
-                sent={!!sent[c.id]}
-                bij={c.samen > 1 ? t("invitePlayedN", { n: c.samen }) : undefined}
-                onInvite={() => { game.inviteSend(c.id, "invite"); setSent((s) => ({ ...s, [c.id]: true })); }}
-              />
-            ))}
-          </Lijst>
-        </>
+        </div>
       )}
-    </Card>
+    </>
   );
 }
 
@@ -335,9 +405,10 @@ export function Lobby({ game }: { game: GameApi }) {
               <p style={{ margin: 0, textAlign: "center", fontFamily: font.ui, fontSize: 11.5, color: colors.faint }}>{t("addBotHint")}</p>
             </div>
           )}
+          {/* Onder de spelerslijst, want dit is de knop die er iemand aan
+              toevoegt. De lijst zelf zit in een popup; zie InviteFriends. */}
+          <InviteFriends game={game} />
         </Card>
-
-        <InviteFriends game={game} />
 
         {/* Settings */}
         <Card style={{ display: "flex", flexDirection: "column", gap: 18 }}>

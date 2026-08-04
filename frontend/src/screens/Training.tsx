@@ -4,7 +4,9 @@
 // reveals the words from the list you did not name yet. Stateless: no account
 // needed, nothing stored (the progress/collection layer is a later step).
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Check, HelpCircle, RotateCw, X } from "lucide-react";
+import { ArrowLeft, Apple, Brain, Briefcase, Building2, Check, Globe, HelpCircle, Info, Layers, PawPrint, RotateCw, Shuffle, Target, X } from "lucide-react";
+import { GoudKader } from "../components/GoudKader";
+import { HubSectie, VerzamelBalk } from "./Ontdekken";
 import { Chip } from "../components/Chip";
 import { GlasVeld } from "../components/GlasVeld";
 import { NeonText } from "../components/NeonText";
@@ -22,6 +24,12 @@ import { colors, font, withAlpha } from "../theme/tokens";
 const TRAIN_CATS = ["Land", "Stad", "Vrucht", "Dier", "Beroep"] as const;
 const DEFAULT_ON = new Set(["Land", "Stad", "Vrucht"]);
 
+// Dezelfde iconen als in Ontdekken, zodat een categorie er overal hetzelfde
+// uitziet. Lijntekeningen en geen emoji: emoji ziet er op elk toestel anders uit.
+const CAT_ICOON = {
+  Land: Globe, Stad: Building2, Vrucht: Apple, Dier: PawPrint, Beroep: Briefcase,
+} as const;
+
 interface CheckCat {
   your: string;
   valid: boolean;
@@ -38,15 +46,17 @@ interface CheckResult {
 }
 
 
-export function Training({ onBack, lenient = false, onOntdekken, startLetter }: {
+export function Training({ onBack, lenient = false, onOntdekken, startLetter, ontdekStijl = false, onVerzameling }: {
   onBack: () => void; lenient?: boolean;
   /** Alleen gezet als de admin-schakelaar aanstaat; anders bestaat de knop niet. */
   onOntdekken?: () => void;
-  /** De letter van vandaag, als je vanaf Ontdekken op "Speel de letter" tikt.
-   *  Dan slaan we het instelscherm over: je hebt de letter al gekozen door op
-   *  die knop te tikken, en er nog een keuzescherm tussen zetten voelt als een
-   *  knop die niet doet wat hij zegt. */
+  /** De letter van vandaag, als je vanaf Ontdekken komt. Die staat dan op de
+   *  knop ("Begin met B") en is de letter waarmee de eerste ronde begint. */
   startLetter?: string | null;
+  /** Het instelscherm in de opzet van Ontdekken. Alleen als de schakelaar
+   *  aanstaat; anders blijft het oude scherm precies zoals het was. */
+  ontdekStijl?: boolean;
+  onVerzameling?: () => void;
 }) {
   const { t, tCat } = useT();
   const [phase, setPhase] = useState<"setup" | "round" | "result">("setup");
@@ -64,7 +74,9 @@ export function Training({ onBack, lenient = false, onOntdekken, startLetter }: 
 
   const cats = useMemo(() => TRAIN_CATS.filter((c) => selected.has(c)), [selected]);
 
-  const startRound = async () => {
+  /** `willekeurig` slaat de letter van vandaag over. Dat is het verschil tussen
+   *  "Begin met B" en "Willekeurige letter": dezelfde ronde, andere letter. */
+  const startRound = async (willekeurig = false) => {
     setBusy(true);
     try {
       const res = await fetch("/api/train/round", {
@@ -72,7 +84,12 @@ export function Training({ onBack, lenient = false, onOntdekken, startLetter }: 
         headers: { "Content-Type": "application/json" },
         // Alleen de eerste ronde krijgt de dagletter mee; daarna is het weer
         // gewoon oefenen met een willekeurige letter.
-        body: JSON.stringify({ used, hard, letter: rounds === 0 ? startLetter || undefined : undefined }),
+        body: JSON.stringify({
+          used, hard,
+          // Alleen de EERSTE ronde krijgt de dagletter mee; daarna is het weer
+          // gewoon oefenen met een willekeurige letter.
+          letter: !willekeurig && rounds === 0 ? startLetter || undefined : undefined,
+        }),
       });
       const data = await res.json();
       setLetter(data.letter);
@@ -85,15 +102,19 @@ export function Training({ onBack, lenient = false, onOntdekken, startLetter }: 
     }
   };
 
-  // Kom je binnen met een letter, dan begint de ronde vanzelf. Eenmalig: de
-  // ref voorkomt dat een herrender halverwege een tweede ronde afvuurt.
-  const gestart = useRef(false);
+  // De reeks voor de kop van het instelscherm. Alleen ophalen als dat scherm
+  // ook getoond wordt; anders is het een verzoek voor niets.
+  const [reeks, setReeks] = useState(0);
   useEffect(() => {
-    if (!startLetter || gestart.current) return;
-    gestart.current = true;
-    void startRound();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [startLetter]);
+    if (!ontdekStijl) return;
+    let weg = false;
+    const token = localStorage.getItem("penneer.accountToken") || "";
+    fetch("/api/discover/overview", { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (!weg && d) setReeks(d.streak_days ?? 0); })
+      .catch(() => { /* zonder reeks staat er gewoon 0 */ });
+    return () => { weg = true; };
+  }, [ontdekStijl]);
 
   // Hetzelfde decor als de lobby: de arena met de gouden hoekstukken en de
   // horizon die oplicht. Het hoort bij de schermen waar je een potje begint.
@@ -136,7 +157,12 @@ export function Training({ onBack, lenient = false, onOntdekken, startLetter }: 
 
   const header = (
     <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", paddingTop: "calc(14px + env(safe-area-inset-top))" }}>
-      <button onClick={onBack} aria-label={t("back")} style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 2 }}>
+      {/* Zit je in een ronde, dan brengt terug je naar het instelscherm en niet
+          meteen het scherm uit: daar heb je net je categorieen gekozen, en dat
+          is de stap waar je op terug wilt kunnen. */}
+      <button
+        onClick={() => { if (phase === "setup") onBack(); else { setResult(null); setPhase("setup"); } }}
+        aria-label={t("back")} style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 2 }}>
         <ArrowLeft size={20} />
       </button>
       <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>{t("trainTitle")}
@@ -148,6 +174,158 @@ export function Training({ onBack, lenient = false, onOntdekken, startLetter }: 
       )}
     </div>
   );
+
+  // ---- het instelscherm in de opzet van Ontdekken ----------------------------
+  // Zelfde bouwstenen als de hub: de sectie-art bovenaan, de achthoek-vakken
+  // eronder en de verzamelbalk als afsluiting. Wat je hier kiest bepaalt de
+  // ronde; de letter van vandaag staat op de bovenste knop, en de grote knop
+  // eronder start met een willekeurige letter.
+  if (phase === "setup" && ontdekStijl) {
+    const kies = (c: string) => { sound.uiTap(); toggle(c); };
+    return (
+      <Screen top={header}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14, paddingBottom: 8 }}>
+          <HubSectie
+            letter={startLetter || null}
+            streak={reeks}
+            uitleg={t("trainDagUitleg")}
+            knopTekst={startLetter ? t("trainBeginMet", { letter: startLetter }) : t("trainStart")}
+            onSpeel={() => { if (cats.length && !busy) void startRound(); }}
+          />
+
+          <GoudKader hoek={13} kleur="violet" dik={0.6} gloed vulling binnenlijn hoekAccent="#F3B53E" puntjes padding={12}>
+            <SierKop label={t("trainPickCats")} />
+            {/* Drie op de eerste rij en twee op de tweede, zoals in het ontwerp.
+                Een gekozen categorie is gevuld violet, een niet-gekozen is een
+                omtrek: dat verschil moet je zonder kleurenzicht ook zien, dus
+                het vinkje-icoon links verandert mee van kleur en helderheid. */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginTop: 4 }}>
+              {TRAIN_CATS.map((c) => {
+                const aan = selected.has(c);
+                const Ico = CAT_ICOON[c];
+                return (
+                  <button
+                    key={c}
+                    onClick={() => kies(c)}
+                    aria-pressed={aan}
+                    className="pressable"
+                    style={{
+                      display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                      padding: "9px 6px", borderRadius: 999, cursor: "pointer",
+                      background: aan
+                        ? `linear-gradient(180deg, ${withAlpha(colors.violet, 0.95)}, ${withAlpha(colors.violetDeep, 0.95)})`
+                        : "rgba(255,255,255,.03)",
+                      border: `1px solid ${aan ? withAlpha("#D9A6DF", 0.75) : withAlpha("#572D7C", 0.85)}`,
+                      boxShadow: aan ? `0 0 10px ${withAlpha(colors.violet, 0.45)}` : "none",
+                      fontFamily: font.ui, fontSize: 13, fontWeight: 700,
+                      color: aan ? "#FFFFFF" : colors.sub,
+                    }}
+                  >
+                    <Ico size={15} style={{ flexShrink: 0, opacity: aan ? 1 : 0.75 }} />
+                    {tCat(c)}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Moeilijke letters: een eigen vak, want het hoort bij de keuze
+                maar het is een andere soort keuze dan een categorie. */}
+            <label
+              style={{
+                display: "flex", alignItems: "center", gap: 10, marginTop: 10, cursor: "pointer",
+                padding: "9px 11px", borderRadius: 12,
+                background: "rgba(255,255,255,.03)", border: `1px solid ${withAlpha("#572D7C", 0.7)}`,
+              }}
+            >
+              <input
+                type="checkbox" checked={hard} onChange={(e) => { sound.uiTap(); setHard(e.target.checked); }}
+                style={{ accentColor: colors.gold, width: 17, height: 17, flexShrink: 0 }}
+              />
+              <span style={{ flex: 1, fontFamily: font.ui, fontSize: 13, color: colors.sub }}>{t("hardLetters")}</span>
+              <Info size={15} color={colors.faint} style={{ flexShrink: 0 }} />
+            </label>
+          </GoudKader>
+
+          <GoudKader hoek={13} kleur="violet" dik={0.6} gloed vulling binnenlijn hoekAccent="#F3B53E" puntjes padding={12}>
+            <SierKop label={t("trainOpbrengstKop")} />
+            {/* Drie kolommen met een haarlijn ertussen. */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 0, marginTop: 6 }}>
+              {[
+                { Ico: Layers, kop: t("trainOpbrengst1"), sub: t("trainOpbrengst1Sub") },
+                { Ico: Target, kop: t("trainOpbrengst2"), sub: t("trainOpbrengst2Sub") },
+                { Ico: Brain, kop: t("trainOpbrengst3"), sub: t("trainOpbrengst3Sub") },
+              ].map((k, i) => (
+                <div
+                  key={k.kop}
+                  style={{
+                    display: "flex", flexDirection: "column", alignItems: "center", gap: 5,
+                    padding: "2px 5px", textAlign: "center",
+                    borderLeft: i === 0 ? "none" : `1px solid ${withAlpha("#572D7C", 0.55)}`,
+                  }}
+                >
+                  <k.Ico
+                    size={26} color="#D986FC"
+                    style={{ filter: "drop-shadow(0 0 9px rgba(223,146,255,.3)) drop-shadow(0 0 20px rgba(196,95,250,.2))" }}
+                  />
+                  <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: "clamp(9px, 2.85vw, 13px)", lineHeight: 1.15, color: colors.gold }}>
+                    {k.kop}
+                  </span>
+                  <span style={{ fontFamily: font.ui, fontSize: "clamp(8px, 2.35vw, 11px)", lineHeight: 1.28, color: colors.sub }}>
+                    {k.sub}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </GoudKader>
+
+          <Button variant="gold" full disabled={cats.length === 0 || busy} onClick={() => void startRound()}>
+            {t("trainStart")}
+          </Button>
+
+          {/* Twee kleinere ingangen naast elkaar. De quizronde loopt via
+              Ontdekken, want daar zitten de feiten waarover gevraagd wordt. */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            {[
+              { Ico: Target, kop: t("trainQuizronde"), sub: t("trainQuizrondeSub"), doe: onOntdekken },
+              { Ico: Shuffle, kop: t("trainWillekeurig"), sub: t("trainWillekeurigSub"), doe: () => { if (cats.length && !busy) void startRound(true); } },
+            ].map((k) => (
+              <GoudKader key={k.kop} hoek={11} kleur="violet" dik={0.6} gloed vulling padding={0}>
+                <button
+                  onClick={() => { if (!k.doe) return; sound.uiTap(); k.doe(); }}
+                  disabled={!k.doe}
+                  className={k.doe ? "pressable" : undefined}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 8, width: "100%",
+                    padding: "10px 10px", background: "transparent", border: "none",
+                    cursor: k.doe ? "pointer" : "default", textAlign: "left", opacity: k.doe ? 1 : 0.45,
+                  }}
+                >
+                  <k.Ico size={20} color={colors.gold} style={{ flexShrink: 0 }} />
+                  <span style={{ minWidth: 0 }}>
+                    <span style={{ display: "block", fontFamily: font.display, fontWeight: 700, fontSize: 12.5, color: colors.ink }}>
+                      {k.kop}
+                    </span>
+                    <span style={{ display: "block", fontFamily: font.ui, fontSize: 10, lineHeight: 1.25, color: colors.sub, marginTop: 1 }}>
+                      {k.sub}
+                    </span>
+                  </span>
+                </button>
+              </GoudKader>
+            ))}
+          </div>
+
+          {onVerzameling && <VerzamelBalk onClick={onVerzameling} />}
+
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "2px 0 6px" }}>
+            <Info size={13} color={colors.faint} style={{ flexShrink: 0 }} />
+            <span style={{ fontFamily: font.ui, fontSize: 11.5, color: colors.faint, textAlign: "center" }}>
+              {t("trainVoetnoot")}
+            </span>
+          </div>
+        </div>
+      </Screen>
+    );
+  }
 
   // ---- setup ----
   if (phase === "setup") {
@@ -174,13 +352,13 @@ export function Training({ onBack, lenient = false, onOntdekken, startLetter }: 
             </label>
           </Card>
 
-          <Button variant="gold" full disabled={cats.length === 0 || busy} onClick={startRound}>
+          <Button variant="gold" full disabled={cats.length === 0 || busy} onClick={() => void startRound()}>
             {t("trainStart")}
           </Button>
 
           {/* Ontdekken hangt onder Oefenen, want daar komen de kaarten vandaan.
               Staat er alleen als de admin-schakelaar in Instellingen aanstaat. */}
-          {onOntdekken && (
+          {onOntdekken && !startLetter && (
             <Button variant="ghost" full onClick={onOntdekken}>
               {t("ontdekkenOpenen")}
             </Button>
@@ -280,7 +458,7 @@ export function Training({ onBack, lenient = false, onOntdekken, startLetter }: 
           );
         })}
 
-        <Button variant="gold" full disabled={busy} onClick={startRound}>
+        <Button variant="gold" full disabled={busy} onClick={() => void startRound()}>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
             <RotateCw size={16} /> {t("trainNext")}
           </span>
