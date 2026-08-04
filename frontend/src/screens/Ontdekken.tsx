@@ -395,7 +395,7 @@ function Hub({ data, onCategorie, onOefenen, onQuiz, onVerzameling }: {
         <HubSectie letter={data.daily_letter} streak={data.streak_days} onSpeel={() => onOefenen(data.daily_letter)} />
       </div>
 
-      <GoudKader hoek={13} kleur="violet" dik={0.6} gloed vulling binnenlijn padding={12} style={{ marginBottom: 16 }}>
+      <GoudKader hoek={13} kleur="violet" dik={0.6} gloed vulling binnenlijn hoekAccent="#F3B53E" puntjes padding={12} style={{ marginBottom: 16 }}>
         <SectieKop>{t("ontdekkenJouwVoortgang")}</SectieKop>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 5 }}>
           {data.categories.map((c) => {
@@ -482,7 +482,7 @@ function Hub({ data, onCategorie, onOefenen, onQuiz, onVerzameling }: {
         )}
       </div>
 
-      <GoudKader hoek={13} kleur="violet" dik={0.6} gloed vulling binnenlijn padding={12} style={{ marginBottom: 16 }}>
+      <GoudKader hoek={13} kleur="violet" dik={0.6} gloed vulling binnenlijn hoekAccent="#F3B53E" puntjes padding={12} style={{ marginBottom: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <span style={{ position: "relative", flexShrink: 0, width: 42, height: 42, display: "block" }}>
             {/* Dezelfde truc als bij de voortgangsring: een BREDERE witte kopie
@@ -898,7 +898,7 @@ function KaartTegel({ kaart, nu, onOpen, groot, chip }: {
         alt={kaart.word || ""}
         loading="lazy"
         style={{ position: "relative", width: "100%", aspectRatio: KAART_RATIO, display: "block",
-          filter: "drop-shadow(0 0 1.5px rgba(212,100,39,.8)) drop-shadow(0 0 5px rgba(212,100,39,.45))" }}
+          filter: "drop-shadow(0 0 1px rgba(212,100,39,.45)) drop-shadow(0 0 3px rgba(212,100,39,.2))" }}
       />
       {kaart.iso && (
         <img

@@ -49,6 +49,8 @@ export function GoudKader({
   binnenlijn = false,
   binnenSterkte = 0.2,
   binnenKleur,
+  hoekAccent,
+  puntjes = false,
   padding = 12,
   style,
 }: {
@@ -102,6 +104,13 @@ export function GoudKader({
   binnenSterkte?: number;
   /** Kleur van de binnenlijn, als die los moet staan van de buitenlijn. */
   binnenKleur?: string;
+  /** Korte accenten in de vier hoeken van de BUITENlijn, in deze kleur. In het
+   *  ontwerp licht de omtrek daar op en loopt de gewone lijn ertussen door. */
+  hoekAccent?: string;
+  /** Een witte stip op elk van de acht punten van de buitenlijn, de een
+   *  sterker dan de ander. Dat is waar het licht op een rand van metaal blijft
+   *  hangen: op de knikken, en niet overal even hard. */
+  puntjes?: boolean;
   padding?: number | string;
   style?: React.CSSProperties;
 }) {
@@ -286,6 +295,26 @@ export function GoudKader({
                 </radialGradient>
               </>
             ))}
+            {hoekAccent && HOEKEN4.map(([hx, hy], i) => (
+              // Kort: op tien procent van de diagonaal is hij al op, dus je
+              // ziet de hoek zelf plus een stukje van de twee randen die erop
+              // uitkomen. Vier keer dezelfde omtrek, elk om zijn eigen hoek.
+              <radialGradient
+                key={`a${i}`} id={`${id}a${i}`} gradientUnits="userSpaceOnUse"
+                cx={hx * w} cy={hy * h}
+                r={Math.max(14, Math.min(Math.hypot(w, h) * 0.1, 46))}
+              >
+                <stop offset="0%" stopColor="#FFF3B8" stopOpacity="1" />
+                <stop offset="30%" stopColor={hoekAccent} stopOpacity="0.9" />
+                <stop offset="70%" stopColor={hoekAccent} stopOpacity="0.35" />
+                <stop offset="100%" stopColor={hoekAccent} stopOpacity="0" />
+              </radialGradient>
+            ))}
+            {puntjes && (
+              <filter id={`${id}p`} x="-300%" y="-300%" width="700%" height="700%">
+                <feGaussianBlur stdDeviation={Math.max(0.7, dik * 1.6)} />
+              </filter>
+            )}
             {gloed && (
               <filter id={`${id}g`} x="-40%" y="-40%" width="180%" height="180%">
                 <feGaussianBlur stdDeviation={Math.max(1.1, dik * 2.2) * gloedMaat} />
@@ -314,6 +343,15 @@ export function GoudKader({
           {/* De sterkte staat als opacity op de vorm en niet in de stops, zodat
               het verloop van hoek naar midden hetzelfde blijft en alleen de
               lijn zwaarder of lichter wordt. */}
+          {/* De gouden hoeken liggen OP de buitenlijn: daar licht de omtrek op
+              en ertussen loopt de gewone lijn door. */}
+          {hoekAccent && HOEKEN4.map((_, i) => (
+            // Geen eigen gloed: de buitenlijn heeft er al een, en een tweede
+            // eroverheen maakt van dezelfde 0.6px een streep die twee keer zo
+            // dik oogt als de lijn ernaast. Alleen de KLEUR verandert hier.
+            <path key={`a${i}`} d={punten} fill="none" stroke={`url(#${id}a${i})`} strokeWidth={dik} />
+          ))}
+
           {binnenlijn && HOEKEN4.map((_, i) => (
             <g key={i} opacity={binnenSterkte}>
               {/* Geen gloed op de binnenlijn: die hoort een lijn te zijn en
@@ -328,6 +366,22 @@ export function GoudKader({
           {binnenlijn && HOEKEN4.map((_, i) => (
             <path key={`k${i}`} d={binnen} fill="none" stroke={`url(#${id}k${i})`} strokeWidth={bDik} opacity={0.85} />
           ))}
+          {/* De stippen op de acht knikken. Het licht komt linksboven vandaan,
+              dus daar zijn ze fel en aan de overkant nauwelijks. Vaste waarden
+              en geen toeval: twee vakken naast elkaar horen er hetzelfde uit te
+              zien. Volgorde van hoekpunten(): boven-links, boven-rechts,
+              rechts-boven, rechts-onder, onder-rechts, onder-links, links-onder,
+              links-boven. */}
+          {puntjes && hoekpunten(0).map(([px, py], i) => {
+            const sterkte = [0.95, 0.5, 0.44, 0.24, 0.3, 0.55, 0.62, 0.88][i];
+            return (
+              <g key={`p${i}`}>
+                <circle cx={px} cy={py} r={Math.max(1.1, dik * 2.4)} fill="#FFFFFF"
+                  opacity={sterkte * 0.5} filter={`url(#${id}p)`} />
+                <circle cx={px} cy={py} r={Math.max(0.5, dik * 0.85)} fill="#FFFFFF" opacity={sterkte} />
+              </g>
+            );
+          })}
         </svg>
       )}
       <div style={{ position: "relative", padding }}>{children}</div>
