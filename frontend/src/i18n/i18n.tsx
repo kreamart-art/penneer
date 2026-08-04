@@ -60,8 +60,8 @@ const nl: Dict = {
   // chat
   chat: "Chat",
   chatEmpty: "Nog geen berichten. Vraag gerust wat een woord betekent.",
-  dagKopReeks: "dagen op rij",
-  dagKopPrijs: "Te winnen vandaag",
+  dagKopReeks: "dagen",
+  dagKopPrijs: "Te winnen",
   dagKopVoortgang: "Voortgang vandaag",
   dagKopAansporing: "Speel alle drie voor de",
   dagKopAansporingVet: "hoogste dagscore!",
@@ -1173,8 +1173,8 @@ const en: Dict = {
   // chat
   chat: "Chat",
   chatEmpty: "No messages yet. Feel free to ask what a word means.",
-  dagKopReeks: "days in a row",
-  dagKopPrijs: "Up for grabs today",
+  dagKopReeks: "days",
+  dagKopPrijs: "Up for grabs",
   dagKopVoortgang: "Progress today",
   dagKopAansporing: "Play all three for the",
   dagKopAansporingVet: "highest daily score!",

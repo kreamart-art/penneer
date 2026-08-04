@@ -28,7 +28,7 @@
 // telefoon uit op vier pixels. Die twee (de kop van het prijsvak en de
 // aansporing rechts) krijgen daarom een bodem. Al het andere staat op de
 // gemeten verhouding, want dat valt binnen wat leesbaar is.
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ArtIcoon } from "./ArtIcoon";
 import { colors, font, withAlpha } from "../theme/tokens";
 
@@ -43,8 +43,16 @@ const RING = { x: 0.2531, binnen: 0.2341 };
 /** Het vak rechtsonder waar de dagprijs in staat. */
 const VAK = { l: 0.4786, r: 0.9034, t: 0.4667, b: 0.7084 };
 
-/** De gleuf van de voortgangsbalk. */
-const BALK = { l: 0.3103, r: 0.5740, t: 0.8600, b: 0.9149 };
+/** Het midden van de strook onder het paneel. Opgemeten en niet afgeleid: de
+ *  bovenrail van de strook licht op bij y 0,814 en de vulling loopt door tot
+ *  vlak boven de onderkant van het vel, dus het hart ligt op 0,906. Alles in de
+ *  strook hangt hieraan; in de mockup stond het tegen die bovenrail geplakt en
+ *  dat leest als "te hoog". */
+const STROOK = 0.9060;
+
+/** De gleuf van de voortgangsbalk. Even breed als in de mockup, maar op de
+ *  hoogte van het midden van de strook gezet. */
+const BALK = { l: 0.3103, r: 0.5740, hoog: 0.0549 };
 
 const pct = (v: number) => `${(v * 100).toFixed(3)}%`;
 
@@ -84,7 +92,7 @@ export function DagKop({
   /** Hoeveel dagen op rij je meedeed. */
   reeks: number;
   /** Wat er vandaag bovenaan te winnen valt; komt van de server. */
-  prijs: { kist: string | null; coins: number; cash: number } | null;
+  prijs: { kist: string | null; coins: number; cash: number; pack?: number } | null;
   /** Hoeveel van de drie onderdelen je vandaag al deed. */
   gedaan: number;
   totaal: number;
@@ -108,15 +116,36 @@ export function DagKop({
     return () => ro.disconnect();
   }, []);
 
+  // De inhoud van het prijsvak voegt zich naar het vak. Meten met offsetWidth
+  // en niet met getBoundingClientRect: offsetWidth geeft de opmaakbreedte en
+  // telt de transform niet mee, dus de meting blijft dezelfde zodra de krimp
+  // erop staat en er ontstaat geen kringetje van meten en opnieuw meten.
+  const vakDoos = useRef<HTMLSpanElement | null>(null);
+  const vakInhoud = useRef<HTMLSpanElement | null>(null);
+  const [vakKrimp, setVakKrimp] = useState(1);
+  useLayoutEffect(() => {
+    const d = vakDoos.current, i = vakInhoud.current;
+    if (!d || !i || !i.offsetWidth) return;
+    const kist = d.querySelector("img");
+    const vrij = d.clientWidth - (kist ? kist.offsetWidth : 0) - b * 0.054;
+    setVakKrimp(Math.min(1, vrij / i.offsetWidth));
+  }, [b, prijs?.coins, prijs?.pack, prijsLabel]);
+
   // Lettergroottes uit de kaphoogtes die in de mockup gemeten zijn.
   const reeksMaat = uitKap(0.0711, b);
   const reeksSub = uitKap(0.0261, b);
   const titelMaat = uitKap(0.0418, b);
   const uitlegMaat = Math.max(9.5, 0.0256 * b);
-  const prijsKop = Math.max(8.5, uitKap(0.0084, b));
-  const prijsMaat = uitKap(0.0209, b);
+  // Het prijsvak vult de gemeten kaphoogte NIET: op de mockup komt die op een
+  // echte telefoon uit rond de vier pixels, en dan is er van "te winnen" niets
+  // meer te lezen. Deze twee zijn zo gekozen dat de kop en de bedragen samen de
+  // hoogte van het vak vullen in plaats van er klein in te hangen.
+  const prijsKop = 0.0300 * b;
+  const prijsMaat = 0.0420 * b;
   const voortMaat = uitKap(0.0199, b);
-  const tellerMaat = uitKap(0.0418, b);
+  // De teller is bewust kleiner dan in de mockup: daar vult hij de halve strook
+  // en dan schreeuwt "0 / 3" harder dan waar het over gaat.
+  const tellerMaat = uitKap(0.0290, b);
   const aansMaat = Math.max(9, 0.0217 * b);
 
   return (
@@ -134,8 +163,8 @@ export function DagKop({
           een gat in plaats van als iets dat brandt. */}
       <ArtIcoon
         naam="vlam"
-        size={(0.1196 * b) / VERHOUDING}
-        style={{ position: "absolute", left: pct(RING.x), top: pct(0.1280), transform: "translateX(-50%)", pointerEvents: "none" }}
+        size={(0.1650 * b) / VERHOUDING}
+        style={{ position: "absolute", left: pct(RING.x), top: pct(0.0960), transform: "translateX(-50%)", pointerEvents: "none" }}
       />
 
       {/* HET GETAL en het bijschrift, binnen de ring. Allebei op hun eigen
@@ -191,94 +220,115 @@ export function DagKop({
       {/* HET PRIJSVAK. De omlijsting zit in de art; alleen de inhoud komt hier
           overheen, elk stuk op zijn eigen gemeten plek in plaats van in een rij
           naast elkaar: zo kan een lange prijs de kist niet wegduwen. */}
-      {prijs?.kist && (
-        <img
-          src={`/ui/${prijs.kist}.webp`} alt="" aria-hidden draggable={false}
-          style={{
-            position: "absolute", left: pct(0.4855), top: pct(0.5876),
-            transform: "translateY(-50%)", height: pct(0.1950), width: "auto",
-            display: "block", pointerEvents: "none",
-          }}
-        />
-      )}
-      <OpMidden x={0.6188} y={0.5191}>
+      <span
+        ref={vakDoos}
+        style={{
+          position: "absolute",
+          left: pct(VAK.l), width: pct(VAK.r - VAK.l),
+          top: pct(VAK.t), height: pct(VAK.b - VAK.t),
+          display: "flex", alignItems: "center", gap: b * 0.016,
+          // Links wat lucht, want de kist stond tegen het randlijntje aan.
+          padding: `0 ${b * 0.012}px 0 ${b * 0.026}px`,
+          overflow: "hidden", pointerEvents: "none",
+        }}
+      >
+        {prijs?.kist && (
+          <img
+            src={`/ui/${prijs.kist}.webp`} alt="" aria-hidden draggable={false}
+            style={{ height: "84%", width: "auto", display: "block", flexShrink: 0 }}
+          />
+        )}
+        {/* De kop en de bedragen als EEN blok, verticaal gecentreerd in het vak
+            en met een krimp die aanslaat zodra het te breed wordt. Een vaste
+            maat zou bij een prijs van vier cijfers over de rand lopen. */}
         <span
+          ref={vakInhoud}
           style={{
-            fontFamily: font.wide, fontWeight: 700, fontSize: prijsKop, lineHeight: 1,
-            letterSpacing: prijsKop * 0.05, marginRight: -prijsKop * 0.05,
-            textTransform: "uppercase", color: colors.gold, whiteSpace: "nowrap",
+            display: "flex", flexDirection: "column", justifyContent: "center",
+            gap: b * 0.009, transform: `scale(${vakKrimp})`, transformOrigin: "left center",
+            whiteSpace: "nowrap",
           }}
         >
-          {prijsLabel}
-        </span>
-      </OpMidden>
-      <OpMidden x={0.6209} y={0.5962}>
-        <span style={{ display: "flex", alignItems: "center", gap: b * 0.020 }}>
-          <span style={{ display: "flex", alignItems: "center", gap: b * 0.007 }}>
-            <ArtIcoon naam="munten" size={prijsMaat * 1.2} />
-            <span style={{ fontFamily: font.wide, fontWeight: 700, fontSize: prijsMaat, lineHeight: 1, color: "#FFF3D0" }}>
-              {prijs?.coins ?? 0}
-            </span>
+          <span
+            style={{
+              fontFamily: font.wide, fontWeight: 700, fontSize: prijsKop, lineHeight: 1,
+              letterSpacing: prijsKop * 0.05, marginRight: -prijsKop * 0.05,
+              textTransform: "uppercase", color: colors.gold,
+            }}
+          >
+            {prijsLabel}
           </span>
-          {!!prijs?.cash && (
-            <span style={{ display: "flex", alignItems: "center", gap: b * 0.007 }}>
-              <img src="/ui/valuta/cash.webp?v=1" alt="" aria-hidden draggable={false} style={{ height: prijsMaat * 1.2, width: "auto", display: "block" }} />
+          <span style={{ display: "flex", alignItems: "center", gap: b * 0.026 }}>
+            <span style={{ display: "flex", alignItems: "center", gap: b * 0.008 }}>
+              <ArtIcoon naam="munten" size={prijsMaat * 1.25} />
               <span style={{ fontFamily: font.wide, fontWeight: 700, fontSize: prijsMaat, lineHeight: 1, color: "#FFF3D0" }}>
-                {prijs.cash}
+                {prijs?.coins ?? 0}
               </span>
             </span>
-          )}
+            {!!prijs?.pack && (
+              <span style={{ display: "flex", alignItems: "center", gap: b * 0.008 }}>
+                <img src="/ui/dag/pack-oranje.webp" alt="" aria-hidden draggable={false} style={{ height: prijsMaat * 1.25, width: "auto", display: "block" }} />
+                <span style={{ fontFamily: font.wide, fontWeight: 700, fontSize: prijsMaat, lineHeight: 1, color: "#FFF3D0" }}>
+                  {prijs.pack}
+                </span>
+              </span>
+            )}
+          </span>
         </span>
-      </OpMidden>
+      </span>
 
-      {/* DE STROOK ONDER HET PANEEL. */}
-      <OpMidden x={0.0420} y={0.8720}>
+      {/* DE STROOK ONDER HET PANEEL, als EEN rij: waar het over gaat, hoever je
+          bent, en dat als balkjes. Naast elkaar en niet de teller boven de
+          balkjes: op telefoonbreedte is de strook maar een centimeter hoog, en
+          twee lagen tekst boven elkaar in die hoogte lezen als gedrang.
+
+          Alles hangt aan het MIDDEN van de strook (y 0,906) en niet aan de plek
+          waar het in de mockup stond: daar zat het tegen de bovenrail geplakt. */}
+      <span
+        style={{
+          position: "absolute",
+          left: pct(0.0420), width: pct(0.6000 - 0.0420),
+          top: pct(STROOK), transform: "translateY(-50%)",
+          display: "flex", alignItems: "center", gap: b * 0.022,
+          pointerEvents: "none",
+        }}
+      >
         <span
           style={{
             fontFamily: font.wide, fontWeight: 700, fontSize: voortMaat, lineHeight: 1,
             letterSpacing: voortMaat * 0.06, marginRight: -voortMaat * 0.06,
-            textTransform: "uppercase", color: "#EFE6FF", whiteSpace: "nowrap",
+            textTransform: "uppercase", color: "#EFE6FF", whiteSpace: "nowrap", flexShrink: 0,
           }}
         >
           {voortgangLabel}
         </span>
-      </OpMidden>
-
-      {/* De teller staat BOVEN de balk en niet ernaast: zo lees je hem als het
-          bijschrift van die balk en niet als een derde kolom. */}
-      <OpMidden x={BALK.l} y={0.8167} breedte={BALK.r - BALK.l} uitlijnen="center">
-        <span style={{ display: "flex", alignItems: "baseline", gap: b * 0.012 }}>
+        <span style={{ display: "flex", alignItems: "baseline", gap: b * 0.008, flexShrink: 0 }}>
           <span style={{ fontFamily: font.wide, fontWeight: 700, fontSize: tellerMaat, lineHeight: 1, color: colors.gold }}>{gedaan}</span>
           <span style={{ fontFamily: font.wide, fontWeight: 700, fontSize: tellerMaat * 0.85, lineHeight: 1, color: "rgba(238,231,255,.55)" }}>/</span>
           <span style={{ fontFamily: font.wide, fontWeight: 700, fontSize: tellerMaat, lineHeight: 1, color: "#EFE6FF" }}>{totaal}</span>
         </span>
-      </OpMidden>
-
-      {/* De balk zelf: evenveel vakjes als er onderdelen zijn, en elk vakje vol
-          of leeg. Een doorlopende balk zou een half onderdeel kunnen tonen, en
-          dat bestaat niet. */}
-      <span
-        style={{
-          position: "absolute",
-          left: pct(BALK.l), width: pct(BALK.r - BALK.l),
-          top: pct(BALK.t), height: pct(BALK.b - BALK.t),
-          display: "flex", gap: b * 0.007, pointerEvents: "none",
-        }}
-      >
-        {Array.from({ length: Math.max(1, totaal) }, (_, i) => (
-          <span
-            key={i}
-            style={{
-              flex: 1, borderRadius: 999,
-              background: i < gedaan
-                ? "linear-gradient(180deg, #FFE08A, #F2AC22 55%, #C97A0B)"
-                : "rgba(10,5,24,.5)",
-              boxShadow: i < gedaan
-                ? `inset 0 1px 0 rgba(255,255,255,.55), 0 0 ${Math.max(2, b * 0.012)}px ${withAlpha(colors.gold, 0.65)}`
-                : `inset 0 0 0 1px ${withAlpha(colors.gold, 0.3)}`,
-            }}
-          />
-        ))}
+        {/* De balkjes: evenveel als er onderdelen zijn, en elk vol of leeg. Een
+            doorlopende balk zou een half onderdeel kunnen tonen, en dat bestaat
+            niet. */}
+        {/* De hoogte in PIXELS en niet in procenten: deze rij is zo hoog als zijn
+            tekst en een procentuele hoogte tegen een ouder die zelf meegroeit
+            valt terug op nul, en dan zie je de balkjes niet meer. */}
+        <span style={{ flex: 1, display: "flex", gap: b * 0.007, height: (BALK.hoog * b) / VERHOUDING }}>
+          {Array.from({ length: Math.max(1, totaal) }, (_, i) => (
+            <span
+              key={i}
+              style={{
+                flex: 1, borderRadius: 999,
+                background: i < gedaan
+                  ? "linear-gradient(180deg, #FFE08A, #F2AC22 55%, #C97A0B)"
+                  : "rgba(10,5,24,.5)",
+                boxShadow: i < gedaan
+                  ? `inset 0 1px 0 rgba(255,255,255,.55), 0 0 ${Math.max(2, b * 0.012)}px ${withAlpha(colors.gold, 0.65)}`
+                  : `inset 0 0 0 1px ${withAlpha(colors.gold, 0.3)}`,
+              }}
+            />
+          ))}
+        </span>
       </span>
 
       {/* Het streepje tussen de balk en de aansporing: twee dingen naast elkaar
@@ -286,14 +336,14 @@ export function DagKop({
       <span
         aria-hidden
         style={{
-          position: "absolute", left: pct(0.6270), top: pct(0.7900), height: pct(0.1400),
+          position: "absolute", left: pct(0.6270), top: pct(STROOK - 0.0700), height: pct(0.1400),
           width: Math.max(1, b * 0.0015),
           background: `linear-gradient(180deg, ${withAlpha(colors.gold, 0)}, ${withAlpha(colors.gold, 0.45)}, ${withAlpha(colors.gold, 0)})`,
           pointerEvents: "none",
         }}
       />
 
-      <OpMidden x={0.6620} y={0.8724} breedte={0.9500 - 0.6620}>
+      <OpMidden x={0.6620} y={STROOK} breedte={0.9500 - 0.6620}>
         <span style={{ fontFamily: font.ui, fontSize: aansMaat, lineHeight: 1.3, color: "rgba(238,231,255,.86)" }}>
           {aansporing}{" "}
           <span style={{ color: colors.gold, fontWeight: 700 }}>{aansporingVet}</span>

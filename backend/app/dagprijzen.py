@@ -33,14 +33,24 @@ class Prijs(TypedDict):
     kist: Optional[str]
     coins: int
     cash: int
+    # Hoeveel kaartpacks er bij de prijs horen. De dagronde betaalt GEEN cash
+    # meer: die is de schaarse munt van de app en hoort bij mijlpalen, niet bij
+    # iets wat elke dag opnieuw te halen valt. Wat ervoor in de plaats komt is
+    # een pack met een kaart erin.
+    pack: int
 
 
-# (tot en met welke plek, kist, munten, cash). De laatste regel is de staart en
+# (tot en met welke plek, kist, munten, packs). De laatste regel is de staart en
 # geldt voor alles daaronder.
+#
+# GEEN CASH MEER in de dagronde. Cash is de schaarse munt van de app (een
+# scheidsrechter kost er 250) en hoort bij mijlpalen, niet bij iets wat elke dag
+# opnieuw te halen is; wie hier elke dag twee pakte liep de hele economie
+# voorbij. In de plaats daarvan krijgen de eerste drie een kaartpack.
 LADDER: list[tuple[int, Optional[str], int, int]] = [
-    (1, "kist5", 500, 5),
-    (2, "kist4", 350, 2),
-    (3, "kist3", 250, 2),
+    (1, "kist5", 500, 1),
+    (2, "kist4", 350, 1),
+    (3, "kist3", 250, 1),
     (4, "kist2", 200, 0),
     (10, "kist1", 150, 0),
     (25, None, 100, 0),
@@ -48,14 +58,14 @@ LADDER: list[tuple[int, Optional[str], int, int]] = [
 ]
 # Alles onder de laatste regel: nog steeds munten, want meedoen hoort iets waard
 # te zijn, maar zonder kist.
-STAART: Prijs = {"kist": None, "coins": 50, "cash": 0}
+STAART: Prijs = {"kist": None, "coins": 50, "cash": 0, "pack": 0}
 
 
 def prijs_voor(plek: int) -> Prijs:
     """De prijs bij een plek in de dagranglijst. Plek 1 is de hoogste."""
     if plek < 1:
-        return {"kist": None, "coins": 0, "cash": 0}
-    for tot, kist, coins, cash in LADDER:
+        return {"kist": None, "coins": 0, "cash": 0, "pack": 0}
+    for tot, kist, coins, pack in LADDER:
         if plek <= tot:
-            return {"kist": kist, "coins": coins, "cash": cash}
+            return {"kist": kist, "coins": coins, "cash": 0, "pack": pack}
     return dict(STAART)  # type: ignore[return-value]
