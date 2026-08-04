@@ -265,6 +265,54 @@ body.winkel::after {
   background-size: 160px 160px, 100% 100%, 100% 100%, cover, 100% 100%;
 }
 
+/* Ontdekken heeft zijn eigen decor: dezelfde kleuren als de voortgangssectie,
+   zodat de secties niet op een achtergrond uit een andere familie liggen. De
+   vignette is OVAAL en niet rond: het scherm is veel hoger dan breed, dus een
+   ronde vignette zou links en rechts al donker zijn terwijl er boven en onder
+   nog niets gebeurt. De ellips volgt de verhouding van het scherm.
+
+   De waarden komen uit de mockup: daar is de achtergrond in de marges #050118
+   en in de hoeken #040114, terwijl het hart #1A0938 is. Dat is een ZWARE
+   vignette, en aan de rand loopt hij hier nog een stuk verder door dan de
+   mockup, tot bijna zwart. */
+body.ontdekken::after {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: calc(100vh + 200px);
+  height: calc(100lvh + 200px);
+  z-index: -1;
+  pointer-events: none;
+  background-color: #010006;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
+    radial-gradient(ellipse 70% 46% at 50% 40%, #1A0938 0%, #140628 34%, #0A0319 58%, #050110 78%, #020008 92%, #010006 100%);
+  background-repeat: repeat, no-repeat;
+  background-position: top left, top;
+  background-size: 160px 160px, 100% 100%;
+}
+
+/* De gouden neonlijn van een voltooide categorie komt RUSTIG op en ademt daarna
+   door. Een tik bij het aanraken zie je op een touchscreen toch niet, dus het
+   moet uit zichzelf te zien zijn dat die tegel af is. */
+@keyframes ontdek-voltooid {
+  0%   { opacity: 0; }
+  35%  { opacity: 1; }
+  100% { opacity: 0.55; }
+}
+@keyframes ontdek-adem {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 1; }
+}
+.ontdek-voltooid {
+  animation: ontdek-voltooid 1.6s ease-out, ontdek-adem 3.2s ease-in-out 1.6s infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ontdek-voltooid { animation: none; opacity: 0.85; }
+}
+
 /* De ranglijst en de vrienden delen hun eigen decor. Zelfde opbouw als het
    profiel hierboven, en om dezelfde reden een tweede pseudo-element in plaats
    van een omgezette `background-image`: ::after wordt NA ::before getekend en

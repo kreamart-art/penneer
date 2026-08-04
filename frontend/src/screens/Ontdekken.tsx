@@ -353,7 +353,11 @@ function Hub({ data, onCategorie, onOefenen, onQuiz, onVerzameling }: {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 5 }}>
           {data.categories.map((c) => {
             const Ico = CAT_ICON[c.category];
-            const actief = c.category === sterkste?.category && c.discovered > 0;
+            // Goud betekent VOLTOOID, niet "hier ben je het verst". Op een
+            // touchscreen zie je een tegel niet verkleuren als je hem aanraakt,
+            // dus de kleur moet uit zichzelf iets vertellen; "af" is het enige
+            // dat de moeite waard is om zo te markeren.
+            const actief = c.total > 0 && c.discovered >= c.total;
             return (
               <button
                 key={c.category}
@@ -368,7 +372,8 @@ function Hub({ data, onCategorie, onOefenen, onQuiz, onVerzameling }: {
                     Goud markeert de categorie waar je het verst in bent. */}
                 <GoudKader
                   hoek={8} kleur={actief ? "goud" : "violet"} dik={actief ? 1.9 : 1} binnenDik={1} vulling="licht"
-                  binnenlijn={actief} binnenSterkte={0.4} gloed={actief} gloedKleur="#D46427" gloedMaat={0.7} binnenKleur="#D46427" padding="8px 2px"
+                  binnenlijn={actief} binnenSterkte={0.4} gloed={actief} gloedKleur="#D46427" gloedMaat={0.7} binnenKleur="#D46427"
+                  gloedKlasse={actief ? "ontdek-voltooid" : undefined} padding="8px 2px"
                 >
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
                     <span aria-hidden style={{ color: actief ? colors.gold : colors.violet, display: "flex" }}>
@@ -1156,11 +1161,12 @@ export function Ontdekken({ onBack, onOefenen }: { onBack: () => void; onOefenen
   const [letter, setLetter] = useState<LetterView | null>(null);
   const [fout, setFout] = useState(false);
 
-  // Dezelfde achtergrond als de andere solo-schermen, zodat Ontdekken bij de
-  // app hoort en niet als een losse app voelt.
+  // Een eigen decor: dezelfde kleuren als de voortgangssectie, met een ovale
+  // vignette. Anders liggen de secties op een achtergrond uit een andere
+  // kleurfamilie en zweven ze los van de pagina.
   useEffect(() => {
-    document.body.classList.add("winkel");
-    return () => document.body.classList.remove("winkel");
+    document.body.classList.add("ontdekken");
+    return () => document.body.classList.remove("ontdekken");
   }, []);
 
   useEffect(() => {

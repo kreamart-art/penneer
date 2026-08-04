@@ -44,6 +44,7 @@ export function GoudKader({
   gloed = false,
   gloedKleur,
   gloedMaat = 1,
+  gloedKlasse,
   vulling = false,
   binnenlijn = false,
   binnenSterkte = 0.2,
@@ -81,6 +82,8 @@ export function GoudKader({
   /** Hoe ver die gloed reikt, als factor. Op een tegel van een vijfde breed
    *  wordt een gloed die op een sectie klopt al gauw een waas om het hele vak. */
   gloedMaat?: number;
+  /** CSS-klasse op de gloedlaag, voor een animatie die er los van staat. */
+  gloedKlasse?: string;
   /** Vul het vak met een paars verloop, licht boven en donker onder. Zet dit
    *  aan als de sectie een binnenkant hoort te hebben in plaats van recht op
    *  de achtergrond van de app uit te kijken.
@@ -298,6 +301,7 @@ export function GoudKader({
               {/* De gloed is dezelfde vorm, dikker en vervaagd, onder de lijn. */}
               {gloed && (
                 <path
+                  className={gloedKlasse}
                   d={punten} fill="none" stroke={gloedKleur || `url(#${id}h${i})`}
                   strokeWidth={Math.max(dik * 2.2, 1.4) * gloedMaat} filter={`url(#${id}g)`}
                   opacity={fade ? 0.9 : 0.75}
