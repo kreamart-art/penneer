@@ -43,7 +43,7 @@ import { Hulpbalk } from "../components/Hulpbalk";
 // een nieuwe soort som komt nooit in dezelfde trede als een sprong in de klok,
 // want twee klappen tegelijk is precies waar een ladder te steil wordt.
 export type Soort = "plus" | "min" | "keer" | "deel" | "twee";
-export type Trap = { soorten: Soort[]; groot: number; venster: number };
+export type Trap = { soorten: Soort[]; groot: number; venster: number; niveau: number };
 
 /** De klok: TWINTIG SECONDEN op elke trede.
  *
@@ -62,20 +62,45 @@ export function vensterVoor(_trede: number): number {
   return 20000;
 }
 
+/** Hoeveel sommen je op een niveau blijft voordat het volgende komt. */
+export const SOMMEN_PER_NIVEAU = 7;
+
+/** Op welk niveau trede `trede` valt. Zeven sommen per niveau, dus som 1 tot en
+ *  met 7 is niveau 1, som 8 tot en met 14 niveau 2, enzovoort. */
+export function niveauVoor(trede: number): number {
+  return Math.floor((Math.max(1, trede) - 1) / SOMMEN_PER_NIVEAU) + 1;
+}
+
+/** DE LADDER LOOPT PER SOORT SOM en niet per soort erbij.
+ *
+ *  Eerst deed elke trede een greep uit alles wat tot dan toe vrijgespeeld was.
+ *  Dat maakte het spel makkelijk: ook op trede vijftien kon je nog een plus van
+ *  twee cijfers krijgen, en dan zegt je score meer over je geluk dan over je
+ *  rekenen. Nu doet een niveau EEN soort, en die soort is zwaarder dan de
+ *  vorige:
+ *
+ *    niveau 1   optellen, allebei een cijfer          3 + 8
+ *    niveau 2   vermenigvuldigen, allebei een cijfer  7 x 6
+ *    niveau 3   delen, een deeltal van twee cijfers   84 : 7
+ *    niveau 4   optellen en keer in EEN som           4 + 6 x 3
+ *
+ *  Vanaf niveau 5 blijft die laatste vorm staan en groeien alleen de getallen:
+ *  een vijfde bewerking bedenken maakt het niet moeilijker maar willekeuriger,
+ *  en wie zo ver komt struikelt allang over de volgorderegel en niet over de
+ *  soort. */
 export function trapVoor(trede: number): Trap {
   const k = Math.max(1, trede);
-  // De soorten komen er een voor een bij, met genoeg treden ertussen om aan de
-  // vorige te wennen.
-  const soorten: Soort[] = ["plus"];
-  if (k >= 3) soorten.push("min");
-  if (k >= 6) soorten.push("keer");
-  if (k >= 10) soorten.push("deel");
-  if (k >= 14) soorten.push("twee");
-  // De getallen groeien in stappen en niet vloeiend: een sprong die je ziet
-  // aankomen voelt als een nieuwe trede, een die per som een beetje schuift
-  // voelt als willekeur.
-  const groot = k <= 2 ? 10 : k <= 5 ? 20 : k <= 9 ? 12 : k <= 13 ? 20 : k <= 20 ? 25 : 40;
-  return { soorten, groot, venster: vensterVoor(k) };
+  const niveau = niveauVoor(k);
+  const soorten: Soort[] =
+    niveau === 1 ? ["plus"] :
+    niveau === 2 ? ["keer"] :
+    niveau === 3 ? ["deel"] :
+    ["twee"];
+  // Hoe groot de getallen mogen zijn. Tot en met niveau 4 ligt dat vast in de
+  // soort zelf (zie maakSom); daarboven is dit de enige knop die nog draait, in
+  // stappen zodat een sprong voelt als een nieuwe trede en niet als willekeur.
+  const groot = niveau <= 4 ? 9 : niveau === 5 ? 12 : niveau === 6 ? 15 : niveau <= 8 ? 20 : 25;
+  return { soorten, groot, venster: vensterVoor(k), niveau };
 }
 
 /** Wat een goede trede oplevert: honderd maal de trede, plus de helft daarvan
@@ -126,22 +151,31 @@ export function maakSom(seed: string, trap: Trap): Som {
   let anders = 0; // de andere bewerking op dezelfde getallen
 
   if (soort === "plus") {
-    const a = tot(trap.groot), b = tot(trap.groot);
+    // Allebei EEN cijfer. Twee cijfers optellen is niet zwaarder, alleen langer,
+    // en dit is het niveau waarop je binnenkomt.
+    const a = tot(9), b = tot(9);
     vraag = `${a} + ${b}`; antwoord = a + b; anders = Math.abs(a - b);
   } else if (soort === "min") {
     const a = tot(trap.groot), b = tot(a); // nooit onder nul: dat is een ander spel
     vraag = `${a} − ${b}`; antwoord = a - b; anders = a + b;
   } else if (soort === "keer") {
-    const a = tot(trap.groot), b = tot(10);
+    const a = tot(9), b = tot(9);
     vraag = `${a} × ${b}`; antwoord = a * b; anders = a + b;
   } else if (soort === "deel") {
-    const b = 1 + Math.floor(rng() * 9);
-    const uit = tot(trap.groot);
-    const a = b * uit;                      // altijd heel: een rest is hier ruis
+    // Het DEELTAL heeft twee cijfers: dat is wat dit niveau zwaarder maakt dan
+    // de tafels eronder. De deler is minstens twee (delen door een is geen som)
+    // en het gaat altijd op, want een rest is hier ruis.
+    const b = 2 + Math.floor(rng() * 8);            // 2 tot en met 9
+    const laag = Math.ceil(10 / b), hoog = Math.floor(99 / b);
+    const uit = laag + Math.floor(rng() * (hoog - laag + 1));
+    const a = b * uit;                              // 10 tot en met 99
     vraag = `${a} : ${b}`; antwoord = uit; anders = a - b;
   } else {
-    const a = tot(10), b = tot(10), c = tot(9);
-    vraag = `${a} + ${b} × ${c}`; antwoord = a + b * c; anders = (a + b) * c; // wie links naar rechts rekent
+    // Optellen EN keer in een som: hier struikel je over de volgorde, niet over
+    // de getallen. Vandaar dat de afleider precies de uitkomst is van links naar
+    // rechts rekenen.
+    const a = tot(trap.groot), b = tot(trap.groot), c = tot(Math.min(9, trap.groot));
+    vraag = `${a} + ${b} × ${c}`; antwoord = a + b * c; anders = (a + b) * c;
   }
 
   const kandidaten = [

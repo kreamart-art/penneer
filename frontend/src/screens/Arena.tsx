@@ -269,9 +269,14 @@ export function Led({ maat, sterk = 1, kleur = GOUD[3], children }: { maat: numb
 
 function Flitsreeks({ seed, onKlaar }: { seed: string; onKlaar: (score: number, level: number, timeMs: number) => void }) {
   const { t } = useT();
-  // De hele dagreeks ligt vast zodra de seed er is; levels zijn er een prefix
-  // van. Elke ronde is dus DEZELFDE reeks, één element langer: zo bouw je een
-  // pad op in je hoofd in plaats van elke ronde iets nieuws te moeten leren.
+  // De reeks ligt vast zodra de seed er is; levels zijn er een prefix van. Elke
+  // ronde binnen EEN poging is dus dezelfde reeks, een element langer: zo bouw
+  // je een pad op in je hoofd in plaats van elke ronde iets nieuws te leren.
+  //
+  // Tussen twee POGINGEN is hij wel anders, want in de seed zit het
+  // pogingsnummer (zie waar dit gemaakt wordt). Stond hij op de kale dagseed,
+  // dan kreeg je de tweede keer exact dezelfde reeksen en werd het een
+  // geheugenspel in plaats van een kijkspel.
   const reeks = useRef<number[]>([]);
   if (reeks.current.length === 0) {
     const rng = maakRng(seed);
@@ -598,7 +603,12 @@ export function ArenaDeel({ game, onBack }: { game: GameApi; onBack: () => void 
             // taalspel meer maar een geheugenspel.
             <Woordketen seed={`${poging.seed}:${poging.attempt_id}`} onKlaar={klaar} />
           ) : (
-            <Flitsreeks seed={poging.seed} onKlaar={klaar} />
+            // Ook per poging vers, net als de andere vier. Hij stond op de kale
+            // dagseed, dus elke poging van elke speler kreeg de hele dag exact
+            // dezelfde reeksen: de tweede keer wist je ze al en werd het een
+            // geheugenspel in plaats van een kijkspel. De server kent beide
+            // helften van deze sleutel, dus de reeks blijft controleerbaar.
+            <Flitsreeks seed={`${poging.seed}:${poging.attempt_id}`} onKlaar={klaar} />
           )}
         </div>
       </Screen>
