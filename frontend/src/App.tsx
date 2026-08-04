@@ -45,6 +45,7 @@ const PreviewKleurenklem = lazy(() => import("./screens/_PreviewKleurenklem"));
 const PreviewRekenladder = lazy(() => import("./screens/_PreviewRekenladder"));
 // En dat van maandag, achter ?keten.
 const PreviewWoordketen = lazy(() => import("./screens/_PreviewWoordketen"));
+const PreviewPack = lazy(() => import("./screens/_PreviewPack"));
 import { InviteBanner } from "./components/InviteBanner";
 import { DmBanner } from "./components/DmBanner";
 import { localNotify } from "./components/NotifyNudge";
@@ -508,6 +509,8 @@ export default function App() {
     screen = <PreviewRekenladder />;
   } else if (typeof location !== "undefined" && location.search.includes("keten")) {
     screen = <PreviewWoordketen />;
+  } else if (typeof location !== "undefined" && location.search.includes("pack")) {
+    screen = <PreviewPack />;
   } else if (showRules) {
     screen = <Rules onBack={() => setShowRules(false)} />;
   } else if (showDaily) {

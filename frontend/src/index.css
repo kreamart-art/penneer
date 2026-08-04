@@ -1515,3 +1515,54 @@ body.ketenspel::after {
 @media (prefers-reduced-motion: reduce) {
   .ontdek-flip-binnen { transition: none; }
 }
+
+/* ---- Een pack openscheuren ------------------------------------------------
+   De strip met vierentwintig frames schuift langs een venster van EEN frame.
+   Van 0% naar 100% van de achtergrondpositie legt precies de hele strip af, en
+   steps() springt van frame naar frame: met een vloeiende overgang blijf je
+   tussen twee frames in hangen en zie je een halve scheur. */
+@keyframes pack-scheurt {
+  from { background-position: 0% 0%; }
+  to   { background-position: 100% 0%; }
+}
+
+/* Het dichte pack wipt zachtjes, zodat je ziet dat er iets mee kan. */
+@keyframes pack-wipt {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  35%      { transform: translateY(-5px) rotate(-1.4deg); }
+  70%      { transform: translateY(-2px) rotate(1deg); }
+}
+.pack-wipt { animation: pack-wipt 2.1s ease-in-out infinite; }
+
+/* De gloed zwelt op terwijl de kaart nog klein is en dooft als hij er staat. */
+@keyframes pack-gloed {
+  0%   { opacity: 0; transform: translate(-50%,-50%) scale(.35); }
+  45%  { opacity: 1; transform: translate(-50%,-50%) scale(1.05); }
+  100% { opacity: 0; transform: translate(-50%,-50%) scale(1.5); }
+}
+.pack-gloed { animation: pack-gloed 1400ms ease-out forwards; }
+
+@keyframes pack-streep {
+  0%   { opacity: 0; transform: translate(-50%,-50%) scaleY(.2) scaleX(.5); }
+  35%  { opacity: 1; transform: translate(-50%,-50%) scaleY(1) scaleX(1); }
+  100% { opacity: 0; transform: translate(-50%,-50%) scaleY(1.25) scaleX(2.4); }
+}
+.pack-streep { animation: pack-streep 1200ms ease-out forwards; }
+
+/* DE KAART: van bijna niets naar zijn maat, met een zetje voorbij het eind.
+   Dat laatste stukje is wat het gevoel geeft dat er iets uit het pack geduwd
+   wordt in plaats van dat een plaatje groter wordt. */
+@keyframes pack-kaart {
+  0%   { opacity: 0; transform: scale(.04) translateY(6px) rotate(-8deg); }
+  18%  { opacity: 1; }
+  62%  { transform: scale(1.14) translateY(-10px) rotate(3deg); }
+  80%  { transform: scale(.96) translateY(0) rotate(-1deg); }
+  100% { opacity: 1; transform: scale(1) translateY(0) rotate(0deg); }
+}
+.pack-kaart { animation: pack-kaart 880ms cubic-bezier(.18,.9,.28,1) forwards; }
+
+/* Wie beweging heeft uitgezet krijgt het resultaat zonder de rit. */
+@media (prefers-reduced-motion: reduce) {
+  .pack-wipt, .pack-gloed, .pack-streep { animation: none; }
+  .pack-kaart { animation: pack-kaart 1ms linear forwards; }
+}
