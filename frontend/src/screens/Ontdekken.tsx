@@ -145,6 +145,10 @@ function Paneel({ children, style }: { children: React.ReactNode; style?: React.
 //   knop      x 48.9..95.2%   y 67.1..93.4%
 //   het play-driehoekje zit AL in de knop, van 56.6% tot 60.7% breed
 const HUB_RATIO = 894 / 407;
+// De ondersectie (onder-sectie.webp, 887x143) is een paarse balk met een gouden
+// kader en een chevron die AL in de art zit, vanaf 92% van de breedte. De
+// rechtermarge van het opschrift houdt die vrij.
+const ONDER_RATIO = 887 / 143;
 const HUB = {
   // Een VIERKANT vak van 234px midden op de ring (28.4%, 51.7%). De letter-art
   // is 256x256 met de glyph in de middelste 59%, dus bij objectFit contain
@@ -428,27 +432,60 @@ function Hub({ data, onCategorie, onOefenen, onQuiz, onVerzameling }: {
         </div>
       </GoudKader>
 
-      <GoudKader hoek={13} fade gloed padding={12}>
-        <button
-          onClick={() => { sound.uiTap(); onVerzameling(); }}
-          className="pressable"
+      <button
+        onClick={() => { sound.uiTap(); onVerzameling(); }}
+        className="pressable"
+        style={{
+          position: "relative", width: "100%", aspectRatio: `${ONDER_RATIO}`,
+          background: "transparent", border: "none", padding: 0, cursor: "pointer", display: "block",
+        }}
+      >
+        {/* Schaduw als tweede kopie, zoals overal: een box-shadow werpt een
+            rechthoek achter een vorm met afgeschuinde hoeken. */}
+        <img
+          src="/ontdek/onder-sectie.webp" alt="" aria-hidden draggable={false}
           style={{
-            display: "flex", alignItems: "center", gap: 12, width: "100%",
-            background: "transparent", border: "none", padding: 0, cursor: "pointer", textAlign: "left",
+            position: "absolute", inset: 0, width: "100%", height: "100%", display: "block",
+            filter: "brightness(0) blur(7px)", opacity: 0.5, transform: "translateY(5px)",
+            pointerEvents: "none",
+          }}
+        />
+        {/* Dezelfde warme gloed als onder de bovensectie, in pixels naar buiten
+            zodat hij op een balk die zes keer zo breed is als hoog boven en
+            onder net zo dik is als links en rechts. */}
+        <span
+          aria-hidden
+          style={{
+            position: "absolute", inset: -7,
+            background: `radial-gradient(55% 60% at 50% 55%, ${colors.gold}, ${colors.orange} 65%, ${colors.orange} 100%)`,
+            WebkitMaskImage: "url(/ontdek/onder-sectie.webp)", maskImage: "url(/ontdek/onder-sectie.webp)",
+            WebkitMaskSize: "100% 100%", maskSize: "100% 100%",
+            WebkitMaskPosition: "center", maskPosition: "center",
+            WebkitMaskRepeat: "no-repeat", maskRepeat: "no-repeat",
+            filter: "blur(9px)", opacity: 0.5, pointerEvents: "none",
+          }}
+        />
+        <img src="/ontdek/onder-sectie.webp" alt="" style={{ position: "relative", width: "100%", height: "100%", display: "block" }} />
+
+        {/* De chevron zit in de art; hier ligt alleen het opschrift erop. De
+            rechtermarge van 11% houdt die chevron vrij. */}
+        <span
+          style={{
+            position: "absolute", inset: 0, display: "flex", alignItems: "center", gap: "2.5%",
+            padding: "0 11% 0 4%", textAlign: "left",
           }}
         >
-          <Layers size={26} color={colors.gold} style={{ flexShrink: 0 }} />
+          <Layers size={24} color={colors.gold} style={{ flexShrink: 0 }} />
           <span style={{ flex: 1, minWidth: 0 }}>
-            <span style={{ display: "block", fontFamily: font.display, fontWeight: 700, fontSize: 15, color: colors.gold }}>
+            <span style={{ display: "block", fontFamily: font.display, fontWeight: 700, fontSize: "clamp(11px, 3.9vw, 20px)", lineHeight: 1.15, color: colors.gold }}>
               {t("ontdekkenNaarVerzameling")}
             </span>
-            <span style={{ display: "block", fontFamily: font.ui, fontSize: 11.5, color: colors.sub, marginTop: 1 }}>
+            <span style={{ display: "block", fontFamily: font.ui, fontSize: "clamp(8px, 2.9vw, 14px)", lineHeight: 1.2, color: colors.sub, marginTop: 1 }}>
               {t("ontdekkenNaarVerzameling2")}
             </span>
           </span>
-          <ChevronRight size={18} color={colors.faint} style={{ flexShrink: 0 }} />
-        </button>
-      </GoudKader>
+        </span>
+      </button>
     </>
   );
 }
