@@ -39,18 +39,21 @@ interface Plate {
   shine: string;  // subtiele highlight onder de letters
 }
 
+// De vlakken zijn OPGEMETEN op de art en niet geschat: vanuit het hart naar
+// buiten lopen tot de helderheid echt springt. Het binnenvlak is glad, de
+// afschuining eromheen niet, dus die sprong is de rand.
 const PLATES: Record<PlateKind, Plate> = {
   gold: {
     src: "/btn-gold.webp",
-    w: 760, h: 196,
-    fx: 51, fy: 12, fw: 663, fh: 150,
+    w: 1000, h: 269,
+    fx: 36, fy: 28, fw: 930, fh: 202,
     text: "#4A2E04",
     shine: "0 1px 0 rgba(255,240,190,.45)",
   },
   violet: {
     src: "/btn-violet.webp",
-    w: 760, h: 228,
-    fx: 52, fy: 18, fw: 682, fh: 156,
+    w: 1000, h: 269,
+    fx: 36, fy: 29, fw: 930, fh: 200,
     text: colors.ink,
     shine: "0 1px 2px rgba(20,0,60,.5)",
   },
@@ -65,9 +68,17 @@ const PLATES: Record<PlateKind, Plate> = {
 //
 // De breedte is die van de KRAPSTE plaat, zodat bij allebei de gloed er nog
 // naast past in plaats van van het scherm af te lopen.
-export const BUTTON_RATIO = 4.4;
-export const BUTTON_FIT = "87%";
-export const BUTTON_MAX_WIDTH = 320;
+// Opgemeten op de nieuwe platen: het binnenvlak is 930x202 bij goud (4,604) en
+// 930x200 bij paars (4,650). Het vak ligt daar precies tussenin, zodat geen van
+// beide platen merkbaar rekt: goud een halve procent, paars een halve procent.
+// Op 4,4 (de oude waarde) zou de nieuwe art er 4,5% te hoog uit komen te zien.
+export const BUTTON_RATIO = 4.63;
+// KLEINER dan eerst (was 87% en 320px). De knop besloeg bijna de hele breedte
+// van het scherm en dat maakt van een actie een balk. Het OPSCHRIFT blijft op
+// zijn eigen maat staan: dat is een vast getal in Button.tsx en hangt niet aan
+// de knop, dus de knop krimpt en de tekst niet.
+export const BUTTON_FIT = "78%";
+export const BUTTON_MAX_WIDTH = 280;
 
 /** Breedte-regels die elke knop op volle breedte deelt. */
 export const fullWidthButton = {

@@ -15,10 +15,19 @@ import { font } from "../theme/tokens";
 /** Per kleur: het bestand, de verhouding en waar het VLAK van de knop zit.
  *  Het opschrift hoort op dat vlak en niet op het midden van de doos: onder het
  *  vlak zit nog een rand en een schaduw, en die trekken het midden omlaag. Beide
- *  cijfers zijn aan de art gemeten. */
+ *  cijfers zijn aan de art gemeten.
+ *
+ *  DEZELFDE PLAAT ALS DE GROTE KNOP en geen eigen bestand meer. Er waren twee
+ *  aparte plaatjes voor de kleine knop, in een andere vorm dan de grote, en dan
+ *  staan er twee soorten gouden knoppen in hetzelfde scherm. Nu is het één
+ *  ontwerp op twee maten, en het scheelt ook twee downloads.
+ *
+ *  De knop wordt daardoor LAGER: op dezelfde breedte was hij 0,391 hoog en nu
+ *  0,269. De tekst niet: die hangt aan de BREEDTE (breed * 0.15), dus die blijft
+ *  precies zoals hij was. */
 const PLAAT = {
-  goud: { src: "/ui/knop-klein.webp", verh: 150 / 384, hart: "43.3%", tekst: "#3A2405", glans: "rgba(255,240,190,.5)" },
-  paars: { src: "/ui/knop-klein-paars.webp", verh: 145 / 384, hart: "42.4%", tekst: "#FFFFFF", glans: "rgba(60,20,110,.55)" },
+  goud: { src: "/btn-gold.webp", verh: 269 / 1000, hart: "48.0%", tekst: "#3A2405", glans: "rgba(255,240,190,.5)" },
+  paars: { src: "/btn-violet.webp", verh: 269 / 1000, hart: "48.0%", tekst: "#FFFFFF", glans: "rgba(60,20,110,.55)" },
 } as const;
 
 export function KnopPlaat({

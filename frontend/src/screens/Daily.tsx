@@ -8,13 +8,12 @@ import { Avatar } from "../components/Avatar";
 import { Tv } from "../components/Tv";
 import { Button } from "../components/Button";
 import { Screen, Card } from "../components/Layout";
-import { NeonText } from "../components/NeonText";
 import { Topo } from "./Topo";
 import { ArenaDeel } from "./Arena";
 import type { GameApi } from "../net/socket";
 import { ArtIcoon } from "../components/ArtIcoon";
 import { GlasVeld } from "../components/GlasVeld";
-import { GOUD, Paneel, PlekWapen } from "../components/ProfileHero";
+import { GOUD, PlekWapen } from "../components/ProfileHero";
 import { GlasRij, Lijst } from "./Hub";
 import { DagSectie } from "../components/DagSectie";
 import { DagKop } from "../components/DagKop";
@@ -483,22 +482,15 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
   return (
     <Screen top={header}>
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        {/* De letter van vandaag, boven je score: hieronder loop je woord voor
-            woord na wat je had, en dat gaat allemaal over deze letter. */}
-        {!!r.letter && <Tv letter={r.letter} label={t("letterIs")} />}
-
-        {/* De uitslag staat in de sierlijst van het profiel, net als de voordeur
-            van de dagronde. Dit is de plek waar je score staat, en dat verdient
-            dezelfde lijst als je level op je profiel. De art heeft een VASTE
-            verhouding, dus alleen het cijferblok gaat erin; de chips eronder
-            zouden hem uitrekken. */}
-        <Paneel>
-          <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, paddingInline: 14 }}>
-            <span style={{ fontFamily: font.ui, fontSize: 12, color: colors.sub }}>{t("dailyYourScore")}</span>
-            <NeonText accent={colors.gold} blur={18} glow={0.7} style={{ fontFamily: font.display, fontWeight: 700, fontSize: 48, lineHeight: 1 }}>{r.score}</NeonText>
-            <span style={{ fontFamily: font.ui, fontSize: 11.5, color: colors.faint }}>{t("dailyScoreOf", { score: r.score, max: MAX_SCORE })}</span>
-          </div>
-        </Paneel>
+        {/* EEN sectie en niet twee. Hier stonden de letter op de tv en je score
+            in een eigen paneel onder elkaar, en dat zijn twee koppen boven
+            hetzelfde verhaal. Op de uitslag gaat het om je score, dus die staat
+            op de tv; de letter zie je terug bij elk woord eronder. */}
+        <Tv
+          tekst={String(r.score)}
+          label={t("dailyYourScore")}
+          onder={t("dailyScoreOf", { score: r.score, max: MAX_SCORE })}
+        />
 
         <Card style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center" }}>

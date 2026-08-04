@@ -18,6 +18,7 @@
 //
 //   links 0,082   rechts 0,916   boven 0,104   onder 0,834
 import { useEffect, useRef, useState } from "react";
+import { NeonText } from "./NeonText";
 import { colors, font } from "../theme/tokens";
 
 /** Breedte gedeeld door hoogte van de plaat (1200x764, uit de bron gesneden). */
@@ -168,6 +169,7 @@ export function Tv({
   letter,
   code,
   label,
+  tekst,
   onClick,
   knopLabel,
   naast,
@@ -178,6 +180,10 @@ export function Tv({
   letter?: string;
   /** Of een roomcode. Een van de twee, niet allebei. */
   code?: string;
+  /** Of iets wat GEEN letter is: een score bijvoorbeeld. Cijfers hebben geen
+   *  art, dus die worden gezet in het display-lettertype met dezelfde gouden
+   *  behandeling die het scorevak eerst had. */
+  tekst?: string;
   /** Een klein opschrift bovenin het scherm ("ROOMCODE", "DE LETTER IS"). */
   label?: string;
   /** Is de tv aantikbaar (de roomcode delen), dan wordt hij een knop. */
@@ -257,9 +263,22 @@ export function Tv({
           </span>
         )}
         <span style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center", height: pct(hoog), flexShrink: 0 }}>
-          {tekens.map((c, i) => (
-            <Letter key={`${c}${i}`} teken={c} />
-          ))}
+          {tekst !== undefined ? (
+            // GEEN ART, want cijfers hebben die niet. Dezelfde behandeling als
+            // het scorevak had: het display-lettertype in goud met een gloed als
+            // vervaagde kopie erachter. De maat hangt aan de schermhoogte, dus
+            // hij vult de tv net zo goed als een letter dat doet.
+            <NeonText
+              accent={colors.gold}
+              blur={18}
+              glow={0.7}
+              style={{ fontFamily: font.display, fontWeight: 700, fontSize: "clamp(30px, 12vw, 58px)", lineHeight: 1 }}
+            >
+              {tekst}
+            </NeonText>
+          ) : (
+            tekens.map((c, i) => <Letter key={`${c}${i}`} teken={c} />)
+          )}
           {!!naast && (
             <span style={{ position: "absolute", left: "100%", top: "50%", transform: "translateY(-50%)", marginLeft: 8, display: "flex" }}>
               {naast}

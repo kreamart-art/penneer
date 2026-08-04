@@ -198,7 +198,7 @@ const HUB_RATIO = 894 / 407;
 const ONDER_RATIO = 887 / 143;
 // De gouden knop die uit de eerste bovensectie is gesneden, hier hergebruikt
 // voor "Start herhaling".
-const KNOP_RATIO = 900 / 252;
+const KNOP_RATIO = 1000 / 269;
 const HUB = {
   // Een VIERKANT vak van 236px op de medaille. Het hart daarvan is (28.46%,
   // 52.23%), langs twee wegen gemeten die op 0.02% na hetzelfde geven: een
@@ -550,14 +550,14 @@ function Hub({ data, onCategorie, onOefenen, onQuiz, onVerzameling }: {
                 }}
               >
                 <img
-                  src="/ontdek/knop-goud.webp" alt="" aria-hidden draggable={false}
+                  src="/btn-gold.webp" alt="" aria-hidden draggable={false}
                   style={{
                     position: "absolute", inset: 0, width: "100%", height: "100%", display: "block",
                     filter: "brightness(0) blur(5px)", opacity: 0.5, transform: "translateY(4px)",
                     pointerEvents: "none",
                   }}
                 />
-                <img src="/ontdek/knop-goud.webp" alt="" style={{ position: "relative", width: "100%", height: "100%", display: "block" }} />
+                <img src="/btn-gold.webp" alt="" style={{ position: "relative", width: "100%", height: "100%", display: "block" }} />
                 <span
                   style={{
                     position: "absolute", inset: 0, display: "grid", placeItems: "center",
