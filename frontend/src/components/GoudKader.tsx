@@ -69,8 +69,12 @@ export function GoudKader({
   gloed?: boolean;
   /** Vul het vak met een paars verloop, licht boven en donker onder. Zet dit
    *  aan als de sectie een binnenkant hoort te hebben in plaats van recht op
-   *  de achtergrond van de app uit te kijken. */
-  vulling?: boolean;
+   *  de achtergrond van de app uit te kijken.
+   *
+   *  "licht" is dezelfde vulling maar hij loopt minder ver terug. Dat is voor
+   *  een vak dat OP zo'n sectie ligt: met dezelfde vulling lopen de twee
+   *  onderin in elkaar over en verdwijnt de onderrand van het bovenste vak. */
+  vulling?: boolean | "licht";
   /** Een tweede omtrek vlak binnen de eerste, sterk in de hoeken en weg in het
    *  midden van elke zijde. Twee lijnen zo dicht op elkaar lezen als een rand
    *  met dikte in plaats van als een streep. */
@@ -223,9 +227,9 @@ export function GoudKader({
               // onderin. Donker genoeg dat witte tekst er gewoon op leest, en
               // net licht genoeg dat het vak van de achtergrond loskomt.
               <linearGradient id={`${id}v`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#2A1359" />
-                <stop offset="55%" stopColor="#200C38" />
-                <stop offset="100%" stopColor="#150628" />
+                <stop offset="0%" stopColor={vulling === "licht" ? "#3A1F78" : "#2A1359"} />
+                <stop offset="55%" stopColor={vulling === "licht" ? "#301763" : "#200C38"} />
+                <stop offset="100%" stopColor={vulling === "licht" ? "#28114F" : "#150628"} />
               </linearGradient>
             )}
             {binnenlijn && HOEKEN4.map(([hx, hy], i) => (

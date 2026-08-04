@@ -150,16 +150,21 @@ const HUB_RATIO = 894 / 407;
 // rechtermarge van het opschrift houdt die vrij.
 const ONDER_RATIO = 887 / 143;
 const HUB = {
-  // Een VIERKANT vak van 236px op het midden van de medaille: (28.45%, 52.25%).
-  // Dat midden komt van een cirkelpassing op de BUITENRAND van de ring, want
-  // die is gesloten. De binnenrand kon niet: daar zitten streepjes met donkere
-  // gaten ertussen, en een straal die door zo'n gat gaat loopt gewoon door.
-  // De passing zit strak (straal 136..142 over 720 richtingen).
-  // De art is 256x256 met de glyph in de middelste 59%, dus bij objectFit
-  // contain wordt de glyph 138px hoog in een opening van 230px. De maat is
-  // bepaald door de BREEDSTE letter: een W vult 92% van zijn vak en wordt zo
-  // 217px, met zes pixel lucht aan weerskanten.
-  letter:  { left: "15.25%", right: "58.35%", top: "23.26%", bottom: "18.76%" },
+  // Een VIERKANT vak van 236px op de medaille. Het hart daarvan is (28.46%,
+  // 52.23%), langs twee wegen gemeten die op 0.02% na hetzelfde geven: een
+  // cirkelpassing op de gesloten BUITENRAND, en een passing op alleen de
+  // kortste stralen naar de opening. Die tweede filter is nodig omdat er
+  // streepjes met donkere gaten ertussen zitten en een straal die door zo'n
+  // gat gaat gewoon doorloopt.
+  //
+  // Het VAK staat een tikje lager en rechter dan dat hart, want de letter-art
+  // heeft onder de gouden glyph nog een donkere voet die meetelt in de alfa.
+  // Over alle 26 letters ligt het zichtbare goud daardoor 1.67% te hoog en
+  // 0.78% te ver links in zijn eigen vak; dat is hier verrekend.
+  //
+  // De maat is bepaald door de BREEDSTE letter: een W vult 89% van zijn vak en
+  // wordt zo 210px in een opening van 230px.
+  letter:  { left: "15.47%", right: "58.13%", top: "24.21%", bottom: "17.81%" },
   // Gecentreerd BOVEN de ring: die begint op 18.1% van de hoogte en zijn
   // midden ligt op 28.4% van de breedte, dus dit vak loopt van 4% tot 52.8%.
   bovenop: { left: "4.0%",  right: "47.2%", top: "2.0%",  bottom: "84.0%" },
@@ -273,7 +278,7 @@ function HubSectie({ letter, streak, onSpeel }: {
           display: "flex", alignItems: "center", justifyContent: "center",
         }}
       >
-        <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: "clamp(11px, 4vw, 24px)", color: "#3B2300", whiteSpace: "nowrap" }}>
+        <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: "clamp(9px, 3.4vw, 20px)", color: "#3B2300", whiteSpace: "nowrap" }}>
           {t("ontdekkenSpeelDeLetter")}
         </span>
       </button>
@@ -338,7 +343,7 @@ function Hub({ data, onCategorie, onOefenen, onQuiz, onVerzameling }: {
                     afronding van de punten en de binnenlijn blijven gelijk.
                     Goud markeert de categorie waar je het verst in bent. */}
                 <GoudKader
-                  hoek={8} kleur={actief ? "goud" : "violet"} dik={1} vulling binnenlijn
+                  hoek={8} kleur={actief ? "goud" : "violet"} dik={1} vulling="licht" binnenlijn
                   binnenSterkte={0.4} gloed={actief} padding="8px 2px"
                 >
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
@@ -755,7 +760,7 @@ function KaartTegel({ kaart, nu, onOpen, groot, chip }: {
         alt={kaart.word || ""}
         loading="lazy"
         style={{ position: "relative", width: "100%", aspectRatio: KAART_RATIO, display: "block",
-          filter: "drop-shadow(0 0 2px rgba(255,194,61,.95)) drop-shadow(0 0 6px rgba(255,159,69,.55))" }}
+          filter: "drop-shadow(0 0 1.5px rgba(255,194,61,.6)) drop-shadow(0 0 5px rgba(255,159,69,.3))" }}
       />
       {kaart.iso && (
         <img
