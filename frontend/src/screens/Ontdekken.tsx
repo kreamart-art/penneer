@@ -149,6 +149,9 @@ const HUB_RATIO = 894 / 407;
 // kader en een chevron die AL in de art zit, vanaf 92% van de breedte. De
 // rechtermarge van het opschrift houdt die vrij.
 const ONDER_RATIO = 887 / 143;
+// De gouden knop die uit de eerste bovensectie is gesneden, hier hergebruikt
+// voor "Start herhaling".
+const KNOP_RATIO = 900 / 252;
 const HUB = {
   // Een VIERKANT vak van 236px op de medaille. Het hart daarvan is (28.46%,
   // 52.23%), langs twee wegen gemeten die op 0.02% na hetzelfde geven: een
@@ -167,7 +170,7 @@ const HUB = {
   letter:  { left: "15.47%", right: "58.13%", top: "24.21%", bottom: "17.81%" },
   // Gecentreerd BOVEN de ring: die begint op 18.1% van de hoogte en zijn
   // midden ligt op 28.4% van de breedte, dus dit vak loopt van 4% tot 52.8%.
-  bovenop: { left: "4.0%",  right: "47.2%", top: "2.0%",  bottom: "84.0%" },
+  bovenop: { left: "4.0%",  right: "47.2%", top: "3.5%",  bottom: "81.5%" },
   plaat:   { left: "52.8%", right: "5.3%",  top: "9.6%",  bottom: "59.5%" },
   uitleg:  { left: "50.0%", right: "3.5%", top: "42.0%", bottom: "34.0%" },
   knop:    { left: "48.9%", right: "4.8%",  top: "67.1%", bottom: "6.6%" },
@@ -227,23 +230,54 @@ function HubSectie({ letter, streak, onSpeel }: {
       />
 
       <div style={{ position: "absolute", ...HUB.bovenop, display: "grid", placeItems: "center" }}>
-        <span style={{ fontFamily: font.wide, fontSize: "clamp(8px, 2.9vw, 15px)", letterSpacing: ".08em", color: colors.gold, whiteSpace: "nowrap" }}>
+        <span style={{ fontFamily: font.wide, fontSize: "clamp(9px, 3.3vw, 17px)", letterSpacing: ".08em", color: colors.gold, whiteSpace: "nowrap" }}>
           {t("ontdekkenLetterVanVandaag")}
         </span>
       </div>
 
       {letter && (
         <div style={{ position: "absolute", ...HUB.letter }}>
+          {/* Drie lagen, van achter naar voren: gloed, schaduw, letter.
+              De gloed staat een stukje hoger zodat hij bovenlangs uitsteekt en
+              de kleur komt van de stralen om de medaille (#D56942 opgemeten in
+              de art). Hij is een MASKER over een verloop en niet de art zelf
+              vervaagd: dat laatste smeert het goud uit tot vaalbruin.
+              De schaduw is dezelfde kopie in zwart, zoals overal in de app. */}
+          <span
+            aria-hidden
+            style={{
+              position: "absolute", inset: 0, transform: "translateY(-5%)",
+              background: "radial-gradient(58% 58% at 50% 46%, #FFB16A, #E2632C 62%, #C9502A 100%)",
+              WebkitMaskImage: `url(/letters/${letter}.webp)`, maskImage: `url(/letters/${letter}.webp)`,
+              WebkitMaskSize: "contain", maskSize: "contain",
+              WebkitMaskPosition: "center", maskPosition: "center",
+              WebkitMaskRepeat: "no-repeat", maskRepeat: "no-repeat",
+              filter: "blur(9px)", opacity: 0.75, pointerEvents: "none",
+            }}
+          />
+          <img
+            src={`/letters/${letter}.webp`} alt="" aria-hidden draggable={false}
+            style={{
+              position: "absolute", inset: 0, width: "100%", height: "100%",
+              objectFit: "contain", display: "block",
+              filter: "brightness(0) blur(4px)", opacity: 0.55,
+              transform: "translateY(4px)", pointerEvents: "none",
+            }}
+          />
           <img
             src={`/letters/${letter}.webp`} alt={letter}
-            style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
+            style={{ position: "relative", width: "100%", height: "100%", objectFit: "contain", display: "block" }}
           />
         </div>
       )}
 
       {/* De donkere plaat: de reeks met zijn vinkjes. */}
-      <div style={{ position: "absolute", ...HUB.plaat, display: "flex", flexDirection: "column", justifyContent: "center", gap: "6%", padding: "0 5%" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "4%" }}>
+      {/* De vinkjes staan onderaan, tegen de lijn van de plaat. Daardoor houdt
+          de rij erboven de hele resterende hoogte en staat die er netjes in het
+          midden van, in plaats van dat beide blokken samen om een gat heen
+          gecentreerd zijn. */}
+      <div style={{ position: "absolute", ...HUB.plaat, display: "flex", flexDirection: "column", padding: "2% 5% 6%" }}>
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "4%" }}>
           <Flame size={15} color={colors.orange} style={{ flexShrink: 0 }} />
           <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: "clamp(12px, 4vw, 22px)", lineHeight: 1, color: colors.ink }}>
             {streak}
@@ -343,7 +377,7 @@ function Hub({ data, onCategorie, onOefenen, onQuiz, onVerzameling }: {
                     afronding van de punten en de binnenlijn blijven gelijk.
                     Goud markeert de categorie waar je het verst in bent. */}
                 <GoudKader
-                  hoek={8} kleur={actief ? "goud" : "violet"} dik={1} vulling="licht"
+                  hoek={8} kleur={actief ? "goud" : "violet"} dik={actief ? 1.9 : 1} binnenDik={1} vulling="licht"
                   binnenlijn={actief} binnenSterkte={0.4} gloed={actief} padding="8px 2px"
                 >
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
@@ -419,15 +453,40 @@ function Hub({ data, onCategorie, onOefenen, onQuiz, onVerzameling }: {
                 : t("ontdekkenHerhalenLeeg")}
             </div>
           </div>
-          <div style={{ flexShrink: 0, width: 122 }} className="ontdek-kleineknop">
-            <Button
-              variant="primary" full compact
-              disabled={data.review_due === 0 || !sterkste?.discovered}
-              onClick={() => onQuiz("review", null, sterkste?.category || "land")}
-            >
-              {t("ontdekkenStartHerhaling")}
-            </Button>
-          </div>
+          {(() => {
+            const uit = data.review_due === 0 || !sterkste?.discovered;
+            return (
+              <button
+                disabled={uit}
+                onClick={() => { sound.uiTap(); onQuiz("review", null, sterkste?.category || "land"); }}
+                className={uit ? undefined : "pressable"}
+                style={{
+                  position: "relative", flexShrink: 0, width: 128, aspectRatio: `${KNOP_RATIO}`,
+                  background: "transparent", border: "none", padding: 0,
+                  cursor: uit ? "default" : "pointer", opacity: uit ? 0.4 : 1,
+                }}
+              >
+                <img
+                  src="/ontdek/knop-goud.webp" alt="" aria-hidden draggable={false}
+                  style={{
+                    position: "absolute", inset: 0, width: "100%", height: "100%", display: "block",
+                    filter: "brightness(0) blur(5px)", opacity: 0.5, transform: "translateY(4px)",
+                    pointerEvents: "none",
+                  }}
+                />
+                <img src="/ontdek/knop-goud.webp" alt="" style={{ position: "relative", width: "100%", height: "100%", display: "block" }} />
+                <span
+                  style={{
+                    position: "absolute", inset: 0, display: "grid", placeItems: "center",
+                    padding: "0 9%", fontFamily: font.display, fontWeight: 800,
+                    fontSize: "clamp(9px, 2.9vw, 15px)", color: "#3B2300", whiteSpace: "nowrap",
+                  }}
+                >
+                  {t("ontdekkenStartHerhaling")}
+                </span>
+              </button>
+            );
+          })()}
         </div>
       </GoudKader>
 

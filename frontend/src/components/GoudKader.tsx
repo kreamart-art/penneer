@@ -38,6 +38,7 @@ export function GoudKader({
   hoek = 13,
   rond = 2.5,
   dik = 0.5,
+  binnenDik,
   fade = false,
   kleur = "goud",
   gloed = false,
@@ -58,6 +59,10 @@ export function GoudKader({
    *  dat op een scherm met dubbele pixeldichtheid nog een echte lijn is en
    *  niet een rij grijze puntjes. */
   dik?: number;
+  /** Dikte van de BINNENlijn, als die anders moet zijn dan de buitenlijn. Een
+   *  dikkere buitenrand hoeft de binnenlijn niet mee te trekken: dan wordt het
+   *  een dubbele band in plaats van een rand met een accent erin. */
+  binnenDik?: number;
   /** Laat de lijn uitdoven vanaf de linkerbovenhoek. Dan is alleen die hoek
    *  echt te zien en verdwijnt de rest richting de bovenkant en omlaag, alsof
    *  het licht daar vandaan komt. Uit betekent: een hele omtrek. */
@@ -111,6 +116,7 @@ export function GoudKader({
   // De helft van de streek naar binnen, anders valt de andere helft buiten de
   // SVG en oogt de lijn aan de randen dunner dan in het midden.
   const o = dik / 2;
+  const bDik = binnenDik ?? dik;
 
   /** De acht punten van de achthoek, `naarBinnen` pixels naar binnen geschoven.
    *  Een vorm die overal even ver naar binnen gaat, krijgt een kleinere schuine
@@ -307,10 +313,10 @@ export function GoudKader({
               {gloed && (
                 <path
                   d={binnen} fill="none" stroke={`url(#${id}b${i})`}
-                  strokeWidth={Math.max(dik * 2.2, 1.4)} filter={`url(#${id}g)`} opacity={0.9}
+                  strokeWidth={Math.max(bDik * 2.2, 1.4)} filter={`url(#${id}g)`} opacity={0.9}
                 />
               )}
-              <path d={binnen} fill="none" stroke={`url(#${id}b${i})`} strokeWidth={dik} />
+              <path d={binnen} fill="none" stroke={`url(#${id}b${i})`} strokeWidth={bDik} />
             </g>
           ))}
 
@@ -318,7 +324,7 @@ export function GoudKader({
               binnenSterkte en dan zou het accent net zo hard meedoven als de
               lijn eronder. Een accent hoort juist boven de lijn uit te komen. */}
           {binnenlijn && HOEKEN4.map((_, i) => (
-            <path key={`k${i}`} d={binnen} fill="none" stroke={`url(#${id}k${i})`} strokeWidth={dik} opacity={0.85} />
+            <path key={`k${i}`} d={binnen} fill="none" stroke={`url(#${id}k${i})`} strokeWidth={bDik} opacity={0.85} />
           ))}
         </svg>
       )}
