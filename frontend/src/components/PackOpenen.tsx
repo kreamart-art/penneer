@@ -96,10 +96,15 @@ export function PackOpenen({
           style={{
             position: "absolute", left: "50%", top: "50%", width: 360, height: 360,
             transform: "translate(-50%,-50%)", borderRadius: "50%", opacity: 0,
-            // Ver uitgesmeerd en zwak: dit is een HALO om wat er uit het pack
-            // komt, geen tweede lichtbron. Uit de art komt al licht; een gloed
-            // die daar tegenop wil leest als een witte vlek over de kaart.
-            background: "radial-gradient(circle, rgba(255,248,225,.34) 0%, rgba(255,214,120,.16) 34%, rgba(255,190,80,.05) 60%, rgba(255,180,60,0) 82%)",
+            // EEN WITTE KERN met een lange warme staart. Het hart is echt wit
+            // en niet crème: daar komt het licht vandaan, en een gebroken wit
+            // leest als een gele vlek in plaats van als licht.
+            //
+            // De kern is wel KLEIN, en daarbuiten zakt hij ver uitgesmeerd weg
+            // naar goud en dan naar niets. Zou dat wit over de halve gloed
+            // doorlopen, dan ligt er een witte plek over de kaart heen in
+            // plaats van licht eromheen.
+            background: "radial-gradient(circle, rgba(255,255,255,.95) 0%, rgba(255,253,246,.6) 11%, rgba(255,226,150,.22) 30%, rgba(255,198,92,.07) 58%, rgba(255,180,60,0) 82%)",
             animationDelay: `${GLOED_NA}ms`, pointerEvents: "none",
           }}
         />
