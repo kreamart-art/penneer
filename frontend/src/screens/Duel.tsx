@@ -10,7 +10,7 @@
 // pas begint zijn 15 seconden, dus de app herladen koopt geen denktijd.
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { CloseIcon } from "../components/CloseIcon";
-import { ArrowLeft, Check, ChevronLeft, ChevronRight, Clock as ClockIcon, Hourglass, RotateCcw, Search, Swords } from "lucide-react";
+import { ArrowLeft, Check, ChevronDown, ChevronLeft, ChevronRight, Clock as ClockIcon, Hourglass, RotateCcw, Search, Swords, UserPlus } from "lucide-react";
 import { Avatar } from "../components/Avatar";
 import { NeonText } from "../components/NeonText";
 import { Button } from "../components/Button";
@@ -23,6 +23,8 @@ import { GlasVeld } from "../components/GlasVeld";
 import { GOUD, KADER_LIJN_GOUD, KADER_LIJN_PAARS, KADER_LIJN_ROOD, NeonKader, Paneel, PlekWapen, RingFoto, RingPortret, SCHILD_KLEUREN, type SchildKleur } from "../components/ProfileHero";
 import { GlasRij } from "./Hub";
 import { SchermTip } from "../components/SchermTip";
+import { DuelKop } from "../components/DuelKop";
+import { GoudKader } from "../components/GoudKader";
 import { CANVAS } from "../lib/canvaskleur";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
@@ -59,7 +61,7 @@ interface ListPayload {
   duels: DuelState[];
   friends: (Person & { status: string })[];
   pending: number;
-  record: { played: number; wins: number; draws: number; losses: number };
+  record: { played: number; wins: number; draws: number; losses: number; streak?: number; best?: number };
   rounds: number;
   round_seconds: number;
 }
@@ -112,6 +114,23 @@ export function Duel({ game, onBack, onProfile, openId, onGeopend }: {
   const [left, setLeft] = useState(0);
   const [busy, setBusy] = useState(false);
   const [pickOpen, setPickOpen] = useState(false);
+  // Alle gespeelde duels of alleen de laatste zeven.
+  const [allePotjes, setAllePotjes] = useState(false);
+
+  /** Iemand van buiten de app uitnodigen. Via het deelvenster van de telefoon,
+   *  zodat je zelf kiest waar je hem naartoe stuurt; werkt dat niet (desktop,
+   *  oudere browser), dan gaat de link naar het klembord. */
+  const nodigUit = async () => {
+    const link = `${location.origin}/`;
+    const tekst = `${t("duelUitnodigingTekst")} ${link}`;
+    try {
+      if (navigator.share) { await navigator.share({ text: tekst }); return; }
+      await navigator.clipboard.writeText(tekst);
+      setNote(t("copied"));
+    } catch {
+      // Afgebroken deelvenster is geen fout: dan wilde je het gewoon niet.
+    }
+  };
   // Welke inzet de UITGEDAAGDE nu bekijkt in de carrousel. Begint op de hoogste
   // die hij mag kiezen, want dat is wat de uitdager voorstelde.
   const [aanneemIdx, setAanneemIdx] = useState(0);
@@ -588,33 +607,94 @@ export function Duel({ game, onBack, onProfile, openId, onGeopend }: {
     <Screen top={header}>
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <SchermTip id="duel" tekst={t("tipDuel")} />
-        <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13.5, color: colors.sub, lineHeight: 1.55 }}>{t("duelIntro")}</p>
-          {!!rec && rec.played > 0 && (
-            <div style={{ display: "flex", gap: 8 }}>
-              <Chip icon={<ArtIcoon naam="beker" size={15} />} label={t("duelRecord", { w: rec.wins, d: rec.draws, l: rec.losses })} />
-            </div>
-          )}
-        </Card>
+
+        {/* De kop op zijn eigen plaat. Zie components/DuelKop.tsx: de zwaarden
+            en de drie statvakjes zitten in de art, de tekst komt er alleen
+            overheen. */}
+        <DuelKop
+          titel={t("duelKopTitel")}
+          uitleg={t("duelKopUitleg")}
+          winsten={`${rec?.wins ?? 0}W`}
+          winstenLabel={t("duelKopWinsten")}
+          winrate={rec && rec.played > 0 ? `${Math.round((rec.wins / rec.played) * 100)}%` : "-"}
+          winrateLabel={t("duelKopWinrate")}
+          reeks={`${rec?.best ?? 0}G`}
+          reeksLabel={t("duelKopReeks")}
+        />
 
         {/* Niet over de volle breedte: een knop die het halve scherm beslaat
             schreeuwt harder dan de duels eronder, terwijl die de inhoud zijn.
             Hij blijft de enige gouden knop op dit scherm, dus hij valt genoeg
             op zonder de rij op te eten. */}
         <div style={{ display: "flex", justifyContent: "center" }}>
-          <div style={{ width: "68%", maxWidth: 250 }}>
+          <div style={{ width: "78%", maxWidth: 290 }}>
             <Button variant="gold" full disabled={busy} onClick={() => { sound.uiTap(); setNote(""); setPickOpen(true); }}>
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 15 }}>
-                <Swords size={15} /> {t("duelNew")}
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 9, fontSize: 19, letterSpacing: 0.6 }}>
+                <Swords size={19} /> {t("duelNew")}
               </span>
             </Button>
           </div>
+        </div>
+
+        {/* Iemand halen die er nog niet is. Deelt een LINK en geen uitnodiging
+            in de app: wie je wil hebben zit per definitie nog niet in de app,
+            dus het moet via waar hij wel zit. */}
+        <div style={{ display: "flex", justifyContent: "center" }}>
+          <GoudKader hoek={9} dik={0.7} kleur="violet" gloed padding="3px 15px" style={{ display: "inline-block" }}>
+            <button
+              type="button"
+              onClick={() => { sound.uiTap(); void nodigUit(); }}
+              className="pressable"
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 7,
+                background: "transparent", border: "none", padding: "6px 2px", cursor: "pointer",
+                fontFamily: font.ui, fontSize: 13, fontWeight: 700, color: colors.ink,
+              }}
+            >
+              <UserPlus size={14} /> {t("duelVriendUitnodigen")}
+            </button>
+          </GoudKader>
         </div>
         {!!note && <p style={{ margin: 0, textAlign: "center", fontFamily: font.ui, fontSize: 13, color: colors.orange }}>{note}</p>}
 
         {mine.length > 0 && <Section title={t("duelYourTurn")} items={mine} onOpen={openDuel} t={t} mij={{ ...account, level: account.level.level }} />}
         {waiting.length > 0 && <Section title={t("duelWaitingTitle")} items={waiting} onOpen={openDuel} t={t} mij={{ ...account, level: account.level.level }} />}
-        {past.length > 0 && <Section title={t("duelPastTitle")} items={past} onOpen={openDuel} t={t} mij={{ ...account, level: account.level.level }} />}
+        {past.length > 0 && (
+          // De gespeelde duels in dezelfde afgeschuinde gouden lijn als de
+          // kaartenverzameling op de letterpagina: het is een lijst met een kop
+          // en een knop eronder, en die drie horen in EEN vak te staan in plaats
+          // van los onder elkaar te zweven.
+          //
+          // DE LAATSTE ZEVEN en niet alles: de lijst groeit met elk duel door,
+          // en een pagina die met je speelgeschiedenis meegroeit is na een week
+          // niet meer te scrollen. De rest staat een tik verderop.
+          <GoudKader hoek={13} fade gloed padding={12} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <Section
+              title={t("duelPastTitle")}
+              items={allePotjes ? past : past.slice(0, 7)}
+              onOpen={openDuel}
+              t={t}
+              mij={{ ...account, level: account.level.level }}
+            />
+            {past.length > 7 && (
+              <div style={{ display: "flex", justifyContent: "center" }}>
+                <button
+                  type="button"
+                  onClick={() => { sound.uiTap(); setAllePotjes((v) => !v); }}
+                  className="pressable"
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 6,
+                    background: "transparent", border: "none", cursor: "pointer", padding: "4px 10px",
+                    fontFamily: font.ui, fontSize: 12.5, fontWeight: 700, color: colors.gold,
+                  }}
+                >
+                  {allePotjes ? t("duelToonMinder") : t("duelToonAlles")}
+                  <ChevronDown size={14} style={{ transform: allePotjes ? "rotate(180deg)" : undefined, transition: "transform .2s ease" }} />
+                </button>
+              </div>
+            )}
+          </GoudKader>
+        )}
         {duels.length === 0 && list && (
           <p style={{ margin: 0, textAlign: "center", fontFamily: font.ui, fontSize: 13.5, color: colors.faint }}>{t("duelEmpty")}</p>
         )}
@@ -935,14 +1015,6 @@ function WordLine({ slot, mine }: { slot: Slot | null; mine: boolean }) {
         +{slot?.points ?? 0}
       </span>
     </div>
-  );
-}
-
-function Chip({ icon, label }: { icon: React.ReactNode; label: string }) {
-  return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontFamily: font.ui, fontSize: 12.5, fontWeight: 600, color: colors.sub, background: withAlpha("#000000", 0.22), border: `1px solid ${colors.hairline}`, padding: "6px 11px", borderRadius: 999 }}>
-      {icon}{label}
-    </span>
   );
 }
 

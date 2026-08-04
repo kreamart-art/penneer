@@ -2582,7 +2582,27 @@ class Database:
             )
         r = dict(rows[0])
         r["losses"] = int(r["played"]) - int(r["wins"]) - int(r["draws"])
-        return {k: int(v) for k, v in r.items()}
+        uit = {k: int(v) for k, v in r.items()}
+        # De REEKS erbij: hoeveel duels je op dit moment achter elkaar wint, en
+        # de langste die je ooit had. In een aparte doorloop over de uitslagen
+        # in tijdvolgorde en niet met een slimme query: een reeks is per
+        # definitie volgorde-afhankelijk, en sql dat voor je laten uitrekenen
+        # levert hier iets op wat niemand meer kan nalezen.
+        with self._lock:
+            uitslagen = self._q(
+                "SELECT winner FROM duels WHERE status='done' AND (a=? OR b=?) ORDER BY created_at ASC",
+                (user_id, user_id),
+            )
+        nu = beste = 0
+        for rij in uitslagen:
+            if rij["winner"] == user_id:
+                nu += 1
+                beste = max(beste, nu)
+            else:
+                nu = 0
+        uit["streak"] = nu
+        uit["best"] = beste
+        return uit
 
     def answer_freq(self, category: str, letter: str) -> tuple[dict, int]:
         """(word -> count, total) for this category+letter. The rarity table."""
