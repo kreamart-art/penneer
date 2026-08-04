@@ -1104,6 +1104,20 @@ const nl: Dict = {
   ontdekkenVolgende: "Volgende kaart",
   ontdekkenKaartVan: "{n} van {total}",
   ontdekkenGeenFeiten: "Voor deze kaart zijn nog geen feiten ingevuld.",
+  ontdekkenQuiz: "Kennisquiz",
+  ontdekkenQuizStart: "Speel de quiz",
+  ontdekkenQuizVraag: "Vraag {n} van {total}",
+  ontdekkenQuizWatIs: "{label} van {word}?",
+  ontdekkenQuizGoed: "Goed",
+  ontdekkenQuizFout: "Fout, het is {juist}",
+  ontdekkenQuizVolgende: "Volgende",
+  ontdekkenQuizKlaar: "Ronde klaar",
+  ontdekkenQuizScore: "{goed} van {total} goed",
+  ontdekkenQuizNiets: "Nog te weinig kaarten voor een quiz. Speel eerst een ronde Oefenen.",
+  ontdekkenReeks: "{n} dagen op rij",
+  ontdekkenDagGespeeld: "Vandaag gespeeld",
+  ontdekkenNogEens: "Nog een ronde",
+  ontdekkenSluiten: "Sluiten",
 };
 
 const en: Dict = {
@@ -2173,6 +2187,20 @@ const en: Dict = {
   ontdekkenVolgende: "Next card",
   ontdekkenKaartVan: "{n} of {total}",
   ontdekkenGeenFeiten: "No facts filled in for this card yet.",
+  ontdekkenQuiz: "Knowledge quiz",
+  ontdekkenQuizStart: "Play the quiz",
+  ontdekkenQuizVraag: "Question {n} of {total}",
+  ontdekkenQuizWatIs: "{label} of {word}?",
+  ontdekkenQuizGoed: "Correct",
+  ontdekkenQuizFout: "Wrong, it is {juist}",
+  ontdekkenQuizVolgende: "Next",
+  ontdekkenQuizKlaar: "Round complete",
+  ontdekkenQuizScore: "{goed} of {total} correct",
+  ontdekkenQuizNiets: "Not enough cards for a quiz yet. Play a round of practice first.",
+  ontdekkenReeks: "{n} days in a row",
+  ontdekkenDagGespeeld: "Played today",
+  ontdekkenNogEens: "Another round",
+  ontdekkenSluiten: "Close",
 };
 
 const dict: Record<Lang, Dict> = { nl, en };

@@ -4105,16 +4105,141 @@ class Database:
                         (user_id, cid),
                     )
                     continue
+                # Meteen in de herhaallus, want anders komt een kaart uit
+                # Oefenen nooit terug en blijft de stapel leeg. Een woord dat je
+                # ZELF noemde begint een bak hoger: dat kende je al, dus het mag
+                # langer wachten. Een woord dat je te zien kreeg staat morgen
+                # weer voor je neus. Dat is "gemiste woorden komen sneller
+                # terug", en niet een aparte regel ernaast.
+                from . import discover as _d
+
+                start_box = 2 if was_known else 1
+                wanneer = ts + _d.BOX_DAGEN[start_box] * 86400
                 try:
                     self._exec(
                         "INSERT INTO user_cards (user_id, card_id, discovered_at, source,"
-                        " correct_count, missed_count, box) VALUES (?,?,?,?,?,?,1)",
-                        (user_id, cid, ts, source, 1 if was_known else 0, 0 if was_known else 1),
+                        " correct_count, missed_count, box, next_review_at)"
+                        " VALUES (?,?,?,?,?,?,?,?)",
+                        (user_id, cid, ts, source, 1 if was_known else 0,
+                         0 if was_known else 1, start_box, wanneer),
                     )
                 except sqlite3.IntegrityError:
                     continue  # race met een tweede tik, de ander was eerst
                 fresh.append(cid)
         return [c for c in (self.discover_card(cid, user_id) for cid in fresh) if c]
+
+    def discover_quiz_kandidaten(
+        self, category: str, letter: Optional[str] = None, user_id: Optional[str] = None,
+        alleen_van_mij: bool = False,
+    ) -> list[dict]:
+        """Kaarten waar een quizvraag uit te maken is.
+
+        `alleen_van_mij` beperkt tot de verzameling van de speler. Dat is wat de
+        herhaling wil: overhoren op kaarten die je nooit gezien hebt is geen
+        herhaling maar gokken. Voor de foute antwoorden gebruiken we juist WEL
+        de hele categorie, want dan komen er plaatsnamen langs die echt bestaan.
+        """
+        sql = ["SELECT c.id, c.word, c.facts FROM cards c"]
+        args: list = []
+        if alleen_van_mij:
+            sql.append(" JOIN user_cards uc ON uc.card_id = c.id AND uc.user_id = ?")
+            args.append(user_id or "")
+        sql.append(" WHERE c.category = ?")
+        args.append(category)
+        if letter:
+            sql.append(" AND c.letter = ?")
+            args.append(letter)
+        rows = self._q("".join(sql), tuple(args))
+        return [
+            {"id": int(r["id"]), "word": r["word"], "facts": json.loads(r["facts"] or "{}")}
+            for r in rows
+        ]
+
+    def discover_review_stapel(self, user_id: str, limiet: int, now: Optional[float] = None) -> list[dict]:
+        """De kaarten die klaarstaan om te herhalen, de oudste eerst.
+
+        Oudste eerst en niet willekeurig: wat het langst wacht is wat je het
+        hardst dreigt te vergeten.
+        """
+        rows = self._q(
+            "SELECT c.id, c.word, c.facts, uc.box, uc.next_review_at"
+            " FROM user_cards uc JOIN cards c ON c.id = uc.card_id"
+            " WHERE uc.user_id = ? AND uc.next_review_at IS NOT NULL AND uc.next_review_at <= ?"
+            " ORDER BY uc.next_review_at ASC LIMIT ?",
+            (user_id, now if now is not None else time.time(), int(limiet)),
+        )
+        return [
+            {
+                "id": int(r["id"]), "word": r["word"], "facts": json.loads(r["facts"] or "{}"),
+                "box": int(r["box"]), "next_review_at": r["next_review_at"],
+            }
+            for r in rows
+        ]
+
+    def discover_antwoord_verwerkt(
+        self, user_id: str, card_id: int, goed: bool, now: Optional[float] = None,
+    ) -> Optional[dict]:
+        """Werk de Leitner-stand van een kaart bij na een antwoord.
+
+        Doet niets als de speler de kaart niet heeft: je kunt geen voortgang
+        boeken op iets wat niet van jou is.
+        """
+        from . import discover as _d
+
+        ts = now if now is not None else time.time()
+        with self._lock:
+            rows = self._q(
+                "SELECT box FROM user_cards WHERE user_id=? AND card_id=?", (user_id, card_id)
+            )
+            if not rows:
+                return None
+            box = int(rows[0]["box"] or 1)
+            nieuw_box = _d.volgende_box(box, goed)
+            wanneer = _d.volgende_review(box, goed, ts)
+            kolom = "correct_count" if goed else "missed_count"
+            self._exec(
+                f"UPDATE user_cards SET box=?, next_review_at=?, {kolom}={kolom}+1"
+                " WHERE user_id=? AND card_id=?",
+                (nieuw_box, wanneer, user_id, card_id),
+            )
+        return {"box": nieuw_box, "next_review_at": wanneer, "klaar": wanneer is None}
+
+    def discover_dag_afgerond(self, user_id: str, letter: str, day: str) -> dict:
+        """Werk de reeks bij nu de speler de dagletter heeft uitgespeeld.
+
+        Alleen bij UITSPELEN en niet bij openen: anders houd je je reeks in
+        stand door elke dag even te kijken, en dan meet hij niets.
+
+        Twee keer op dezelfde dag telt een keer. Een gat van precies een dag
+        laat de reeks doorlopen, alles daarboven begint opnieuw.
+        """
+        import datetime as _dt
+
+        with self._lock:
+            rows = self._q("SELECT * FROM user_discover_state WHERE user_id=?", (user_id,))
+            vorige = rows[0]["last_played_date"] if rows else None
+            reeks = int(rows[0]["streak_days"]) if rows else 0
+            if vorige == day:
+                nieuw = max(reeks, 1)
+            else:
+                aansluitend = False
+                if vorige:
+                    try:
+                        aansluitend = (
+                            _dt.date.fromisoformat(day) - _dt.date.fromisoformat(vorige)
+                        ).days == 1
+                    except ValueError:
+                        aansluitend = False
+                nieuw = reeks + 1 if aansluitend else 1
+            self._exec(
+                "INSERT INTO user_discover_state (user_id, daily_letter, daily_letter_date,"
+                " streak_days, last_played_date) VALUES (?,?,?,?,?)"
+                " ON CONFLICT(user_id) DO UPDATE SET daily_letter=excluded.daily_letter,"
+                " daily_letter_date=excluded.daily_letter_date,"
+                " streak_days=excluded.streak_days, last_played_date=excluded.last_played_date",
+                (user_id, letter, day, nieuw, day),
+            )
+        return {"streak_days": nieuw, "last_played_date": day}
 
     def discover_state(self, user_id: str) -> dict:
         """De dagletter-/streakrij van deze speler, met nullen als hij er nog geen heeft."""

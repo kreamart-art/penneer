@@ -499,11 +499,26 @@ async def discover_overview(request: Request) -> JSONResponse:
             "percent": int(got * 100 / total) if total else 0,
         })
     state = db.discover_state(uid) if uid else {}
+    dag = discover.today()
+    dagletter = discover.daily_letter(uid, dag) if uid else None
+    # Kan de speler de dagletter ook echt spelen? Zonder eigen kaarten van die
+    # letter valt er niets te vragen, en dan hoort er geen quizknop te staan
+    # maar de weg naar Oefenen: eerst verzamelen, dan overhoren.
+    speelbaar = False
+    if uid and dagletter:
+        for cat in discover.CATEGORIES:
+            if db.discover_quiz_kandidaten(cat, dagletter, uid, alleen_van_mij=True):
+                speelbaar = True
+                break
     return JSONResponse({
         "categories": rows,
         "fact_schema": {c: list(discover.fact_rows(c)) for c in discover.CATEGORIES},
-        "daily_letter": state.get("daily_letter"),
-        "daily_letter_date": state.get("daily_letter_date"),
+        # BEREKEND en niet uit de tabel: daar staat alleen wat er gespeeld is,
+        # en een speler die vandaag nog niets deed hoort zijn letter wel te zien.
+        "daily_letter": dagletter,
+        "daily_letter_date": dag,
+        "daily_gespeeld": state.get("last_played_date") == dag,
+        "daily_speelbaar": speelbaar,
         "streak_days": state.get("streak_days", 0),
         "review_due": db.discover_due_count(uid) if uid else 0,
         "guest": uid is None,
@@ -588,6 +603,181 @@ async def discover_unlock(request: Request) -> JSONResponse:
     known = frozenset(discover.match_words(category, letter, body.get("known") or []))
     new_cards = db.discover_unlock(uid, category, norms, source=source, known=known)
     return JSONResponse({"new_cards": new_cards, "count": len(new_cards)})
+
+
+# ---- Ontdekken: dagletter, quiz en herhaling --------------------------------
+# De quizsessies staan in het geheugen, net als de rooms: een ronde duurt een
+# minuut en overleeft een herstart niet, en dat is prima. Ze in de database
+# zetten zou betekenen dat elke tik op een antwoord een schrijfactie is voor
+# iets dat morgen niets meer betekent.
+
+_QUIZ: dict[str, dict] = {}
+_QUIZ_TTL = 30 * 60
+
+
+def _quiz_opruimen(now: float) -> None:
+    """Sessies die niemand meer afmaakt weggooien, zodat het geheugen niet loopt."""
+    for sid in [k for k, v in _QUIZ.items() if now - v["gestart"] > _QUIZ_TTL]:
+        _QUIZ.pop(sid, None)
+
+
+@app.get("/api/discover/daily")
+async def discover_daily(request: Request) -> JSONResponse:
+    """De letter van vandaag, plus de stand van de reeks.
+
+    Alleen LEZEN: de reeks gaat pas omhoog als de speler de letter uitspeelt
+    (zie /quiz/finish). Anders houd je hem in stand door elke dag even te
+    kijken, en dan meet hij niets.
+    """
+    db = get_db()
+    uid = db.auth(_bearer(request))
+    if not uid:
+        return JSONResponse({"error": "auth"}, status_code=401)
+    dag = discover.today()
+    letter = discover.daily_letter(uid, dag)
+    stand = db.discover_state(uid)
+    return JSONResponse({
+        "letter": letter,
+        "day": dag,
+        "streak_days": stand.get("streak_days", 0),
+        "gespeeld": stand.get("last_played_date") == dag,
+        "review_due": db.discover_due_count(uid),
+    })
+
+
+@app.post("/api/discover/quiz/start")
+async def discover_quiz_start(request: Request) -> JSONResponse:
+    """Vijf vragen. Het juiste antwoord blijft op de server."""
+    db = get_db()
+    uid = db.auth(_bearer(request))
+    if not uid:
+        return JSONResponse({"error": "auth"}, status_code=401)
+    body = await request.json() or {}
+    category = str(body.get("category") or "")
+    if category not in discover.CATEGORIES:
+        return JSONResponse({"error": "categorie"}, status_code=400)
+    mode = str(body.get("mode") or "letter")
+    letter = (str(body.get("letter") or "").strip().upper() or None)
+    if letter and letter not in discover.LETTERS:
+        letter = None
+
+    now = time.time()
+    _quiz_opruimen(now)
+
+    if mode == "review":
+        # Herhalen gaat over WAT JE HEBT, en de stapel bepaalt welke kaarten.
+        stapel = db.discover_review_stapel(uid, discover.REVIEW_LIMIET, now)
+        if not stapel:
+            return JSONResponse({"error": "niets_te_herhalen"}, status_code=400)
+        kandidaten = stapel
+    else:
+        kandidaten = db.discover_quiz_kandidaten(category, letter, uid, alleen_van_mij=True)
+        if not kandidaten:
+            return JSONResponse({"error": "geen_kaarten"}, status_code=400)
+
+    # Gevraagd wordt alleen over kaarten die de speler HEEFT; de foute
+    # antwoorden komen uit de hele categorie, want met een handvol kaarten in
+    # bezit zou elke vraag dezelfde vier opties krijgen.
+    vragen = discover.maak_vragen(
+        kandidaten, category, pool=db.discover_quiz_kandidaten(category),
+    )
+    if not vragen:
+        return JSONResponse({"error": "geen_vragen"}, status_code=400)
+
+    sid = uuid.uuid4().hex
+    _QUIZ[sid] = {
+        "user": uid, "category": category, "letter": letter, "mode": mode,
+        "vragen": vragen, "antwoorden": {}, "gestart": now,
+    }
+    return JSONResponse({
+        "session_id": sid,
+        "mode": mode,
+        "category": category,
+        "letter": letter,
+        "vragen": discover.zonder_antwoord(vragen),
+    })
+
+
+@app.post("/api/discover/quiz/answer")
+async def discover_quiz_answer(request: Request) -> JSONResponse:
+    """Goed of fout, plus wat het juiste antwoord was."""
+    db = get_db()
+    uid = db.auth(_bearer(request))
+    if not uid:
+        return JSONResponse({"error": "auth"}, status_code=401)
+    body = await request.json() or {}
+    sessie = _QUIZ.get(str(body.get("session_id") or ""))
+    if not sessie or sessie["user"] != uid:
+        return JSONResponse({"error": "sessie"}, status_code=404)
+    try:
+        i = int(body.get("question_index"))
+    except (TypeError, ValueError):
+        return JSONResponse({"error": "vraag"}, status_code=400)
+    if not 0 <= i < len(sessie["vragen"]):
+        return JSONResponse({"error": "vraag"}, status_code=400)
+
+    vraag = sessie["vragen"][i]
+    # Een tweede antwoord op dezelfde vraag telt niet: anders tik je door tot
+    # het goed is en betekent de uitslag niets.
+    if i in sessie["antwoorden"]:
+        eerder = sessie["antwoorden"][i]
+        return JSONResponse({"goed": eerder, "juist": vraag["juist"], "opnieuw": True})
+
+    gegeven = str(body.get("answer") or "").strip()
+    goed = gegeven == vraag["juist"]
+    sessie["antwoorden"][i] = goed
+    return JSONResponse({"goed": goed, "juist": vraag["juist"]})
+
+
+@app.post("/api/discover/quiz/finish")
+async def discover_quiz_finish(request: Request) -> JSONResponse:
+    """Sluit de ronde: Leitner bijwerken, belonen, en de reeks als het de
+    dagletter was."""
+    db = get_db()
+    uid = db.auth(_bearer(request))
+    if not uid:
+        return JSONResponse({"error": "auth"}, status_code=401)
+    body = await request.json() or {}
+    sid = str(body.get("session_id") or "")
+    sessie = _QUIZ.get(sid)
+    if not sessie or sessie["user"] != uid:
+        return JSONResponse({"error": "sessie"}, status_code=404)
+
+    now = time.time()
+    goed = 0
+    for i, vraag in enumerate(sessie["vragen"]):
+        antwoord = sessie["antwoorden"].get(i)
+        if antwoord is None:
+            continue  # niet beantwoord: niet fout rekenen, maar ook niet belonen
+        goed += 1 if antwoord else 0
+        db.discover_antwoord_verwerkt(uid, vraag["card_id"], bool(antwoord), now)
+
+    beantwoord = len(sessie["antwoorden"])
+    # Bescheiden en voorspelbaar: dit is oefenen, geen ranglijst. Wie alles goed
+    # heeft krijgt een klein extraatje, zodat een volle ronde de moeite is.
+    xp = goed * 4 + (6 if goed and goed == len(sessie["vragen"]) else 0)
+    munten = goed * 2 + (5 if goed and goed == len(sessie["vragen"]) else 0)
+    if xp:
+        db.add_bonus_xp(uid, xp)
+    if munten:
+        db.grant_coins(uid, munten)
+
+    # Was dit de dagletter? Dan telt de reeks, maar alleen nu hij is uitgespeeld.
+    dag = discover.today()
+    reeks = None
+    if sessie["mode"] == "letter" and sessie["letter"] == discover.daily_letter(uid, dag):
+        reeks = db.discover_dag_afgerond(uid, sessie["letter"], dag)
+
+    _QUIZ.pop(sid, None)
+    return JSONResponse({
+        "goed": goed,
+        "totaal": len(sessie["vragen"]),
+        "beantwoord": beantwoord,
+        "xp": xp,
+        "munten": munten,
+        "streak_days": (reeks or {}).get("streak_days"),
+        "review_due": db.discover_due_count(uid),
+    })
 
 
 # ---- dagronde (daily round: same letter for everyone, ranked) ---------------

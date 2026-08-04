@@ -1,6 +1,15 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
+// Waar de FastAPI-kant draait. Standaard 8000, maar instelbaar met PENNEER_API
+// zodat er twee sessies naast elkaar kunnen werken zonder elkaars server om te
+// leggen.
+// `process` is Node en niet de browser, dus zonder @types/node struikelt tsc
+// erover. Een losse declaratie is genoeg en scheelt een dev-dependency voor
+// een enkele regel.
+declare const process: { env: Record<string, string | undefined> };
+const API = process.env.PENNEER_API || "http://localhost:8000";
+
 // In dev, proxy the WebSocket + HTTP API (avatars) to FastAPI on :8000.
 export default defineConfig({
   plugins: [react()],
@@ -22,16 +31,16 @@ export default defineConfig({
     port: 5400,
     proxy: {
       "/ws": {
-        target: "ws://localhost:8000",
+        target: API.replace(/^http/, "ws"),
         ws: true,
       },
       "/api": {
-        target: "http://localhost:8000",
+        target: API,
       },
       // Kaart-art van Ontdekken. In productie serveert FastAPI dit pad zelf;
       // in dev moet Vite het doorsturen, anders zoekt hij het in public/.
       "/static": {
-        target: "http://localhost:8000",
+        target: API,
       },
     },
   },

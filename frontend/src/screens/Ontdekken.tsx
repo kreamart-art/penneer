@@ -14,6 +14,7 @@ import type { LucideIcon } from "lucide-react";
 import { Button } from "../components/Button";
 import { LetterTegel } from "../components/LetterTegel";
 import { GoudKader } from "../components/GoudKader";
+import { OntdekQuiz } from "./OntdekQuiz";
 import { useT } from "../i18n/i18n";
 import { colors, font, panelStyle, withAlpha } from "../theme/tokens";
 import { sound } from "../sound/sound";
@@ -26,6 +27,8 @@ interface Overview {
   categories: CatRow[];
   fact_schema: Record<string, FactRow[]>;
   daily_letter: string | null;
+  daily_gespeeld: boolean;
+  daily_speelbaar: boolean;
   streak_days: number;
   review_due: number;
   guest: boolean;
@@ -127,9 +130,14 @@ function Paneel({ children, style }: { children: React.ReactNode; style?: React.
 
 // ---- hub --------------------------------------------------------------------
 
-function Hub({ data, onCategorie, onOefenen }: {
+function Hub({ data, onCategorie, onOefenen, onQuiz }: {
   data: Overview; onCategorie: (c: string) => void; onOefenen: () => void;
+  onQuiz: (mode: "letter" | "review", letter: string | null, category: string) => void;
 }) {
+  // De quiz vraagt naar FEITEN, dus hij draait op de categorie waar je de
+  // meeste kaarten van hebt. Heb je nog niets, dan is er ook niets te vragen
+  // en blijft de knop uit.
+  const sterkste = [...data.categories].sort((a, b) => b.discovered - a.discovered)[0];
   const { t } = useT();
   return (
     <>
@@ -159,8 +167,19 @@ function Hub({ data, onCategorie, onOefenen }: {
               )}
             </div>
           </div>
-          <div style={{ marginTop: 12 }}>
+          <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
             <Button variant="gold" full onClick={onOefenen}>{t("ontdekkenSpeelDeLetter")}</Button>
+            {/* De quiz alleen aanbieden als er van deze letter iets te vragen
+                valt. Anders is de volgorde: eerst verzamelen in Oefenen, dan
+                overhoren. */}
+            {data.daily_speelbaar && data.daily_letter && (
+              <Button
+                variant="primary" full
+                onClick={() => onQuiz("letter", data.daily_letter, sterkste.category)}
+              >
+                {data.daily_gespeeld ? t("ontdekkenNogEens") : t("ontdekkenQuizStart")}
+              </Button>
+            )}
           </div>
         </Paneel>
       )}
@@ -210,7 +229,10 @@ function Hub({ data, onCategorie, onOefenen }: {
             ? t("ontdekkenHerhalenKlaar", { n: data.review_due })
             : t("ontdekkenHerhalenLeeg")}
         </p>
-        <Button variant="primary" full disabled={data.review_due === 0} onClick={onOefenen}>
+        <Button
+          variant="primary" full disabled={data.review_due === 0 || !sterkste?.discovered}
+          onClick={() => onQuiz("review", null, sterkste?.category || "land")}
+        >
           {t("ontdekkenStartHerhaling")}
         </Button>
       </Paneel>
@@ -724,7 +746,8 @@ function KaartGroot({ kaarten, index, rijen, nu, onGa, onSluit }: {
 type Stap =
   | { soort: "hub" }
   | { soort: "categorie"; category: string }
-  | { soort: "letter"; category: string; letter: string };
+  | { soort: "letter"; category: string; letter: string }
+  | { soort: "quiz"; category: string; letter: string | null; mode: "letter" | "review" };
 
 export function Ontdekken({ onBack, onOefenen }: { onBack: () => void; onOefenen: () => void }) {
   const { t } = useT();
@@ -776,6 +799,7 @@ export function Ontdekken({ onBack, onOefenen }: { onBack: () => void; onOefenen
   const titel =
     stap.soort === "hub" ? t("ontdekkenTitel")
       : stap.soort === "categorie" ? (cat?.label ?? t("ontdekkenLaden"))
+      : stap.soort === "quiz" ? t("ontdekkenQuiz")
       : t("ontdekkenLetter", { letter: stap.letter });
 
   const gast = overview?.guest ?? cat?.guest ?? letter?.guest ?? false;
@@ -817,9 +841,17 @@ export function Ontdekken({ onBack, onOefenen }: { onBack: () => void; onOefenen
           <Hub
             data={overview}
             onOefenen={onOefenen}
+            onQuiz={(mode, letter, category) =>
+              setStapel((s) => [...s, { soort: "quiz", category, letter, mode }])}
             onCategorie={(c) => setStapel((s) => [...s, { soort: "categorie", category: c }])}
           />
         )
+      ) : stap.soort === "quiz" ? (
+        <OntdekQuiz
+          category={stap.category} letter={stap.letter} mode={stap.mode}
+          onBack={terug}
+          onKlaar={() => { /* de hub haalt zichzelf opnieuw op zodra je terug bent */ }}
+        />
       ) : stap.soort === "categorie" ? (
         cat && (
           <Categorie

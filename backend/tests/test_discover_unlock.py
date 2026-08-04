@@ -129,7 +129,8 @@ def test_unlock_negeert_een_woord_zonder_kaart(db):
     assert [c["word"] for c in got] == ["België"]
 
 
-def test_nieuwe_kaart_begint_in_box_1(db):
+def test_een_woord_dat_je_kreeg_voorgeschoteld_begint_onderaan(db):
+    """Wie het woord niet zelf noemde start in bak 1 en ziet hem morgen terug."""
     cid = add(db, "land", "België")
     db.discover_unlock("u", "land", discover.match_words("land", "B", ["België"]))
     assert db.discover_card(cid, "u")["box"] == 1
@@ -230,3 +231,33 @@ def test_letter_is_compleet_te_spelen(db):
     norms = discover.match_words("land", "B", game.list_words_for_letter("Land", "B"))
     got = db.discover_unlock("u", "land", norms)
     assert len(got) == totaal, "de hele B-lijst spelen moet alle B-kaarten geven"
+
+
+def test_nieuwe_kaart_komt_in_de_herhaallus(db):
+    """Zonder dit blijft de herhaalstapel altijd leeg en heeft de modus geen lus."""
+    from app import discover as d
+
+    a = add(db, "land", "België")
+    b = add(db, "land", "Brazilië")
+    nu = 1_000_000.0
+    norms = discover.match_words("land", "B", ["België", "Brazilië"])
+    db.discover_unlock("u", "land", norms, known=frozenset([game.normalize("België")]), now=nu)
+
+    zelf = db.discover_card(a, "u")
+    gezien = db.discover_card(b, "u")
+    # Zelf genoemd start een bak hoger en wacht dus langer.
+    assert zelf["box"] == 2 and gezien["box"] == 1
+
+    rij = {
+        r["card_id"]: r["next_review_at"]
+        for r in db._conn.execute("SELECT card_id, next_review_at FROM user_cards")
+    }
+    assert rij[a] is not None and rij[b] is not None
+    assert (rij[b] - nu) / 86400 == d.BOX_DAGEN[1]
+    assert (rij[a] - nu) / 86400 == d.BOX_DAGEN[2]
+    assert rij[b] < rij[a], "wat je moest opzoeken hoort eerder terug te komen"
+
+    # En de stapel pikt ze op zodra de termijn verstreken is.
+    assert db.discover_due_count("u", nu) == 0
+    assert db.discover_due_count("u", nu + 2 * 86400) == 1
+    assert db.discover_due_count("u", nu + 5 * 86400) == 2
