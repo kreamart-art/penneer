@@ -4,7 +4,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, Copy, History, Minus, Plus, Share2, UserPlus, X } from "lucide-react";
 import { Avatar } from "../components/Avatar";
-import { NeonText } from "../components/NeonText";
 import { Button } from "../components/Button";
 import { Chip } from "../components/Chip";
 import { InfoDot } from "../components/InfoDot";
@@ -13,7 +12,8 @@ import { Screen, Card } from "../components/Layout";
 import { TopBar } from "../components/TopBar";
 import { GlasRij, ProfileViewModal, ZoekKnop } from "./Hub";
 import { GoudKader } from "../components/GoudKader";
-import { KADER_LIJN_ROOD, NeonKader, Paneel } from "../components/ProfileHero";
+import { Tv } from "../components/Tv";
+import { KADER_LIJN_ROOD, NeonKader } from "../components/ProfileHero";
 import { GlasVeld } from "../components/GlasVeld";
 import { KnopPlaat } from "../components/KnopPlaat";
 import type { GameApi, PublicUser } from "../net/socket";
@@ -25,9 +25,9 @@ import { colors, font, withAlpha } from "../theme/tokens";
 const TIMES = [0, 30, 60, 90];
 const ROUNDS = [3, 5, 7];
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
+function SectionLabel({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return (
-    <div style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint, marginBottom: 10 }}>
+    <div style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: colors.faint, marginBottom: 10, ...style }}>
       {children}
     </div>
   );
@@ -123,14 +123,22 @@ function InviteFriends({ game }: { game: GameApi }) {
 
   return (
     <>
-      {/* De marge zit HIER en niet op een wikkel eromheen: is er niemand om uit
-          te nodigen, dan valt deze component in zijn geheel weg, en een lege
-          wikkel zou een gat in de kaart achterlaten. */}
-      <Button variant="ghost" style={{ marginTop: 12 }} onClick={() => { sound.uiTap(); setOpen(true); }}>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
-          <UserPlus size={16} /> {titel}
-        </span>
-      </Button>
+      {/* KAAL, geen plaat en geen pil. Hij staat op de regel van het kopje, en
+          een knop met een eigen achtergrond zou daar de zwaarste vorm in de
+          hele kaart zijn terwijl het maar een ingang is. Goud omdat het kopje
+          ernaast grijs is: in dezelfde tint zou hij niet als knop lezen. */}
+      <button
+        onClick={() => { sound.uiTap(); setOpen(true); }}
+        className="pressable"
+        style={{
+          flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 5,
+          background: "transparent", border: "none", padding: 0, cursor: "pointer",
+          fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.4,
+          color: colors.gold, whiteSpace: "nowrap",
+        }}
+      >
+        <UserPlus size={14} /> {titel}
+      </button>
 
       {open && (
         <div
@@ -169,7 +177,7 @@ function InviteFriends({ game }: { game: GameApi }) {
               {/* EEN scroller en niet één per lijstje: twee schuifvakken onder
                   elkaar in een venster dat zelf al kan schuiven is niet te
                   bedienen met een duim. */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: "min(60vh, 430px)", overflowY: "auto", overscrollBehavior: "contain" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: "min(64vh, 520px)", overflowY: "auto", overscrollBehavior: "contain" }}>
                 {shown.length === 0 && (
                   <span style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint, padding: "4px 2px" }}>{t("searchNoMatch")}</span>
                 )}
@@ -317,38 +325,40 @@ export function Lobby({ game }: { game: GameApi }) {
             binnenkomen en daarna staat hij in Instellingen. In een lobby waar
             je op mensen wacht is het geen keuze die je nog maakt, en hij nam de
             hele bovenregel in beslag. */}
-        {/* De roomcode is het enige op dit scherm dat je aan een ander geeft,
-            dus die krijgt de sierlijst van het profiel: een lijst om iets dat
-            je laat zien. De art heeft een VASTE verhouding, dus de inhoud voegt
-            zich ernaar en niet andersom. */}
-        <Paneel>
-          <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, padding: "0 12px" }}>
-            <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: 1.2, textTransform: "uppercase", color: colors.faint }}>{t("roomcode")}</span>
-            <button onClick={shareCode} aria-label={t("shareCode")} style={{ display: "inline-flex", gap: 8, alignItems: "center", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}>
-              {/* Dezelfde behandeling als de letter op de rol: een gouden
-                  verloop over de letters met de gloed als vervaagde kopie
-                  erachter. Op dit formaat leest dat als metaal; klein zou
-                  hetzelfde verloop de letters juist dof maken. */}
-              <NeonText
-                accent={colors.gold}
-                blur={18}
-                glow={0.7}
-                style={{ fontFamily: font.display, fontWeight: 700, fontSize: "clamp(38px, 12.5vw, 52px)", letterSpacing: 9, lineHeight: 1 }}
-              >
-                {room.code}
-              </NeonText>
-              <span style={{ color: copied ? colors.green : colors.faint }}>{copied ? <Check size={20} /> : <Share2 size={19} />}</span>
-            </button>
-            <p style={{ margin: 0, textAlign: "center", fontFamily: font.ui, fontSize: 11.5, lineHeight: 1.35, color: colors.sub }}>{t("codeHint")}</p>
-          </div>
-        </Paneel>
+        {/* De roomcode staat op de TV, dezelfde als in een ronde en in Oefenen.
+            Het is het enige op dit scherm dat je aan iemand anders geeft, dus
+            het mag het grootste ding zijn dat er staat.
+            Een tik erop opent het deelblad; het deel-teken staat eronder, want
+            op het scherm zelf zou het naast de code komen te staan en dan is
+            de code niet meer het midden. */}
+        <div>
+          <Tv
+            code={room.code}
+            label={t("roomcode")}
+            onClick={shareCode}
+            knopLabel={t("shareCode")}
+            onder={t("codeHint")}
+            naast={
+              <span style={{ color: copied ? colors.green : colors.faint, display: "flex" }}>
+                {copied ? <Check size={22} /> : <Share2 size={21} />}
+              </span>
+            }
+          />
+        </div>
 
         {/* Players */}
         <Card>
-          <SectionLabel>
-            {t("inRoom")} · {players.length}
-            {spectators.length > 0 ? ` (+${spectators.length})` : ""}
-          </SectionLabel>
+          {/* Het kopje en de uitnodigen-link op EEN regel. Een knop op volle
+              breedte onder de lijst kostte een hele regel voor iets wat je
+              hooguit één keer per potje doet; hier staat hij naast het kopje
+              waar hij over gaat, en hij eet geen hoogte. */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+            <SectionLabel style={{ flex: 1, marginBottom: 0 }}>
+              {t("inRoom")} · {players.length}
+              {spectators.length > 0 ? ` (+${spectators.length})` : ""}
+            </SectionLabel>
+            <InviteFriends game={game} />
+          </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 3, marginInline: -11 }}>
             {[...players, ...spectators].map((p) => {
               // Tik op een medespeler en je ziet zijn korte profiel: level,
@@ -405,9 +415,6 @@ export function Lobby({ game }: { game: GameApi }) {
               <p style={{ margin: 0, textAlign: "center", fontFamily: font.ui, fontSize: 11.5, color: colors.faint }}>{t("addBotHint")}</p>
             </div>
           )}
-          {/* Onder de spelerslijst, want dit is de knop die er iemand aan
-              toevoegt. De lijst zelf zit in een popup; zie InviteFriends. */}
-          <InviteFriends game={game} />
         </Card>
 
         {/* Settings */}

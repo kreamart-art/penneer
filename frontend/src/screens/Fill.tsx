@@ -4,15 +4,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check } from "lucide-react";
 import { Avatar } from "../components/Avatar";
-import { NeonText } from "../components/NeonText";
 import { Button } from "../components/Button";
+import { Tv } from "../components/Tv";
 import { Timer } from "../components/Timer";
 import { Screen, Card } from "../components/Layout";
 import { TopBar } from "../components/TopBar";
 import type { GameApi } from "../net/socket";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
-import { Paneel } from "../components/ProfileHero";
 import { KreetKiezer } from "../components/Kreten";
 import { KreetZwever } from "../components/KreetZwever";
 import { colors, font, withAlpha } from "../theme/tokens";
@@ -76,35 +75,27 @@ export function Fill({ game }: { game: GameApi }) {
           op het moment dat het ertoe doet. */}
       <KreetZwever game={game} />
       <div style={{ display: "flex", flexDirection: "column", gap: 16, paddingBottom: showFloatingReady || showFloatingStop ? 104 : 0 }}>
-        {/* Letter + timer, in de PROFIELSECTIE: dezelfde art als de heldenkaart
-            op het profiel. Dit is de kop van de ronde, en die hoort dezelfde
-            lijst te dragen als de kop van het profiel; een neonkader was hier
-            een tweede taal naast de art. */}
-        <Paneel>
-          <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6 }}>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-            <span style={{ fontFamily: font.ui, fontSize: 13, color: colors.sub }}>{t("letterIs")}</span>
-            {/* Zelfde behandeling als de letter op de rol: een verloop over het
-                teken met de gloed als vervaagde kopie erachter. */}
-            <NeonText accent={colors.gold} blur={14} glow={0.7} style={{ fontFamily: font.display, fontWeight: 700, fontSize: 40, lineHeight: 1 }}>{letter}</NeonText>
+        {/* De letter op de TV, dezelfde als in de lobby en in Oefenen. De klok
+            staat eronder en niet erop: op het scherm zou hij naast de letter om
+            aandacht vragen, terwijl de letter is waar je naar kijkt. */}
+        <div>
+          <Tv letter={letter} label={t("letterIs")} />
+          <div style={{ display: "flex", justifyContent: "center", marginTop: 8 }}>
+            {noTimer ? (
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 26, lineHeight: 1, color: colors.violet }}>∞</div>
+                <span style={{ fontFamily: font.ui, fontSize: 13, color: colors.sub }}>
+                  {game.isActive ? t("noLimitYou") : t("noLimitX", { name: active?.name ?? "?" })}
+                </span>
+              </div>
+            ) : (
+              // Timed mode: the countdown speaks for itself, nobody keeps time.
+              <div style={{ width: "72%" }}>
+                <Timer endsAt={room.timer.ends_at} duration={room.timer.duration} onTick={onTick} />
+              </div>
+            )}
           </div>
-          {noTimer ? (
-            <div style={{ textAlign: "center", padding: "6px 0" }}>
-              <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 30, color: colors.violet }}>∞</div>
-              <span style={{ fontFamily: font.ui, fontSize: 13, color: colors.sub }}>
-                {game.isActive ? t("noLimitYou") : t("noLimitX", { name: active?.name ?? "?" })}
-              </span>
-            </div>
-          ) : (
-            // Timed mode: the countdown speaks for itself, nobody keeps time.
-            // De balk smaller dan het paneel: op volle breedte lag hij tegen
-            // de gouden binnenlijst van de art aan.
-            <div style={{ width: "68%" }}>
-              <Timer endsAt={room.timer.ends_at} duration={room.timer.duration} onTick={onTick} />
-            </div>
-          )}
-          </div>
-        </Paneel>
+        </div>
 
         {/* other players + ready state */}
         {others.length > 0 && (

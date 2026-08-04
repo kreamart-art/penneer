@@ -3612,11 +3612,15 @@ function InboxTab({ game, onGaNaar }: { game: GameApi; onGaNaar: (naar: string) 
   //
   // WELKE ER NIEUW WAREN bewaart hij eerst. De server stuurt de lijst daarna
   // terug met alles op gelezen, en zonder deze momentopname zou de gouden stip
-  // verdwijnen op het moment dat je ernaar keek. Zo blijft hij staan zolang je
-  // op dit vak bent, en is hij weg als je terugkomt.
+  // verdwijnen op het moment dat je ernaar keek.
+  //
+  // De momentopname geldt per BEZOEK aan dit vak en niet zolang het scherm
+  // openstaat: loop je naar de inbox en kom je terug, dan heb je ze gezien en
+  // hoort de stip weg te zijn.
   const [warenNieuw, setWarenNieuw] = useState<Set<number>>(new Set());
   useEffect(() => {
-    if (vak !== "meld" || !account) return;
+    if (vak !== "meld") { setWarenNieuw((oud) => (oud.size ? new Set() : oud)); return; }
+    if (!account) return;
     const nieuw = game.state.meldingen.filter((m) => !m.gelezen).map((m) => m.id);
     if (nieuw.length === 0) return;
     setWarenNieuw((oud) => new Set([...oud, ...nieuw]));

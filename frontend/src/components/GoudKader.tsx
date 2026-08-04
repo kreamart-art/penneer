@@ -13,7 +13,7 @@
 // De punten staan in echte pixels en niet in procenten, want een viewBox die in
 // twee richtingen anders schaalt maakt van 45 graden iets anders en van een
 // lijn van één pixel een lijn die aan de zijkanten dikker is dan boven.
-import { useEffect, useId, useRef, useState } from "react";
+import { Fragment, useEffect, useId, useRef, useState } from "react";
 
 /** Welke hoeken oplichten bij `fade`, in delen van de breedte en de hoogte.
  *  Linksboven en rechtsonder: twee tegenover elkaar, zodat het vak aan beide
@@ -330,9 +330,12 @@ export function GoudKader({
               // 111 bleef er zo'n twaalf pixel lijn over en dat leest als een
               // stipje in de hoek in plaats van als een verdiepte hoek. Nu
               // dooft hij altijd over minstens 26px uit.
-              <>
+              // De sleutel hoort op het OMHULSEL en niet op de twee verlopen
+              // erin: een map die fragmenten teruggeeft, geeft React een lijst
+              // van fragmenten, en die wil elk hun eigen sleutel.
+              <Fragment key={i}>
                 <radialGradient
-                  key={i} id={`${id}b${i}`} gradientUnits="userSpaceOnUse"
+                  id={`${id}b${i}`} gradientUnits="userSpaceOnUse"
                   cx={hx * w} cy={hy * h}
                   r={Math.max(26, Math.min(Math.hypot(w, h) * 0.22, 95))}
                 >
@@ -342,7 +345,7 @@ export function GoudKader({
                   <stop offset="100%" stopColor={binnenKleur || tint.laag} stopOpacity="0" />
                 </radialGradient>
                 <radialGradient
-                  key={`k${i}`} id={`${id}k${i}`} gradientUnits="userSpaceOnUse"
+                  id={`${id}k${i}`} gradientUnits="userSpaceOnUse"
                   cx={hx * w} cy={hy * h}
                   r={Math.max(11, Math.min(Math.hypot(w, h) * 0.075, 32))}
                 >
@@ -350,7 +353,7 @@ export function GoudKader({
                   <stop offset="35%" stopColor={binnenKleur || tint.hoog} stopOpacity="0.75" />
                   <stop offset="100%" stopColor={binnenKleur || tint.hoog} stopOpacity="0" />
                 </radialGradient>
-              </>
+              </Fragment>
             ))}
             {hoekAccent && HOEKEN4.map(([hx, hy], i) => (
               // Kort: op tien procent van de diagonaal is hij al op, dus je

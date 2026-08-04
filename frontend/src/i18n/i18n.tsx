@@ -915,7 +915,7 @@ const nl: Dict = {
   skip: "Overslaan",
   // lobby
   roomcode: "Roomcode",
-  codeHint: "De anderen vullen deze code in op hun eigen telefoon.",
+  codeHint: "Anderen vullen deze code in",
   shareCode: "Deel code",
   shareCodeMsg: "Kopieer deze code om in mijn Pen Neer room te komen.",
   inRoom: "In de room",
@@ -2041,7 +2041,7 @@ const en: Dict = {
   tapToBegin: "Tap to begin",
   skip: "Skip",
   roomcode: "Room code",
-  codeHint: "The others enter this code on their own phone.",
+  codeHint: "Others enter this code",
   shareCode: "Share code",
   shareCodeMsg: "Copy this code to join my Pen Neer room.",
   inRoom: "In the room",
