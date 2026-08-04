@@ -237,30 +237,15 @@ function HubSectie({ letter, streak, onSpeel }: {
 
       {letter && (
         <div style={{ position: "absolute", ...HUB.letter }}>
-          {/* Drie lagen, van achter naar voren: gloed, schaduw, letter.
-              De gloed staat een stukje hoger zodat hij bovenlangs uitsteekt en
-              de kleur komt van de stralen om de medaille (#D56942 opgemeten in
-              de art). Hij is een MASKER over een verloop en niet de art zelf
-              vervaagd: dat laatste smeert het goud uit tot vaalbruin.
-              De schaduw is dezelfde kopie in zwart, zoals overal in de app. */}
-          <span
-            aria-hidden
-            style={{
-              position: "absolute", inset: 0, transform: "translateY(-5%)",
-              background: "radial-gradient(58% 58% at 50% 46%, #FFB16A, #E2632C 62%, #C9502A 100%)",
-              WebkitMaskImage: `url(/letters/${letter}.webp)`, maskImage: `url(/letters/${letter}.webp)`,
-              WebkitMaskSize: "contain", maskSize: "contain",
-              WebkitMaskPosition: "center", maskPosition: "center",
-              WebkitMaskRepeat: "no-repeat", maskRepeat: "no-repeat",
-              filter: "blur(9px)", opacity: 0.75, pointerEvents: "none",
-            }}
-          />
+          {/* Alleen een schaduw: dezelfde kopie in zwart, vervaagd en een paar
+              pixel omlaag, zoals overal in de app. Vol zwart en niet gedempt,
+              anders leest hij op de paarse schijf als grijs. */}
           <img
             src={`/letters/${letter}.webp`} alt="" aria-hidden draggable={false}
             style={{
               position: "absolute", inset: 0, width: "100%", height: "100%",
               objectFit: "contain", display: "block",
-              filter: "brightness(0) blur(4px)", opacity: 0.55,
+              filter: "brightness(0) blur(4px)", opacity: 1,
               transform: "translateY(4px)", pointerEvents: "none",
             }}
           />
