@@ -665,18 +665,18 @@ export function Duel({ game, onBack, onProfile, openId, onGeopend }: {
           // en een knop eronder, en die drie horen in EEN vak te staan in plaats
           // van los onder elkaar te zweven.
           //
-          // DE LAATSTE ZEVEN en niet alles: de lijst groeit met elk duel door,
+          // DE LAATSTE VIJF en niet alles: de lijst groeit met elk duel door,
           // en een pagina die met je speelgeschiedenis meegroeit is na een week
           // niet meer te scrollen. De rest staat een tik verderop.
           <GoudKader hoek={13} fade gloed padding={12} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <Section
               title={t("duelPastTitle")}
-              items={allePotjes ? past : past.slice(0, 7)}
+              items={allePotjes ? past : past.slice(0, TOON_POTJES)}
               onOpen={openDuel}
               t={t}
               mij={{ ...account, level: account.level.level }}
             />
-            {past.length > 7 && (
+            {past.length > TOON_POTJES && (
               <div style={{ display: "flex", justifyContent: "center" }}>
                 <button
                   type="button"
@@ -1154,6 +1154,11 @@ function Section({ title, items, onOpen, t, mij }: { title: string; items: DuelS
 
 // Tegenstander kiezen: alleen vrienden. Blinde matchups (een willekeurige
 // tegenstander uit de wachtrij) komen hier later bij.
+/** Hoeveel gespeelde duels je meteen ziet. De rest staat achter een tik: de
+ *  lijst groeit met elk duel door, en een pagina die met je speelgeschiedenis
+ *  meegroeit is na een week niet meer te scrollen. */
+const TOON_POTJES = 5;
+
 const DUEL_STAKES = [0, 50, 100, 250, 500, 1000];
 
 /* De inzetkiezer als CARROUSEL: één zaal tegelijk, met een pijl aan elke kant.

@@ -78,13 +78,20 @@ export function GoudKader({
         >
           <defs>
             {fade ? (
-              // Vanuit de linkerbovenhoek naar buiten. De straal is iets meer
-              // dan de halve breedte, zodat de lijn halverwege de bovenrand op
-              // is en langs de linkerkant nog net zichtbaar naar beneden loopt.
-              <radialGradient id={id} gradientUnits="userSpaceOnUse" cx={0} cy={0} r={Math.max(w, h) * 0.62}>
-                <stop offset="0%" stopColor={tint.hoog} stopOpacity="0.95" />
-                <stop offset="35%" stopColor={tint.mid} stopOpacity="0.5" />
-                <stop offset="70%" stopColor={tint.laag} stopOpacity="0.14" />
+              // ALLEEN EEN STUKJE HOEK, linksboven. De lijn begint vol in die
+              // hoek en is een eindje verderop al weg: wat je ziet is de hoek
+              // zelf plus een klein stukje van de boven- en de linkerrand, en
+              // de rest van het vak heeft geen lijn.
+              //
+              // De straal is de diagonaal, zodat de stops in delen van het hele
+              // vak staan en niet van de langste zijde. Bij een lang vak zou de
+              // hoek anders veel verder doorlopen dan bij een kort vak, terwijl
+              // je in beide gevallen hetzelfde stukje hoort te zien.
+              <radialGradient id={id} gradientUnits="userSpaceOnUse" cx={0} cy={0} r={Math.hypot(w, h)}>
+                <stop offset="0%" stopColor={tint.hoog} stopOpacity="0.5" />
+                <stop offset="3%" stopColor={tint.hoog} stopOpacity="0.4" />
+                <stop offset="9%" stopColor={tint.mid} stopOpacity="0.15" />
+                <stop offset="15%" stopColor={tint.laag} stopOpacity="0" />
                 <stop offset="100%" stopColor={tint.laag} stopOpacity="0" />
               </radialGradient>
             ) : (

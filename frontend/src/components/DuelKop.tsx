@@ -62,8 +62,9 @@ function Vak({
     return () => ro.disconnect();
   }, [b]);
 
-  const groot = Math.max(11, b * 0.042);
-  const klein = Math.max(6.5, b * 0.019);
+  // Groter dan eerst: het bijschrift is weg, dus die hoogte is nu voor het
+  // getal zelf.
+  const groot = Math.max(12, b * 0.050);
   return (
     <span
       ref={doos}
@@ -75,27 +76,22 @@ function Vak({
         overflow: "hidden", pointerEvents: "none",
       }}
     >
+      {/* ALLEEN HET TEKEN EN HET GETAL. Het bijschrift eronder stond er ook,
+          maar op telefoonbreedte is een vakje nog geen twee centimeter breed:
+          dan wordt dat bijschrift zo klein dat het niet meer te lezen is en
+          duwt het de twee dingen die je WEL leest uit het midden. Wat het
+          betekent staat in het teken. */}
       <span
         ref={inhoud}
+        title={label}
         style={{
-          display: "flex", alignItems: "center", gap: b * 0.012,
+          display: "flex", alignItems: "center", justifyContent: "center", gap: b * 0.016,
           transform: `scale(${krimp})`, whiteSpace: "nowrap",
         }}
       >
         {icoon}
-        <span style={{ display: "flex", flexDirection: "column", gap: b * 0.004 }}>
-          <span style={{ fontFamily: font.wide, fontWeight: 700, fontSize: groot, lineHeight: 1, color: "#FFF3D0" }}>
-            {waarde}
-          </span>
-          <span
-            style={{
-              fontFamily: font.wide, fontWeight: 700, fontSize: klein, lineHeight: 1,
-              letterSpacing: klein * 0.08, marginRight: -klein * 0.08,
-              textTransform: "uppercase", color: withAlpha(colors.gold, 0.85),
-            }}
-          >
-            {label}
-          </span>
+        <span style={{ fontFamily: font.wide, fontWeight: 700, fontSize: groot, lineHeight: 1, color: "#FFF3D0" }}>
+          {waarde}
         </span>
       </span>
     </span>
