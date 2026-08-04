@@ -36,18 +36,24 @@ const HOEKEN4: [number, number][] = [
 export function GoudKader({
   children,
   hoek = 13,
+  rond = 2.5,
   dik = 0.5,
   fade = false,
   kleur = "goud",
   gloed = false,
   vulling = false,
   binnenlijn = false,
+  binnenSterkte = 0.2,
   padding = 12,
   style,
 }: {
   children: React.ReactNode;
   /** Hoe schuin de hoeken zijn afgesneden, in pixels. */
   hoek?: number;
+  /** Hoe rond de acht punten zijn, in pixels. Op 0 blijven het scherpe knikken.
+   *  Klein houden: de vorm hoort strak te blijven, de bocht haalt alleen de
+   *  scherpte van de punt af. */
+  rond?: number;
   /** Dikte van de lijn in CSS-pixels. Standaard een halve: dat is het dunste
    *  dat op een scherm met dubbele pixeldichtheid nog een echte lijn is en
    *  niet een rij grijze puntjes. */
@@ -69,6 +75,10 @@ export function GoudKader({
    *  midden van elke zijde. Twee lijnen zo dicht op elkaar lezen als een rand
    *  met dikte in plaats van als een streep. */
   binnenlijn?: boolean;
+  /** Hoe sterk die tweede lijn staat. Op een grote sectie mag hij een fluistering
+   *  zijn; op een tegel van een vijfde breed is er zo weinig lijn te zien dat
+   *  hij daar meer moet aanzetten om nog als diepte te lezen. */
+  binnenSterkte?: number;
   padding?: number | string;
   style?: React.CSSProperties;
 }) {
@@ -96,22 +106,55 @@ export function GoudKader({
   // SVG en oogt de lijn aan de randen dunner dan in het midden.
   const o = dik / 2;
 
-  /** De achthoek, `in` pixels naar binnen geschoven. Een vorm die overal even
-   *  ver naar binnen gaat, krijgt een kleinere schuine hoek: die loopt onder 45
-   *  graden, dus hij verliest `in * (√2 - 1)` aan beide kanten. Reken je dat
-   *  niet mee, dan lopen de twee lijnen in de hoeken uit elkaar en precies daar
-   *  moeten ze juist strak op elkaar liggen. */
-  const pad = (naarBinnen: number) => {
-    if (!w || !h) return "";
+  /** De acht punten van de achthoek, `naarBinnen` pixels naar binnen geschoven.
+   *  Een vorm die overal even ver naar binnen gaat, krijgt een kleinere schuine
+   *  hoek: die loopt onder 45 graden, dus hij verliest `naarBinnen * (√2 - 1)`
+   *  aan beide kanten. Reken je dat niet mee, dan lopen de twee lijnen in de
+   *  hoeken uit elkaar en precies daar moeten ze juist strak op elkaar liggen. */
+  const hoekpunten = (naarBinnen: number): [number, number][] => {
     const x0 = o + naarBinnen;
     const y0 = o + naarBinnen;
     const x1 = w - o - naarBinnen;
     const y1 = h - o - naarBinnen;
     const kk = Math.max(2, k - naarBinnen * (Math.SQRT2 - 1));
     return [
-      `${x0 + kk},${y0}`, `${x1 - kk},${y0}`, `${x1},${y0 + kk}`, `${x1},${y1 - kk}`,
-      `${x1 - kk},${y1}`, `${x0 + kk},${y1}`, `${x0},${y1 - kk}`, `${x0},${y0 + kk}`,
-    ].join(" ");
+      [x0 + kk, y0], [x1 - kk, y0], [x1, y0 + kk], [x1, y1 - kk],
+      [x1 - kk, y1], [x0 + kk, y1], [x0, y1 - kk], [x0, y0 + kk],
+    ];
+  };
+
+  /** Dezelfde acht punten, maar met een bocht op elke punt in plaats van een
+   *  scherpe knik. Per punt loopt de lijn `rond` pixels vóór het punt van de
+   *  rechte af en komt hij `rond` pixels erna weer terug; het punt zelf is het
+   *  stuurpunt van de bocht. Zo blijft de achthoek een achthoek, maar zonder
+   *  scherpe punten.
+   *
+   *  De straal wordt per punt afgeknepen op de helft van de kortste aanliggende
+   *  zijde. Zonder die grens zouden op een klein vak twee bochten over elkaar
+   *  heen lopen en klapt de vorm binnenstebuiten. */
+  const pad = (naarBinnen: number) => {
+    if (!w || !h) return "";
+    const p = hoekpunten(naarBinnen);
+    const n = p.length;
+    let d = "";
+    for (let i = 0; i < n; i++) {
+      const vorige = p[(i - 1 + n) % n];
+      const punt = p[i];
+      const volgende = p[(i + 1) % n];
+      const inX = punt[0] - vorige[0];
+      const inY = punt[1] - vorige[1];
+      const uitX = volgende[0] - punt[0];
+      const uitY = volgende[1] - punt[1];
+      const lIn = Math.hypot(inX, inY) || 1;
+      const lUit = Math.hypot(uitX, uitY) || 1;
+      const r = Math.min(rond, lIn / 2, lUit / 2);
+      const ax = punt[0] - (inX / lIn) * r;
+      const ay = punt[1] - (inY / lIn) * r;
+      const bx = punt[0] + (uitX / lUit) * r;
+      const by = punt[1] + (uitY / lUit) * r;
+      d += `${i === 0 ? "M" : "L"}${ax},${ay}Q${punt[0]},${punt[1]} ${bx},${by}`;
+    }
+    return `${d}Z`;
   };
 
   const punten = pad(0);
@@ -209,28 +252,27 @@ export function GoudKader({
           </defs>
 
           {/* De binnenkant eerst, want alles wat lijn is hoort erbovenop. */}
-          {vulling && <polygon points={punten} fill={`url(#${id}v)`} />}
+          {vulling && <path d={punten} fill={`url(#${id}v)`} />}
 
           {(fade ? HOEKEN.map((_, i) => i) : [0]).map((i) => (
             <g key={i}>
               {/* De gloed is dezelfde vorm, dikker en vervaagd, onder de lijn. */}
               {gloed && (
-                <polygon
-                  points={punten} fill="none" stroke={`url(#${id}h${i})`}
+                <path
+                  d={punten} fill="none" stroke={`url(#${id}h${i})`}
                   strokeWidth={Math.max(dik * 3, 1.6)} filter={`url(#${id}g)`}
                   opacity={fade ? 0.9 : 0.75}
                 />
               )}
-              <polygon points={punten} fill="none" stroke={`url(#${id}h${i})`} strokeWidth={dik} opacity={fade ? 1 : 0.75} />
+              <path d={punten} fill="none" stroke={`url(#${id}h${i})`} strokeWidth={dik} opacity={fade ? 1 : 0.75} />
             </g>
           ))}
 
-          {/* Op 20%: de hoeken houden hun vorm, maar de tweede lijn blijft een
-              suggestie van diepte in plaats van een lijn die om aandacht vraagt.
-              Als opacity op de vorm en niet in de stops, zodat het verloop van
-              hoek naar midden hetzelfde blijft en alleen de sterkte zakt. */}
+          {/* De sterkte staat als opacity op de vorm en niet in de stops, zodat
+              het verloop van hoek naar midden hetzelfde blijft en alleen de
+              lijn zwaarder of lichter wordt. */}
           {binnenlijn && HOEKEN4.map((_, i) => (
-            <polygon key={i} points={binnen} fill="none" stroke={`url(#${id}b${i})`} strokeWidth={dik} opacity={0.2} />
+            <path key={i} d={binnen} fill="none" stroke={`url(#${id}b${i})`} strokeWidth={dik} opacity={binnenSterkte} />
           ))}
         </svg>
       )}

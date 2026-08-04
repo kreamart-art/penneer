@@ -293,21 +293,28 @@ function Hub({ data, onCategorie, onOefenen, onQuiz, onVerzameling }: {
                 key={c.category}
                 onClick={() => { sound.uiTap(); onCategorie(c.category); }}
                 className="pressable"
-                style={{
-                  display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
-                  padding: "8px 2px", borderRadius: 10, cursor: "pointer",
-                  background: "rgba(255,255,255,.04)",
-                  border: `1.5px solid ${actief ? withAlpha(colors.gold, 0.55) : colors.hairline}`,
-                }}
+                style={{ display: "block", padding: 0, background: "transparent", border: "none", cursor: "pointer" }}
               >
-                <span aria-hidden style={{ color: actief ? colors.gold : colors.violet, display: "flex" }}>
-                  {Ico ? <Ico size={16} /> : null}
-                </span>
-                <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: colors.ink }}>{c.label}</span>
-                <Ring percent={c.percent} size={38} />
-                <span style={{ fontFamily: font.ui, fontSize: 9, color: colors.faint, whiteSpace: "nowrap" }}>
-                  {c.discovered} / {c.total}
-                </span>
+                {/* Dezelfde achthoek als de sectie eromheen. De schuine hoek is
+                    kleiner, want een tegel is een vijfde van de breedte: op
+                    dezelfde 13px zou de afsnijding het halve vlak zijn. De
+                    afronding van de punten en de binnenlijn blijven gelijk.
+                    Goud markeert de categorie waar je het verst in bent. */}
+                <GoudKader
+                  hoek={8} kleur={actief ? "goud" : "violet"} dik={1} vulling binnenlijn
+                  binnenSterkte={0.4} padding="8px 2px"
+                >
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                    <span aria-hidden style={{ color: actief ? colors.gold : colors.violet, display: "flex" }}>
+                      {Ico ? <Ico size={16} /> : null}
+                    </span>
+                    <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: colors.ink }}>{c.label}</span>
+                    <Ring percent={c.percent} size={38} />
+                    <span style={{ fontFamily: font.ui, fontSize: 9, color: colors.faint, whiteSpace: "nowrap" }}>
+                      {c.discovered} / {c.total}
+                    </span>
+                  </div>
+                </GoudKader>
               </button>
             );
           })}
@@ -354,7 +361,7 @@ function Hub({ data, onCategorie, onOefenen, onQuiz, onVerzameling }: {
         )}
       </GoudKader>
 
-      <GoudKader hoek={13} fade gloed padding={12} style={{ marginBottom: 16 }}>
+      <GoudKader hoek={13} kleur="violet" dik={1} gloed vulling binnenlijn padding={12} style={{ marginBottom: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <Brain size={30} color={colors.violet} style={{ flexShrink: 0 }} />
           <div style={{ flex: 1, minWidth: 0 }}>
