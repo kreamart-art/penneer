@@ -4271,6 +4271,31 @@ class Database:
             )
         return {"streak_days": nieuw, "last_played_date": day}
 
+    def discover_recent(self, user_id: str, limiet: int = 4) -> list[dict]:
+        """De laatst ontdekte kaarten, nieuwste eerst.
+
+        Voor de strook op de hub. Alleen kaarten die de speler heeft, dus de
+        afscherming van elders is hier niet nodig: wat hier uit komt is per
+        definitie van hem.
+        """
+        rows = self._q(
+            "SELECT c.id, c.category, c.letter, c.word, c.facts, c.image_path, c.iso,"
+            "       c.card_number, uc.discovered_at"
+            " FROM user_cards uc JOIN cards c ON c.id = uc.card_id"
+            " WHERE uc.user_id = ? ORDER BY uc.discovered_at DESC, uc.id DESC LIMIT ?",
+            (user_id, int(limiet)),
+        )
+        return [
+            {
+                "id": int(r["id"]), "category": r["category"], "letter": r["letter"],
+                "word": r["word"], "facts": json.loads(r["facts"] or "{}"),
+                "image_path": r["image_path"], "iso": r["iso"],
+                "card_number": int(r["card_number"]), "discovered": True,
+                "discovered_at": r["discovered_at"],
+            }
+            for r in rows
+        ]
+
     def discover_state(self, user_id: str) -> dict:
         """De dagletter-/streakrij van deze speler, met nullen als hij er nog geen heeft."""
         rows = self._q("SELECT * FROM user_discover_state WHERE user_id = ?", (user_id,))

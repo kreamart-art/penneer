@@ -80,11 +80,16 @@ export function niveauVoor(trede: number): number {
  *  vorige:
  *
  *    niveau 1   optellen, allebei een cijfer          3 + 8
- *    niveau 2   vermenigvuldigen, allebei een cijfer  7 x 6
- *    niveau 3   delen, een deeltal van twee cijfers   84 : 7
- *    niveau 4   optellen en keer in EEN som           4 + 6 x 3
+ *    niveau 2   aftrekken, twee cijfers               47 - 19
+ *    niveau 3   vermenigvuldigen, allebei een cijfer  7 x 6
+ *    niveau 4   delen, een deeltal van twee cijfers   84 : 7
+ *    niveau 5   optellen en keer in EEN som           4 + 6 x 3
  *
- *  Vanaf niveau 5 blijft die laatste vorm staan en groeien alleen de getallen:
+ *  Aftrekken staat op twee en niet op een: van twee cijfers met lenen (47 - 19)
+ *  is het een echte stap na een plus van een cijfer, en nog steeds lichter dan
+ *  de tafels erna.
+ *
+ *  Vanaf niveau 6 blijft die laatste vorm staan en groeien alleen de getallen:
  *  een vijfde bewerking bedenken maakt het niet moeilijker maar willekeuriger,
  *  en wie zo ver komt struikelt allang over de volgorderegel en niet over de
  *  soort. */
@@ -93,13 +98,14 @@ export function trapVoor(trede: number): Trap {
   const niveau = niveauVoor(k);
   const soorten: Soort[] =
     niveau === 1 ? ["plus"] :
-    niveau === 2 ? ["keer"] :
-    niveau === 3 ? ["deel"] :
+    niveau === 2 ? ["min"] :
+    niveau === 3 ? ["keer"] :
+    niveau === 4 ? ["deel"] :
     ["twee"];
   // Hoe groot de getallen mogen zijn. Tot en met niveau 4 ligt dat vast in de
   // soort zelf (zie maakSom); daarboven is dit de enige knop die nog draait, in
   // stappen zodat een sprong voelt als een nieuwe trede en niet als willekeur.
-  const groot = niveau <= 4 ? 9 : niveau === 5 ? 12 : niveau === 6 ? 15 : niveau <= 8 ? 20 : 25;
+  const groot = niveau <= 5 ? 9 : niveau === 6 ? 12 : niveau === 7 ? 15 : niveau <= 9 ? 20 : 25;
   return { soorten, groot, venster: vensterVoor(k), niveau };
 }
 
@@ -156,7 +162,10 @@ export function maakSom(seed: string, trap: Trap): Som {
     const a = tot(9), b = tot(9);
     vraag = `${a} + ${b}`; antwoord = a + b; anders = Math.abs(a - b);
   } else if (soort === "min") {
-    const a = tot(trap.groot), b = tot(a); // nooit onder nul: dat is een ander spel
+    // TWEE CIJFERS en nooit onder nul: dat laatste is een ander spel. Het
+    // aftrektal is minstens elf, zodat er echt iets af kan.
+    const a = 11 + Math.floor(rng() * 89);          // 11 tot en met 99
+    const b = 1 + Math.floor(rng() * (a - 1));      // 1 tot en met a-1
     vraag = `${a} − ${b}`; antwoord = a - b; anders = a + b;
   } else if (soort === "keer") {
     const a = tot(9), b = tot(9);

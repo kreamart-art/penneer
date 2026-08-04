@@ -521,6 +521,7 @@ async def discover_overview(request: Request) -> JSONResponse:
         "daily_speelbaar": speelbaar,
         "streak_days": state.get("streak_days", 0),
         "review_due": db.discover_due_count(uid) if uid else 0,
+        "recent": db.discover_recent(uid, 4) if uid else [],
         "guest": uid is None,
     })
 
