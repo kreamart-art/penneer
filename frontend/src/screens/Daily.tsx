@@ -79,34 +79,30 @@ function fmtCountdown(total: number): string {
   return `${p(h)}:${p(m)}:${p(s)}`;
 }
 
-/** "Hoe werkt het?": vijf kolommen onder een sierkop.
+/** "Hoe werkt het?": vier korte labels onder een sierkop.
  *
- *  Geen pictogrammen: het zijn vijf korte regels en vijf tekeningen erboven
- *  maken er een rij plaatjes van waar je doorheen moet kijken om de tekst te
- *  vinden. De dunne lijnen tussen de kolommen doen hetzelfde werk.
+ *  Er stond eerst een zinnetje onder elk label, en dat was precies de uitleg
+ *  die twee centimeter hoger al in de sectie staat. Twee keer hetzelfde lezen
+ *  is niet duidelijker, dus wat overblijft is het label met zijn getal eraan
+ *  vast: 60 seconden, 5 categorieen, 1 poging. Geen pictogrammen erboven om
+ *  dezelfde reden: dan kijk je langs vier tekeningen naar vier woorden.
  *
- *  Vijf kolommen op een telefoon is smal (rond de 66 punten), dus de tekst is
- *  klein en breekt af. Dat is precies de bedoeling: het is een overzicht dat je
- *  scant, geen stuk om te lezen. */
-function UitlegRaster({ kop, punten }: { kop: string; punten: { titel: string; tekst: string }[] }) {
+ *  De dunne gouden lijnen doen het scheiden. */
+function UitlegRaster({ kop, punten }: { kop: string; punten: string[] }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <SierKop label={kop} />
-      <div style={{ display: "grid", gridTemplateColumns: `repeat(${punten.length}, 1fr)` }}>
+      <div style={{ display: "grid", gridTemplateColumns: `repeat(${punten.length}, 1fr)`, alignItems: "center" }}>
         {punten.map((p, i) => (
           <div
-            key={p.titel}
+            key={p}
             style={{
-              display: "flex", flexDirection: "column", alignItems: "center", gap: 5,
-              padding: "0 5px", textAlign: "center",
+              padding: "2px 6px", textAlign: "center",
               borderLeft: i === 0 ? "none" : `1px solid ${withAlpha(GOUD[2], 0.22)}`,
             }}
           >
-            <span style={{ fontFamily: font.ui, fontWeight: 800, fontSize: 9.5, letterSpacing: 0.4, textTransform: "uppercase", color: colors.gold, lineHeight: 1.25 }}>
-              {p.titel}
-            </span>
-            <span style={{ fontFamily: font.ui, fontSize: 10.5, color: colors.sub, lineHeight: 1.35 }}>
-              {p.tekst}
+            <span style={{ fontFamily: font.ui, fontWeight: 800, fontSize: 11.5, letterSpacing: 0.4, textTransform: "uppercase", color: colors.gold, lineHeight: 1.3 }}>
+              {p}
             </span>
           </div>
         ))}
@@ -438,12 +434,7 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
               hierboven en vier kolommen laten de tekst ademen. */}
           <UitlegRaster
             kop={t("dagUitlegKop")}
-            punten={[
-              { titel: t("dagPunt1Kop"), tekst: t("dagPunt1") },
-              { titel: t("dagPunt2Kop"), tekst: t("dagPunt2") },
-              { titel: t("dagPunt3Kop"), tekst: t("dagPunt3") },
-              { titel: t("dagPunt5Kop"), tekst: t("dagPunt5") },
-            ]}
+            punten={[t("dagPunt1Kop"), t("dagPunt2Kop"), t("dagPunt3Kop"), t("dagPunt5Kop")]}
           />
 
           {played ? (
