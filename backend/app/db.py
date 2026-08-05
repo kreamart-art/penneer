@@ -497,7 +497,7 @@ CREATE TABLE IF NOT EXISTS user_cards (
     card_id INTEGER NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
     discovered_at REAL NOT NULL,
     source TEXT NOT NULL
-        CHECK (source IN ('practice','quiz','daily','review')),
+        CHECK (source IN ('practice','quiz','daily','review','pack')),
     correct_count INTEGER NOT NULL DEFAULT 0,
     missed_count INTEGER NOT NULL DEFAULT 0,
     box INTEGER NOT NULL DEFAULT 1           -- Leitner 1..3
@@ -797,6 +797,47 @@ class Database:
         dcols2 = {r["name"] for r in self._conn.execute("PRAGMA table_info(dms)").fetchall()}
         if dcols2 and "emote" not in dcols2:
             self._conn.execute("ALTER TABLE dms ADD COLUMN emote TEXT")
+            self._conn.commit()
+        # Kaarten uit een PACK. `source` staat achter een CHECK die 'pack' niet
+        # kende, en zo'n CHECK kun je in SQLite niet met ALTER uitbreiden: de
+        # tabel moet opnieuw. Alleen als het nodig is, want dit kopieert alle
+        # rijen.
+        #
+        # Dit is niet vrijblijvend. Zonder deze stap weigert de INSERT, en de
+        # code die hem doet zag dat aan voor "kaart had je al" en betaalde er
+        # munten voor uit. Een pack gaf dan wisselgeld en geen kaarten.
+        rij = self._conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='user_cards'"
+        ).fetchone()
+        if rij and "'pack'" not in (rij[0] or ""):
+            self._conn.executescript(
+                """
+                    PRAGMA foreign_keys=off;
+                    CREATE TABLE user_cards_nieuw (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                        card_id INTEGER NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
+                        discovered_at REAL NOT NULL,
+                        source TEXT NOT NULL
+                            CHECK (source IN ('practice','quiz','daily','review','pack')),
+                        correct_count INTEGER NOT NULL DEFAULT 0,
+                        missed_count INTEGER NOT NULL DEFAULT 0,
+                        box INTEGER NOT NULL DEFAULT 1 CHECK (box BETWEEN 1 AND 3),
+                        next_review_at REAL,
+                        favorite INTEGER NOT NULL DEFAULT 0,
+                        UNIQUE (user_id, card_id)
+                    );
+                    INSERT INTO user_cards_nieuw
+                        SELECT id, user_id, card_id, discovered_at, source, correct_count,
+                               missed_count, box, next_review_at, favorite FROM user_cards;
+                    DROP TABLE user_cards;
+                    ALTER TABLE user_cards_nieuw RENAME TO user_cards;
+                    CREATE INDEX IF NOT EXISTS idx_user_cards_user ON user_cards(user_id, card_id);
+                CREATE INDEX IF NOT EXISTS idx_user_cards_user ON user_cards(user_id, card_id);
+                CREATE INDEX IF NOT EXISTS idx_user_cards_review ON user_cards(user_id, next_review_at);
+                PRAGMA foreign_keys=on;
+                """
+            )
             self._conn.commit()
         # Foto's en stickers in DM's.
         if dcols2 and "image_id" not in dcols2:
@@ -4171,6 +4212,154 @@ class Database:
                 " WHERE uc.user_id = ? AND c.category = ?",
                 (user_id, category),
             )
+        }
+
+    # ---- kaartpack -----------------------------------------------------------
+    # Vijf kaarten voor munten. Wat je al hebt komt terug als munten, zodat een
+    # dubbele geen teleurstelling is maar wisselgeld.
+    # De prijs ligt BOVEN wat vijf dubbele kaarten hoogstens opleveren
+    # (5 x 30 = 150), zodat een pack nooit een muntenpers kan worden. Je koopt
+    # het voor de kaarten; het wisselgeld is de bodem, niet de opbrengst.
+    PACK_KOSTEN = 150
+    PACK_KAARTEN = 5
+
+    def pack_trek(self, user_id: str, aantal: int, garandeer_nieuw: bool = True) -> list[dict]:
+        """Trek `aantal` kaarten uit de catalogus, met minstens een nieuwe erbij.
+
+        Willekeurig uit ALLES en niet uit wat je mist: dan zou een pack voor een
+        beginner iets anders betekenen dan voor iemand die bijna klaar is, en
+        dubbele kaarten horen erbij. De garantie is de uitzondering: als er nog
+        iets te halen valt, is de eerste kaart er een die je nog niet had.
+
+        De trekking gebeurt HIER en niet in de client: die zou anders kunnen
+        blijven trekken tot er iets moois uitkomt.
+        """
+        import random
+
+        with self._lock:
+            allemaal = [int(r["id"]) for r in self._q("SELECT id FROM cards")]
+            bezit = {
+                int(r["card_id"])
+                for r in self._q("SELECT card_id FROM user_cards WHERE user_id=?", (user_id,))
+            }
+        if not allemaal:
+            return []
+        mist = [c for c in allemaal if c not in bezit]
+        gekozen: list[int] = []
+        if garandeer_nieuw and mist:
+            gekozen.append(random.choice(mist))
+        while len(gekozen) < aantal:
+            gekozen.append(random.choice(allemaal))
+        # Door elkaar, anders staat de gegarandeerde nieuwe altijd vooraan en is
+        # de spanning van het omdraaien weg.
+        random.shuffle(gekozen)
+        return [{"id": c, "nieuw": c not in bezit} for c in gekozen]
+
+    def pack_dubbel_waarde(self, category: str) -> int:
+        """Wat een dubbele kaart oplevert.
+
+        Naar de GROOTTE van zijn categorie: hoe meer kaarten er zijn, hoe kleiner
+        de kans op deze ene, dus hoe meer hij waard is. Land heeft er bijna
+        tweehonderd en levert 24 op, een korte categorie blijft op de bodem van
+        vijf staan. Geen aparte zeldzaamheidskolom nodig die iemand moet
+        bijhouden.
+        """
+        with self._lock:
+            rows = self._q("SELECT COUNT(*) AS n FROM cards WHERE category=?", (category,))
+        n = int(rows[0]["n"]) if rows else 0
+        return max(5, min(30, round(n / 8)))
+
+    def pack_open(self, user_id: str) -> dict:
+        """Reken het pack af en ken toe wat eruit komt.
+
+        Geeft {"error": ...} terug als het niet kan, zodat de route niet zelf
+        hoeft te weten wat een pack kost.
+        """
+        import time as _t
+
+        kosten = self.PACK_KOSTEN
+        with self._lock:
+            rows = self._q("SELECT coins FROM users WHERE id=?", (user_id,))
+            if not rows:
+                return {"error": "geen_account"}
+            if int(rows[0]["coins"]) < kosten:
+                return {"error": "te_weinig", "kosten": kosten, "saldo": int(rows[0]["coins"])}
+            self._exec("UPDATE users SET coins=coins-? WHERE id=?", (kosten, user_id))
+
+        trek = self.pack_trek(user_id, self.PACK_KAARTEN)
+        ts = _t.time()
+        uit: list[dict] = []
+        munten = 0
+        nieuw = 0
+        for t in trek:
+            kaart = self.card_publiek(t["id"])
+            if not kaart:
+                continue
+            if t["nieuw"]:
+                with self._lock:
+                    # INSERT OR IGNORE en daarna KIJKEN of er een rij bij kwam.
+                    # Niet een IntegrityError opvangen en dat "had je al" noemen:
+                    # elke andere schending (een CHECK op source bijvoorbeeld)
+                    # gaat dan als dubbele door de kassa en je betaalt er munten
+                    # voor uit terwijl de kaart nergens staat. Precies dat is een
+                    # keer gebeurd.
+                    cur = self._exec(
+                        "INSERT OR IGNORE INTO user_cards (user_id, card_id, discovered_at, source,"
+                        " correct_count, missed_count, box, next_review_at)"
+                        " VALUES (?,?,?,?,0,0,1,?)",
+                        (user_id, t["id"], ts, "pack", ts + 86400),
+                    )
+                    # Alleen een echte botsing op (user_id, card_id) maakt er een
+                    # dubbele van: twee keer dezelfde nieuwe kaart in een pack.
+                    t["nieuw"] = cur.rowcount > 0
+                if t["nieuw"]:
+                    nieuw += 1
+            waarde = 0 if t["nieuw"] else self.pack_dubbel_waarde(kaart["category"])
+            munten += waarde
+            uit.append({**kaart, "nieuw": t["nieuw"], "munten": waarde})
+
+        dubbel = len(uit) - nieuw
+        # XP naar wat het pack je bracht: een nieuwe kaart telt zwaarder dan
+        # wisselgeld, maar een dubbele is niet niks.
+        xp = nieuw * 12 + dubbel * 7
+        with self._lock:
+            if munten:
+                self._exec("UPDATE users SET coins=coins+? WHERE id=?", (munten, user_id))
+            if xp:
+                self._exec("UPDATE users SET bonus_xp=bonus_xp+? WHERE id=?", (xp, user_id))
+            saldo = int(self._q("SELECT coins FROM users WHERE id=?", (user_id,))[0]["coins"])
+        return {
+            "kaarten": uit, "nieuw": nieuw, "dubbel": dubbel,
+            "munten": munten, "xp": xp, "kosten": kosten, "saldo": saldo,
+        }
+
+    def card_publiek(self, card_id: int) -> Optional[dict]:
+        """Een kaart met alles wat op de voorkant hoort, los van wie hem heeft.
+
+        Voor het pack: daar krijg je de kaart op hetzelfde moment dat je hem
+        ziet, dus de afscherming van discover_card (alleen wat je AL hebt) zou
+        hier precies het verkeerde doen.
+        """
+        with self._lock:
+            rows = self._q(
+                "SELECT id, category, letter, word, slug, facts, image_path, iso, card_number"
+                " FROM cards WHERE id=?",
+                (card_id,),
+            )
+        if not rows:
+            return None
+        r = rows[0]
+        return {
+            "id": int(r["id"]),
+            "category": r["category"],
+            "letter": r["letter"],
+            "word": r["word"],
+            "slug": r["slug"],
+            "iso": r["iso"],
+            "card_number": int(r["card_number"]),
+            "image_path": r["image_path"],
+            "facts": json.loads(r["facts"] or "{}"),
+            "discovered": True,
         }
 
     def discover_unlock(

@@ -8,7 +8,11 @@ import react from "@vitejs/plugin-react";
 // erover. Een losse declaratie is genoeg en scheelt een dev-dependency voor
 // een enkele regel.
 declare const process: { env: Record<string, string | undefined> };
-const API = process.env.PENNEER_API || "http://localhost:8000";
+// 127.0.0.1 en niet "localhost": Node zet sinds versie 18 IPv6 vooraan, dus
+// "localhost" komt op ::1 uit terwijl uvicorn standaard alleen op IPv4 luistert.
+// Dan geeft de proxy ECONNREFUSED en staat de hele app op "Laden" zonder dat er
+// iets stuk is.
+const API = process.env.PENNEER_API || "http://127.0.0.1:8000";
 
 // In dev, proxy the WebSocket + HTTP API (avatars) to FastAPI on :8000.
 export default defineConfig({

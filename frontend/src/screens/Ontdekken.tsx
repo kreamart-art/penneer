@@ -15,6 +15,7 @@ import { Button } from "../components/Button";
 import { LetterTegel } from "../components/LetterTegel";
 import { GoudKader } from "../components/GoudKader";
 import { OntdekQuiz } from "./OntdekQuiz";
+import { PackScherm } from "./PackScherm";
 import { useT } from "../i18n/i18n";
 import { colors, font, panelStyle, withAlpha } from "../theme/tokens";
 import { sound } from "../sound/sound";
@@ -382,10 +383,11 @@ function SectieKop({ children, onder }: {
   );
 }
 
-function Hub({ data, onCategorie, onOefenen, onQuiz, onVerzameling }: {
+function Hub({ data, onCategorie, onOefenen, onQuiz, onVerzameling, onPack }: {
   data: Overview; onCategorie: (c: string) => void; onOefenen: (letter: string | null) => void;
   onQuiz: (mode: "letter" | "review", letter: string | null, category: string) => void;
   onVerzameling: () => void;
+  onPack: () => void;
 }) {
   const { t } = useT();
   // De quiz vraagt naar FEITEN, dus hij draait op de categorie waar je de
@@ -573,8 +575,46 @@ function Hub({ data, onCategorie, onOefenen, onQuiz, onVerzameling }: {
         </div>
       </GoudKader>
 
+      {/* Kaarten kopen in plaats van ze bij elkaar spelen. Boven de
+          verzamelbalk, want dit is een manier om AAN kaarten te komen en de
+          balk eronder brengt je naar wat je al hebt. */}
+      <PackBalk onClick={onPack} />
+
       <VerzamelBalk onClick={onVerzameling} />
     </>
+  );
+}
+
+/** De ingang naar het kaartpack: de pack-art met een regel ernaast. */
+function PackBalk({ onClick }: { onClick: () => void }) {
+  const { t } = useT();
+  return (
+    <GoudKader hoek={12} kleur="violet" dik={0.7} gloed vulling binnenlijn hoekAccent="#F3B53E" puntjes padding={0}>
+      <button
+        onClick={() => { sound.uiTap(); onClick(); }}
+        className="pressable"
+        style={{
+          display: "flex", alignItems: "center", gap: 10, width: "100%",
+          padding: "9px 12px", background: "transparent", border: "none",
+          cursor: "pointer", textAlign: "left",
+        }}
+      >
+        <img
+          src="/ui/pack-dicht.webp" alt="" aria-hidden draggable={false}
+          style={{ height: 52, width: "auto", display: "block", flexShrink: 0,
+            filter: "drop-shadow(0 0 8px rgba(255,194,61,.3))" }}
+        />
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <span style={{ display: "block", fontFamily: font.display, fontWeight: 800, fontSize: 15, color: colors.gold }}>
+            {t("packTitel")}
+          </span>
+          <span style={{ display: "block", marginTop: 2, fontFamily: font.ui, fontSize: 11.5, lineHeight: 1.3, color: colors.sub }}>
+            {t("packBalkSub")}
+          </span>
+        </span>
+        <ChevronRight size={20} color={colors.gold} style={{ flexShrink: 0 }} />
+      </button>
+    </GoudKader>
   );
 }
 
@@ -1236,7 +1276,8 @@ type Stap =
   | { soort: "hub" }
   | { soort: "categorie"; category: string }
   | { soort: "letter"; category: string; letter: string }
-  | { soort: "quiz"; category: string; letter: string | null; mode: "letter" | "review" };
+  | { soort: "quiz"; category: string; letter: string | null; mode: "letter" | "review" }
+  | { soort: "pack" };
 
 export function Ontdekken({ onBack, onOefenen, startQuiz }: {
   onBack: () => void;
@@ -1301,6 +1342,7 @@ export function Ontdekken({ onBack, onOefenen, startQuiz }: {
     stap.soort === "hub" ? t("ontdekkenTitel")
       : stap.soort === "categorie" ? (cat?.label ?? t("ontdekkenLaden"))
       : stap.soort === "quiz" ? t("ontdekkenQuiz")
+      : stap.soort === "pack" ? t("packKop")
       : t("ontdekkenLetter", { letter: stap.letter });
 
   const gast = overview?.guest ?? cat?.guest ?? letter?.guest ?? false;
@@ -1347,9 +1389,12 @@ export function Ontdekken({ onBack, onOefenen, startQuiz }: {
             onQuiz={(mode, letter, category) =>
               setStapel((s) => [...s, { soort: "quiz", category, letter, mode }])}
             onVerzameling={() => setStapel((s) => [...s, { soort: "categorie", category: "land" }])}
+            onPack={() => setStapel((s) => [...s, { soort: "pack" }])}
             onCategorie={(c) => setStapel((s) => [...s, { soort: "categorie", category: c }])}
           />
         )
+      ) : stap.soort === "pack" ? (
+        <PackScherm onVerzameling={() => setStapel([{ soort: "hub" }, { soort: "categorie", category: "land" }])} />
       ) : stap.soort === "quiz" ? (
         <OntdekQuiz
           category={stap.category} letter={stap.letter} mode={stap.mode}

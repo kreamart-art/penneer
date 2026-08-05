@@ -717,6 +717,39 @@ async def discover_daily(request: Request) -> JSONResponse:
     })
 
 
+@app.get("/api/discover/pack")
+async def discover_pack_info(request: Request) -> JSONResponse:
+    """Wat een pack kost en of je het kunt betalen."""
+    db = get_db()
+    uid = _discover_uid(request)
+    return JSONResponse({
+        "kosten": db.PACK_KOSTEN,
+        "kaarten": db.PACK_KAARTEN,
+        "saldo": db.coins_of(uid) if uid else 0,
+        "guest": uid is None,
+    })
+
+
+@app.post("/api/discover/pack/open")
+async def discover_pack_open(request: Request) -> JSONResponse:
+    """Reken een pack af en geef terug wat eruit kwam.
+
+    Alles gebeurt server-side: de trekking, de betaling en het wisselgeld. Een
+    client die opnieuw kon trekken tot er iets moois uitkwam, zou van een pack
+    een gokautomaat met een herstartknop maken.
+    """
+    db = get_db()
+    uid = db.auth(_bearer(request))
+    if not uid:
+        return JSONResponse({"error": "auth"}, status_code=401)
+    uit = db.pack_open(uid)
+    if uit.get("error") == "te_weinig":
+        return JSONResponse(uit, status_code=402)
+    if uit.get("error"):
+        return JSONResponse(uit, status_code=400)
+    return JSONResponse(uit)
+
+
 @app.post("/api/discover/quiz/start")
 async def discover_quiz_start(request: Request) -> JSONResponse:
     """Vijf vragen. Het juiste antwoord blijft op de server."""
