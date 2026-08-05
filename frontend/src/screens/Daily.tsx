@@ -88,6 +88,10 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
     players: number; played: boolean; streak: number; day: string; seconds_left: number;
     topo_played: boolean; topo_players: number; arena_played?: boolean;
     prijs_top?: { kist: string | null; coins: number; cash: number };
+    // Wanneer je deze ronde hebt geopend (unix-seconden), en hoe lang het
+    // venster is. De klok loopt bij de server vanaf dat moment: wie de letter
+    // opent en weggaat kan later niet meer voor de ranglijst spelen.
+    geopend_op?: number | null; speelduur?: number;
   } | null>(null);
   // De Dagronde bestaat uit twee losse onderdelen. Null = de keuze staat open.
   const [part, setPart] = useState<"words" | "topo" | "arena" | null>(null);
@@ -377,6 +381,14 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
 
   // ---- intro van het woordendeel ----
   if (phase === "intro") {
+    // Is het venster van deze ronde al voorbij? De server stempelt het moment
+    // waarop je de letter opende; daarna telt alleen wat binnen 60 + 15
+    // seconden binnenkomt. Een paar seconden klokverschil tussen telefoon en
+    // server doet er niet toe op een venster van 75 seconden.
+    const verlopen = !!info?.geopend_op && Date.now() / 1000 - info.geopend_op > (info.speelduur ?? 75);
+    const geopendOm = info?.geopend_op
+      ? new Date(info.geopend_op * 1000).toLocaleTimeString(lang === "en" ? "en-GB" : "nl-NL", { hour: "2-digit", minute: "2-digit" })
+      : "";
     const played = !!info?.played || (() => {
       try {
         const saved = JSON.parse(localStorage.getItem(LOCAL_KEY) || "null");
@@ -407,6 +419,16 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
             ]}
           />
 
+          {/* De klok loopt bij de server vanaf het moment dat je de letter
+              opende. Wie hem opent en weggaat, speelt de rest van de ronde
+              buiten de ranglijst; dat hoort hier te staan en niet pas NA het
+              inleveren, want dan lees je alleen "te laat". */}
+          {!played && verlopen && (
+            <p style={{ margin: 0, textAlign: "center", fontFamily: font.ui, fontSize: 12.5, lineHeight: 1.5, color: colors.gold }}>
+              {t("dagVerlopen", { t: geopendOm })}
+            </p>
+          )}
+
           {played ? (
             <>
               <p style={{ margin: 0, textAlign: "center", fontFamily: font.ui, fontSize: 13.5, color: colors.sub }}>{t("dailyPlayed")}</p>
@@ -418,7 +440,7 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
                   ernaast en telt niet mee. Zet je ze samen in het midden, dan
                   staat het opschrift altijd een pijlbreedte naar links. */}
               <span style={{ position: "relative", display: "inline-block" }}>
-                {t("dailyStart").toUpperCase()}
+                {(verlopen ? t("dagVerlopenKnop") : t("dailyStart")).toUpperCase()}
                 <ChevronRight
                   size={17}
                   strokeWidth={3}

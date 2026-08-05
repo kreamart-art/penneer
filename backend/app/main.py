@@ -1024,6 +1024,12 @@ async def daily_info(request: Request) -> JSONResponse:
         # of laat iets beloven wat niet wordt uitbetaald. Het bord kan leeg zijn
         # (nog niemand gespeeld), dus dit kan niet uit rij een van het bord.
         "prijs_top": dagprijzen.prijs_voor(1),
+        # Wanneer JIJ deze ronde hebt geopend, als je hem geopend hebt. De klok
+        # loopt bij de server vanaf dat moment, dus wie de letter opent en
+        # weggaat kan later niet meer voor de ranglijst spelen. Zonder dit veld
+        # merkt hij dat pas NA het inleveren, en dan staat er alleen "te laat".
+        "geopend_op": (db.daily_start_stamp(uid, day) if uid else None),
+        "speelduur": daily.DURATION_S + daily.GRACE_S,
     })
 
 

@@ -2162,6 +2162,16 @@ class Database:
             rows = self._q("SELECT letter FROM daily_letters WHERE day=?", (day,))
         return rows[0]["letter"] if rows else letter
 
+    def daily_start_stamp(self, user_id: str, day: str) -> float | None:
+        """Het anker van vandaag, of None als de speler nog niet begonnen is.
+
+        Kijken zonder te stempelen: `daily_start` ZET er een als hij ontbreekt,
+        en dat mag alleen als de speler echt begint. Voor het intro-scherm, dat
+        wil weten of de tijd al verlopen is, moet je dus deze hebben."""
+        with self._lock:
+            row = self._q("SELECT started_at FROM daily_starts WHERE day=? AND user_id=?", (day, user_id))
+            return float(row[0]["started_at"]) if row else None
+
     def daily_start(self, user_id: str, day: str, now: float) -> float:
         """Record the FIRST start of the day; later calls return that anchor."""
         with self._lock:
