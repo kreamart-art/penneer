@@ -36,12 +36,21 @@ export function KnopPlaat({
   kleur = "goud",
   uit,
   onClick,
+  tekst,
+  spatie,
 }: {
   label: ReactNode;
   breed?: number;
   kleur?: keyof typeof PLAAT;
   uit?: boolean;
   onClick: () => void;
+  /** Lettergrootte in px. Standaard rekent hij hem uit de breedte; op een brede
+   *  plaat wordt dat groot, en naast een andere knop lezen twee maten als twee
+   *  lettertypes. Zet hem HIER en niet met een span in het opschrift: een span
+   *  met een eigen grootte gaat op de basislijn van de grote regel staan en
+   *  zakt daardoor een paar pixels onder het hart van de plaat. */
+  tekst?: number;
+  spatie?: number;
 }) {
   const p = PLAAT[kleur];
   return (
@@ -66,14 +75,18 @@ export function KnopPlaat({
       <span
         style={{
           position: "absolute",
-          left: "50.4%",
+          // 50,1% en niet 50,4%: opgemeten op de plaat zelf ligt het hart van
+          // het vlak op 50,10% van de breedte (alfa > 200 en helder), dus die
+          // 0,4 duwde het opschrift een halve pixel naar rechts.
+          left: "50.1%",
           top: p.hart,
           transform: "translate(-50%, -50%)",
           display: "block",
           whiteSpace: "nowrap",
           fontFamily: font.display,
           fontWeight: 800,
-          fontSize: Math.round(breed * 0.15),
+          fontSize: tekst ?? Math.round(breed * 0.15),
+          letterSpacing: spatie,
           lineHeight: 1,
           color: p.tekst,
           textShadow: `0 1px 0 ${p.glans}`,

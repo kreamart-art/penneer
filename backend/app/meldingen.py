@@ -76,7 +76,10 @@ SOORTEN: dict[str, dict] = {
         "body": "{naam} nodigt je uit voor een potje.",
         "tag": "invite",
         "icoon": "potjes",
-        "naar": "inbox",
+        # Naar de ROOM en niet naar de inbox: je bent uitgenodigd voor dat ene
+        # potje, en een tik die je in een lijst afzet laat je het werk nog een
+        # keer doen. De code reist mee in de data.
+        "naar": "room",
         "push": True,
     },
     "uitdaging": {
@@ -124,6 +127,71 @@ SOORTEN: dict[str, dict] = {
         "icoon": "vlam",
         "naar": "duel",
         "push": True,
+    },
+
+    "uitdaging_weg": {
+        "titel": "Uitdaging weg",
+        "body": "{naam} gaat niet in op je uitdaging.",
+        "tag": "duel",
+        "icoon": "vlam",
+        "naar": "duel",
+        "push": False,
+    },
+
+    # ---- de dagronde -------------------------------------------------------
+    "dagronde_klaar": {
+        "titel": "De dagronde is gesloten",
+        "body": "Je werd {plek}e van de {n}.",
+        "tag": "dagronde",
+        "icoon": "beker",
+        "naar": "dagronde",
+        "push": True,
+    },
+    "dagronde_streak": {
+        "titel": "Je reeks staat op het spel",
+        "body": "{n} dagen op rij. Speel vandaag nog, anders is hij weg.",
+        "tag": "dagronde",
+        "icoon": "vlam",
+        "naar": "dagronde",
+        "push": True,
+    },
+    "dagronde_ingehaald": {
+        "titel": "Ingehaald",
+        "body": "{naam} staat nu boven je in de dagronde.",
+        "tag": "dagronde",
+        "icoon": "beker",
+        "naar": "dagronde",
+        "push": True,
+    },
+
+    # ---- club --------------------------------------------------------------
+    "club_lid": {
+        "titel": "Nieuw clublid",
+        "body": "{naam} is lid geworden van {club}.",
+        "tag": "club",
+        "icoon": "kroon",
+        "naar": "club",
+        "push": False,
+    },
+
+    # ---- seizoen -----------------------------------------------------------
+    "seizoen_klaar": {
+        "titel": "Seizoen afgelopen",
+        "body": "Je eindigde als {plek}e. Het nieuwe seizoen staat open.",
+        "tag": "seizoen",
+        "icoon": "krans",
+        "naar": "ranglijst",
+        "push": True,
+    },
+
+    # ---- missies -----------------------------------------------------------
+    "missies_nieuw": {
+        "titel": "Nieuwe missies",
+        "body": "Drie nieuwe missies staan klaar.",
+        "tag": "missies",
+        "icoon": "ster",
+        "naar": "home",
+        "push": False,
     },
 
     # ---- wat je verdient ---------------------------------------------------
@@ -258,6 +326,11 @@ def link(naar: Optional[str], data: Optional[dict] = None) -> str:
     if not naar:
         return "/"
     d = data or {}
+    # Een roomcode is geen "wie" maar een "waar": een uitnodiging voor een potje
+    # hoort je in dat potje te zetten en niet in een lijst.
+    code = d.get("room_code") or ""
+    if code:
+        return f"/?melding={naar}&code={code}"
     wie = d.get("user_id") or d.get("duel_id") or ""
     return f"/?melding={naar}&wie={wie}" if wie else f"/?melding={naar}"
 

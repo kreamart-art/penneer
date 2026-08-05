@@ -89,6 +89,16 @@ def beoordeel(plek: Optional[int], gespeeld: int, divisie: int) -> tuple[int, st
     return divisie, "blijft"
 
 
+# De namen van de zeven treden, gelijk aan DIVISIE_NAMEN op de client. Ze staan
+# hier omdat een melding ("je staat nu in Smaragd") de naam nodig heeft en de
+# server geen frontend-bestand kan lezen. Wijzigt de een, wijzig dan de ander.
+NAMEN = ["Amethist", "Saffier", "Azuur", "Smaragd", "Robijn", "Platina", "Obsidiaan"]
+
+
+def naam(divisie: int) -> str:
+    return NAMEN[max(0, min(len(NAMEN) - 1, int(divisie or 0)))]
+
+
 def inhalen(db, user_id: str, nu: Optional[float] = None) -> Optional[dict]:
     """Werk de divisie bij tot en met de vorige week.
 

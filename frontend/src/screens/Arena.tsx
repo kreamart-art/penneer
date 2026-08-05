@@ -657,9 +657,13 @@ export function ArenaDeel({ game, onBack }: { game: GameApi; onBack: () => void 
           <div style={{ display: "flex", justifyContent: "center" }}>
             <KnopPlaat
               kleur="paars"
-              breed={150}
+              // "Nog een poging" is twee keer zo lang als "Spelen"; op dezelfde
+              // 150 zou hij tegen de randen van de plaat lopen.
+              breed={fase === "klaar" ? 196 : 150}
               onClick={start}
-              label={<span style={{ fontSize: 16, letterSpacing: 0.3 }}>{(fase === "klaar" ? t("arenaOpnieuw") : t("arenaStart")).toUpperCase()}</span>}
+              tekst={16}
+              spatie={0.3}
+              label={(fase === "klaar" ? t("arenaOpnieuw") : t("arenaStart")).toUpperCase()}
             />
           </div>
         ) : null}

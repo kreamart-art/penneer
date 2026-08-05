@@ -461,7 +461,9 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
               kleur="paars"
               breed={150}
               onClick={() => setPart(null)}
-              label={<span style={{ fontSize: 16, letterSpacing: 0.3 }}>{t("back").toUpperCase()}</span>}
+              tekst={16}
+              spatie={0.3}
+              label={t("back").toUpperCase()}
             />
           </div>
         </div>

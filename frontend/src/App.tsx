@@ -50,6 +50,7 @@ import { InviteBanner } from "./components/InviteBanner";
 import { DmBanner } from "./components/DmBanner";
 import { localNotify } from "./components/NotifyNudge";
 import { ensurePushSubscription } from "./pwa/push";
+import { useVeldInBeeld } from "./lib/veldinbeeld";
 import type { InboxItem } from "./net/socket";
 const Lobby = lazy(() => import("./screens/Lobby").then((m) => ({ default: m.Lobby })));
 const RulesGate = lazy(() => import("./screens/RulesGate").then((m) => ({ default: m.RulesGate })));
@@ -66,6 +67,10 @@ const INTRO_KEY = "penneer.introSeen";
 
 export default function App() {
   const game = useGame();
+  // Elk invulveld in de app blijft boven het toetsenbord staan: potjes,
+  // dagronde, topografie, berichten, alles. Eén haak op het document, want dit
+  // is gedrag van de app en niet van een scherm.
+  useVeldInBeeld();
   const tileSkin = useTileSkin();
   const { lang, t } = useT();
   const room = game.state.room;
@@ -310,7 +315,19 @@ export default function App() {
     setShowRules(false);
     setShowSettings(false);
     setShowProfielInstellingen(false);
-    if (naar === "duel") {
+    if (naar === "room" && d.room_code) {
+      // Een uitnodiging voor een potje zet je IN dat potje. Ben je al ergens
+      // anders bezig, dan is de room-code alsnog het enige wat telt: de server
+      // haalt je uit je vorige room zodra je hier binnenkomt.
+      setShowHub(null);
+      game.joinRoom(d.room_code, game.state.account?.name || "Speler");
+    } else if (naar === "home") {
+      setShowHub(null);
+    } else if (naar === "ranglijst") {
+      setShowHub("leaderboard");
+    } else if (naar === "club") {
+      setShowHub("profile");
+    } else if (naar === "duel") {
       setShowHub(null);
       // Niet alleen NAAR het duelscherm maar naar DIT duel: een melding over
       // een uitdaging die je in een lijst afzet, laat je het werk nog een keer
@@ -345,9 +362,11 @@ export default function App() {
       const naar = u.searchParams.get("melding");
       if (!naar) return false;
       const wie = u.searchParams.get("wie") || "";
+      const code = u.searchParams.get("code") || "";
       // Een duel-id en een user-id zijn allebei "wie": welke van de twee het is
-      // weet de bestemming zelf, dus ze gaan er allebei in.
-      openMeldingRef.current(naar, JSON.stringify({ user_id: wie, duel_id: wie }));
+      // weet de bestemming zelf, dus ze gaan er allebei in. Een roomcode is een
+      // plek en reist apart mee.
+      openMeldingRef.current(naar, JSON.stringify({ user_id: wie, duel_id: wie, room_code: code }));
       return true;
     };
     // Bij het opstarten: uit de adresbalk, en daarna weg uit de adresbalk. Wie
@@ -771,6 +790,11 @@ export default function App() {
       {/* De maandag-uitslag gaat VOOR de beloningen: hij hoort bij de week die
           net eindigde, en pas daarna kijk je naar wat je nog te claimen hebt.
           Dezelfde plek-voorwaarden, want ook dit moet niet over een potje heen. */}
+      {/* Ook op de RANGLIJST, niet alleen op de main page. Het badgeje op de
+          ranglijst-tab is precies deze openstaande verandering, en die ging
+          alleen weg als de popup toevallig op de main page langskwam. Wie
+          meteen op de ranglijst keek zag het stipje branden zonder ergens iets
+          te kunnen wegtikken. Nu wordt hij daar ook gevierd, en dus gewist. */}
       {game.state.account?.divisie_change &&
         uitslagKlaar &&
         introDone &&
@@ -781,7 +805,7 @@ export default function App() {
         !showDuel &&
         !showTraining &&
         !showShop &&
-        !showHub &&
+        (!showHub || showHub === "leaderboard") &&
         !showSettings && (
           <DivisiePopup change={game.state.account.divisie_change} onSluit={() => game.divisieGezien()} />
         )}

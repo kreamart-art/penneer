@@ -1476,11 +1476,16 @@ class Database:
         return items
 
     def resolve_invite(self, user_id: str, invite_id: str, accept: bool) -> Optional[dict]:
-        """Mark an invite handled. Returns {'kind','code'} on accept (code is the
-        room code, or the club code for a club_invite), None otherwise."""
+        """Mark an invite handled.
+
+        Geeft ALTIJD de rij terug als hij bestond, met `accepted` erbij: de
+        afzender hoort te horen dat je nee zei, en daarvoor is zijn id nodig.
+        Eerder gaf een afwijzing None terug en bleef de uitdager wachten op
+        iemand die allang geweigerd had.
+        """
         with self._lock:
             rows = self._q(
-                "SELECT room_code, kind FROM invites WHERE id=? AND to_user=? AND status='pending'",
+                "SELECT room_code, kind, from_user FROM invites WHERE id=? AND to_user=? AND status='pending'",
                 (invite_id, user_id),
             )
             if not rows:
@@ -1489,7 +1494,8 @@ class Database:
                 "UPDATE invites SET status=? WHERE id=?",
                 ("accepted" if accept else "declined", invite_id),
             )
-            return {"kind": rows[0]["kind"], "code": rows[0]["room_code"]} if accept else None
+            return {"kind": rows[0]["kind"], "code": rows[0]["room_code"],
+                    "from_user": rows[0]["from_user"], "accepted": bool(accept)}
 
     # ---- games / stats / badges --------------------------------------------
 
@@ -3336,6 +3342,28 @@ class Database:
                 (user_id, soort),
             )
         return float(rows[0]["created_at"]) if rows else 0.0
+
+    def wie_mist_dagronde(self, dag: str, sinds: float) -> list[dict]:
+        """Wie speelt de dagronde normaal wel, maar vandaag nog niet?
+
+        Alleen spelers die de laatste twee weken meededen: iemand die de app
+        een maand niet opende zit niet op een zetje te wachten, die zit op een
+        reden te wachten om terug te komen, en dat is een ander bericht.
+        """
+        with self._lock:
+            rows = self._q(
+                """
+                SELECT s.user_id AS user_id, COUNT(*) AS dagen
+                  FROM daily_scores s
+                 WHERE s.created_at > ?
+                   AND s.day <> ?
+                   AND NOT EXISTS (SELECT 1 FROM daily_scores t
+                                    WHERE t.day = ? AND t.user_id = s.user_id)
+                 GROUP BY s.user_id
+                """,
+                (sinds, dag, dag),
+            )
+        return [dict(r) for r in rows]
 
     def wie_wacht_op_verzoek(self, ouder_dan: float) -> list[dict]:
         """Iedereen met een openstaand vriendschapsverzoek dat er al even ligt.

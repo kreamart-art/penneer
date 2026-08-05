@@ -280,7 +280,9 @@ export function Topo({ game, onBack, onProfile, played, spelers = 0 }: { game: G
               kleur="paars"
               breed={150}
               onClick={onBack}
-              label={<span style={{ fontSize: 16, letterSpacing: 0.3 }}>{t("back").toUpperCase()}</span>}
+              tekst={16}
+              spatie={0.3}
+              label={t("back").toUpperCase()}
             />
           </div>
         </div>

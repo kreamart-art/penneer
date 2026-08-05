@@ -12,6 +12,7 @@ link is logged so local dev still works.
 from __future__ import annotations
 
 import asyncio
+import datetime as dt
 import json
 import os
 import time
@@ -181,6 +182,52 @@ class AccountManager:
             if self.db.melding_laatst(uid, "herinnering_bericht") < dag:
                 await self.stuur(uid, "herinnering_bericht", n=int(r["n"]))
 
+        await self._dagronde_herinneringen(nu, dag)
+        await self._dagronde_uitslagen(nu, dag)
+
+    # ---- de dagronde ---------------------------------------------------------
+
+    async def _dagronde_herinneringen(self, nu: float, dag_geleden: float) -> None:
+        """Een zetje voor wie de dagronde nog niet speelde, vlak voor sluiten.
+
+        Pas in de laatste uren: eerder op de dag is het geen herinnering maar
+        een por. Wie een reeks heeft krijgt een andere zin, want dan staat er
+        ook echt iets op het spel.
+        """
+        rest = daily.seconds_to_next_day()
+        if rest > 3 * 3600 or rest < 15 * 60:
+            return
+        vandaag = daily.today()
+        for r in self.db.wie_mist_dagronde(vandaag, nu - 14 * DAY):
+            uid = r["user_id"]
+            if self.db.melding_laatst(uid, "herinnering_dagronde") >= dag_geleden:
+                continue
+            reeks = self.db.daily_streak_of(uid)
+            if reeks >= 3:
+                await self.stuur(uid, "dagronde_streak", n=int(reeks))
+            else:
+                await self.stuur(uid, "herinnering_dagronde", n=1)
+
+    async def _dagronde_uitslagen(self, nu: float, dag_geleden: float) -> None:
+        """De uitslag van de ronde die net sloot, één keer per speler.
+
+        De ronde draagt de datum waarop hij sluit, dus de zojuist gesloten ronde
+        is die van gisteren. Alleen in het eerste uur na sluiten: daarna is het
+        geen nieuws meer maar een herhaling.
+        """
+        sinds_sluiten = 24 * 3600 - daily.seconds_to_next_day()
+        if sinds_sluiten > 3600:
+            return
+        gesloten = (
+            dt.date.fromisoformat(daily.today()) - dt.timedelta(days=1)
+        ).isoformat()
+        bord = self.db.dag_totaal_board(gesloten, 200)
+        for i, rij in enumerate(bord, start=1):
+            uid = rij.get("id") or rij.get("user_id")
+            if not uid or self.db.melding_laatst(uid, "dagronde_klaar") >= dag_geleden:
+                continue
+            await self.stuur(uid, "dagronde_klaar", plek=i, n=len(bord))
+
     # ---- public profile snippet ---------------------------------------------
 
     def _public(self, user: dict) -> dict:
@@ -242,6 +289,21 @@ class AccountManager:
         # Divisies worden lazy ingehaald, bij het openen van de app. Dit staat
         # vóór get_user zodat de nieuwe trede meteen in de payload zit.
         divisie_change = divisies.inhalen(self.db, user_id)
+        # Een promotie of degradatie hoort ook op je telefoon te komen, niet
+        # alleen in een popup die je pas ziet als je toevallig langskomt. Eén
+        # keer per verandering: de week van de verandering staat erin, en die is
+        # de sleutel waarop we hem tegen dubbel sturen beschermen.
+        if divisie_change:
+            soort = "divisie_op" if divisie_change.get("richting") == "op" else "divisie_neer"
+            # Eén keer per verandering en niet elke keer dat je de app opent.
+            # De verandering draagt de MAANDAG waarop hij viel; ging de laatste
+            # melding van deze soort daarvoor, dan is dit een nieuwe.
+            try:
+                maandag = dt.datetime.fromisoformat(str(divisie_change.get("datum"))).timestamp()
+            except ValueError:
+                maandag = 0.0
+            if maandag and self.db.melding_laatst(user_id, soort) < maandag:
+                await self.stuur(user_id, soort, divisie=divisies.naam(divisie_change.get("naar", 0)))
         user = self.db.get_user(user_id)
         if user is None:
             return {"type": "account", "account": None}
@@ -778,10 +840,25 @@ class AccountManager:
         await self._push_inbox(uid)
         if not res:
             return
+        ik = self.db.get_user(uid) or {}
+        if not res.get("accepted"):
+            # Afgewezen: de uitdager blijft anders wachten op iemand die allang
+            # nee zei. Alleen bij een potje/uitdaging; een genegeerde club-
+            # uitnodiging is geen bericht waard.
+            if res["kind"] != "club_invite" and res.get("from_user"):
+                await self.stuur(res["from_user"], "uitdaging_weg", naam=ik.get("name") or "Iemand")
+            return
         if res["kind"] == "club_invite":
             club, _err = self.db.join_club(uid, res["code"])
             if club:
                 await self._push_account(uid)  # account.club now set -> Club tab updates
+                # De club hoort te weten dat er iemand bij is. Alleen de
+                # eigenaar, want vijftig leden vijftig meldingen sturen over
+                # dezelfde nieuwkomer is geen nieuws maar lawaai.
+                eigenaar = club.get("owner_id")
+                if eigenaar and eigenaar != uid:
+                    await self.stuur(eigenaar, "club_lid", naam=ik.get("name") or "Iemand",
+                                     club=club.get("name") or "je club")
         else:
             # The client joins the room itself with its own name/avatar.
             await self._send(ws, {"type": "invite_accepted", "room_code": res["code"]})

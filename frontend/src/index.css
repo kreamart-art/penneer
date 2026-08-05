@@ -901,10 +901,15 @@ body.soepspel::after {
    dekkend zwart vlak op. Die stond er voor de leesbaarheid toen het vignet er
    ook nog was. Nu hoeft hij alleen nog de bovenrand te temmen, waar de titel
    los op de achtergrond staat, dus 0,22 boven en bijna niets in het midden. */
+/* De sluier is DIEPER dan hij was (0,22 / 0,06 / 0,20). De nieuwe zaal is
+   lichter geschilderd dan de vorige en dan gaan de secties, die zelf goud en
+   paars oplichten, met de achtergrond concurreren. Gemeten aan de plaat: geen
+   witte waas in het bestand zelf (zwartpunt 0, p1 = 1), dus wat je zag was
+   helderheid en geen mist. Vandaar donkerder maken en niet ontwazen. */
 body.soephal::after {
   background-image:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
-    linear-gradient(180deg, rgba(6, 3, 16, 0.22) 0%, rgba(6, 3, 16, 0.06) 46%, rgba(6, 3, 16, 0.2) 100%),
+    linear-gradient(180deg, rgba(6, 3, 16, 0.52) 0%, rgba(6, 3, 16, 0.34) 46%, rgba(6, 3, 16, 0.5) 100%),
     url("/ui/soep/bg-lobby.webp?v=5"),
     linear-gradient(180deg, #150e2e 0%, #100a24 50%, #06040e 100%);
   background-repeat: repeat, no-repeat, no-repeat, no-repeat;
