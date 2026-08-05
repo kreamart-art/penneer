@@ -764,8 +764,10 @@ class AccountManager:
             await self._push_inbox(to_user)
             me = self.db.get_user(uid)
             naam = me["name"] if me else "Iemand"
+            # `inzet` hoort erbij, ook al is hij leeg: de uitdaging uit een room
+            # gaat nergens om, en de zin heeft die plek in zich.
             await self.stuur(to_user, "uitdaging" if kind == "challenge" else "uitnodiging",
-                             data={"user_id": uid, "room_code": room_code}, naam=naam)
+                             data={"user_id": uid, "room_code": room_code}, naam=naam, inzet="")
         await self._send(ws, {"type": "invite_sent", "to_user": to_user})
 
     async def invite_respond(self, ws: Any, data: dict) -> None:

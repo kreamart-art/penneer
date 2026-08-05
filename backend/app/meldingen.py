@@ -219,9 +219,18 @@ def maak(soort: str, **vars) -> Optional[dict]:
     body = sjabloon["body"]
     if vars.get("n") is not None and int(vars["n"]) != 1 and sjabloon.get("body_mv"):
         body = sjabloon["body_mv"]
+    # Een ontbrekende variabele mag NOOIT de sjabloontekst laten zien. Dat
+    # gebeurde: een uitdaging uit de room stuurde geen `inzet` mee, `format`
+    # struikelde over de KeyError en de terugval was de rauwe regel, dus er
+    # stond letterlijk "{naam} daagt je uit{inzet}." op de telefoon. Nu vult een
+    # ontbrekende naam zichzelf met niets, en blijft de zin leesbaar.
+    class _Leeg(dict):
+        def __missing__(self, sleutel: str) -> str:
+            return ""
+
     try:
-        tekst = body.format(**vars)
-    except (KeyError, IndexError):
+        tekst = body.format_map(_Leeg(vars))
+    except (IndexError, ValueError):
         tekst = body
     return {
         "soort": soort,

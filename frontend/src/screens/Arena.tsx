@@ -495,13 +495,12 @@ export function ArenaDeel({ game, onBack }: { game: GameApi; onBack: () => void 
   // decor over, en twee lagen tegelijk zou twee panelen door elkaar tekenen.
   useEffect(() => {
     if (fase === "spel") return;
-    const hal =
-      info?.game === "rekenladder" ? "rekenzaal"
-      : info?.game === "woordketen" ? "ketenzaal"
-      : info?.game === "lettersoep" || info?.game === "kleurenklem" ? "soephal"
-      : "flitshal";
-    document.body.classList.add(hal);
-    return () => document.body.classList.remove(hal);
+    // EEN hal voor het voorportaal, welk spel er die dag ook draait. De hal
+    // hoorde bij het spel, en dan stond je elke dag in een ander gebouw terwijl
+    // je op dezelfde plek was: de arena is een plek, niet een spel. Tijdens het
+    // spel neemt het spel wel zijn eigen decor over.
+    document.body.classList.add("soephal");
+    return () => document.body.classList.remove("soephal");
   }, [fase, info?.game]);
   useEffect(() => {
     const id = window.setInterval(() => setOver((s) => Math.max(0, s - 1)), 1000);

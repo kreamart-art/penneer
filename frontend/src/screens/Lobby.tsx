@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { Check, Copy, History, Minus, Plus, Share2, UserPlus, X } from "lucide-react";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
+import { BredeKnop } from "../components/BredeKnop";
 import { Chip } from "../components/Chip";
 import { InfoDot } from "../components/InfoDot";
 import { Toggle } from "../components/Toggle";
@@ -511,9 +512,12 @@ export function Lobby({ game }: { game: GameApi }) {
         </Card>
 
         {isHost ? (
-          <Button variant="gold" full disabled={!canStart} onClick={game.startGame}>
-            {t("startGame")}
-          </Button>
+          // Dezelfde brede gouden plaat als op de dagronde: dit is de knop
+          // waarmee een potje begint, en die hoort er overal hetzelfde uit te
+          // zien.
+          <BredeKnop disabled={!canStart} onClick={game.startGame}>
+            {t("startGame").toUpperCase()}
+          </BredeKnop>
         ) : (
           <p style={{ textAlign: "center", fontFamily: font.ui, fontSize: 14, color: colors.sub }}>{game.isSpectator ? t("spectatorNote") : t("waitHost")}</p>
         )}

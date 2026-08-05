@@ -525,9 +525,15 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
               <Button variant="gold" full disabled={busy || !armed} onClick={() => void doRetry()}>
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>{t("dailyRetryYes", { n: retryOffer.cost })}<img src="/coin.webp" alt="" width={17} height={17} /></span>
               </Button>
-              <Button variant="primary" full disabled={busy || !armed} onClick={() => void declineRetry()}>
-                {t("dailyRetryNo")}
-              </Button>
+              {/* De twee platen droegen elkaar: de gouden heeft een schaduw
+                  onder zich en de paarse begon precies waar die ophield, dus ze
+                  lazen als een blok. Lucht ertussen, en de paarse iets smaller:
+                  het is de tweede keuze en dat hoort te zien te zijn. */}
+              <div style={{ width: "86%", marginTop: 6 }}>
+                <Button variant="primary" full disabled={busy || !armed} onClick={() => void declineRetry()}>
+                  {t("dailyRetryNo")}
+                </Button>
+              </div>
             </div>
           </div>
         )}
