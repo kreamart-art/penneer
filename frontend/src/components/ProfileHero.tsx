@@ -781,7 +781,10 @@ export function SierKop({ label }: { label: string }) {
     <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
       <span style={lijn("90deg", "links")} />
       {ruit}
-      <span style={{ margin: "0 8px", fontFamily: font.wide, fontSize: 14, letterSpacing: 1.8, color: colors.ink, whiteSpace: "nowrap" }}>
+      {/* Rechts 1,8 minder marge: letterSpacing zet ook ACHTER de laatste letter
+          nog ruimte, en daardoor staat het woord net links van het midden
+          tussen de twee ruiten. */}
+      <span style={{ marginLeft: 8, marginRight: 8 - 1.8, fontFamily: font.wide, fontSize: 14, letterSpacing: 1.8, color: colors.ink, whiteSpace: "nowrap" }}>
         {label}
       </span>
       {ruit}

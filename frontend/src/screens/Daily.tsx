@@ -478,7 +478,17 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
           {/* Terug is de paarse plaat en geen doorzichtige pil: onder een gouden
               plaat leest een omlijnde pil als een halve knop. */}
           <div style={{ display: "flex", justifyContent: "center" }}>
-            <KnopPlaat kleur="paars" breed={150} onClick={() => setPart(null)} label={t("back")} />
+            {/* Zelfde opschrift als op de gouden knop erboven: dezelfde letter,
+                dezelfde maat, dezelfde spatiering. De plaat rekent zijn
+                lettergrootte normaal uit zijn breedte, en op 150 breed werd
+                "Terug" 23px terwijl de knop erboven 16px draagt. Twee maten in
+                twee knoppen onder elkaar lezen als twee lettertypes. */}
+            <KnopPlaat
+              kleur="paars"
+              breed={150}
+              onClick={() => setPart(null)}
+              label={<span style={{ fontSize: 16, letterSpacing: 0.3 }}>{t("back").toUpperCase()}</span>}
+            />
           </div>
         </div>
       </Screen>
