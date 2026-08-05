@@ -20,6 +20,7 @@ import { ArrowRight, Building2, Globe, MessageSquare, Share2, Star } from "lucid
 import type { LucideIcon } from "lucide-react";
 import { BredeKnop } from "../components/BredeKnop";
 import { GoudKader } from "../components/GoudKader";
+import { KADER_LIJN_PAARS, NeonKader } from "../components/ProfileHero";
 import { NeonText } from "../components/NeonText";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
@@ -51,7 +52,6 @@ const FOTO = {
 
 /** De achthoek van de secties, als knipvorm. Een categorieplaat is te klein
  *  voor een SVG met eigen verlopen; de vorm alleen is hier genoeg. */
-const ACHTHOEK = "polygon(9px 0, calc(100% - 9px) 0, 100% 9px, 100% calc(100% - 9px), calc(100% - 9px) 100%, 9px 100%, 0 calc(100% - 9px), 0 9px)";
 const ACHTHOEK_KLEIN = "polygon(6px 0, calc(100% - 6px) 0, 100% 6px, 100% calc(100% - 6px), calc(100% - 6px) 100%, 6px 100%, 0 calc(100% - 6px), 0 6px)";
 
 /** De vakjes zijn DEZELFDE SECTIE als onderaan de pagina: GoudKader met zijn
@@ -182,19 +182,26 @@ export function KaartDetail({
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {/* ---- de categoriepil ---- */}
       <div style={{ display: "flex", justifyContent: "center" }}>
-        <span
-          style={{
-            display: "inline-flex", alignItems: "center", gap: 7,
-            padding: "6px 18px", clipPath: ACHTHOEK,
-            background: "linear-gradient(180deg, rgba(92,34,138,.9), rgba(52,16,88,.95))",
-            boxShadow: `inset 0 0 0 1.5px ${withAlpha("#E39BFF", 0.6)}`,
-            fontFamily: font.wide, fontSize: 13, letterSpacing: 1.4, color: colors.ink,
-            textTransform: "uppercase",
-          }}
+        {/* Dezelfde neonpil als "Verlaat room", maar dan met de achthoek en de
+            paarse lijn: lijn en licht, met een bijna dekkende vulling zodat de
+            pil los van de achtergrond staat. */}
+        <NeonKader
+          hoek={9} radius={2} dik={0.5} vulling="zwart" animeer
+          lijn={KADER_LIJN_PAARS} gloed={`0 0 12px ${withAlpha(colors.violet, 0.35)}`}
+          binnen={{ padding: 0 }}
         >
-          <Globe size={15} color="#F0B6FF" />
-          {categorieLabel}
-        </span>
+          <span
+            style={{
+              display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7,
+              padding: "6px 18px",
+              fontFamily: font.wide, fontSize: 13, letterSpacing: 1.4, color: colors.ink,
+              textTransform: "uppercase",
+            }}
+          >
+            <Globe size={15} color="#C9A2FF" />
+            {categorieLabel}
+          </span>
+        </NeonKader>
       </div>
 
       {/* ---- DE KAART, die zichzelf omdraait ---- */}
@@ -223,19 +230,24 @@ export function KaartDetail({
                 style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }}
               />
               {/* De categorieplaat: smal, in dezelfde achthoek als de secties. */}
-              <span
-                style={{
-                  position: "absolute", left: "50%", bottom: "16%", transform: "translateX(-50%)",
-                  display: "inline-flex", alignItems: "center", gap: 4,
-                  padding: "3px 10px", clipPath: ACHTHOEK_KLEIN, whiteSpace: "nowrap",
-                  background: "linear-gradient(180deg, rgba(92,34,138,.92), rgba(52,16,88,.95))",
-                  boxShadow: `inset 0 0 0 1px ${withAlpha("#E39BFF", 0.55)}`,
-                  fontFamily: font.wide, fontSize: "clamp(6.5px, 2.2vw, 9.5px)", letterSpacing: ".08em",
-                  color: colors.ink, textTransform: "uppercase",
-                }}
-              >
-                <Globe size={9} color="#F0B6FF" />
-                {categorieLabel}
+              <span style={{ position: "absolute", left: "50%", bottom: "15%", transform: "translateX(-50%)" }}>
+                <NeonKader
+                  hoek={6} radius={2} dik={0.45} vulling="zwart" animeer
+                  lijn={KADER_LIJN_PAARS} gloed={`0 0 9px ${withAlpha(colors.violet, 0.35)}`}
+                  binnen={{ padding: 0 }}
+                >
+                  <span
+                    style={{
+                      display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 4,
+                      padding: "3px 9px", whiteSpace: "nowrap",
+                      fontFamily: font.wide, fontSize: "clamp(6.5px, 2.2vw, 9.5px)", letterSpacing: ".08em",
+                      color: colors.ink, textTransform: "uppercase",
+                    }}
+                  >
+                    <Globe size={9} color="#C9A2FF" />
+                    {categorieLabel}
+                  </span>
+                </NeonKader>
               </span>
             </span>
 
@@ -250,12 +262,17 @@ export function KaartDetail({
               {/* De foto ligt ONDER de lijst en is op de VORM van de kaart
                   geknipt: zo loopt hij helemaal onder de dikke rand door en
                   steekt er nergens een hoekje uit. */}
+              {/* GEKNIPT OP DE VORM, niet gemaskeerd met de art. De lijst
+                  gebruiken als masker leek slim, maar zijn binnenvlak heeft
+                  alfa 2 tot 30: dan wordt de foto binnen de kaart bijna
+                  helemaal doorzichtig en zie je er niets meer van. Een
+                  clip-path met dezelfde afgeschuinde hoeken doet wat de bedoeling
+                  was: de foto loopt tot onder de rand en er steekt niets uit. */}
               <span
                 style={{
-                  position: "absolute", inset: 0, display: "block", overflow: "hidden",
-                  WebkitMaskImage: `url(${ACHTER})`, maskImage: `url(${ACHTER})`,
-                  WebkitMaskSize: "100% 100%", maskSize: "100% 100%",
-                  WebkitMaskRepeat: "no-repeat", maskRepeat: "no-repeat",
+                  position: "absolute", left: "2.5%", right: "2.5%", top: "3.2%", bottom: "1.8%",
+                  display: "block", overflow: "hidden",
+                  clipPath: "polygon(11% 0, 89% 0, 100% 7%, 100% 93%, 89% 100%, 11% 100%, 0 93%, 0 7%)",
                 }}
               >
                 {foto ? (
@@ -343,12 +360,18 @@ export function KaartDetail({
                   ))}
                   {(kaart.facts || {}).weetje && (
                     <GoudKader {...SECTIE} padding="4px 8px">
-                      <div style={{ display: "grid", gridTemplateColumns: `${KOLOM.ico} ${KOLOM.label} 1fr`, gap: KOLOM.gat, alignItems: "start" }}>
-                        <Star size={10} color="#F0B6FF" fill="#F0B6FF" style={{ marginTop: 1 }} />
-                        <span style={{ minWidth: 0, fontFamily: font.ui, fontSize: 8.5, fontWeight: 800, letterSpacing: ".05em", textTransform: "uppercase", color: "#F0B6FF", lineHeight: 1.3 }}>
-                          {t("kdWeetje")}
+                      {/* Het label op de lijn van de andere feiten, maar de ZIN
+                          eronder over de volle breedte: een zin naast een label
+                          in een kolom van honderd pixels wordt een strookje van
+                          vier woorden hoog. */}
+                      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                        <span style={{ display: "grid", gridTemplateColumns: `${KOLOM.ico} 1fr`, gap: KOLOM.gat, alignItems: "center" }}>
+                          <Star size={10} color="#F0B6FF" fill="#F0B6FF" />
+                          <span style={{ fontFamily: font.ui, fontSize: 8.5, fontWeight: 800, letterSpacing: ".05em", textTransform: "uppercase", color: "#F0B6FF" }}>
+                            {t("kdWeetje")}
+                          </span>
                         </span>
-                        <span style={{ minWidth: 0, fontFamily: font.ui, fontSize: 8.5, lineHeight: 1.3, color: colors.ink }}>
+                        <span style={{ display: "block", fontFamily: font.ui, fontSize: 8.5, lineHeight: 1.32, color: colors.ink }}>
                           {String((kaart.facts || {}).weetje)}
                         </span>
                       </div>
