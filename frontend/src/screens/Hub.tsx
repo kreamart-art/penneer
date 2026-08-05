@@ -3076,14 +3076,9 @@ export function ProfileSettings({
           instelling, geen persoonsgegeven dat je aan anderen laat zien. */}
       <LandKnop game={game} />
 
-      {/* soepele spelling (dyslexie-hulp) voor Oefenen + Dagronde */}
-      <Card style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <span style={{ flex: 1, fontFamily: font.ui, fontWeight: 600, fontSize: 14, color: colors.ink }}>{t("lenientTitle")}</span>
-          <Toggle on={!!account.lenient_spelling} onChange={(v) => { sound.uiTap(); game.setLenient(v); }} />
-        </div>
-        <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.faint, lineHeight: 1.5 }}>{t("lenientHint")}</p>
-      </Card>
+      {/* Soepele spelling stond hier ook, maar hij hoort bij TAAL en staat nu
+          op één plek: Instellingen > Taal & spelling. Dezelfde schakelaar op
+          twee schermen betekent dat je hem op de verkeerde plek zoekt. */}
 
       {/* Draai-knop-skin (shop 'buzzers' pack) */}
       <BuzzerPicker game={game} onShowShop={onShowShop} />

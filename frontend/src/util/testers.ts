@@ -9,3 +9,16 @@ const TESTERS = new Set(["kream", "kreamtest"]);
 export function isTester(naam: string | null | undefined): boolean {
   return !!naam && TESTERS.has(naam.trim().toLowerCase());
 }
+
+// Wie de deur naar het admin-paneel überhaupt te zien krijgt.
+//
+// De code blijft de sleutel: dit bepaalt alleen of het slot zichtbaar is. Een
+// invulveld voor een adminwachtwoord in ieders instellingen nodigt uit tot
+// proberen en zegt bovendien iets over de app dat spelers niet hoeven te weten.
+const EIGENAREN = new Set(["kream", "kreamtest", "aish", "aishtest"]);
+
+/** Is dit een van de twee eigenaars-accounts (Kream of Aish, incl. hun
+ *  testaccounts)? Gasten nooit. */
+export function isEigenaar(naam: string | null | undefined): boolean {
+  return !!naam && EIGENAREN.has(naam.trim().toLowerCase());
+}
