@@ -74,8 +74,10 @@ export function GoudKader({
    *  echt te zien en verdwijnt de rest richting de bovenkant en omlaag, alsof
    *  het licht daar vandaan komt. Uit betekent: een hele omtrek. */
   fade?: boolean;
-  /** Goud volgt de secties, violet is de kleur van de bedieningspillen. */
-  kleur?: "goud" | "violet";
+  /** Goud volgt de secties, violet is de kleur van de bedieningspillen, en
+   *  roze is de variant voor de vakjes op een kaart: dezelfde sectie, maar de
+   *  LIJN trekt naar paarsroze in plaats van naar het doffe violet. */
+  kleur?: "goud" | "violet" | "roze";
   /** Een neongloed onder de lijn: dezelfde vorm, dikker en vervaagd. Zo gloeit
    *  er precies wat er staat, in plaats van een schaduw die ernaast ligt. */
   gloed?: boolean;
@@ -146,6 +148,10 @@ export function GoudKader({
     // Door de gebruiker opgegeven: de lijn is #572D7C, met #87618D waar het
     // licht erop valt en #291348 waar hij wegzakt.
     ? { hoog: "#87618D", mid: "#572D7C", laag: "#291348" }
+    : kleur === "roze"
+    // Dezelfde opbouw, maar dan paarsroze: het violet hierboven is dof en valt
+    // op een kaart weg tegen de foto eronder.
+    ? { hoog: "#FFD1FF", mid: "#E39BFF", laag: "#7B2FA6" }
     : { hoog: "#FEEB81", mid: "#F3B53E", laag: "#B8791F" };
   const { w, h } = maat;
   const k = Math.min(hoek, w / 2, h / 2);

@@ -64,14 +64,20 @@ const ACHTHOEK_KLEIN = "polygon(6px 0, calc(100% - 6px) 0, 100% 6px, 100% calc(1
 const SECTIE = {
   hoek: 7,
   rond: 1.5,
-  kleur: "violet" as const,
-  dik: 0.55,
+  kleur: "roze" as const,
+  dik: 0.7,
   binnenlijn: true,
   binnenSterkte: 0.42,
   binnenKleur: "#F0B6FF",
   hoekAccent: "#F0B6FF",
   vulling: true as const,
 } as const;
+
+/** De drie kolommen van een feitregel. Het label krijgt een VASTE breedte,
+ *  zodat elke waarde op dezelfde plek begint; met een label dat meegroeit
+ *  springt de kolom per regel en dat leest als slordig. */
+// 66 en niet 58: op 58 werd WERELDDEEL afgekapt tot "WERELDD...".
+const KOLOM = { ico: "12px", label: "66px", gat: 5 } as const;
 
 const FEIT_ICOON: Record<string, LucideIcon> = {
   hoofdstad: Building2,
@@ -90,12 +96,16 @@ export interface FactRij { key: string; label: string; quiz?: boolean }
 function FeitRij({ ico: Ico, label, waarde }: { ico: LucideIcon; label: string; waarde: string }) {
   return (
     <GoudKader {...SECTIE} padding="4px 8px">
-      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <Ico size={11} color="#F0B6FF" style={{ flexShrink: 0 }} />
-        <span style={{ flex: 1, minWidth: 0, fontFamily: font.ui, fontSize: 8.5, fontWeight: 800, letterSpacing: ".05em", textTransform: "uppercase", color: "#F0B6FF", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+      {/* EEN RASTER en geen flexrij: met de waarde rechts uitgelijnd begint
+          elke waarde op een andere plek en leest de kolom rommelig. Nu staan
+          het icoon, het label en de waarde bij elke regel op dezelfde lijn,
+          ook onder het bijzondere feit. */}
+      <div style={{ display: "grid", gridTemplateColumns: `${KOLOM.ico} ${KOLOM.label} 1fr`, alignItems: "center", gap: KOLOM.gat }}>
+        <Ico size={11} color="#F0B6FF" />
+        <span style={{ minWidth: 0, fontFamily: font.ui, fontSize: 8.5, fontWeight: 800, letterSpacing: ".05em", textTransform: "uppercase", color: "#F0B6FF", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {label}
         </span>
-        <span style={{ flexShrink: 0, maxWidth: "54%", fontFamily: font.ui, fontSize: 9.5, fontWeight: 700, color: colors.ink, textAlign: "right", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        <span style={{ minWidth: 0, fontFamily: font.ui, fontSize: 9.5, fontWeight: 700, color: colors.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {waarde}
         </span>
       </div>
@@ -333,15 +343,15 @@ export function KaartDetail({
                   ))}
                   {(kaart.facts || {}).weetje && (
                     <GoudKader {...SECTIE} padding="4px 8px">
-                      <span style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 2 }}>
-                        <Star size={10} color="#F0B6FF" fill="#F0B6FF" style={{ flexShrink: 0 }} />
-                        <span style={{ fontFamily: font.ui, fontSize: 8.5, fontWeight: 800, letterSpacing: ".05em", textTransform: "uppercase", color: "#F0B6FF" }}>
+                      <div style={{ display: "grid", gridTemplateColumns: `${KOLOM.ico} ${KOLOM.label} 1fr`, gap: KOLOM.gat, alignItems: "start" }}>
+                        <Star size={10} color="#F0B6FF" fill="#F0B6FF" style={{ marginTop: 1 }} />
+                        <span style={{ minWidth: 0, fontFamily: font.ui, fontSize: 8.5, fontWeight: 800, letterSpacing: ".05em", textTransform: "uppercase", color: "#F0B6FF", lineHeight: 1.3 }}>
                           {t("kdWeetje")}
                         </span>
-                      </span>
-                      <span style={{ display: "block", fontFamily: font.ui, fontSize: 8.5, lineHeight: 1.3, color: colors.ink }}>
-                        {String((kaart.facts || {}).weetje)}
-                      </span>
+                        <span style={{ minWidth: 0, fontFamily: font.ui, fontSize: 8.5, lineHeight: 1.3, color: colors.ink }}>
+                          {String((kaart.facts || {}).weetje)}
+                        </span>
+                      </div>
                     </GoudKader>
                   )}
                 </span>
