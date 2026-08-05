@@ -22,7 +22,14 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { KADER_LIJN_PAARS, NeonKader } from "./ProfileHero";
 import { colors, font } from "../theme/tokens";
 
-const ART = "/ui/dag-sectie.webp";
+/** Dezelfde lijst, twee emblemen. De kalender is uit de ring gehaald (de schijf
+ *  is opnieuw opgebouwd uit de kleur van zijn eigen rand) en er staat een
+ *  wereldbol in de plaats voor het topografiedeel. Ring, lauwerkrans en stralen
+ *  zijn in beide gelijk, want het is hetzelfde onderdeel van dezelfde dag. */
+const ART = {
+  woorden: "/ui/dag-sectie.webp",
+  topo: "/ui/dag-sectie-topo.webp",
+} as const;
 /** Verhouding van de plaat (929x860). */
 const VERHOUDING = 929 / 860;
 /** Waar de weggehaalde tekst stond, als deel van de plaat. */
@@ -51,7 +58,7 @@ function Vlak({ boven, onder, children }: { boven: number; onder: number; childr
   );
 }
 
-export function DagKaart({ titel, tekst, pil }: { titel: string; tekst: string; pil?: ReactNode }) {
+export function DagKaart({ titel, tekst, pil, soort = "woorden" }: { titel: string; tekst: string; pil?: ReactNode; soort?: keyof typeof ART }) {
   const doos = useRef<HTMLDivElement | null>(null);
   const [breed, setBreed] = useState(360);
   useEffect(() => {
@@ -67,7 +74,7 @@ export function DagKaart({ titel, tekst, pil }: { titel: string; tekst: string; 
   return (
     <div ref={doos} style={{ position: "relative", width: "100%", aspectRatio: `${VERHOUDING}` }}>
       <img
-        src={ART} alt="" aria-hidden draggable={false}
+        src={ART[soort]} alt="" aria-hidden draggable={false}
         style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block", maxWidth: "none" }}
       />
 

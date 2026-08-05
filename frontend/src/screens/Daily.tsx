@@ -10,14 +10,14 @@ import { Button } from "../components/Button";
 import { BredeKnop } from "../components/BredeKnop";
 import { KnopPlaat } from "../components/KnopPlaat";
 import { DagKaart } from "../components/DagKaart";
-import { ontdekAan } from "../util/ontdekvlag";
+import { UitlegRaster } from "../components/UitlegRaster";
 import { Screen, Card } from "../components/Layout";
 import { Topo } from "./Topo";
 import { ArenaDeel } from "./Arena";
 import type { GameApi } from "../net/socket";
 import { ArtIcoon } from "../components/ArtIcoon";
 import { GlasVeld } from "../components/GlasVeld";
-import { GOUD, PlekWapen, SierKop } from "../components/ProfileHero";
+import { GOUD, PlekWapen } from "../components/ProfileHero";
 import { GlasRij, Lijst } from "./Hub";
 import { DagSectie } from "../components/DagSectie";
 import { DagKop } from "../components/DagKop";
@@ -80,56 +80,8 @@ function fmtCountdown(total: number): string {
   return `${p(h)}:${p(m)}:${p(s)}`;
 }
 
-/** "Hoe werkt het?": vier kolommen onder een sierkop.
- *
- *  Per kolom het label met zijn getal eraan vast (60 seconden, 5 categorieen,
- *  1 poging) en daaronder de regel die het uitlegt. Geen pictogrammen erboven:
- *  dan kijk je langs vier tekeningen naar vier woorden. De dunne gouden lijnen
- *  doen het scheiden.
- *
- *  Vier kolommen op een telefoon is smal (rond de 85 punten), dus de tekst is
- *  klein en breekt af. Dat is de bedoeling: het is een overzicht dat je scant,
- *  geen stuk om te lezen. */
-function UitlegRaster({ kop, punten }: { kop: string; punten: { titel: string; tekst: string }[] }) {
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <SierKop label={kop} />
-      <div style={{ display: "grid", gridTemplateColumns: `repeat(${punten.length}, 1fr)` }}>
-        {punten.map((p, i) => (
-          <div
-            key={p.titel}
-            style={{
-              display: "flex", flexDirection: "column", alignItems: "center", gap: 5,
-              padding: "0 6px", textAlign: "center",
-              borderLeft: i === 0 ? "none" : `1px solid ${withAlpha(GOUD[2], 0.22)}`,
-            }}
-          >
-            {/* Getal boven het woord, in ELKE kolom. "1 poging" en "60
-                seconden" passen op een regel en de andere twee niet, en dan
-                staan de vier koppen niet meer op dezelfde lijn. Dus breken we
-                zelf, op de eerste spatie. */}
-            <span style={{ fontFamily: font.ui, fontWeight: 800, fontSize: 11, letterSpacing: 0.4, textTransform: "uppercase", color: colors.gold, lineHeight: 1.25 }}>
-              {p.titel.split(" ").slice(0, 1).map((w) => (
-                <span key={w} style={{ display: "block" }}>{w}</span>
-              ))}
-              <span style={{ display: "block" }}>{p.titel.split(" ").slice(1).join(" ")}</span>
-            </span>
-            <span style={{ fontFamily: font.ui, fontSize: 11, color: colors.ink, lineHeight: 1.35 }}>
-              {p.tekst}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () => void; onProfile: () => void }) {
   const { t, tCat, lang } = useT();
-  // De nieuwe uitlegpagina staat nog achter de Ontdekken-schakelaar: de
-  // bovenste sectie moet nog art en tekst krijgen, dus hij hoort nog niet bij
-  // iedereen in beeld.
-  const nieuweUitleg = ontdekAan();
   const account = game.state.account;
   const [phase, setPhase] = useState<"intro" | "play" | "result">("intro");
   const [info, setInfo] = useState<{
@@ -324,7 +276,7 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
   };
 
   if (part === "topo") {
-    return <Topo game={game} onProfile={onProfile} played={!!info?.topo_played} onBack={() => { setPart(null); void refreshInfo(); }} />;
+    return <Topo game={game} onProfile={onProfile} played={!!info?.topo_played} spelers={info?.topo_players ?? 0} onBack={() => { setPart(null); void refreshInfo(); }} />;
   }
   if (part === "arena") {
     return <ArenaDeel game={game} onBack={() => { setPart(null); void refreshInfo(); }} />;
@@ -424,7 +376,7 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
   }
 
   // ---- intro van het woordendeel ----
-  if (phase === "intro" && nieuweUitleg) {
+  if (phase === "intro") {
     const played = !!info?.played || (() => {
       try {
         const saved = JSON.parse(localStorage.getItem(LOCAL_KEY) || "null");
@@ -438,7 +390,7 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
         <div style={{ display: "flex", flexDirection: "column", gap: 20, paddingTop: 4 }}>
           {/* De sierlijst uit de mockup, met de tekst er live overheen. */}
           <DagKaart
-            titel={t("dailyTitle")}
+            titel={t("partWords")}
             tekst={t("dailyIntro")}
             pil={info ? t("dailyPlayers", { n: info.players }) : ""}
           />
@@ -490,44 +442,6 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
               label={<span style={{ fontSize: 16, letterSpacing: 0.3 }}>{t("back").toUpperCase()}</span>}
             />
           </div>
-        </div>
-      </Screen>
-    );
-  }
-
-  if (phase === "intro") {
-    const played = !!info?.played || (() => {
-      try {
-        const saved = JSON.parse(localStorage.getItem(LOCAL_KEY) || "null");
-        return !account && saved && saved.day === info?.day;
-      } catch {
-        return false;
-      }
-    })();
-    return (
-      <Screen top={header}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13.5, color: colors.sub, lineHeight: 1.55 }}>{t("dailyIntro")}</p>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-              {info && chip(<ArtIcoon naam="beker" size={15} />, t("dailyPlayers", { n: info.players }))}
-              {!!info?.streak && info.streak > 0 && chip(<ArtIcoon naam="vlam" size={15} />, t("dailyStreakLine", { n: info.streak }))}
-            </div>
-          </Card>
-
-          {played ? (
-            <>
-              <p style={{ margin: 0, textAlign: "center", fontFamily: font.ui, fontSize: 13.5, color: colors.sub }}>{t("dailyPlayed")}</p>
-              <Button variant="gold" full disabled={busy} onClick={viewResult}>
-                {t("dailyViewResult")}
-              </Button>
-            </>
-          ) : (
-            <Button variant="gold" full disabled={busy || !info} onClick={start}>
-              {t("dailyStart")}
-            </Button>
-          )}
-          <Button variant="ghost" full onClick={() => setPart(null)}>{t("back")}</Button>
         </div>
       </Screen>
     );

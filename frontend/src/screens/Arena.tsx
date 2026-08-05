@@ -649,7 +649,20 @@ export function ArenaDeel({ game, onBack }: { game: GameApi; onBack: () => void 
         ) : info?.af ? (
           // Onbeperkt en gratis: elke knoptekst die naar kosten riekt hoort
           // hier niet. De 24 uur zijn de grens, de beste poging telt.
-          <KnopPlaat kleur="paars" breed={150} onClick={start} label={fase === "klaar" ? t("arenaOpnieuw") : t("arenaStart")} />
+          // In een flex-kolom staat een plaat met een vaste breedte links: de
+          // uitlijning is `stretch` en die valt voor iets van 150 breed terug op
+          // het begin van de regel. Vandaar een eigen doos die hem centreert.
+          // Het opschrift draagt dezelfde letter als de gouden knoppen elders:
+          // 16px met 0,3 spatiering, want de plaat rekent zijn maat normaal uit
+          // zijn breedte en werd hier 23px.
+          <div style={{ display: "flex", justifyContent: "center" }}>
+            <KnopPlaat
+              kleur="paars"
+              breed={150}
+              onClick={start}
+              label={<span style={{ fontSize: 16, letterSpacing: 0.3 }}>{(fase === "klaar" ? t("arenaOpnieuw") : t("arenaStart")).toUpperCase()}</span>}
+            />
+          </div>
         ) : null}
 
         {bord}

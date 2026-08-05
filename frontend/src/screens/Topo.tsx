@@ -13,7 +13,11 @@
 // Antwoorden worden getypt. De server laat een paar letters speling toe, want
 // eigennamen zijn lastig te spellen en dit is geen dictee.
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Check, X } from "lucide-react";
+import { ArrowLeft, Check, ChevronRight, X } from "lucide-react";
+import { BredeKnop } from "../components/BredeKnop";
+import { DagKaart } from "../components/DagKaart";
+import { KnopPlaat } from "../components/KnopPlaat";
+import { UitlegRaster } from "../components/UitlegRaster";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { Screen, Card } from "../components/Layout";
@@ -76,10 +80,12 @@ const inputStyle: React.CSSProperties = {
   padding: "12px 14px",
 };
 
-export function Topo({ game, onBack, onProfile, played }: { game: GameApi; onBack: () => void; onProfile: () => void; played: boolean }) {
+export function Topo({ game, onBack, onProfile, played, spelers = 0 }: { game: GameApi; onBack: () => void; onProfile: () => void; played: boolean; spelers?: number }) {
   const { t, lang } = useT();
   const account = game.state.account;
-  const [phase, setPhase] = useState<"play" | "result">("play");
+  // Je begint op de uitleg: de klok bij de server gaat pas lopen als jij op
+  // start drukt, en niet al doordat je het scherm opent.
+  const [phase, setPhase] = useState<"intro" | "play" | "result">("intro");
   const [q, setQ] = useState<{ idx: number; id: string; q: string } | null>(null);
   const [total, setTotal] = useState(8);
   const [word, setWord] = useState("");
@@ -139,36 +145,32 @@ export function Topo({ game, onBack, onProfile, played }: { game: GameApi; onBac
     window.setTimeout(() => input.current?.focus(), 30);
   };
 
-  useEffect(() => {
-    let alive = true;
-    const go = async () => {
-      setBusy(true);
-      try {
-        if (played && (await viewStored())) return;
-        const res = await fetch("/api/daily/topo/start", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", ...authHeaders() },
-          body: JSON.stringify({ lang }),
-        });
-        const data = await res.json();
-        if (!alive) return;
-        if (data.played) {
-          await viewStored();
-          return;
-        }
-        setTotal(data.total);
-        setDuration(data.seconds);
-        submitted.current = false;
-        await serve(0);
-        setPhase("play");
-      } finally {
-        if (alive) setBusy(false);
+  /** Begin de ronde: haal de eerste vraag op (of de uitslag als je al speelde).
+   *  Dit stempelt de klok bij de server, dus het gebeurt pas als de speler
+   *  echt begint en niet al bij het openen van het scherm. */
+  const beginnen = async () => {
+    setBusy(true);
+    try {
+      if (played && (await viewStored())) return;
+      const res = await fetch("/api/daily/topo/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ lang }),
+      });
+      const data = await res.json();
+      if (data.played) {
+        await viewStored();
+        return;
       }
-    };
-    void go();
-    return () => { alive = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+      setTotal(data.total);
+      setDuration(data.seconds);
+      submitted.current = false;
+      await serve(0);
+      setPhase("play");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   /** Antwoord vastleggen en door naar de volgende vraag, of inleveren. */
   const next = async () => {
@@ -239,6 +241,52 @@ export function Topo({ game, onBack, onProfile, played }: { game: GameApi; onBac
       {label}
     </span>
   );
+
+  // ---- de uitleg, voordat de klok gaat lopen ----
+  if (phase === "intro") {
+    return (
+      <Screen top={header}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 20, paddingTop: 4 }}>
+          <DagKaart
+            soort="topo"
+            titel={t("topoTitle")}
+            tekst={t("topoIntro")}
+            pil={t("topoPlayers", { n: spelers })}
+          />
+
+          <UitlegRaster
+            kop={t("topoUitlegKop")}
+            punten={[
+              { titel: t("topoPunt1Kop"), tekst: t("topoPunt1") },
+              { titel: t("topoPunt2Kop"), tekst: t("topoPunt2") },
+              { titel: t("topoPunt3Kop"), tekst: t("topoPunt3") },
+              { titel: t("topoPunt4Kop"), tekst: t("topoPunt4") },
+            ]}
+          />
+
+          <BredeKnop disabled={busy} onClick={() => void beginnen()}>
+            <span style={{ position: "relative", display: "inline-block" }}>
+              {(played ? t("dailyViewResult") : t("topoStart")).toUpperCase()}
+              <ChevronRight
+                size={17}
+                strokeWidth={3}
+                style={{ position: "absolute", left: "100%", top: "50%", transform: "translateY(-50%)", marginLeft: 8 }}
+              />
+            </span>
+          </BredeKnop>
+
+          <div style={{ display: "flex", justifyContent: "center" }}>
+            <KnopPlaat
+              kleur="paars"
+              breed={150}
+              onClick={onBack}
+              label={<span style={{ fontSize: 16, letterSpacing: 0.3 }}>{t("back").toUpperCase()}</span>}
+            />
+          </div>
+        </div>
+      </Screen>
+    );
+  }
 
   // ---- spelen: EEN vraag tegelijk ----
   if (phase === "play") {
