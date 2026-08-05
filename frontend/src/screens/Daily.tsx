@@ -8,6 +8,7 @@ import { Avatar } from "../components/Avatar";
 import { Tv } from "../components/Tv";
 import { Button } from "../components/Button";
 import { BredeKnop } from "../components/BredeKnop";
+import { DagKaart } from "../components/DagKaart";
 import { ontdekAan } from "../util/ontdekvlag";
 import { Screen, Card } from "../components/Layout";
 import { Topo } from "./Topo";
@@ -426,15 +427,21 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
     return (
       <Screen top={header}>
         <div style={{ display: "flex", flexDirection: "column", gap: 20, paddingTop: 4 }}>
-          {/* De bovenste sectie (embleem, titel, uitleg, spelersteller) is er
-              bewust uit: daar komt nieuwe art en een nieuwe tekst voor. */}
+          {/* De sierlijst uit de mockup, met de tekst er live overheen. */}
+          <DagKaart
+            titel={t("dailyTitle")}
+            tekst={t("dailyIntro")}
+            pil={info ? t("dailyPlayers", { n: info.players }) : ""}
+          />
+
+          {/* Vier punten, geen vijf: "goede woorden" staat al in de uitleg
+              hierboven en vier kolommen laten de tekst ademen. */}
           <UitlegRaster
             kop={t("dagUitlegKop")}
             punten={[
               { titel: t("dagPunt1Kop"), tekst: t("dagPunt1") },
               { titel: t("dagPunt2Kop"), tekst: t("dagPunt2") },
               { titel: t("dagPunt3Kop"), tekst: t("dagPunt3") },
-              { titel: t("dagPunt4Kop"), tekst: t("dagPunt4") },
               { titel: t("dagPunt5Kop"), tekst: t("dagPunt5") },
             ]}
           />
