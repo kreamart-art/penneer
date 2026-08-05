@@ -8,6 +8,7 @@ import { Avatar } from "../components/Avatar";
 import { Tv } from "../components/Tv";
 import { Button } from "../components/Button";
 import { BredeKnop } from "../components/BredeKnop";
+import { KnopPlaat } from "../components/KnopPlaat";
 import { DagKaart } from "../components/DagKaart";
 import { ontdekAan } from "../util/ontdekvlag";
 import { Screen, Card } from "../components/Layout";
@@ -79,30 +80,42 @@ function fmtCountdown(total: number): string {
   return `${p(h)}:${p(m)}:${p(s)}`;
 }
 
-/** "Hoe werkt het?": vier korte labels onder een sierkop.
+/** "Hoe werkt het?": vier kolommen onder een sierkop.
  *
- *  Er stond eerst een zinnetje onder elk label, en dat was precies de uitleg
- *  die twee centimeter hoger al in de sectie staat. Twee keer hetzelfde lezen
- *  is niet duidelijker, dus wat overblijft is het label met zijn getal eraan
- *  vast: 60 seconden, 5 categorieen, 1 poging. Geen pictogrammen erboven om
- *  dezelfde reden: dan kijk je langs vier tekeningen naar vier woorden.
+ *  Per kolom het label met zijn getal eraan vast (60 seconden, 5 categorieen,
+ *  1 poging) en daaronder de regel die het uitlegt. Geen pictogrammen erboven:
+ *  dan kijk je langs vier tekeningen naar vier woorden. De dunne gouden lijnen
+ *  doen het scheiden.
  *
- *  De dunne gouden lijnen doen het scheiden. */
-function UitlegRaster({ kop, punten }: { kop: string; punten: string[] }) {
+ *  Vier kolommen op een telefoon is smal (rond de 85 punten), dus de tekst is
+ *  klein en breekt af. Dat is de bedoeling: het is een overzicht dat je scant,
+ *  geen stuk om te lezen. */
+function UitlegRaster({ kop, punten }: { kop: string; punten: { titel: string; tekst: string }[] }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <SierKop label={kop} />
-      <div style={{ display: "grid", gridTemplateColumns: `repeat(${punten.length}, 1fr)`, alignItems: "center" }}>
+      <div style={{ display: "grid", gridTemplateColumns: `repeat(${punten.length}, 1fr)` }}>
         {punten.map((p, i) => (
           <div
-            key={p}
+            key={p.titel}
             style={{
-              padding: "2px 6px", textAlign: "center",
+              display: "flex", flexDirection: "column", alignItems: "center", gap: 5,
+              padding: "0 6px", textAlign: "center",
               borderLeft: i === 0 ? "none" : `1px solid ${withAlpha(GOUD[2], 0.22)}`,
             }}
           >
-            <span style={{ fontFamily: font.ui, fontWeight: 800, fontSize: 11.5, letterSpacing: 0.4, textTransform: "uppercase", color: colors.gold, lineHeight: 1.3 }}>
-              {p}
+            {/* Getal boven het woord, in ELKE kolom. "1 poging" en "60
+                seconden" passen op een regel en de andere twee niet, en dan
+                staan de vier koppen niet meer op dezelfde lijn. Dus breken we
+                zelf, op de eerste spatie. */}
+            <span style={{ fontFamily: font.ui, fontWeight: 800, fontSize: 11, letterSpacing: 0.4, textTransform: "uppercase", color: colors.gold, lineHeight: 1.25 }}>
+              {p.titel.split(" ").slice(0, 1).map((w) => (
+                <span key={w} style={{ display: "block" }}>{w}</span>
+              ))}
+              <span style={{ display: "block" }}>{p.titel.split(" ").slice(1).join(" ")}</span>
+            </span>
+            <span style={{ fontFamily: font.ui, fontSize: 11, color: colors.ink, lineHeight: 1.35 }}>
+              {p.tekst}
             </span>
           </div>
         ))}
@@ -434,7 +447,12 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
               hierboven en vier kolommen laten de tekst ademen. */}
           <UitlegRaster
             kop={t("dagUitlegKop")}
-            punten={[t("dagPunt1Kop"), t("dagPunt2Kop"), t("dagPunt3Kop"), t("dagPunt5Kop")]}
+            punten={[
+              { titel: t("dagPunt1Kop"), tekst: t("dagPunt1") },
+              { titel: t("dagPunt2Kop"), tekst: t("dagPunt2") },
+              { titel: t("dagPunt3Kop"), tekst: t("dagPunt3") },
+              { titel: t("dagPunt5Kop"), tekst: t("dagPunt5") },
+            ]}
           />
 
           {played ? (
@@ -444,13 +462,24 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
             </>
           ) : (
             <BredeKnop disabled={busy || !info} onClick={start}>
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+              {/* De TEKST staat in het midden van de knop; het pijltje hangt
+                  ernaast en telt niet mee. Zet je ze samen in het midden, dan
+                  staat het opschrift altijd een pijlbreedte naar links. */}
+              <span style={{ position: "relative", display: "inline-block" }}>
                 {t("dailyStart").toUpperCase()}
-                <ChevronRight size={17} strokeWidth={3} />
+                <ChevronRight
+                  size={17}
+                  strokeWidth={3}
+                  style={{ position: "absolute", left: "100%", top: "50%", transform: "translateY(-50%)", marginLeft: 8 }}
+                />
               </span>
             </BredeKnop>
           )}
-          <Button variant="ghost" full onClick={() => setPart(null)}>{t("back")}</Button>
+          {/* Terug is de paarse plaat en geen doorzichtige pil: onder een gouden
+              plaat leest een omlijnde pil als een halve knop. */}
+          <div style={{ display: "flex", justifyContent: "center" }}>
+            <KnopPlaat kleur="paars" breed={150} onClick={() => setPart(null)} label={t("back")} />
+          </div>
         </div>
       </Screen>
     );

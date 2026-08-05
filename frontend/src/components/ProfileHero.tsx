@@ -747,10 +747,17 @@ export function NeonKader({
 
 /** Sierlijn met een ruitje aan weerszijden van het opschrift. */
 export function SierKop({ label }: { label: string }) {
-  const lijn = (naar: string): CSSProperties => ({
+  // De lijn loopt DOOR tot het hart van de ruit, niet tot zijn linkerhoek: een
+  // lijn die op de punt stopt leest als twee losse dingen die elkaar net raken.
+  // De ruit is 6 breed, dus drie pixels overlap zet het einde precies in het
+  // midden, en de ruit ligt erbovenop (z-index) zodat je de lijn er niet
+  // doorheen ziet lopen.
+  const lijn = (naar: string, kant: "links" | "rechts"): CSSProperties => ({
     flex: 1,
     height: 1,
     background: `linear-gradient(${naar}, transparent, ${withAlpha(GOUD[2], 0.5)})`,
+    marginRight: kant === "links" ? -3 : undefined,
+    marginLeft: kant === "rechts" ? -3 : undefined,
   });
   const ruit = (
     <span
@@ -759,21 +766,26 @@ export function SierKop({ label }: { label: string }) {
         width: 6,
         height: 6,
         flexShrink: 0,
+        position: "relative",
+        zIndex: 1,
         transform: "rotate(45deg)",
         background: goudVlak,
         boxShadow: `0 0 6px ${withAlpha(GOUD[2], 0.55)}`,
       }}
     />
   );
+  // Geen ruimte tussen de lijn en de ruit: de lijn loopt ERIN. Met een gat
+  // ertussen lezen het twee losse strepen naast een kop; tegen de ruit aan is
+  // het een sierlijn met een kop erin. De lucht zit dus alleen om de tekst.
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-      <span style={lijn("90deg")} />
+    <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
+      <span style={lijn("90deg", "links")} />
       {ruit}
-      <span style={{ fontFamily: font.wide, fontSize: 14, letterSpacing: 1.8, color: colors.ink, whiteSpace: "nowrap" }}>
+      <span style={{ margin: "0 8px", fontFamily: font.wide, fontSize: 14, letterSpacing: 1.8, color: colors.ink, whiteSpace: "nowrap" }}>
         {label}
       </span>
       {ruit}
-      <span style={{ ...lijn("270deg") }} />
+      <span style={lijn("270deg", "rechts")} />
     </div>
   );
 }

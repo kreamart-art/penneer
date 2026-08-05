@@ -19,6 +19,7 @@
 // en niet uit een vaste pixelmaat: op een smal toestel hoort de titel mee te
 // krimpen, anders loopt hij uit de lijst.
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { KADER_LIJN_PAARS, NeonKader } from "./ProfileHero";
 import { colors, font } from "../theme/tokens";
 
 const ART = "/ui/dag-sectie.webp";
@@ -89,16 +90,32 @@ export function DagKaart({ titel, tekst, pil }: { titel: string; tekst: string; 
       </Vlak>
 
       <Vlak boven={VLAK.tekst.t} onder={VLAK.tekst.b}>
-        <p style={{ margin: 0, fontFamily: font.ui, fontSize: breed * MAAT.tekst, lineHeight: 1.4, color: colors.ink }}>
+        {/* Smaller dan het vlak: een regel die van lijst tot lijst loopt leest
+            als een blok, en de kaart heeft juist lucht aan de zijkanten nodig. */}
+        <p style={{ margin: 0, maxWidth: "76%", fontFamily: font.ui, fontSize: breed * MAAT.tekst, lineHeight: 1.45, color: colors.ink }}>
           {tekst}
         </p>
       </Vlak>
 
       {pil && (
         <Vlak boven={VLAK.pil.t} onder={VLAK.pil.b}>
-          <span style={{ fontFamily: font.ui, fontWeight: 700, fontSize: breed * MAAT.pil, color: colors.ink }}>
-            {pil}
-          </span>
+          {/* Een neon pil met een DOORZICHTIGE binnenkant: de sterrenhemel van
+              de plaat loopt eronder door, en dat is precies wat een pil op deze
+              lijst hoort te doen. Vandaar `vulling="geen"` plus het hoeklicht
+              uit; die wassing zou het vlak alsnog vullen. */}
+          <NeonKader
+            radius={999}
+            vulling="geen"
+            hoeklicht={false}
+            lijn={KADER_LIJN_PAARS}
+            dik={0.5}
+            gloed="0 0 12px rgba(154,75,240,.34)"
+            binnen={{ padding: `${breed * 0.011}px ${breed * 0.038}px` }}
+          >
+            <span style={{ fontFamily: font.ui, fontWeight: 700, fontSize: breed * MAAT.pil, color: colors.ink, whiteSpace: "nowrap" }}>
+              {pil}
+            </span>
+          </NeonKader>
         </Vlak>
       )}
     </div>
