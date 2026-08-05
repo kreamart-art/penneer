@@ -263,7 +263,7 @@ const LADDER_H = 733;
 // De zaal is bovenaan verankerd en heeft 442 rijen doorgetrokken plafond boven
 // de tekening, dus het puntje zit (442 + 2070,6)/2092 = 120,11vw onder de
 // schermrand.
-const LADDER_BREED = 84.90;      // vw
+export const LADDER_BREED = 84.90;      // vw
 // Waar hij verticaal landt bepaalt de kolom; de MAAT komt uit de puntjes.
 // De puntjes zelf zijn gereedschap en geen decor; die zijn uit de zaal gepoetst.
 
@@ -334,7 +334,7 @@ function HulpIcoon({ sleutel }: { sleutel: string }) {
   );
 }
 
-const HULPEN = [
+export const HULPEN = [
   { sleutel: "vriend", label: "HULPLIJN", icoon: <HulpIcoon sleutel="vriend" /> },
   { sleutel: "ververs", label: "VERVERS", icoon: <HulpIcoon sleutel="ververs" /> },
   { sleutel: "vijftig", label: "50 / 50", icoon: <HulpIcoon sleutel="vijftig" /> },
@@ -371,7 +371,7 @@ type Oordeel = { gekozen: number | null; goed: boolean } | null;
  *  vol; de andere twee staan op nul en faden mee. Zo is de overgang een echte
  *  kruisfade en niet een sprong, en zie je in rust nooit twee kleuren door
  *  elkaar. */
-function Trede({ i, waarde, staat, onKies, tip = false }: { i: number; waarde: number; staat: Staat; onKies: () => void; tip?: boolean }) {
+function Trede({ i, waarde, staat, onKies, tip = false }: { i: number; waarde: number | string; staat: Staat; onKies: () => void; tip?: boolean }) {
   const t = TREDEN[i];
   const kleur = staat === "goed" ? "goed" : staat === "fout" ? "fout" : staat === "uit" ? "uit" : "rust";
   return (
@@ -438,7 +438,11 @@ function Trede({ i, waarde, staat, onKies, tip = false }: { i: number; waarde: n
           cursor: staat === "rust" ? "pointer" : "default",
           WebkitTapHighlightColor: "transparent", touchAction: "manipulation",
           display: "grid", placeItems: "center",
-          fontFamily: font.display, fontWeight: 800, fontSize: 34, letterSpacing: 1,
+          fontFamily: font.display, fontWeight: 800,
+          // Een getal is kort en een woord niet: "Granaatappel" op 34 punten
+          // loopt de trede uit. Vandaar kleiner zodra er letters op staan.
+          fontSize: typeof waarde === "string" ? (waarde.length > 9 ? 20 : waarde.length > 6 ? 24 : 28) : 34,
+          letterSpacing: 1,
           color: "#FFF6DC",
           opacity: staat === "uit" ? 0 : staat === "dood" ? 0.4 : 1,
           transform: staat === "goed" ? "scale(1.06)" : "scale(1)",
@@ -460,15 +464,15 @@ function Trede({ i, waarde, staat, onKies, tip = false }: { i: number; waarde: n
  *  worden met top EN bodem vastgezet en niet met een hoogte, want dan rekent de
  *  browser de onderrand van de ene en de bovenrand van de volgende uit hetzelfde
  *  getal en valt er nooit een haarlijn tussen. */
-function Ladder({ keuzes, antwoord, oordeel, onKies, slapend, klaar, weg = [], tip = null }: {
-  keuzes: number[];
-  antwoord: number;
-  oordeel: Oordeel;
-  onKies: (w: number) => void;
+export function Ladder<W extends number | string>({ keuzes, antwoord, oordeel, onKies, slapend, klaar, weg = [], tip = null }: {
+  keuzes: W[];
+  antwoord: W;
+  oordeel: { gekozen: W | null; goed: boolean } | null;
+  onKies: (w: W) => void;
   /** Door 50/50 weggehaald: dof en niet meer aan te tikken. */
-  weg?: number[];
+  weg?: W[];
   /** Wat de vriend aanwijst: die trede krijgt een gouden randje. */
-  tip?: number | null;
+  tip?: W | null;
   /** Tijdens het aftellen: de ladder staat er wel, maar uit en zonder getallen.
    *  Je ziet waar het gaat gebeuren zonder alvast te kunnen rekenen, en het
    *  scherm springt niet in elkaar op het moment dat de eerste som komt. */
@@ -557,7 +561,7 @@ function Ladder({ keuzes, antwoord, oordeel, onKies, slapend, klaar, weg = [], t
 // De ladder is 84,90vw breed en zijn BOVENkant 970/1100 daarvan = 74,9vw. De
 // sectie staat daar net iets boven, maar blijft onder de volle ladderbreedte:
 // even breed als het speelveld trekt de aandacht naar de verkeerde helft.
-const SECTIE = "81.9vw";
+export const SECTIE = "81.9vw";
 const VIOLET = "#B36BFF";
 const VIOLET_LICHT = "#E3B8FF";
 const ROOD = "#FF5A4E";
@@ -642,7 +646,7 @@ const SECTIE_VUL = "linear-gradient(180deg, rgba(0,0,0,.19) 0%, rgba(0,0,0,.21) 
  *  hieronder staat het woord een halve spatie te ver links op de plaat. */
 const NAAM_SPATIE = 2.2;
 
-function TabKader({ titel, children }: { titel: string; children: React.ReactNode }) {
+export function TabKader({ titel, children }: { titel: string; children: React.ReactNode }) {
   const A = SECTIE_ART;
   const { LB, LH, bd, hd, laag: vel } = velOp(A);
   const masker = "url(/ui/reken/sectie-vlak.webp?v=2)";
@@ -697,7 +701,7 @@ function TabKader({ titel, children }: { titel: string; children: React.ReactNod
  *  stopwatchje ervoor en de seconden erachter in een ring. De ring loopt mee
  *  leeg, dus je ziet hetzelfde tweemaal maar op twee schalen: de balk voor de
  *  grote lijn, de ring voor de laatste tellen. */
-function Klokbalk({ rest, seconden }: { rest: number; seconden: number }) {
+export function Klokbalk({ rest, seconden }: { rest: number; seconden: number }) {
   const r = Math.max(0, Math.min(1, rest));
   // Geen omslagpunt maar een VERLOOP. Een balk die op 28 procent ineens rood
   // wordt leest als een storing; een die geleidelijk warmer wordt leest als tijd
@@ -771,7 +775,7 @@ function Klokbalk({ rest, seconden }: { rest: number; seconden: number }) {
  *  Het getal krijgt GEEN eigen hoogte meer maar wordt in het vak gecentreerd.
  *  Een vaste hoogte plus een lettergrootte die per fase verschilt (48 voor de
  *  som, 58 voor het aftellen) is twee maten die tegen elkaar in werken. */
-function SomVenster({ children }: { children: React.ReactNode }) {
+export function SomVenster({ children }: { children: React.ReactNode }) {
   const { LB, LH, laag: vel } = velOp(SOM_ART);
   return (
     <div style={{ position: "relative", width: "100%", aspectRatio: `${LB} / ${LH}`, flexShrink: 0 }}>
@@ -818,7 +822,10 @@ export function Rekenladder({ seed, onKlaar, onOpnieuw }: {
   const [gebruikt, setGebruikt] = useState<string[]>([]);
   // De voorraad. Tot de opslag er is krijgt iedereen de twee gratis hulpen en
   // staat de derde op nul, zodat je meteen ziet hoe een lege tegel oogt.
-  const [voorraad, setVoorraad] = useState<Record<string, number>>({ vriend: 1, ververs: 1, vijftig: 0 });
+  // Elke hulp EEN keer, voor iedereen gelijk. Eerder stond de 50/50 op nul om
+  // te laten zien hoe een lege tegel oogt, en dat las als een hulp die je moest
+  // kopen. Drie hulpen, elk een keer, en dan is het op.
+  const [voorraad, setVoorraad] = useState<Record<string, number>>({ vriend: 1, ververs: 1, vijftig: 1 });
   const [vers, setVers] = useState(0);      // ververs-teller, zit in de seed
   const [weg, setWeg] = useState<number[]>([]);   // door 50/50 weggehaald
   const [tip, setTip] = useState<number | null>(null); // wat de vriend aanwijst

@@ -96,9 +96,11 @@ def plausibel(game: str, score: int, level: int, time_ms: int) -> bool:
             return False
         if score and level < 1:
             return False
-        # Tijd: elke vraag kost minstens lezen plus tikken. Acht tienden per
-        # vraag is ruim onder wat een mens haalt en ver boven wat een scriptje
-        # nodig heeft.
+        # Tijd: elke vraag kost minstens lezen plus tikken, en de keuze
+        # incasseren-of-doorgaan erna kost ook een tik. Acht tienden per vraag is
+        # ruim onder wat een mens haalt en ver boven wat een scriptje nodig
+        # heeft. De klok krimpt met de rondes (12 -> 8 seconden), maar dat is een
+        # BOVENgrens; hier staat de ondergrens.
         return time_ms >= 800 * level
     if game == "lettersoep":
         # Score-contract met de client: een woord van n letters is 100 * 2^(n-3),

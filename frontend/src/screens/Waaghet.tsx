@@ -23,9 +23,12 @@
 // "waaghet": score is 0 (verloren) of 10 * 2^(level-1) (geïncasseerd). Wijkt de
 // een af van de ander, dan keurt de server een eerlijke poging af.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Timer } from "lucide-react";
-import { Screen } from "../components/Layout";
-import { KADER_LIJN_GOUD, KADER_LIJN_PAARS, NeonKader } from "../components/ProfileHero";
+import { LogOut } from "lucide-react";
+import { KADER_LIJN_GOUD, KADER_LIJN_PAARS, KADER_LIJN_ROOD, NeonKader } from "../components/ProfileHero";
+import { Scorebord } from "../components/Scorebord";
+import { Hulpbalk } from "../components/Hulpbalk";
+import { HULPEN, Klokbalk, Ladder, LADDER_BREED, SECTIE, SomVenster, TabKader } from "./_PreviewRekenladder";
+import { VAK } from "./Arena";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { colors, font, withAlpha } from "../theme/tokens";
@@ -88,9 +91,29 @@ export function potNa(n: number): number {
   return n <= 0 ? 0 : 10 * 2 ** (n - 1);
 }
 
-/** Seconden per vraag. Ruim genoeg om te lezen en te kiezen; de spanning zit in
- *  de keuze erna, niet in de klok. */
-const VENSTER = 12;
+/** De moeilijkheidsladder.
+ *
+ *  De pot verdubbelt vanzelf, dus de inzet loopt hard op; de VRAAG moet dan mee
+ *  omhoog, anders is ronde twaalf net zo makkelijk als ronde een en wordt de
+ *  score een kwestie van geduld. Twee knoppen, en ze lopen expres niet gelijk
+ *  op: eerst krimpt de klok, daarna draait de vraag om.
+ *
+ *    ronde 1..3    12s   welke IS een X          — kennismaken
+ *    ronde 4..6    10s   welke IS een X          — dezelfde vraag, minder tijd
+ *    ronde 7..9     9s   om en om omgekeerd      — nu moet je alle vier lezen
+ *    ronde 10+      8s   altijd omgekeerd        — lezen onder druk
+ *
+ *  De OMGEKEERDE vraag ("welke hoort hier niet") is het echte scharnier: bij de
+ *  gewone vraag scan je tot je de goede ziet en tik je, bij de omgekeerde moet
+ *  je alle vier de woorden wegen. Dat is een ander soort werk en niet alleen
+ *  sneller hetzelfde werk, en dat is precies wat een moeilijkheidsgraad hoort te
+ *  doen. */
+export function trapVoor(ronde: number): { venster: number; omgekeerd: boolean } {
+  if (ronde <= 3) return { venster: 12, omgekeerd: false };
+  if (ronde <= 6) return { venster: 10, omgekeerd: false };
+  if (ronde <= 9) return { venster: 9, omgekeerd: ronde % 2 === 1 };
+  return { venster: 8, omgekeerd: true };
+}
 
 // ---- de reeks uit de seed ---------------------------------------------------
 
@@ -114,34 +137,43 @@ function rollen(seed: string) {
   };
 }
 
-export type Vraag = { cat: string; opties: string[]; goed: number };
+export type Vraag = { cat: string; opties: string[]; goed: string; omgekeerd: boolean };
 
-/** Vraag `i` van deze poging: welke categorie gevraagd wordt, vier woorden en
- *  welk woord het goede is. Puur uit de seed, dus twee spelers met dezelfde
- *  seed krijgen dezelfde vragen in dezelfde volgorde. */
-export function vraagVoor(seed: string, i: number, en: boolean): Vraag {
+/** Vraag `i` van deze poging. Puur uit de seed, dus twee spelers met dezelfde
+ *  seed krijgen dezelfde reeks.
+ *
+ *  Gewoon: drie afleiders uit DRIE andere categorieën, want twee woorden uit
+ *  dezelfde hoek naast elkaar maken de goede te makkelijk te vinden.
+ *  Omgekeerd: drie woorden uit ÉÉN categorie plus één buitenstaander, en de
+ *  buitenstaander is dan het goede antwoord. */
+export function vraagVoor(seed: string, i: number, en: boolean, omgekeerd: boolean): Vraag {
   const r = rollen(`${seed}:${i}`);
   const kies = <T,>(rij: readonly T[]): T => rij[Math.floor(r() * rij.length)];
-  const cat = CATS[Math.floor(r() * CATS.length)];
   const woord = (p: Paar) => (en ? p[1] : p[0]);
-
-  const goedWoord = woord(kies(BANK[cat]));
+  const cat = CATS[Math.floor(r() * CATS.length)];
   const anders = CATS.filter((c) => c !== cat);
-  const fout: string[] = [];
-  // Drie afleiders uit DRIE verschillende categorieën: twee woorden uit dezelfde
-  // hoek naast elkaar maken de goede te makkelijk te vinden.
-  const gebruikt = new Set<string>([goedWoord]);
-  while (fout.length < 3) {
-    const c = anders[(fout.length + Math.floor(r() * anders.length)) % anders.length];
-    const w = woord(kies(BANK[c]));
-    if (gebruikt.has(w)) continue;
-    gebruikt.add(w);
-    fout.push(w);
+  const gebruikt = new Set<string>();
+  const uniek = (c: string): string => {
+    for (let poging = 0; poging < 40; poging++) {
+      const w = woord(kies(BANK[c]));
+      if (!gebruikt.has(w)) { gebruikt.add(w); return w; }
+    }
+    return woord(BANK[c][0]);
+  };
+
+  if (omgekeerd) {
+    // Drie uit dezelfde categorie, één van buiten. Die ene is het antwoord.
+    const drie = [uniek(cat), uniek(cat), uniek(cat)];
+    const buiten = uniek(kies(anders));
+    const opties = [...drie];
+    opties.splice(Math.floor(r() * 4), 0, buiten);
+    return { cat, opties, goed: buiten, omgekeerd: true };
   }
+  const goed = uniek(cat);
+  const fout = [uniek(anders[0]), uniek(anders[1]), uniek(anders[2 % anders.length])];
   const opties = [...fout];
-  const plek = Math.floor(r() * 4);
-  opties.splice(plek, 0, goedWoord);
-  return { cat, opties, goed: plek };
+  opties.splice(Math.floor(r() * 4), 0, goed);
+  return { cat, opties, goed, omgekeerd: false };
 }
 
 // ---- het spel ---------------------------------------------------------------
@@ -154,161 +186,202 @@ export function Waaghet({ seed, onKlaar }: {
 }) {
   const { t, tCat, lang } = useT();
   const en = lang === "en";
-  const [nr, setNr] = useState(0);            // welke vraag we tonen
-  const [goed, setGoed] = useState(0);        // hoeveel er goed waren
+  const [ronde, setRonde] = useState(1);
+  const [goed, setGoed] = useState(0);
   const [fase, setFase] = useState<"vraag" | "keuze" | "klaar">("vraag");
-  const [gekozen, setGekozen] = useState<number | null>(null);
-  const [rest, setRest] = useState(VENSTER);
+  const [oordeel, setOordeel] = useState<{ gekozen: string | null; goed: boolean } | null>(null);
+  const [rest, setRest] = useState(1);         // deel van het venster dat over is
+  const [seconden, setSeconden] = useState(12);
+  // De hulpen. Elk EEN keer per poging, net als bij de Rekenladder: dat is de
+  // rem op een pot die zichzelf verdubbelt.
+  const [voorraad] = useState<Record<string, number>>({ vriend: 1, ververs: 1, vijftig: 1 });
+  const [gebruikt, setGebruikt] = useState<string[]>([]);
+  const [vers, setVers] = useState(0);          // ververs-teller, zit in de seed
+  const [weg, setWeg] = useState<string[]>([]); // door 50/50 weggehaald
+  const [tip, setTip] = useState<string | null>(null);
   const [uitslag, setUitslag] = useState<{ score: number; verloren: boolean } | null>(null);
-  const begon = useRef(performance.now());
-  const deadline = useRef(performance.now() + VENSTER * 1000);
-  const afgerond = useRef(false);
 
-  const vraag = useMemo(() => vraagVoor(seed, nr, en), [seed, nr, en]);
+  const trap = useMemo(() => trapVoor(ronde), [ronde]);
+  const vraag = useMemo(
+    () => vraagVoor(`${seed}:${vers}`, ronde, en, trap.omgekeerd),
+    [seed, vers, ronde, en, trap.omgekeerd],
+  );
   const pot = potNa(goed);
   const volgendePot = potNa(goed + 1);
+
+  const begon = useRef(performance.now());
+  const deadline = useRef(performance.now());
+  const afgerond = useRef(false);
 
   const eindig = useCallback((score: number, verloren: boolean) => {
     if (afgerond.current) return;
     afgerond.current = true;
     setUitslag({ score, verloren });
     setFase("klaar");
-    if (verloren) sound.reject(); else sound.win();
+    if (verloren) sound.reject(); else sound.munten();
     onKlaar?.(score, goed, Math.round(performance.now() - begon.current));
   }, [goed, onKlaar]);
 
-  // De klok van DEZE vraag. Bij nul ben je alles kwijt: een vraag laten lopen is
+  // De klok van DEZE vraag. Op nul ben je alles kwijt: een vraag laten lopen is
   // hetzelfde als hem fout hebben, anders zou wachten gratis zijn.
   useEffect(() => {
     if (fase !== "vraag") return;
-    deadline.current = performance.now() + VENSTER * 1000;
-    setRest(VENSTER);
+    const duur = trap.venster * 1000;
+    deadline.current = performance.now() + duur;
+    setRest(1);
+    setSeconden(trap.venster);
     const id = window.setInterval(() => {
-      const over = Math.max(0, (deadline.current - performance.now()) / 1000);
-      setRest(over);
+      const over = deadline.current - performance.now();
+      setRest(Math.max(0, over / duur));
+      setSeconden(Math.max(0, Math.ceil(over / 1000)));
       if (over <= 0) {
         window.clearInterval(id);
-        setGekozen(-1);
-        window.setTimeout(() => eindig(0, true), 700);
+        setOordeel({ gekozen: null, goed: false });
+        window.setTimeout(() => eindig(0, true), 900);
       }
     }, 100);
     return () => window.clearInterval(id);
-  }, [fase, nr, eindig]);
+  }, [fase, ronde, vers, trap.venster, eindig]);
 
-  const antwoord = (i: number) => {
-    if (fase !== "vraag" || gekozen !== null) return;
-    setGekozen(i);
-    if (i === vraag.goed) {
+  const kies = (w: string) => {
+    if (fase !== "vraag" || oordeel || weg.includes(w)) return;
+    const juist = w === vraag.goed;
+    setOordeel({ gekozen: w, goed: juist });
+    if (juist) {
       sound.approve();
       window.setTimeout(() => {
         setGoed((g) => g + 1);
-        setGekozen(null);
+        setOordeel(null);
         setFase("keuze");
-      }, 450);
+      }, 550);
     } else {
-      window.setTimeout(() => eindig(0, true), 700);
+      window.setTimeout(() => eindig(0, true), 900);
     }
   };
 
   const doorgaan = () => {
     sound.uiTap();
-    setNr((n) => n + 1);
+    setWeg([]);
+    setTip(null);
+    setVers(0);
+    setRonde((n) => n + 1);
     setFase("vraag");
   };
 
-  const incasseren = () => {
-    sound.munten();
+  /** Een hulp inzetten. Alleen tijdens een vraag en alleen als hij nog ligt. */
+  const hulp = (sleutel: string) => {
+    if (fase !== "vraag" || oordeel || gebruikt.includes(sleutel) || !(voorraad[sleutel] ?? 0)) return;
+    sound.uiTap();
+    setGebruikt((g) => [...g, sleutel]);
+    if (sleutel === "vijftig") {
+      // Twee foute keuzes weg. De klok loopt door: een hulp koopt geen tijd.
+      const fout = vraag.opties.filter((w) => w !== vraag.goed);
+      setWeg(fout.slice(0, 2));
+    } else if (sleutel === "vriend") {
+      setTip(vraag.goed);
+    } else if (sleutel === "ververs") {
+      // Een andere vraag van dezelfde zwaarte, en de klok begint opnieuw. Dat
+      // laatste is het punt: verversen redt je als je vastzit, niet als je te
+      // laat bent.
+      setWeg([]);
+      setTip(null);
+      setVers((v) => v + 1);
+    }
+  };
+
+  const stop = () => {
+    if (fase === "keuze") { sound.munten(); eindig(pot, false); return; }
+    // Tijdens een vraag stoppen kost je de pot niet: je hebt hem al verdiend,
+    // je waagt hem alleen niet nog een keer.
     eindig(pot, false);
   };
 
-  const frac = Math.max(0, Math.min(1, rest / VENSTER));
-  const haast = rest <= 4;
+  const kopregel =
+    fase === "klaar"
+      ? (uitslag?.verloren ? t("waagKwijt") : t("waagBinnen", { n: uitslag?.score ?? 0 }))
+      : vraag.omgekeerd
+      ? t("waagVraagOm", { cat: tCat(vraag.cat).toUpperCase() })
+      : t("waagVraag", { cat: tCat(vraag.cat).toUpperCase() });
 
   return (
-    <Screen>
-      <div style={{ display: "flex", flexDirection: "column", gap: 16, paddingTop: 4 }}>
-        {/* De pot: het enige getal dat telt. */}
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-          <span style={{ fontFamily: font.wide, fontSize: 13, letterSpacing: 1.6, color: colors.faint, textTransform: "uppercase" }}>
-            {t("waagPot")}
-          </span>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
+      <Scorebord
+        breedte={VAK}
+        links={{ kop: t("waagRonde"), waarde: String(ronde) }}
+        rechts={{ kop: t("waagPot"), waarde: String(pot) }}
+      />
+
+      {/* Zelfde vraagpaneel als de Rekenladder: de gouden lijst met de naam op
+          een tab, het venster erin en de klok eronder. */}
+      <div style={{ width: SECTIE, marginTop: 12 }}>
+        <TabKader titel="WAAG HET">
           <span
             style={{
-              fontFamily: font.display, fontWeight: 800, fontSize: 40, lineHeight: 1,
-              backgroundImage: "linear-gradient(180deg, #FFF3C4 0%, #FFD873 38%, #F2AE33 68%, #C97C16 100%)",
-              WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent",
+              height: 20, display: "grid", placeItems: "center",
+              whiteSpace: "nowrap", lineHeight: 1,
+              fontFamily: font.display, fontWeight: 800, fontSize: 15.5, letterSpacing: 0.4,
+              color: "#FFFFFF", textShadow: "0 2px 6px rgba(0,0,0,.6)",
             }}
           >
-            {pot}
+            {kopregel}
           </span>
-          {fase === "vraag" && (
-            <span style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.sub }}>
-              {t("waagGoedIs", { n: volgendePot })}
+
+          <SomVenster>
+            <span
+              key={`${ronde}:${vers}:${fase}`}
+              className="klem-kom"
+              style={{
+                lineHeight: 1,
+                fontFamily: font.display, fontWeight: 800,
+                fontSize: 40, letterSpacing: 1,
+                color: "#FFFFFF",
+                textShadow: "0 0 18px rgba(255,210,120,.4), 0 2px 4px rgba(0,0,0,.8)",
+              }}
+            >
+              {fase === "klaar" ? (uitslag?.score ?? 0) : fase === "keuze" ? pot : tCat(vraag.cat).toUpperCase()}
+            </span>
+          </SomVenster>
+
+          {fase === "vraag" ? (
+            <Klokbalk rest={rest} seconden={seconden} />
+          ) : (
+            <span style={{ height: 38, display: "grid", placeItems: "center", fontFamily: font.ui, fontSize: 12, color: withAlpha("#FFE7A8", 0.75) }}>
+              {fase === "keuze" ? t("waagGoedIs", { n: volgendePot }) : ""}
             </span>
           )}
-        </div>
+        </TabKader>
+      </div>
 
-        {fase !== "klaar" && (
-          <>
-            {/* De klok. Loopt hij af, dan ben je alles kwijt. */}
-            <div style={{ height: 8, borderRadius: 999, background: withAlpha("#000000", 0.32), overflow: "hidden" }}>
-              <div style={{ height: "100%", width: `${frac * 100}%`, borderRadius: 999, background: haast ? colors.red : colors.gold, transition: "width .12s linear" }} />
-            </div>
+      {/* De vier antwoorden op dezelfde ladder als de Rekenladder. */}
+      <Ladder
+        keuzes={vraag.opties}
+        antwoord={vraag.goed}
+        oordeel={oordeel}
+        onKies={kies}
+        slapend={false}
+        klaar={fase === "klaar"}
+        weg={weg}
+        tip={tip}
+      />
 
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-              <Timer size={15} color={haast ? colors.redHi : colors.faint} />
-              <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15, color: haast ? colors.redHi : colors.sub }}>
-                {Math.ceil(rest)}s
-              </span>
-            </div>
+      {/* De hulpbalk onder de ladder, met dezelfde drie hulpen. */}
+      <div style={{ marginTop: 10 }}>
+        <Hulpbalk
+          hulpen={HULPEN.map((h) => ({ ...h, aantal: voorraad[h.sleutel] ?? 0 }))}
+          breedte={`${LADDER_BREED}vw`}
+          onKies={hulp}
+          op={gebruikt}
+        />
+      </div>
 
-            <p style={{ margin: 0, textAlign: "center", fontFamily: font.ui, fontSize: 15.5, color: colors.ink, lineHeight: 1.5 }}>
-              {t("waagVraag", { cat: tCat(vraag.cat).toUpperCase() })}
-            </p>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {vraag.opties.map((woord, i) => {
-                const fout = gekozen !== null && gekozen === i && i !== vraag.goed;
-                const juist = gekozen !== null && i === vraag.goed;
-                return (
-                  <NeonKader
-                    key={woord}
-                    radius={16}
-                    dik={0.5}
-                    vulling="zwart"
-                    lijn={juist ? KADER_LIJN_GOUD : KADER_LIJN_PAARS}
-                    gloed={fout ? `0 0 14px ${withAlpha(colors.red, 0.5)}` : undefined}
-                    binnen={{ padding: 0 }}
-                  >
-                    <button
-                      onClick={() => antwoord(i)}
-                      disabled={fase !== "vraag" || gekozen !== null}
-                      className={gekozen === null ? "pressable" : undefined}
-                      style={{
-                        width: "100%", minHeight: 52, border: "none", background: "transparent",
-                        cursor: gekozen === null ? "pointer" : "default",
-                        fontFamily: font.display, fontWeight: 700, fontSize: 16,
-                        color: fout ? colors.redHi : juist ? colors.gold : colors.ink,
-                        padding: "12px 16px",
-                      }}
-                    >
-                      {woord}
-                    </button>
-                  </NeonKader>
-                );
-              })}
-            </div>
-          </>
-        )}
-
+      {/* Incasseren of doorgaan. Tijdens een vraag staat hier de stopknop, want
+          ook dan mag je met je pot naar huis. */}
+      <div style={{ marginTop: 12, width: SECTIE, display: "flex", flexDirection: "column", gap: 12 }}>
         {fase === "keuze" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 14, paddingTop: 4 }}>
-            <p style={{ margin: 0, textAlign: "center", fontFamily: font.ui, fontSize: 13.5, color: colors.sub, lineHeight: 1.5 }}>
-              {t("waagKeuze", { pot, volgende: volgendePot })}
-            </p>
+          <>
             <NeonKader radius={999} dik={0.5} vulling="zwart" lijn={KADER_LIJN_GOUD} binnen={{ padding: 0 }}>
               <button
-                onClick={incasseren}
+                onClick={() => { sound.munten(); eindig(pot, false); }}
                 className="pressable"
                 style={{ width: "100%", minHeight: 50, border: "none", background: "transparent", cursor: "pointer", fontFamily: font.display, fontWeight: 800, fontSize: 16, color: colors.gold }}
               >
@@ -324,20 +397,27 @@ export function Waaghet({ seed, onKlaar }: {
                 {t("waagDoorgaan")}
               </button>
             </NeonKader>
+          </>
+        )}
+        {fase === "vraag" && pot > 0 && (
+          <div style={{ display: "flex", justifyContent: "center" }}>
+            <NeonKader radius={999} dik={0.5} vulling="zwart" lijn={KADER_LIJN_ROOD} gloed={`0 0 12px ${withAlpha(colors.red, 0.35)}`} binnen={{ padding: 0 }}>
+              <button
+                onClick={stop}
+                className="pressable"
+                style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "transparent", border: "none", cursor: "pointer", color: colors.redHi, fontFamily: font.ui, fontSize: 13, fontWeight: 600, padding: "7px 16px" }}
+              >
+                <LogOut size={14} /> {t("waagIncasseer", { n: pot })}
+              </button>
+            </NeonKader>
           </div>
         )}
-
-        {fase === "klaar" && uitslag && (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, paddingTop: 6 }}>
-            <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 20, color: uitslag.verloren ? colors.redHi : colors.gold }}>
-              {uitslag.verloren ? t("waagKwijt") : t("waagBinnen", { n: uitslag.score })}
-            </span>
-            <span style={{ fontFamily: font.ui, fontSize: 13, color: colors.sub }}>
-              {t("waagGoedeAntwoorden", { n: goed })}
-            </span>
-          </div>
+        {fase === "klaar" && (
+          <p style={{ margin: 0, textAlign: "center", fontFamily: font.ui, fontSize: 13, color: colors.sub }}>
+            {t("waagGoedeAntwoorden", { n: goed })}
+          </p>
         )}
       </div>
-    </Screen>
+    </div>
   );
 }
