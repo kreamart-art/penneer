@@ -380,7 +380,10 @@ export default function App() {
     const uitUrl = new URL(location.href).searchParams.get("melding");
     if (uitUrl) {
       const href = location.href;
-      history.replaceState(null, "", location.pathname);
+      // De testvlag ?spel= blijft staan: de arena leest hem pas als hij zelf
+      // gemonteerd wordt, en dat is na deze opruimbeurt.
+      const spel = new URL(location.href).searchParams.get("spel");
+      history.replaceState(null, "", location.pathname + (spel ? `?spel=${encodeURIComponent(spel)}` : ""));
       window.setTimeout(() => uitAdres(href), 600);
     }
     const opBericht = (e: MessageEvent) => {

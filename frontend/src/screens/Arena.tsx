@@ -16,7 +16,7 @@
 // server: per voltooide reeks van lengte k komt er k*100 bij plus een
 // snelheidsbonus van hoogstens 99. De server controleert dat bij het
 // inleveren, samen met de minimaal benodigde tijd.
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, LogOut } from "lucide-react";
 import { Avatar } from "../components/Avatar";
 import { KnopPlaat } from "../components/KnopPlaat";
@@ -475,6 +475,10 @@ function Flitsreeks({ seed, onKlaar }: { seed: string; onKlaar: (score: number, 
   );
 }
 
+/** De spellen die de arena kent. Alleen voor de testlink hieronder; welk spel
+ *  er op een dag draait bepaalt de server. */
+const SPELLEN = new Set(["lettersoep", "rekenladder", "kleurenklem", "woordketen", "flitsreeks", "waaghet"]);
+
 export function ArenaDeel({ game, onBack }: { game: GameApi; onBack: () => void }) {
   const { t } = useT();
   const account = game.state.account;
@@ -520,6 +524,15 @@ export function ArenaDeel({ game, onBack }: { game: GameApi; onBack: () => void 
 
   const klaar = (score: number, level: number, timeMs: number) => {
     if (!poging) return;
+    if (testSpel) {
+      // Testmodus: het spel van vandaag is een ander, dus de server zou deze
+      // score terecht afkeuren. Alleen laten zien wat je haalde; het bord blijft
+      // van de echte dag.
+      setUitslag({ score, level, rank: 0 });
+      setFase("klaar");
+      sound.win();
+      return;
+    }
     fetch("/api/arena/submit", {
       method: "POST",
       headers: { "Content-Type": "application/json", ...authHeaders() },
@@ -535,7 +548,16 @@ export function ArenaDeel({ game, onBack }: { game: GameApi; onBack: () => void 
       .catch(() => { setUitslag({ score, level, rank: 0 }); setFase("klaar"); });
   };
 
-  const spelNaam = info ? t(`arenaSpel_${info.game}`) : "";
+  // Een spel dat vandaag NIET aan de beurt is, met de hand opgevraagd via
+  // ?spel=<sleutel>. Voor het testen van een nieuw spel voordat zijn dag komt:
+  // je speelt hem echt, maar de score gaat nergens heen (zie `klaar`), dus het
+  // dagbord blijft schoon.
+  const testSpel = useMemo(() => {
+    const p = new URLSearchParams(window.location.search).get("spel") || "";
+    return SPELLEN.has(p) ? p : "";
+  }, []);
+  const spel = testSpel || info?.game || "";
+  const spelNaam = spel ? t(`arenaSpel_${spel}`) : "";
 
   const header = (
     // Met een z-index, want Woordketen hangt zijn ketting tot voorbij de bovenrand
@@ -583,26 +605,26 @@ export function ArenaDeel({ game, onBack }: { game: GameApi; onBack: () => void 
     return (
       <Screen top={header}>
         <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", paddingBottom: 40 }}>
-          {info?.game === "lettersoep" ? (
+          {spel === "lettersoep" ? (
             // De seed van de dag GEMENGD met het pogingsnummer: bij Lettersoep
             // hoort elke poging een vers bord te geven (twee keer spelen met
             // dezelfde letters is een geheugenspel, geen zoekspel). De server
             // kent beide helften, dus de reeks blijft controleerbaar.
             <Lettersoep seed={`${poging.seed}:${poging.attempt_id}`} onKlaar={klaar} />
-          ) : info?.game === "rekenladder" ? (
+          ) : spel === "rekenladder" ? (
             // Ook per poging vers. Twee keer dezelfde sommen in dezelfde
             // volgorde is geen rekentest meer maar een geheugentest.
             <Rekenladder seed={`${poging.seed}:${poging.attempt_id}`} onKlaar={klaar} />
-          ) : info?.game === "kleurenklem" ? (
+          ) : spel === "kleurenklem" ? (
             // Kleurenklem ook per poging vers, en om dezelfde reden: de reeks
             // opgaven is kort en je onthoudt hem. Twee keer dezelfde kleuren in
             // dezelfde volgorde is niet meer de Stroop-test maar een dictee.
             <Kleurenklem seed={`${poging.seed}:${poging.attempt_id}`} onKlaar={klaar} />
-          ) : info?.game === "waaghet" ? (
+          ) : spel === "waaghet" ? (
             // Ook per poging vers: dezelfde vragen twee keer is geen
             // durfspel meer maar een geheugentest.
             <Waaghet seed={`${poging.seed}:${poging.attempt_id}`} onKlaar={klaar} />
-          ) : info?.game === "woordketen" ? (
+          ) : spel === "woordketen" ? (
             // Ook per poging vers. Twee keer dezelfde ketting is geen
             // taalspel meer maar een geheugenspel.
             <Woordketen seed={`${poging.seed}:${poging.attempt_id}`} onKlaar={klaar} />
@@ -634,7 +656,7 @@ export function ArenaDeel({ game, onBack }: { game: GameApi; onBack: () => void 
               </NeonText>
             ) : (
               <span style={{ textAlign: "center", fontFamily: font.ui, fontSize: 12, color: colors.sub, lineHeight: 1.4 }}>
-                {info?.af ? t(`arenaUitleg_${info.game}`) : t("arenaBinnenkort")}
+                {info?.af ? t(`arenaUitleg_${spel}`) : t("arenaBinnenkort")}
               </span>
             )}
           </div>
