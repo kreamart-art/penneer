@@ -164,7 +164,7 @@ export function Hub({ game, section, onBack, onShowShop, onChallenge, onGaNaar }
                 { key: "club" as const, label: t("clubTab") },
               ]}
             />
-            {sociaal === "friends" ? <FriendsTab game={game} onChallenge={onChallenge} /> : <ClubTab game={game} />}
+            {sociaal === "friends" ? <FriendsTab game={game} onChallenge={onChallenge} onGaNaar={onGaNaar} /> : <ClubTab game={game} />}
             {sociaal === "friends" && account && <ReferralAd sectie />}
           </>
         )}
@@ -3307,7 +3307,12 @@ function AvatarEditor({ file, onDone }: { file: File; onDone: (blob: Blob | null
 
 // ---- Vrienden -----------------------------------------------------------------
 
-function FriendsTab({ game, onChallenge }: { game: GameApi; onChallenge: (userId: string) => void }) {
+function FriendsTab({ game, onChallenge, onGaNaar }: { game: GameApi; onChallenge: (userId: string) => void; onGaNaar: (naar: string) => void }) {
+  // Uitdagen kan op twee manieren, en dat hoor je te KIEZEN: een potje is met de
+  // letterrol in een room, een duel is om beurten om de zeldzaamste woorden.
+  // Eerder werd het altijd een potje, zonder dat iemand dat gevraagd had.
+  const [kiesVoor, setKiesVoor] = useState<{ id: string; name: string } | null>(null);
+  const [duelBezig, setDuelBezig] = useState(false);
   const { t } = useT();
   const account = game.state.account;
   const [query, setQuery] = useState("");
@@ -3375,9 +3380,52 @@ function FriendsTab({ game, onChallenge }: { game: GameApi; onChallenge: (userId
     </button>
   );
 
+  /** Een duel beginnen met deze vriend, zonder inzet. Wil je om coins spelen,
+   *  dan doe je dat op het duelscherm zelf: daar staat de inzet-kiezer. */
+  const startDuel = async (id: string) => {
+    if (duelBezig) return;
+    setDuelBezig(true);
+    try {
+      const tok = localStorage.getItem("penneer.accountToken");
+      await fetch("/api/duel/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(tok ? { Authorization: `Bearer ${tok}` } : {}) },
+        body: JSON.stringify({ opponent: id, stake: 0 }),
+      });
+      setKiesVoor(null);
+      onGaNaar("duel");
+    } finally {
+      setDuelBezig(false);
+    }
+  };
+
   return (
     <>
       <SchermTip id="vrienden" tekst={t("tipVrienden")} />
+      {kiesVoor && (
+        <div
+          onClick={() => setKiesVoor(null)}
+          style={{ position: "fixed", inset: 0, zIndex: 95, background: "rgba(6,3,18,.8)", backdropFilter: "blur(5px)", WebkitBackdropFilter: "blur(5px)", display: "grid", placeItems: "center", padding: 22 }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="pop-in"
+            style={{ width: "100%", maxWidth: 330, display: "flex", flexDirection: "column", gap: 12, padding: "24px 20px 20px", borderRadius: 22, background: "linear-gradient(180deg, #2a1c48, #160D30)", border: `1px solid ${withAlpha(colors.gold, 0.5)}`, boxShadow: "0 24px 80px rgba(0,0,0,.65)", textAlign: "center" }}
+          >
+            <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 18, color: colors.gold }}>
+              {t("uitdaagKop", { naam: kiesVoor.name })}
+            </span>
+            {/* Twee knoppen, geen bijschriften: wie hier staat weet wat een
+                potje is en wat een duel is. */}
+            <Button variant="gold" full onClick={() => { const id = kiesVoor.id; setKiesVoor(null); onChallenge(id); }}>
+              {t("uitdaagPotje")}
+            </Button>
+            <Button variant="primary" full disabled={duelBezig} onClick={() => void startDuel(kiesVoor.id)}>
+              {t("uitdaagDuel")}
+            </Button>
+          </div>
+        </div>
+      )}
       {pendingIn.length > 0 && (
         <Card style={{ display: "flex", flexDirection: "column", gap: 3, padding: "13px 7px 14px" }}>
           <Lijst n={pendingIn.length} toon={10}>
@@ -3405,7 +3453,7 @@ function FriendsTab({ game, onChallenge }: { game: GameApi; onChallenge: (userId
               <div key={f.id} style={{ display: "flex", flexDirection: "column" }}>
                 {row(f, (
                   <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                    <KnopPlaat breed={86} onClick={() => onChallenge(f.id)} label={t("challengeBtn")} />
+                    <KnopPlaat breed={86} onClick={() => setKiesVoor({ id: f.id, name: f.name })} label={t("challengeBtn")} />
                     <button
                       onClick={() => setMenuFor(menuFor === f.id ? null : f.id)}
                       aria-label={t("friendOptions")}

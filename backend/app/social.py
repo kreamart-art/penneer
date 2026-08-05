@@ -184,6 +184,7 @@ class AccountManager:
 
         await self._dagronde_herinneringen(nu, dag)
         await self._dagronde_uitslagen(nu, dag)
+        await self._missies_klaar(nu, dag)
 
     # ---- de dagronde ---------------------------------------------------------
 
@@ -207,6 +208,21 @@ class AccountManager:
                 await self.stuur(uid, "dagronde_streak", n=int(reeks))
             else:
                 await self.stuur(uid, "herinnering_dagronde", n=1)
+
+    async def _missies_klaar(self, nu: float, dag_geleden: float) -> None:
+        """In de ochtend: de missies van vandaag staan klaar.
+
+        Alleen voor wie de laatste week meedeed, en niet 's nachts: een melding
+        om zes uur 's ochtends is geen uitnodiging maar een wekker.
+        """
+        uur = dt.datetime.now(daily.TZ).hour
+        if uur < 9 or uur > 12:
+            return
+        vandaag = daily.today()
+        for r in self.db.wie_mist_dagronde(vandaag, nu - 7 * DAY):
+            uid = r["user_id"]
+            if self.db.melding_laatst(uid, "missies_nieuw") < dag_geleden:
+                await self.stuur(uid, "missies_nieuw")
 
     async def _dagronde_uitslagen(self, nu: float, dag_geleden: float) -> None:
         """De uitslag van de ronde die net sloot, één keer per speler.
@@ -332,6 +348,15 @@ class AccountManager:
             claimed_rewards = {e["id"] for e in earned}
         else:
             claimed_rewards = self.db.level_rewards_claimed(user_id)
+        te_claimen = [e for e in earned if e["id"] not in claimed_rewards]
+        # Er ligt iets klaar en niemand vertelt het je: de popup komt pas als je
+        # toevallig op de main page staat. Hoogstens één melding per dag, want
+        # dit is een TOESTAND en geen gebeurtenis; blijft het liggen, dan hoor je
+        # het morgen nog een keer en daarna niet meer vaker dan dat.
+        if te_claimen and self.db.melding_laatst(user_id, "beloning") < time.time() - 86400:
+            wat = te_claimen[0].get("naam") or te_claimen[0].get("name") or "Een beloning"
+            n = len(te_claimen)
+            await self.stuur(user_id, "beloning", wat=(wat if n == 1 else f"{n} beloningen"))
         return {
             "type": "account",
             "account": {

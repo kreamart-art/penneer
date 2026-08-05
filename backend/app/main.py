@@ -1137,6 +1137,10 @@ async def daily_submit(request: Request) -> JSONResponse:
         # day and scores against its letter; rare enough to keep the code flat.
         if elapsed <= daily.DURATION_S + daily.GRACE_S:
             time_ms = int(min(max(elapsed, 1.0), daily.DURATION_S) * 1000)
+            # Wie stond er BOVENAAN voordat deze score binnenkwam? Alleen die
+            # ene krijgt bericht als hij van plek 1 wordt gestoten; de rest van
+            # het bord verschuift elke inzending en daar is niemand mee gebaat.
+            top_voor = (db.daily_board(day, 1) or [None])[0]
             ranked = db.daily_submit(uid, day, score, time_ms, json.dumps(answers)[:4000], now, lenient=lenient)
             # Dagronde-coins: meedoen levert altijd iets op, en je score doet
             # ertoe. 20 basis + 1 per punt, dus 20..~80. Achter de ranked-poort:
@@ -1145,6 +1149,14 @@ async def daily_submit(request: Request) -> JSONResponse:
             # kostte 500, dus winst maken kan er nooit op.
             if ranked:
                 db.grant_coins(uid, 20 + max(0, int(score)))
+                top_na = (db.daily_board(day, 1) or [None])[0]
+                if (
+                    top_voor and top_na
+                    and top_na.get("id") == uid
+                    and top_voor.get("id") not in (uid, None)
+                ):
+                    naam = (db.get_user(uid) or {}).get("name") or "Iemand"
+                    await accounts.stuur(top_voor["id"], "dagronde_ingehaald", naam=naam)
             # ONTDEKKEN VOEDEN VANUIT DE DAGRONDE. Wat je hier zelf opschreef en
             # goed had, is een woord dat je KENT, dus dat is een kaart en geen
             # spoor. De dagronde onthult niets na afloop, dus er komen ook geen

@@ -216,8 +216,9 @@ SOORTEN: dict[str, dict] = {
         "body": "{wat} staat te wachten op je profiel.",
         "tag": "reward",
         "icoon": "krans",
-        "naar": "profiel",
-        "push": False,
+        # Naar de main page: daar komt de claim-popup, niet op je profiel.
+        "naar": "home",
+        "push": True,
     },
 
     # ---- herinneringen -----------------------------------------------------

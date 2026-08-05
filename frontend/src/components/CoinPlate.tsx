@@ -18,14 +18,23 @@ import { font } from "../theme/tokens";
  *  (snel eerst, traag op het eind), want dat is hoe een teller "tot rust komt".
  *  Omlaag telt hij ook, na een uitgave; een teller die alleen omhoog kan lijkt
  *  op een teller die stuk is. */
-export function useTelOp(doel: number): number {
-  const [toon, setToon] = useState(doel);
-  const van = useRef(doel);
-  const eerste = useRef(true);
+/** De laatst GETOONDE stand per munt, over schermwissels heen.
+ *
+ *  Zonder dit telt de teller alleen op als hij al in beeld staat: claim je een
+ *  beloning in een popup op een ander scherm, dan is het saldo bij het monteren
+ *  van de main page al de nieuwe waarde en zie je niets bewegen. Nu begint hij
+ *  waar je hem achterliet en telt hij alsnog op. Een module-variabele en geen
+ *  opslag: na een herlaadbeurt heb je niets geclaimd en hoort er ook niets te
+ *  lopen. */
+const ONTHOUDEN: Record<string, number> = {};
+
+export function useTelOp(doel: number, sleutel?: string): number {
+  const begin = sleutel !== undefined && ONTHOUDEN[sleutel] !== undefined ? ONTHOUDEN[sleutel] : doel;
+  const [toon, setToon] = useState(begin);
+  const van = useRef(begin);
   useEffect(() => {
-    if (eerste.current) { eerste.current = false; van.current = doel; return; }
     const start = van.current;
-    if (start === doel) return;
+    if (start === doel) { if (sleutel !== undefined) ONTHOUDEN[sleutel] = doel; return; }
     const t0 = performance.now();
     const duur = 900;
     let raf = 0;
@@ -34,11 +43,16 @@ export function useTelOp(doel: number): number {
       const e = 1 - (1 - t) ** 3;
       const nu = Math.round(start + (doel - start) * e);
       setToon(nu);
+      if (sleutel !== undefined) ONTHOUDEN[sleutel] = nu;
       if (t < 1) raf = requestAnimationFrame(stap);
-      else van.current = doel;
+      else { van.current = doel; if (sleutel !== undefined) ONTHOUDEN[sleutel] = doel; }
     };
     raf = requestAnimationFrame(stap);
-    return () => { cancelAnimationFrame(raf); van.current = doel; };
+    return () => {
+      cancelAnimationFrame(raf);
+      van.current = doel;
+      if (sleutel !== undefined) ONTHOUDEN[sleutel] = doel;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [doel]);
   return toon;
@@ -60,7 +74,7 @@ export function CashPlate({ cash, height = 33 }: { cash: number; height?: number
 }
 
 export function CoinPlate({ coins, height = 33, munt = "coin" }: { coins: number; height?: number; munt?: "coin" | "cash" }) {
-  const label = String(useTelOp(coins));
+  const label = String(useTelOp(coins, munt));
   const size = SIZES.find((s) => label.length <= s.max) ?? SIZES[SIZES.length - 1];
   const width = Math.round(height * size.ratio);
   return (

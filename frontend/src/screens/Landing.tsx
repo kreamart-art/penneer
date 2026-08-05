@@ -112,14 +112,14 @@ export function Landing({
   const account = game.state.account;
   // De saldi tellen naar hun nieuwe stand (zie useTelOp). Voor de skin-platen
   // zit de teller in CoinPlate zelf; deze twee zijn voor de kale pillen.
-  const coinsTel = useTelOp(account?.coins ?? 0);
+  const coinsTel = useTelOp(account?.coins ?? 0, "coin");
   // Exact dezelfde telling als in de Hub, anders staat er op de main page een
   // ander cijfer dan in de inbox zelf.
   const inboxCount =
     (game.state.inbox.length || account?.inbox_count || 0) +
     (account?.dm_unread || 0) +
     game.state.meldingenOngelezen;
-  const cashTel = useTelOp(account?.cash ?? 0);
+  const cashTel = useTelOp(account?.cash ?? 0, "cash");
 
   // First-visit guests (no account, no stored token) get a prominent prompt to
   // make a profile. Returning users with a token skip it (avoids a flash).
