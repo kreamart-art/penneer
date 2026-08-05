@@ -23,7 +23,7 @@ import { sound } from "../sound/sound";
 // ---- types (spiegelen de payload van /api/discover) -------------------------
 
 interface FactRow { key: string; label: string; quiz: boolean }
-interface CatRow { category: string; label: string; total: number; discovered: number; percent: number }
+interface CatRow { category: string; label: string; total: number; discovered: number; percent: number; sporen?: number }
 interface Overview {
   categories: CatRow[];
   fact_schema: Record<string, FactRow[]>;
@@ -35,7 +35,7 @@ interface Overview {
   recent: Kaart[];
   guest: boolean;
 }
-interface LetterRow { letter: string; total: number; discovered: number }
+interface LetterRow { letter: string; total: number; discovered: number; sporen?: number }
 interface CategoryView {
   category: string; label: string; total: number; discovered: number; percent: number;
   letters: LetterRow[]; guest: boolean;
@@ -44,6 +44,8 @@ export interface Kaart {
   id: number;
   card_number: number;
   discovered: boolean;
+  /** Gezien maar nog niet verdiend: het woord ken je, de feiten nog niet. */
+  spoor?: boolean;
   word?: string;
   slug?: string;
   facts?: Record<string, string>;
@@ -698,6 +700,7 @@ function Categorie({ data, onLetter }: { data: CategoryView; onLetter: (l: strin
             letter={l.letter}
             total={l.total}
             discovered={l.discovered}
+            sporen={l.sporen ?? 0}
             index={i}
             onClick={() => { sound.uiTap(); onLetter(l.letter); }}
           />
@@ -870,7 +873,7 @@ function KaartTegel({ kaart, nu, onOpen, groot, chip }: {
   chip?: string;
 }) {
   const { t } = useT();
-  const nieuw = kaart.discovered && kaart.discovered_at != null && nu - kaart.discovered_at < NIEUW_S;
+  const nieuw = kaart.discovered && !kaart.spoor && kaart.discovered_at != null && nu - kaart.discovered_at < NIEUW_S;
   if (!kaart.discovered) {
     // Eigen art voor wat je nog niet hebt: de donkere stad met het paarse
     // zwerk. Niet de achterkant, want die betekent "kaart ligt met de rug
@@ -951,9 +954,23 @@ function KaartTegel({ kaart, nu, onOpen, groot, chip }: {
         alt={kaart.word || ""}
         loading="lazy"
         style={{ position: "relative", width: "100%", aspectRatio: KAART_RATIO, display: "block",
-          filter: "drop-shadow(0 0 1px rgba(212,100,39,.45)) drop-shadow(0 0 3px rgba(212,100,39,.2))" }}
+          filter: kaart.spoor
+            ? "grayscale(.85) brightness(.72)"
+            : "drop-shadow(0 0 1px rgba(212,100,39,.45)) drop-shadow(0 0 3px rgba(212,100,39,.2))" }}
       />
-      {kaart.iso && (
+      {/* EEN SPOOR IS GEDEMPT EN GRIJS. Je hebt hem gezien, dus het woord staat
+          er, maar hij hoort niet mee te glanzen met de kaarten die je verdiend
+          hebt. Het verschil moet je van een meter afstand zien. */}
+      {kaart.spoor && (
+        <span
+          aria-hidden
+          style={{
+            position: "absolute", inset: 0, borderRadius: 4,
+            background: "rgba(8,4,20,.62)", pointerEvents: "none",
+          }}
+        />
+      )}
+      {kaart.iso && !kaart.spoor && (
         <img
           src={`/vlaggen/${kaart.iso}.webp`}
           alt=""
@@ -965,6 +982,19 @@ function KaartTegel({ kaart, nu, onOpen, groot, chip }: {
             boxShadow: "0 2px 6px rgba(0,0,0,.5)",
           }}
         />
+      )}
+      {kaart.spoor && (
+        <span
+          style={{
+            position: "absolute", left: "4%", top: "5%",
+            padding: "2px 7px", borderRadius: 4,
+            background: "linear-gradient(180deg, #8B93B5, #59607F)",
+            fontFamily: font.ui, fontSize: groot ? 11 : 7.5, fontWeight: 800, letterSpacing: ".06em",
+            color: "#0B0A18", boxShadow: "0 2px 6px rgba(0,0,0,.45)",
+          }}
+        >
+          {t("ontdekkenSpoor")}
+        </span>
       )}
       {nieuw && (
         <span
@@ -1003,10 +1033,10 @@ function KaartTegel({ kaart, nu, onOpen, groot, chip }: {
           position: "absolute", left: "9%", right: "9%", bottom: "8%",
           padding: "4px 6px", borderRadius: 6, textAlign: "center",
           background: "rgba(10,4,26,.72)",
-          border: `1px solid ${withAlpha(colors.gold, 0.45)}`,
+          border: `1px solid ${withAlpha(kaart.spoor ? "#8B93B5" : colors.gold, 0.45)}`,
           fontFamily: font.display, fontWeight: 700,
           fontSize: groot ? 16 : "clamp(8px, 2.4vw, 12px)", lineHeight: 1.15,
-          color: colors.ink, pointerEvents: "none",
+          color: kaart.spoor ? colors.sub : colors.ink, pointerEvents: "none",
         }}
       >
         {kaart.word}
@@ -1242,7 +1272,14 @@ function KaartGroot({ kaarten, index, rijen, nu, onGa, onSluit }: {
                   <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: "clamp(13px, 4.6vw, 19px)", color: colors.gold, textAlign: "center", marginBottom: 8, textShadow: "0 2px 8px rgba(0,0,0,.8)" }}>
                     {kaart.word}
                   </span>
-                  {feiten.length === 0 ? (
+                  {/* Een SPOOR heeft geen feiten om te tonen: die zijn precies
+                      wat er nog te verdienen valt. In plaats van een lege
+                      achterkant staat hier hoe je hem binnenhaalt. */}
+                  {kaart.spoor ? (
+                    <span style={{ fontFamily: font.ui, fontSize: 11.5, color: colors.sub, textAlign: "center", lineHeight: 1.4 }}>
+                      {t("ontdekkenSpoorUitleg")}
+                    </span>
+                  ) : feiten.length === 0 ? (
                     <span style={{ fontFamily: font.ui, fontSize: 11.5, color: colors.sub, textAlign: "center", lineHeight: 1.35 }}>
                       {t("ontdekkenGeenFeiten")}
                     </span>

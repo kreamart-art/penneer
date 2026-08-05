@@ -504,6 +504,17 @@ CREATE TABLE IF NOT EXISTS user_cards (
         CHECK (box BETWEEN 1 AND 3),
     next_review_at REAL,                     -- NULL = klaar, niet meer herhalen
     favorite INTEGER NOT NULL DEFAULT 0,
+    -- SPOOR of KAART. Een woord dat de speler ZELF noemde is een kaart; een
+    -- woord dat hij na afloop te zien kreeg is een spoor: hij weet dat het
+    -- bestaat, maar hij heeft het niet verdiend. Een spoor telt niet mee voor
+    -- de voortgang en toont geen feiten. Hij wordt een kaart zodra de speler
+    -- laat zien dat hij het nu wel weet: door het woord zelf te noemen, of door
+    -- zijn quizvraag goed te beantwoorden.
+    --
+    -- Zonder dit onderscheid was de onthulling de beloning: één woord intypen
+    -- gaf de hele letter cadeau (de onthulling loopt tot twaalf woorden en een
+    -- letter heeft er gemiddeld elf).
+    spoor INTEGER NOT NULL DEFAULT 0,
     UNIQUE (user_id, card_id)
 );
 CREATE INDEX IF NOT EXISTS idx_user_cards_user ON user_cards(user_id, card_id);
@@ -833,11 +844,27 @@ class Database:
                     DROP TABLE user_cards;
                     ALTER TABLE user_cards_nieuw RENAME TO user_cards;
                     CREATE INDEX IF NOT EXISTS idx_user_cards_user ON user_cards(user_id, card_id);
-                CREATE INDEX IF NOT EXISTS idx_user_cards_user ON user_cards(user_id, card_id);
-                CREATE INDEX IF NOT EXISTS idx_user_cards_review ON user_cards(user_id, next_review_at);
-                PRAGMA foreign_keys=on;
+                    CREATE INDEX IF NOT EXISTS idx_user_cards_review ON user_cards(user_id, next_review_at);
+                    PRAGMA foreign_keys=on;
                 """
             )
+            self._conn.commit()
+        # SPOOR of KAART. Alles wat er AL stond komt binnen als spoor: die
+        # kaarten zijn gehaald met de oude regel, waarbij de onthulling na een
+        # ronde alles cadeau gaf. Ze mogen blijven staan, maar ze moeten net als
+        # nieuwe sporen nog verdiend worden.
+        # PACK-SCHERVEN. Je wint ze in een potje met echte tegenstanders; drie
+        # scherven zijn een pack. Zo krijgt niet iedereen zomaar een pack, en
+        # blijft plek 2 en 3 toch iets waard.
+        if "pack_scherven" not in cols:
+            self._conn.execute("ALTER TABLE users ADD COLUMN pack_scherven INTEGER NOT NULL DEFAULT 0")
+            self._conn.execute("ALTER TABLE users ADD COLUMN scherf_dag TEXT")
+            self._conn.execute("ALTER TABLE users ADD COLUMN scherf_dag_n INTEGER NOT NULL DEFAULT 0")
+            self._conn.commit()
+        ucols = {r["name"] for r in self._conn.execute("PRAGMA table_info(user_cards)").fetchall()}
+        if ucols and "spoor" not in ucols:
+            self._conn.execute("ALTER TABLE user_cards ADD COLUMN spoor INTEGER NOT NULL DEFAULT 0")
+            self._conn.execute("UPDATE user_cards SET spoor = 1")
             self._conn.commit()
         # Foto's en stickers in DM's.
         if dcols2 and "image_id" not in dcols2:
@@ -4005,11 +4032,22 @@ class Database:
         return {r["category"]: int(r["n"]) for r in rows}
 
     def discover_owned_counts(self, user_id: str) -> dict[str, int]:
-        """Aantal ontdekte kaarten per categorie voor deze speler."""
+        """Aantal VERDIENDE kaarten per categorie. Sporen tellen niet mee: die
+        heb je gezien, niet gehaald."""
         rows = self._q(
             "SELECT c.category AS category, COUNT(*) AS n"
             " FROM user_cards uc JOIN cards c ON c.id = uc.card_id"
-            " WHERE uc.user_id = ? GROUP BY c.category",
+            " WHERE uc.user_id = ? AND uc.spoor = 0 GROUP BY c.category",
+            (user_id,),
+        )
+        return {r["category"]: int(r["n"]) for r in rows}
+
+    def discover_spoor_counts(self, user_id: str) -> dict[str, int]:
+        """Aantal SPOREN per categorie: gezien maar nog niet verdiend."""
+        rows = self._q(
+            "SELECT c.category AS category, COUNT(*) AS n"
+            " FROM user_cards uc JOIN cards c ON c.id = uc.card_id"
+            " WHERE uc.user_id = ? AND uc.spoor = 1 GROUP BY c.category",
             (user_id,),
         )
         return {r["category"]: int(r["n"]) for r in rows}
@@ -4025,13 +4063,14 @@ class Database:
         zichtbaar.
         """
         rows = self._q(
-            "SELECT COUNT(*) AS total, COUNT(uc.id) AS discovered"
+            "SELECT COUNT(*) AS total,"
+            "       SUM(CASE WHEN uc.id IS NOT NULL AND uc.spoor = 0 THEN 1 ELSE 0 END) AS discovered"
             " FROM cards c LEFT JOIN user_cards uc ON uc.card_id = c.id AND uc.user_id = ?"
             " WHERE c.letter = ?",
             (user_id or "", (letter or "").upper()[:1]),
         )
         r = rows[0] if rows else {"total": 0, "discovered": 0}
-        return {"total": int(r["total"]), "discovered": int(r["discovered"])}
+        return {"total": int(r["total"]), "discovered": int(r["discovered"] or 0)}
 
     # Wat een oefenronde hoogstens per dag oplevert. Ruim genoeg voor een paar
     # rondes achter elkaar, te weinig om er een baantje van te maken: Oefenen is
@@ -4085,7 +4124,8 @@ class Database:
         """
         rows = self._q(
             "SELECT c.letter AS letter, COUNT(*) AS total,"
-            "       COUNT(uc.id) AS discovered"
+            "       SUM(CASE WHEN uc.id IS NOT NULL AND uc.spoor = 0 THEN 1 ELSE 0 END) AS discovered,"
+            "       SUM(CASE WHEN uc.spoor = 1 THEN 1 ELSE 0 END) AS sporen"
             " FROM cards c"
             " LEFT JOIN user_cards uc ON uc.card_id = c.id AND uc.user_id = ?"
             " WHERE c.category = ?"
@@ -4093,7 +4133,8 @@ class Database:
             (user_id or "", category),
         )
         return [
-            {"letter": r["letter"], "total": int(r["total"]), "discovered": int(r["discovered"])}
+            {"letter": r["letter"], "total": int(r["total"]),
+             "discovered": int(r["discovered"] or 0), "sporen": int(r["sporen"] or 0)}
             for r in rows
         ]
 
@@ -4102,13 +4143,19 @@ class Database:
     ) -> list[dict]:
         """De kaarten van één letter, afgeschermd.
 
-        Een kaart die de speler niet heeft geeft alleen id, card_number en
-        discovered=False terug. Geen word, geen facts, geen slug en geen
-        image_path: uit elk daarvan is het antwoord af te leiden.
+        DRIE toestanden, en elk geeft precies zo veel weg als hij hoort:
+
+          niet gezien   alleen id en card_number. Geen word, geen facts, geen
+                        slug en geen image_path: uit elk daarvan is het antwoord
+                        af te leiden.
+          spoor         het WOORD en de foto, want die heb je al gezien in de
+                        onthulling. Maar geen feiten: dat is wat de kaart je
+                        oplevert, en die moet je nog verdienen.
+          kaart         alles.
         """
         rows = self._q(
             "SELECT c.id, c.word, c.slug, c.facts, c.image_path, c.card_number, c.iso,"
-            "       uc.id AS owned, uc.favorite, uc.discovered_at"
+            "       uc.id AS owned, uc.favorite, uc.discovered_at, uc.spoor"
             " FROM cards c"
             " LEFT JOIN user_cards uc ON uc.card_id = c.id AND uc.user_id = ?"
             " WHERE c.category = ? AND c.letter = ?"
@@ -4124,14 +4171,16 @@ class Database:
                     "discovered": False,
                 })
                 continue
+            spoor = bool(r["spoor"])
             out.append({
                 "id": int(r["id"]),
                 "card_number": int(r["card_number"]),
                 "discovered": True,
+                "spoor": spoor,
                 "word": r["word"],
                 "slug": r["slug"],
                 "iso": r["iso"],
-                "facts": json.loads(r["facts"] or "{}"),
+                "facts": {} if spoor else json.loads(r["facts"] or "{}"),
                 "image_path": r["image_path"],
                 "favorite": bool(r["favorite"]),
                 "discovered_at": r["discovered_at"],
@@ -4147,7 +4196,7 @@ class Database:
         rows = self._q(
             "SELECT c.id, c.category, c.letter, c.word, c.slug, c.facts, c.image_path, c.iso,"
             "       c.card_number, uc.favorite, uc.discovered_at, uc.box, uc.correct_count,"
-            "       uc.missed_count"
+            "       uc.missed_count, uc.spoor"
             " FROM cards c JOIN user_cards uc ON uc.card_id = c.id AND uc.user_id = ?"
             " WHERE c.id = ?",
             (user_id or "", card_id),
@@ -4161,10 +4210,12 @@ class Database:
             "letter": r["letter"],
             "card_number": int(r["card_number"]),
             "discovered": True,
+            "spoor": bool(r["spoor"]),
             "word": r["word"],
             "slug": r["slug"],
             "iso": r["iso"],
-            "facts": json.loads(r["facts"] or "{}"),
+            # Een spoor houdt zijn feiten dicht: dat is wat er te verdienen valt.
+            "facts": {} if r["spoor"] else json.loads(r["facts"] or "{}"),
             "image_path": r["image_path"],
             "favorite": bool(r["favorite"]),
             "discovered_at": r["discovered_at"],
@@ -4223,6 +4274,45 @@ class Database:
     PACK_KOSTEN = 150
     PACK_KAARTEN = 5
 
+    # Wat een potje oplevert aan scherven, voor plek 1, 2 en 3. De rest krijgt
+    # niets: meedoen levert al plek-munten op.
+    PACK_SCHERF_PLEK = (2, 1, 1)
+    # Hoeveel scherven een pack kost, en hoeveel je er per dag uit potjes kunt
+    # halen. Drie per dag is precies een pack: doorspelen loont, maar een
+    # middag lang potjes draaien levert geen stapel packs op.
+    PACK_SCHERF_PRIJS = 3
+    PACK_SCHERF_DAG = 3
+    # Hoeveel echte spelers een potje minstens moet hebben voordat er scherven
+    # in zitten. Met z'n tweeen kun je om de beurt winnen; vanaf drie is dat
+    # geen afspraakje meer.
+    PACK_SCHERF_MIN_SPELERS = 3
+
+    def scherven_van(self, user_id: str) -> int:
+        rows = self._q("SELECT pack_scherven FROM users WHERE id=?", (user_id,))
+        return int(rows[0]["pack_scherven"]) if rows else 0
+
+    def scherven_toekennen(self, user_id: str, aantal: int, day: str) -> int:
+        """Geef scherven, tot de dagpot op is. Geeft terug wat er echt bij kwam."""
+        aantal = max(0, int(aantal))
+        if not user_id or not aantal:
+            return 0
+        with self._lock:
+            rows = self._q(
+                "SELECT scherf_dag, scherf_dag_n FROM users WHERE id=?", (user_id,)
+            )
+            if not rows:
+                return 0
+            al = int(rows[0]["scherf_dag_n"] or 0) if rows[0]["scherf_dag"] == day else 0
+            geef = max(0, min(aantal, self.PACK_SCHERF_DAG - al))
+            if not geef:
+                return 0
+            self._exec(
+                "UPDATE users SET pack_scherven = pack_scherven + ?,"
+                " scherf_dag = ?, scherf_dag_n = ? WHERE id=?",
+                (geef, day, al + geef, user_id),
+            )
+        return geef
+
     def pack_trek(self, user_id: str, aantal: int, garandeer_nieuw: bool = True) -> list[dict]:
         """Trek `aantal` kaarten uit de catalogus, met minstens een nieuwe erbij.
 
@@ -4238,9 +4328,13 @@ class Database:
 
         with self._lock:
             allemaal = [int(r["id"]) for r in self._q("SELECT id FROM cards")]
+            # Een SPOOR telt hier niet als bezit: die kaart heb je gezien maar
+            # niet verdiend, dus uit een pack is hij nog steeds winst.
             bezit = {
                 int(r["card_id"])
-                for r in self._q("SELECT card_id FROM user_cards WHERE user_id=?", (user_id,))
+                for r in self._q(
+                    "SELECT card_id FROM user_cards WHERE user_id=? AND spoor=0", (user_id,)
+                )
             }
         if not allemaal:
             return []
@@ -4269,22 +4363,33 @@ class Database:
         n = int(rows[0]["n"]) if rows else 0
         return max(5, min(30, round(n / 8)))
 
-    def pack_open(self, user_id: str) -> dict:
+    def pack_open(self, user_id: str, met: str = "munten") -> dict:
         """Reken het pack af en ken toe wat eruit komt.
 
-        Geeft {"error": ...} terug als het niet kan, zodat de route niet zelf
-        hoeft te weten wat een pack kost.
+        `met` is "munten" of "scherven". Geeft {"error": ...} terug als het niet
+        kan, zodat de route niet zelf hoeft te weten wat een pack kost.
         """
         import time as _t
 
         kosten = self.PACK_KOSTEN
         with self._lock:
-            rows = self._q("SELECT coins FROM users WHERE id=?", (user_id,))
+            rows = self._q("SELECT coins, pack_scherven FROM users WHERE id=?", (user_id,))
             if not rows:
                 return {"error": "geen_account"}
-            if int(rows[0]["coins"]) < kosten:
-                return {"error": "te_weinig", "kosten": kosten, "saldo": int(rows[0]["coins"])}
-            self._exec("UPDATE users SET coins=coins-? WHERE id=?", (kosten, user_id))
+            if met == "scherven":
+                have = int(rows[0]["pack_scherven"] or 0)
+                if have < self.PACK_SCHERF_PRIJS:
+                    return {"error": "te_weinig_scherven", "scherven": have,
+                            "nodig": self.PACK_SCHERF_PRIJS}
+                self._exec(
+                    "UPDATE users SET pack_scherven = pack_scherven - ? WHERE id=?",
+                    (self.PACK_SCHERF_PRIJS, user_id),
+                )
+                kosten = 0
+            else:
+                if int(rows[0]["coins"]) < kosten:
+                    return {"error": "te_weinig", "kosten": kosten, "saldo": int(rows[0]["coins"])}
+                self._exec("UPDATE users SET coins=coins-? WHERE id=?", (kosten, user_id))
 
         trek = self.pack_trek(user_id, self.PACK_KAARTEN)
         ts = _t.time()
@@ -4305,13 +4410,22 @@ class Database:
                     # keer gebeurd.
                     cur = self._exec(
                         "INSERT OR IGNORE INTO user_cards (user_id, card_id, discovered_at, source,"
-                        " correct_count, missed_count, box, next_review_at)"
-                        " VALUES (?,?,?,?,0,0,1,?)",
+                        " correct_count, missed_count, box, next_review_at, spoor)"
+                        " VALUES (?,?,?,?,0,0,1,?,0)",
                         (user_id, t["id"], ts, "pack", ts + 86400),
                     )
-                    # Alleen een echte botsing op (user_id, card_id) maakt er een
-                    # dubbele van: twee keer dezelfde nieuwe kaart in een pack.
-                    t["nieuw"] = cur.rowcount > 0
+                    if cur.rowcount > 0:
+                        t["nieuw"] = True
+                    else:
+                        # Stond er al. Was het een SPOOR, dan koop je hem hiermee
+                        # vrij: je hebt ervoor betaald, dus hij wordt een kaart
+                        # en telt als winst. Was het al een kaart, dan is het een
+                        # dubbele.
+                        promo = self._exec(
+                            "UPDATE user_cards SET spoor=0 WHERE user_id=? AND card_id=? AND spoor=1",
+                            (user_id, t["id"]),
+                        )
+                        t["nieuw"] = promo.rowcount > 0
                 if t["nieuw"]:
                     nieuw += 1
             waarde = 0 if t["nieuw"] else self.pack_dubbel_waarde(kaart["category"])
@@ -4327,10 +4441,13 @@ class Database:
                 self._exec("UPDATE users SET coins=coins+? WHERE id=?", (munten, user_id))
             if xp:
                 self._exec("UPDATE users SET bonus_xp=bonus_xp+? WHERE id=?", (xp, user_id))
-            saldo = int(self._q("SELECT coins FROM users WHERE id=?", (user_id,))[0]["coins"])
+            r = self._q("SELECT coins, pack_scherven FROM users WHERE id=?", (user_id,))[0]
+            saldo = int(r["coins"])
+            scherven = int(r["pack_scherven"] or 0)
         return {
             "kaarten": uit, "nieuw": nieuw, "dubbel": dubbel,
             "munten": munten, "xp": xp, "kosten": kosten, "saldo": saldo,
+            "scherven": scherven, "betaald_met": met,
         }
 
     def card_publiek(self, card_id: int) -> Optional[dict]:
@@ -4371,13 +4488,20 @@ class Database:
         known: frozenset[str] = frozenset(),
         now: Optional[float] = None,
     ) -> list[dict]:
-        """Ken kaarten toe voor de woorden van een ronde, geef de NIEUWE terug.
+        """Verwerk de woorden van een ronde. Geeft terug wat er BIJ kwam.
 
         `norms` is al gefilterd door discover.match_words, dus alles hier hoort
         echt bij deze categorie en letter. `known` zijn de woorden die de speler
-        zelf noemde; de rest kreeg hij na afloop te zien. Dat verschil bepaalt
-        alleen correct_count en missed_count, niet of hij de kaart krijgt: ook
-        een woord dat je net leerde is een kaart, dat is de hele modus.
+        ZELF noemde; de rest kreeg hij na afloop te zien.
+
+        Dat verschil bepaalt nu ALLES:
+
+          zelf genoemd   een KAART. Dat is de beloning voor weten.
+          onthuld        een SPOOR. Je weet dat het bestaat, meer niet.
+
+        Een spoor dat je later alsnog zelf noemt, wordt hier een kaart. Dat is
+        de hele lus: spelen, zien wat je miste, het onthouden, en het de
+        volgende keer zelf opschrijven.
 
         Alles onder één slot, zodat twee keer op verzenden tikken niet twee keer
         telt. De UNIQUE op (user_id, card_id) doet de rest.
@@ -4397,11 +4521,12 @@ class Database:
         if not wanted:
             return []
         fresh: list[int] = []
+        verdiend: list[int] = []      # sporen die deze ronde kaart werden
         with self._lock:
             have = {
-                int(r["card_id"])
+                int(r["card_id"]): bool(r["spoor"])
                 for r in self._q(
-                    "SELECT card_id FROM user_cards WHERE user_id=? AND card_id IN (%s)"
+                    "SELECT card_id, spoor FROM user_cards WHERE user_id=? AND card_id IN (%s)"
                     % ",".join("?" * len(wanted)),
                     (user_id, *[c for c, _ in wanted]),
                 )
@@ -4416,6 +4541,15 @@ class Database:
                         f"UPDATE user_cards SET {col}={col}+1 WHERE user_id=? AND card_id=?",
                         (user_id, cid),
                     )
+                    # HET SPOOR VERZILVEREN. Je kende het woord dit keer wel, dus
+                    # de kaart is verdiend. Alleen bij ZELF genoemd: hem nog een
+                    # keer onthuld krijgen bewijst niets.
+                    if was_known and have[cid]:
+                        self._exec(
+                            "UPDATE user_cards SET spoor=0 WHERE user_id=? AND card_id=?",
+                            (user_id, cid),
+                        )
+                        verdiend.append(cid)
                     continue
                 # Meteen in de herhaallus, want anders komt een kaart uit
                 # Oefenen nooit terug en blijft de stapel leeg. Een woord dat je
@@ -4430,15 +4564,21 @@ class Database:
                 try:
                     self._exec(
                         "INSERT INTO user_cards (user_id, card_id, discovered_at, source,"
-                        " correct_count, missed_count, box, next_review_at)"
-                        " VALUES (?,?,?,?,?,?,?,?)",
+                        " correct_count, missed_count, box, next_review_at, spoor)"
+                        " VALUES (?,?,?,?,?,?,?,?,?)",
                         (user_id, cid, ts, source, 1 if was_known else 0,
-                         0 if was_known else 1, start_box, wanneer),
+                         0 if was_known else 1, start_box, wanneer,
+                         0 if was_known else 1),
                     )
                 except sqlite3.IntegrityError:
                     continue  # race met een tweede tik, de ander was eerst
                 fresh.append(cid)
-        return [c for c in (self.discover_card(cid, user_id) for cid in fresh) if c]
+        # Wat je zelf noemde is een kaart, de rest een spoor; allebei zijn ze
+        # nieuws voor de speler, dus allebei komen ze terug. `spoor` op de kaart
+        # zegt welke van de twee het is.
+        uit = [c for c in (self.discover_card(cid, user_id) for cid in fresh) if c]
+        uit += [c for c in (self.discover_card(cid, user_id) for cid in verdiend) if c]
+        return uit
 
     def discover_quiz_kandidaten(
         self, category: str, letter: Optional[str] = None, user_id: Optional[str] = None,
@@ -4495,17 +4635,23 @@ class Database:
 
         Doet niets als de speler de kaart niet heeft: je kunt geen voortgang
         boeken op iets wat niet van jou is.
+
+        EEN GOED ANTWOORD OP EEN SPOOR MAAKT ER EEN KAART VAN. Dat is de tweede
+        weg om een spoor te verzilveren, naast het woord zelf noemen in een
+        ronde: je laat zien dat je het nu weet, dus je hebt hem verdiend.
         """
         from . import discover as _d
 
         ts = now if now is not None else time.time()
         with self._lock:
             rows = self._q(
-                "SELECT box FROM user_cards WHERE user_id=? AND card_id=?", (user_id, card_id)
+                "SELECT box, spoor FROM user_cards WHERE user_id=? AND card_id=?",
+                (user_id, card_id),
             )
             if not rows:
                 return None
             box = int(rows[0]["box"] or 1)
+            was_spoor = bool(rows[0]["spoor"])
             nieuw_box = _d.volgende_box(box, goed)
             wanneer = _d.volgende_review(box, goed, ts)
             kolom = "correct_count" if goed else "missed_count"
@@ -4514,7 +4660,14 @@ class Database:
                 " WHERE user_id=? AND card_id=?",
                 (nieuw_box, wanneer, user_id, card_id),
             )
-        return {"box": nieuw_box, "next_review_at": wanneer, "klaar": wanneer is None}
+            verdiend = goed and was_spoor
+            if verdiend:
+                self._exec(
+                    "UPDATE user_cards SET spoor=0 WHERE user_id=? AND card_id=?",
+                    (user_id, card_id),
+                )
+        return {"box": nieuw_box, "next_review_at": wanneer, "klaar": wanneer is None,
+                "verdiend": verdiend}
 
     def discover_dag_afgerond(self, user_id: str, letter: str, day: str) -> dict:
         """Werk de reeks bij nu de speler de dagletter heeft uitgespeeld.
@@ -4556,15 +4709,16 @@ class Database:
     def discover_recent(self, user_id: str, limiet: int = 4) -> list[dict]:
         """De laatst ontdekte kaarten, nieuwste eerst.
 
-        Voor de strook op de hub. Alleen kaarten die de speler heeft, dus de
-        afscherming van elders is hier niet nodig: wat hier uit komt is per
-        definitie van hem.
+        Voor de strook op de hub. Alleen VERDIENDE kaarten: een spoor is nog
+        geen ontdekking, en op deze strook zou hij de indruk wekken dat er meer
+        binnen is dan er binnen is.
         """
         rows = self._q(
             "SELECT c.id, c.category, c.letter, c.word, c.facts, c.image_path, c.iso,"
             "       c.card_number, uc.discovered_at"
             " FROM user_cards uc JOIN cards c ON c.id = uc.card_id"
-            " WHERE uc.user_id = ? ORDER BY uc.discovered_at DESC, uc.id DESC LIMIT ?",
+            " WHERE uc.user_id = ? AND uc.spoor = 0"
+            " ORDER BY uc.discovered_at DESC, uc.id DESC LIMIT ?",
             (user_id, int(limiet)),
         )
         return [

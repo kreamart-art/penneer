@@ -50,12 +50,15 @@ interface Uitslag {
   xp: number;
   kosten: number;
   saldo: number;
+  scherven: number;
 }
 
 interface Info {
   kosten: number;
   kaarten: number;
   saldo: number;
+  scherven: number;
+  scherf_prijs: number;
   guest: boolean;
 }
 
@@ -213,21 +216,32 @@ export function PackScherm({ onVerzameling }: { onVerzameling: () => void }) {
 
   useEffect(haal, [haal]);
 
-  const openen = async () => {
+  const openen = async (met: "munten" | "scherven" = "munten") => {
     if (bezig) return;
     setBezig(true);
     setFout(null);
     try {
-      const res = await fetch("/api/discover/pack/open", { method: "POST", headers: kop() });
+      const res = await fetch("/api/discover/pack/open", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...kop() },
+        body: JSON.stringify({ met }),
+      });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setFout(res.status === 402 ? t("packTeWeinig") : res.status === 401 ? t("packGast") : t("packMislukt"));
+        const d = data as { error?: string; scherven?: number; nodig?: number };
+        setFout(
+          d.error === "te_weinig_scherven"
+            ? t("packTeWeinigScherven", { n: d.scherven ?? 0, nodig: d.nodig ?? 3 })
+            : res.status === 402 ? t("packTeWeinig")
+            : res.status === 401 ? t("packGast")
+            : t("packMislukt"),
+        );
         return;
       }
       sound.results();
       navigator.vibrate?.([8, 60, 14]);
       setUit(data as Uitslag);
-      setInfo((i) => (i ? { ...i, saldo: (data as Uitslag).saldo } : i));
+      setInfo((i) => (i ? { ...i, saldo: (data as Uitslag).saldo, scherven: (data as Uitslag).scherven } : i));
     } catch {
       setFout(t("packMislukt"));
     } finally {
@@ -237,6 +251,8 @@ export function PackScherm({ onVerzameling }: { onVerzameling: () => void }) {
 
   const kosten = info?.kosten ?? 0;
   const saldo = uit ? uit.saldo : info?.saldo ?? 0;
+  const scherven = uit ? uit.scherven : info?.scherven ?? 0;
+  const scherfPrijs = info?.scherf_prijs ?? 3;
   // Drie op een rij, en de vijfde kaart komt vanzelf op de tweede rij te staan.
   // Vijf naast elkaar zou op een telefoon zeventig pixel per kaart geven en dan
   // is de naam onleesbaar.
@@ -246,7 +262,21 @@ export function PackScherm({ onVerzameling }: { onVerzameling: () => void }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {/* Het saldo hoort HIER in beeld: dit is het enige scherm van Ontdekken
           waar je munten uitgeeft. */}
-      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 7 }}>
+        {/* De scherven staan naast de munten, want het zijn twee manieren om
+            hetzelfde pack te betalen. */}
+        <span
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 4, padding: "4px 10px", borderRadius: 999,
+            background: "rgba(0,0,0,.32)", border: `1px solid ${withAlpha("#8B93B5", 0.5)}`,
+            fontFamily: font.display, fontWeight: 800, fontSize: 13, color: "#C7CEE9",
+          }}
+        >
+          <img src="/ui/scherf.webp" alt="" width={15} height={15}
+               onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+               style={{ display: "block" }} />
+          {scherven}
+        </span>
         <CoinPlate coins={saldo} height={30} />
       </div>
 
@@ -285,12 +315,19 @@ export function PackScherm({ onVerzameling }: { onVerzameling: () => void }) {
       {/* ---- voor het openen: de knop ---- */}
       {!uit && (
         <>
-          <Button variant="gold" full disabled={bezig || !!info?.guest} onClick={() => { sound.uiTap(); void openen(); }}>
+          <Button variant="gold" full disabled={bezig || !!info?.guest} onClick={() => { sound.uiTap(); void openen("munten"); }}>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
               {t("packOpenen")} {kosten}
               <img src="/coin.webp" alt="" width={15} height={15} style={{ display: "block" }} />
             </span>
           </Button>
+          {/* Alleen als je ze hebt: een knop die je niet kunt indrukken is een
+              mededeling, en die staat al in de uitleg eronder. */}
+          {scherven >= scherfPrijs && !info?.guest && (
+            <Button variant="primary" full disabled={bezig} onClick={() => { sound.uiTap(); void openen("scherven"); }}>
+              {t("packMetScherven", { n: scherfPrijs })}
+            </Button>
+          )}
           {(fout || info?.guest) && (
             <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, lineHeight: 1.4, color: colors.orange, textAlign: "center" }}>
               {fout ?? t("packGast")}
@@ -298,6 +335,9 @@ export function PackScherm({ onVerzameling }: { onVerzameling: () => void }) {
           )}
           <p style={{ margin: 0, fontFamily: font.ui, fontSize: 11.5, lineHeight: 1.45, color: colors.faint, textAlign: "center" }}>
             {t("packUitleg")}
+          </p>
+          <p style={{ margin: 0, fontFamily: font.ui, fontSize: 11.5, lineHeight: 1.45, color: colors.faint, textAlign: "center" }}>
+            {t("packScherfUitleg")}
           </p>
         </>
       )}

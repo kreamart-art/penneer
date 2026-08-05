@@ -69,6 +69,8 @@ export interface NieuweKaart {
   letter: string;
   word: string;
   image_path?: string | null;
+  /** Gezien maar niet verdiend. Sporen staan apart en tellen niet als winst. */
+  spoor?: boolean;
 }
 
 export interface Voortgang {
@@ -439,7 +441,11 @@ export function RondeVoltooid({
   const { t } = useT();
   const totaal = goed + fout;
   const raak = totaal > 0 ? Math.round((goed / totaal) * 100) : 0;
-  const toon = kaarten.slice(0, 3);
+  // VERDIEND en GEZIEN staan los van elkaar. Een spoor is geen beloning, dus
+  // hij hoort niet tussen de kaarten die je wel binnenhaalde.
+  const gehaald = kaarten.filter((k) => !k.spoor);
+  const sporen = kaarten.filter((k) => k.spoor);
+  const toon = gehaald.slice(0, 3);
   // De quiz gaat over kaarten die je HEBT, dus zonder profiel valt er niets te
   // overhoren. Een knop die je naar een leeg scherm stuurt is erger dan geen
   // knop, dus voor een gast staat de hele volgende stap er niet.
@@ -536,9 +542,9 @@ export function RondeVoltooid({
             {beloning && (
               <GoudKader {...vak}>
                 <SierKop label={t("rvKaartenKop")} />
-                {kaarten.length === 0 ? (
+                {gehaald.length === 0 ? (
                   <p style={{ margin: "8px 0 2px", fontFamily: font.ui, fontSize: 11.5, lineHeight: 1.4, color: colors.sub, textAlign: "center" }}>
-                    {t("rvGeenKaarten")}
+                    {sporen.length > 0 ? t("rvGeenGehaaldUitleg") : t("rvGeenKaarten")}
                   </p>
                 ) : (
                   <div style={{ display: "grid", gridTemplateColumns: `repeat(${toon.length}, 1fr) 1.05fr`, gap: 6, marginTop: 7 }}>
@@ -555,15 +561,47 @@ export function RondeVoltooid({
                       }}
                     >
                       <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: "clamp(17px, 6vw, 24px)", lineHeight: 1, color: colors.gold }}>
-                        {kaarten.length}
+                        {gehaald.length}
                       </span>
                       <span style={{ fontFamily: font.ui, fontSize: 8.5, lineHeight: 1.15, color: colors.ink }}>
-                        {kaarten.length === 1 ? t("rvKaartEnkel") : t("rvKaartMeer")}
+                        {gehaald.length === 1 ? t("rvKaartEnkel") : t("rvKaartMeer")}
                       </span>
                       <span style={{ fontFamily: font.ui, fontSize: 7.5, lineHeight: 1.15, color: colors.faint }}>
                         {t("rvKaartenNaar")}
                       </span>
                     </div>
+                  </div>
+                )}
+                {/* De sporen als rij woorden. Geen tegels: het zijn geen
+                    kaarten, en ze als kaart tonen zou precies het misverstand
+                    zijn dat we net hebben weggehaald. */}
+                {sporen.length > 0 && (
+                  <div style={{ marginTop: 10, paddingTop: 9, borderTop: `1px solid ${withAlpha("#8B93B5", 0.28)}` }}>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 5 }}>
+                      <span style={{ fontFamily: font.wide, fontSize: 10.5, letterSpacing: 1.1, color: "#9AA2C4" }}>
+                        {t("rvSporen")}
+                      </span>
+                      <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 12, color: "#B6BEDD" }}>
+                        {sporen.length}
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                      {sporen.slice(0, 12).map((k) => (
+                        <span
+                          key={k.id}
+                          style={{
+                            padding: "2px 7px", borderRadius: 999,
+                            background: "rgba(0,0,0,.3)", border: `1px solid ${withAlpha("#8B93B5", 0.45)}`,
+                            fontFamily: font.ui, fontSize: 10, color: colors.sub,
+                          }}
+                        >
+                          {k.word}
+                        </span>
+                      ))}
+                    </div>
+                    <p style={{ margin: "6px 0 0", fontFamily: font.ui, fontSize: 9.5, lineHeight: 1.35, color: colors.faint }}>
+                      {t("rvSporenUitleg")}
+                    </p>
                   </div>
                 )}
               </GoudKader>

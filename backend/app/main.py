@@ -471,7 +471,11 @@ async def train_check(request: Request) -> JSONResponse:
         "categories": out,
         "correct": correct,
         "learned": learned,
+        # Alles wat er bij kwam, met `spoor` per stuk. De client splitst ze:
+        # kaarten zijn je beloning, sporen zijn je huiswerk.
         "new_cards": new_cards,
+        "kaarten": sum(1 for k in new_cards if not k.get("spoor")),
+        "sporen": sum(1 for k in new_cards if k.get("spoor")),
         # Alleen voor een account: een gast verzamelt niets en verdient niets,
         # en een blok vol nullen is geen beloning maar een verwijt.
         "beloning": beloning,
@@ -485,15 +489,18 @@ def _oefen_beloning(db, uid: str, letter: str, cats: list[str], correct: int, ne
     antwoord telt ook mee, anders loont het om niets in te vullen en alleen de
     onthulling af te wachten. Het plafond zit in db.practice_reward.
     """
-    xp = correct * 5 + len(new_cards) * 3
-    munten = correct * 3 + len(new_cards) * 2
+    # Alleen wat je VERDIENDE telt. Een spoor is gezien en niet gehaald, dus
+    # daar hoort geen beloning bij: anders is de onthulling alsnog de winst.
+    kaarten = [k for k in new_cards if not k.get("spoor")]
+    xp = correct * 5 + len(kaarten) * 3
+    munten = correct * 3 + len(kaarten) * 2
     pot = db.practice_reward(uid, discover.today(), xp, munten)
 
     # De stand na afloop, per categorie waar deze ronde iets bijkwam, plus de
     # letter zelf. Alleen de categorieen die meededen: een balk voor een
     # categorie die je niet speelde beweegt niet en leidt dus alleen maar af.
     erbij: dict[str, int] = {}
-    for k in new_cards:
+    for k in kaarten:
         erbij[k["category"]] = erbij.get(k["category"], 0) + 1
     totalen = db.discover_totals()
     bezit = db.discover_owned_counts(uid)
@@ -521,7 +528,7 @@ def _oefen_beloning(db, uid: str, letter: str, cats: list[str], correct: int, ne
         "label": letter,
         "have": stand["discovered"],
         "total": stand["total"],
-        "plus": len(new_cards),
+        "plus": len(kaarten),
     })
     return {
         "xp": pot["xp"],
@@ -564,6 +571,9 @@ async def discover_overview(request: Request) -> JSONResponse:
             # Afgerond naar beneden, zodat 99% pas 100% wordt als het echt af is.
             "percent": int(got * 100 / total) if total else 0,
         })
+    sporen = db.discover_spoor_counts(uid) if uid else {}
+    for r in rows:
+        r["sporen"] = sporen.get(r["category"], 0)
     state = db.discover_state(uid) if uid else {}
     dag = discover.today()
     # OOK VOOR EEN GAST. De dagletter is per speler, maar zonder speler stond
@@ -643,7 +653,11 @@ async def discover_letter(category: str, letter: str, request: Request) -> JSONR
         "label": discover.CAT_LABEL[category],
         "letter": key,
         "total": len(cards),
-        "discovered": sum(1 for c in cards if c["discovered"]),
+        # Alleen VERDIENDE kaarten tellen mee. Een spoor staat er wel, maar hij
+        # is niet gehaald: zonder dit onderscheid stond een letter op 100% en
+        # "compleet" terwijl je er nog geen enkele van had verdiend.
+        "discovered": sum(1 for c in cards if c["discovered"] and not c.get("spoor")),
+        "sporen": sum(1 for c in cards if c.get("spoor")),
         "cards": cards,
         "fact_schema": list(discover.fact_rows(category)),
         "guest": uid is None,
@@ -726,6 +740,8 @@ async def discover_pack_info(request: Request) -> JSONResponse:
         "kosten": db.PACK_KOSTEN,
         "kaarten": db.PACK_KAARTEN,
         "saldo": db.coins_of(uid) if uid else 0,
+        "scherven": db.scherven_van(uid) if uid else 0,
+        "scherf_prijs": db.PACK_SCHERF_PRIJS,
         "guest": uid is None,
     })
 
@@ -742,8 +758,10 @@ async def discover_pack_open(request: Request) -> JSONResponse:
     uid = db.auth(_bearer(request))
     if not uid:
         return JSONResponse({"error": "auth"}, status_code=401)
-    uit = db.pack_open(uid)
-    if uit.get("error") == "te_weinig":
+    body = await request.json() if request.headers.get("content-length") else {}
+    met = "scherven" if str((body or {}).get("met") or "") == "scherven" else "munten"
+    uit = db.pack_open(uid, met)
+    if uit.get("error") in ("te_weinig", "te_weinig_scherven"):
         return JSONResponse(uit, status_code=402)
     if uit.get("error"):
         return JSONResponse(uit, status_code=400)
@@ -850,12 +868,15 @@ async def discover_quiz_finish(request: Request) -> JSONResponse:
 
     now = time.time()
     goed = 0
+    verdiend = 0   # sporen die met een goed antwoord kaart werden
     for i, vraag in enumerate(sessie["vragen"]):
         antwoord = sessie["antwoorden"].get(i)
         if antwoord is None:
             continue  # niet beantwoord: niet fout rekenen, maar ook niet belonen
         goed += 1 if antwoord else 0
-        db.discover_antwoord_verwerkt(uid, vraag["card_id"], bool(antwoord), now)
+        uit = db.discover_antwoord_verwerkt(uid, vraag["card_id"], bool(antwoord), now)
+        if uit and uit.get("verdiend"):
+            verdiend += 1
 
     beantwoord = len(sessie["antwoorden"])
     # Bescheiden en voorspelbaar: dit is oefenen, geen ranglijst. Wie alles goed
@@ -878,6 +899,9 @@ async def discover_quiz_finish(request: Request) -> JSONResponse:
         "goed": goed,
         "totaal": len(sessie["vragen"]),
         "beantwoord": beantwoord,
+        # Hoeveel sporen je met deze ronde hebt vrijgespeeld. Dat is de reden om
+        # de quiz te spelen, dus het hoort op de uitslag te staan.
+        "verdiend": verdiend,
         "xp": xp,
         "munten": munten,
         "streak_days": (reeks or {}).get("streak_days"),
@@ -1114,6 +1138,19 @@ async def daily_submit(request: Request) -> JSONResponse:
             # kostte 500, dus winst maken kan er nooit op.
             if ranked:
                 db.grant_coins(uid, 20 + max(0, int(score)))
+            # ONTDEKKEN VOEDEN VANUIT DE DAGRONDE. Wat je hier zelf opschreef en
+            # goed had, is een woord dat je KENT, dus dat is een kaart en geen
+            # spoor. De dagronde onthult niets na afloop, dus er komen ook geen
+            # sporen uit: precies de bedoeling.
+            letter = daily.letter_for(day)
+            for cat in daily.categories_for(day):
+                dcat = discover.LIST_TO_CAT.get(cat)
+                woord = str(answers.get(cat) or "").strip()
+                if not dcat or not woord:
+                    continue
+                norms = discover.match_words(dcat, letter, [woord])
+                if norms:
+                    db.discover_unlock(uid, dcat, norms, source="daily", known=frozenset(norms))
         # Missions: playing counts (even a late submit), but only today's
         # active missions ever get progress.
         cats = daily.categories_for(day)

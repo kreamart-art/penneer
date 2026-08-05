@@ -33,12 +33,15 @@ interface Props {
   letter: string;
   total: number;
   discovered: number;
+  /** Gezien maar nog niet verdiend. Staat als klein plusje naast de telling,
+   *  zodat je ziet dat er hier iets te halen valt. */
+  sporen?: number;
   onClick: () => void;
   /** Positie in het raster, alleen voor de opkomst-animatie. */
   index?: number;
 }
 
-export function LetterTegel({ letter, total, discovered, onClick, index = 0 }: Props) {
+export function LetterTegel({ letter, total, discovered, sporen = 0, onClick, index = 0 }: Props) {
   const leeg = total === 0;
   const compleet = total > 0 && discovered >= total;
   const pct = total > 0 ? Math.round((discovered / total) * 100) : 0;
@@ -158,6 +161,9 @@ export function LetterTegel({ letter, total, discovered, onClick, index = 0 }: P
             }}
           >
             {discovered}/{total}
+            {sporen > 0 && (
+              <span style={{ color: "#8B93B5", fontWeight: 800 }}> +{sporen}</span>
+            )}
           </span>
         )}
       </span>

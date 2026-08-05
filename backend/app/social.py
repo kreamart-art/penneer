@@ -1302,12 +1302,21 @@ class AccountManager:
             plek_coins = PLEK_COINS[plek] if plek < len(PLEK_COINS) else REST_COINS
             self.db.grant_coins(uid, plek_coins)
             munten += plek_coins
+            # PACK-SCHERVEN voor het podium. Niet een heel pack per potje: dan
+            # heeft iedereen er binnen een dag een stapel. Drie scherven zijn
+            # een pack, plek 1 krijgt er twee en plek 2 en 3 elk een, en er
+            # gaan er hoogstens drie per dag uit potjes. Alleen in een echt
+            # gezelschap: met z'n tweeen kun je om de beurt winnen.
+            scherven = 0
+            if playing_count >= self.db.PACK_SCHERF_MIN_SPELERS and plek < len(self.db.PACK_SCHERF_PLEK):
+                scherven = self.db.scherven_toekennen(uid, self.db.PACK_SCHERF_PLEK[plek], day)
             if gid:
                 self.db.set_game_rewards(gid, uid, xp_gained, munten)
             await self._push(uid, {
                 "type": "match_summary",
                 "won": bool(p["is_winner"]),
                 "coins_gained": plek_coins,
+                "scherven_gained": scherven,
                 "plek": plek + 1,
                 "xp_gained": xp_gained,
                 "level_before": before[uid],
