@@ -10,7 +10,16 @@
 //    briefly-stale shell can still boot from cache instead of going black.
 //  - Every activation purges ALL old caches (drops any poisoned shell).
 // Never touches the WebSocket or the API.
-const CACHE = "penneer-v87"; // v87: avatars opnieuw uitgesneden
+// LET OP: elke keer dat je een bestand in public/ OVERSCHRIJFT onder dezelfde
+// naam, moet dit nummer omhoog, tenzij het pad in ART_PADEN staat (die dragen
+// een ?v=). Deze cache is cache-first en wordt alleen leeggegooid als zijn NAAM
+// verandert, dus zonder bump blijft een geinstalleerde telefoon de oude versie
+// serveren, voor altijd.
+//
+// Dat ging hier mis: sinds v87 (30 juli) zijn /ontdek/ (waaronder de
+// letterpagina-sectie) en alle 26 letters vervangen zonder bump. In de browser
+// zag je de nieuwe, op de telefoon de oude, en dat verschil is precies dit.
+const CACHE = "penneer-v88"; // v88: /ontdek/ en de letters waren vastgeroest
 // De art in zijn EIGEN cache die releases overleeft. We deployden vandaag negen
 // keer, en elke activatie gooide alles weg: elke update was daardoor een koude
 // her-download van ~15MB aan knoppen, emotes, vlaggen en achtergronden. Dat is
