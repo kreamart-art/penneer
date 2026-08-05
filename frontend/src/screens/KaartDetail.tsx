@@ -37,6 +37,23 @@ const ACHTER = { src: "/static/cards/achterkant-nieuw.webp", verh: 659 / 1013 };
  *  97,0%. Daarbinnen komt alles te staan. */
 const VLAK = { l: 0.056, r: 0.052, t: 0.080, b: 0.030 };
 
+/** ALLEEN DE FOTO UIT DE KAART, niet de kaart zelf.
+ *
+ *  image_path wijst naar de VOLLEDIGE kaart: de foto MET zijn gouden lijst. Die
+ *  zomaar in het vlak leggen geeft een kaart in een kaart. Daarom knippen we
+ *  hier het fotovenster eruit, met de maten waarmee die kaarten gezet zijn:
+ *  x 38..624 van 659 en y 82..982 van 1013.
+ *
+ *  Het venster beslaat 89,1% van de breedte en 88,9% van de hoogte, dus de
+ *  afbeelding gaat op 100/0,891 en schuift met datzelfde deel naar links en
+ *  omhoog. Dan valt precies het venster over de doos. */
+const FOTO = {
+  breed: (100 / 0.8907).toFixed(3),
+  hoog: (100 / 0.8894).toFixed(3),
+  links: (-(0.05766 / 0.8907) * 100).toFixed(3),
+  boven: (-(0.08095 / 0.8894) * 100).toFixed(3),
+};
+
 /** Een icoon per feit, zoals in het ontwerp. Valt terug op de bol, want een
  *  categorie kan velden hebben die hier nog niet in staan. */
 const FEIT_ICOON: Record<string, LucideIcon> = {
@@ -234,7 +251,12 @@ export function KaartDetail({
                 <img
                   src={kaart.image_path as string} alt="" aria-hidden draggable={false}
                   onError={() => setFoto(false)}
-                  style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                  style={{
+                    position: "absolute",
+                    left: `${FOTO.links}%`, top: `${FOTO.boven}%`,
+                    width: `${FOTO.breed}%`, height: `${FOTO.hoog}%`,
+                    maxWidth: "none", display: "block",
+                  }}
                 />
               ) : (
                 <span
