@@ -6,11 +6,14 @@
 // de rondleiding als popup. Daarvoor was het een stapel losse kaarten en
 // knoppen waarin je moest zoeken waar iets stond.
 import { useEffect, useState } from "react";
-import { ArrowLeft, ChevronRight, Compass, Download, Globe, HelpCircle, Mail, Music, Palette, Share, Trash2, UserCog, Volume2 } from "lucide-react";
+import { ArrowLeft, ChevronRight, Compass, Globe, HelpCircle, Mail, Music, Palette, Share, Trash2, UserCog, Volume2 } from "lucide-react";
 import { Logo } from "../components/Logo";
 import { KnopPlaat } from "../components/KnopPlaat";
-import { Paneel, SierKop } from "../components/ProfileHero";
-import { PilKeuze } from "./Hub";
+import { BredeKnop } from "../components/BredeKnop";
+import { InstelRij } from "../components/InstelRij";
+import { TvPaneel } from "../components/TvPaneel";
+import { SierKop } from "../components/ProfileHero";
+import { LandKnop, PilKeuze } from "./Hub";
 import { Button } from "../components/Button";
 import { Toggle } from "../components/Toggle";
 import { ontdekAan, zetOntdek } from "../util/ontdekvlag";
@@ -80,50 +83,6 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** Eén regel in de instellingenlijst.
- *
- *  Rechts staat wat de regel DOET: een schakelaar als je hem hier meteen om kunt
- *  zetten, een pijl als er een pagina achter zit. Twee soorten regels in één
- *  lijst werken alleen als dat verschil aan de rechterkant meteen te zien is.
- *
- *  De hele regel is de knop, niet alleen het opschrift: een raakvlak van 44
- *  punten hoog is het minimum waar een duim betrouwbaar op mikt. */
-function Rij({ icoon, label, rechts, onClick, eerste }: {
-  icoon: React.ReactNode;
-  label: string;
-  rechts?: React.ReactNode;
-  onClick?: () => void;
-  eerste?: boolean;
-}) {
-  const inhoud = (
-    <>
-      <span style={{ display: "flex", color: colors.gold, flexShrink: 0 }}>{icoon}</span>
-      <span style={{ flex: 1, minWidth: 0, fontFamily: font.ui, fontWeight: 600, fontSize: 14.5, color: colors.ink, textAlign: "left" }}>
-        {label}
-      </span>
-      {rechts ?? <ChevronRight size={17} color={colors.faint} />}
-    </>
-  );
-  const stijl: React.CSSProperties = {
-    display: "flex", alignItems: "center", gap: 11, width: "100%",
-    minHeight: 44, padding: "10px 0",
-    borderTop: eerste ? "none" : `1px solid ${colors.hairline}`,
-    background: "transparent", border: "none", borderRadius: 0,
-  };
-  // Een schakelaar vangt zijn eigen tik; die regel is dus geen knop, anders
-  // krijg je een knop in een knop en zet één tik het ding twee keer om.
-  if (!onClick) return <div style={stijl}>{inhoud}</div>;
-  return (
-    <button
-      onClick={() => { sound.uiTap(); onClick(); }}
-      className="pressable"
-      style={{ ...stijl, cursor: "pointer", padding: "10px 0", textAlign: "left" }}
-    >
-      {inhoud}
-    </button>
-  );
-}
-
 /** De kop van een onderpagina: terugpijl plus titel, precies zoals het
  *  hoofdscherm er zelf uitziet. */
 function SubKop({ titel, onBack }: { titel: string; onBack: () => void }) {
@@ -163,6 +122,17 @@ function TaalSpelling({ game, onBack }: { game: GameApi; onBack: () => void }) {
           />
         </Card>
 
+        {/* Waar je vandaan speelt. Stond bij je profiel, maar het is geen
+            persoonsgegeven dat je laat zien: het is dezelfde soort keuze als
+            je taal, en daarom staat het er nu naast. Alleen met account, want
+            het land hangt aan je profiel. */}
+        {!!account && (
+          <Card style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <SectionLabel>{t("landKop")}</SectionLabel>
+            <LandKnop game={game} kaal />
+          </Card>
+        )}
+
         {/* Soepele spelling (dyslexie-hulp) voor Oefenen + Dagronde. Hangt aan
             je account, dus zonder profiel valt er niets te kiezen. */}
         <Card style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -180,6 +150,57 @@ function TaalSpelling({ game, onBack }: { game: GameApi; onBack: () => void }) {
           <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.faint, lineHeight: 1.5 }}>
             {account ? t("lenientHint") : t("lenientGast")}
           </p>
+        </Card>
+      </div>
+    </Screen>
+  );
+}
+
+/** Installeren op een iPhone.
+ *
+ *  WebKit heeft geen install-API (en elke browser op iOS is WebKit), dus daar
+ *  kan geen knop het voor je doen: het gaat met de hand via Deel > Zet op
+ *  beginscherm. Vandaar dezelfde gouden knop met daarachter de drie stappen,
+ *  in plaats van een knop die niets doet. */
+function IosInstallPagina({ inApp, onBack }: { inApp: boolean; onBack: () => void }) {
+  const { t } = useT();
+  return (
+    <Screen>
+      <div style={{ display: "flex", flexDirection: "column", gap: 16, paddingTop: 8 }}>
+        <SubKop titel={t("installIosTitle")} onBack={onBack} />
+        <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {inApp ? (
+            <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13.5, lineHeight: 1.55, color: colors.sub }}>{t("installIosSafari")}</p>
+          ) : (
+            <>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {[
+                  { n: 1, text: t("installIosStep1"), icon: true },
+                  { n: 2, text: t("installIosStep2"), icon: false },
+                  { n: 3, text: t("installIosStep3"), icon: false },
+                ].map((s) => (
+                  <div key={s.n} style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                    <span
+                      style={{
+                        flexShrink: 0, width: 22, height: 22, borderRadius: 999,
+                        display: "grid", placeItems: "center",
+                        background: withAlpha(colors.gold, 0.16),
+                        border: `1px solid ${withAlpha(colors.gold, 0.4)}`,
+                        color: colors.gold, fontFamily: font.ui, fontSize: 11.5, fontWeight: 800,
+                      }}
+                    >
+                      {s.n}
+                    </span>
+                    <span style={{ fontFamily: font.ui, fontSize: 13.5, lineHeight: 1.45, color: colors.sub, display: "inline-flex", alignItems: "center", gap: 6 }}>
+                      {s.text}
+                      {s.icon && <Share size={15} color={colors.ink} />}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, lineHeight: 1.5, color: colors.faint }}>{t("installIosWhy")}</p>
+            </>
+          )}
         </Card>
       </div>
     </Screen>
@@ -217,8 +238,8 @@ function ContactPagina({ onBack, onShowLegal }: { onBack: () => void; onShowLega
         {/* Het juridische hoort bij contact: het gaat over dezelfde afspraak
             tussen jou en ons, alleen dan opgeschreven. */}
         <Card style={{ display: "flex", flexDirection: "column" }}>
-          <Rij eerste icoon={<ArtIcoon naam="schild" size={18} />} label={t("privacyTitle")} onClick={() => onShowLegal("privacy")} />
-          <Rij icoon={<ArtIcoon naam="boek" size={18} />} label={t("termsTitle")} onClick={() => onShowLegal("terms")} />
+          <InstelRij eerste icoon={<ArtIcoon naam="schild" size={18} />} label={t("privacyTitle")} onClick={() => onShowLegal("privacy")} />
+          <InstelRij icoon={<ArtIcoon naam="boek" size={18} />} label={t("termsTitle")} onClick={() => onShowLegal("terms")} />
         </Card>
       </div>
     </Screen>
@@ -388,7 +409,7 @@ export function Settings({ game, onBack, onShowRules, onShowTour, onShowLegal, o
   const [ontdekVlag, setOntdekVlag] = useState(ontdekAan());
   // De onderpagina's van dit scherm. Ze staan hier en niet in de router van de
   // app: ze horen bij instellingen, en zo blijft de terugweg één toestand.
-  const [pagina, setPagina] = useState<"taal" | "contact" | null>(null);
+  const [pagina, setPagina] = useState<"taal" | "contact" | "install" | null>(null);
   // Geluid als één schakelaar. Muziek en effecten hebben elk hun eigen mute,
   // dus "aan" is: er komt nog ergens geluid uit.
   const geluidAan = !musicMuted || !sfxMuted;
@@ -403,11 +424,16 @@ export function Settings({ game, onBack, onShowRules, onShowTour, onShowLegal, o
   // sleutel; dit haalt het slot uit het zicht van iedereen die er niets te
   // zoeken heeft. Wie al ingelogd is houdt hem hoe dan ook.
   const magAdmin = isAdmin || isEigenaar(game.state.account?.name);
+  // Staat de app al op het beginscherm, dan valt er niets te installeren. Kan
+  // de browser het niet aanbieden en is het geen iPhone (waar het met de hand
+  // gaat), dan zou de knop nergens heen gaan: dan liever geen knop.
+  const toonInstall = !standalone && (installable || ios);
 
   useEffect(() => onInstallChange(() => setInstallable(canInstall())), []);
 
   if (pagina === "taal") return <TaalSpelling game={game} onBack={() => setPagina(null)} />;
   if (pagina === "contact") return <ContactPagina onBack={() => setPagina(null)} onShowLegal={onShowLegal} />;
+  if (pagina === "install") return <IosInstallPagina inApp={iosInApp} onBack={() => setPagina(null)} />;
 
   return (
     <Screen>
@@ -421,10 +447,21 @@ export function Settings({ game, onBack, onShowRules, onShowTour, onShowLegal, o
 
         {/* Alles in één sectie. De volgorde is: wat je hier meteen omzet
             eerst, daarna wat een eigen pagina opent. */}
+        {/* Installeren staat bovenaan, want het is het enige hier dat de app
+            zelf verandert in plaats van een voorkeur. Geen regeltje eronder:
+            de knop zegt het al. Weg zodra hij op het beginscherm staat, en op
+            iOS opent hij de drie stappen (WebKit heeft geen install-API, dus
+            daar kan geen knop het voor je doen). */}
+        {toonInstall && (
+          <BredeKnop strek={false} onClick={() => { if (ios) setPagina("install"); else void promptInstall(); }}>
+            {t("installApp")}
+          </BredeKnop>
+        )}
+
         <Card style={{ display: "flex", flexDirection: "column" }}>
           {/* De look: de nieuwe platen of de klassieke indeling van voor de
               art. Alles blijft hetzelfde werken; alleen het jasje wisselt. */}
-          <Rij
+          <InstelRij
             eerste
             icoon={<Palette size={18} />}
             label={t("lookKlassiek")}
@@ -435,7 +472,7 @@ export function Settings({ game, onBack, onShowRules, onShowTour, onShowLegal, o
               zodra er iets te horen valt. Wie het alleen zachter wil hoeft
               nergens heen; wie het uit wil, is met één tik klaar. */}
           <div>
-            <Rij
+            <InstelRij
               icoon={<Volume2 size={18} />}
               label={t("audio")}
               rechts={<Toggle on={geluidAan} onChange={(v) => { sound.uiTap(); zetGeluid(v); }} />}
@@ -483,79 +520,19 @@ export function Settings({ game, onBack, onShowRules, onShowTour, onShowLegal, o
               Alleen met profiel, want er valt niets in te stellen zonder
               account. */}
           {!!game.state.account && (
-            <Rij icoon={<UserCog size={18} />} label={t("profileSettings")} onClick={onProfileSettings} />
+            <InstelRij icoon={<UserCog size={18} />} label={t("profileSettings")} onClick={onProfileSettings} />
           )}
 
-          <Rij icoon={<Globe size={18} />} label={t("taalSpellingTitel")} onClick={() => setPagina("taal")} />
+          <InstelRij icoon={<Globe size={18} />} label={t("taalSpellingTitel")} onClick={() => setPagina("taal")} />
 
-          <Rij icoon={<HelpCircle size={18} />} label={t("howItWorks")} onClick={onShowRules} />
+          <InstelRij icoon={<HelpCircle size={18} />} label={t("howItWorks")} onClick={onShowRules} />
 
           {/* De rondleiding. Apart van "Hoe werkt het": dat gaat over de
               REGELS, dit over de app. */}
-          <Rij icoon={<Compass size={18} />} label={t("tourStart")} onClick={onShowTour} />
+          <InstelRij icoon={<Compass size={18} />} label={t("tourStart")} onClick={onShowTour} />
 
-          <Rij icoon={<Mail size={18} />} label={t("contactTitle")} onClick={() => setPagina("contact")} />
+          <InstelRij icoon={<Mail size={18} />} label={t("contactTitle")} onClick={() => setPagina("contact")} />
         </Card>
-
-        {/* iOS has no beforeinstallprompt (Apple ships no install API in WebKit, and
-            every iOS browser is WebKit), so the button can never fire there. Show the
-            manual Share > Zet op beginscherm steps instead of a dead disabled button. */}
-        {!standalone && ios && (
-          <Inklapbaar titel={t("installIosTitle")} icoon={<Download size={18} color={colors.gold} />} open={openPaneel === "install"} onWissel={() => wissel("install")}>
-            {iosInApp ? (
-              <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13, lineHeight: 1.55, color: colors.sub }}>{t("installIosSafari")}</p>
-            ) : (
-              <>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {[
-                    { n: 1, text: t("installIosStep1"), icon: true },
-                    { n: 2, text: t("installIosStep2"), icon: false },
-                    { n: 3, text: t("installIosStep3"), icon: false },
-                  ].map((s) => (
-                    <div key={s.n} style={{ display: "flex", alignItems: "center", gap: 9 }}>
-                      <span
-                        style={{
-                          flexShrink: 0,
-                          width: 20,
-                          height: 20,
-                          borderRadius: 999,
-                          display: "grid",
-                          placeItems: "center",
-                          background: withAlpha(colors.gold, 0.16),
-                          border: `1px solid ${withAlpha(colors.gold, 0.4)}`,
-                          color: colors.gold,
-                          fontFamily: font.ui,
-                          fontSize: 11,
-                          fontWeight: 800,
-                        }}
-                      >
-                        {s.n}
-                      </span>
-                      <span style={{ fontFamily: font.ui, fontSize: 13, lineHeight: 1.45, color: colors.sub, display: "inline-flex", alignItems: "center", gap: 6 }}>
-                        {s.text}
-                        {s.icon && <Share size={15} color={colors.ink} />}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-                <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12, lineHeight: 1.5, color: colors.faint }}>{t("installIosWhy")}</p>
-              </>
-            )}
-          </Inklapbaar>
-        )}
-        {!standalone && !ios && (
-          <div>
-            <Button variant="primary" full disabled={!installable} onClick={() => promptInstall()}>
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                <Download size={18} /> {t("installApp")}
-              </span>
-            </Button>
-            <p style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint, textAlign: "center", margin: "8px 0 0" }}>{t("installHint")}</p>
-          </div>
-        )}
-        {standalone && (
-          <p style={{ fontFamily: font.ui, fontSize: 13.5, color: colors.green, textAlign: "center", margin: 0 }}>{t("appInstalled")}</p>
-        )}
 
         {/* Admin (owner). Alleen Kream en Aish krijgen dit blok te zien. */}
         {magAdmin && (
@@ -724,21 +701,18 @@ export function Settings({ game, onBack, onShowRules, onShowTour, onShowLegal, o
         </Inklapbaar>
         )}
 
-        {/* Over. In de sierlijst van het profiel: dit is het naamplaatje van de
-            app, en dat verdient dezelfde lijst als het naamplaatje van een
-            speler. De inhoud voegt zich naar de art (vaste verhouding), dus
-            logo en regels staan dicht op elkaar. */}
-        <Paneel>
-          <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, paddingInline: 10 }}>
-            <Logo size={56} />
-            <span style={{ fontFamily: "'Cybergame', 'Space Grotesk', sans-serif", fontWeight: 400, fontSize: 26, letterSpacing: 2.5, color: colors.ink, lineHeight: 1.1 }}>PEN NEER</span>
-            <span style={{ fontFamily: font.ui, fontSize: 12, color: colors.sub }}>
-              {t("versionLabel")} {APP_VERSION}
-            </span>
-            <span style={{ fontFamily: font.ui, fontSize: 12, color: colors.faint }}>{t("madeBy")}</span>
-            <span style={{ fontFamily: font.ui, fontSize: 11.5, color: withAlpha(colors.gold, 0.85) }}>penneer.artnomad.nl</span>
-          </div>
-        </Paneel>
+        {/* Over. Het naamplaatje van de app staat nu IN een scherm: paars-gouden
+            kast met zwart marmer erin. Dezelfde inhoud als eerst, alleen op een
+            plaat die bij de rest van het spel hoort. */}
+        <TvPaneel>
+          <Logo size={44} />
+          <span style={{ fontFamily: "'Cybergame', 'Space Grotesk', sans-serif", fontWeight: 400, fontSize: 22, letterSpacing: 2.2, color: colors.ink, lineHeight: 1.15, marginTop: 2 }}>PEN NEER</span>
+          <span style={{ fontFamily: font.ui, fontSize: 11.5, color: colors.sub, marginTop: 3 }}>
+            {t("versionLabel")} {APP_VERSION}
+          </span>
+          <span style={{ fontFamily: font.ui, fontSize: 11.5, color: colors.faint }}>{t("madeBy")}</span>
+          <span style={{ fontFamily: font.ui, fontSize: 11, color: withAlpha(colors.gold, 0.85) }}>penneer.artnomad.nl</span>
+        </TvPaneel>
       </div>
     </Screen>
   );

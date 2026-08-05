@@ -2,6 +2,7 @@
 // Reached from the Landing. A profile is optional: guests see the create form.
 import { Fragment, useEffect, useRef, useState } from "react";
 import { ArtIcoon, STAT_ART } from "../components/ArtIcoon";
+import { InstelRij } from "../components/InstelRij";
 import { CloseIcon } from "../components/CloseIcon";
 import { KnopPlaat } from "../components/KnopPlaat";
 import { ReferralAd } from "../components/ReferralAd";
@@ -2834,7 +2835,7 @@ function BlokkeerKaart({ game }: { game: GameApi }) {
  *  code, dus zodra iemand ze uit heeft staan kunnen wij alleen nog uitleggen
  *  waar hij ze terug aanzet. Een schakelaar die doet alsof hij dat wel kan is
  *  erger dan geen schakelaar. */
-function MeldingenKaart() {
+function MeldingenKaart({ kaal = false }: { kaal?: boolean }) {
   const { t } = useT();
   const kan = typeof window !== "undefined" && "Notification" in window;
   const [staat, setStaat] = useState<NotificationPermission | "none">(kan ? Notification.permission : "none");
@@ -2849,8 +2850,10 @@ function MeldingenKaart() {
     });
   };
 
-  return (
-    <Card style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+  // `kaal` = zonder eigen kaart, voor als hij als blok in een grotere sectie
+  // staat. Twee kaarten in elkaar leest als twee dingen.
+  const inhoud = (
+    <>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <span style={{ flex: 1, fontFamily: font.ui, fontWeight: 600, fontSize: 14, color: colors.ink }}>{t("notifTitle")}</span>
         {aan ? (
@@ -2864,8 +2867,10 @@ function MeldingenKaart() {
       <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.faint, lineHeight: 1.5 }}>
         {staat === "denied" ? t("notifBlockedHint") : t("notifSettingsHint")}
       </p>
-    </Card>
+    </>
   );
+  if (kaal) return <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>{inhoud}</div>;
+  return <Card style={{ display: "flex", flexDirection: "column", gap: 9 }}>{inhoud}</Card>;
 }
 
 /** Je divisie in het klein, met de ladder een tik verderop. */
@@ -2942,7 +2947,7 @@ function Vlag({ code }: { code?: string | null }) {
  * Wat je kiest gaat naar de server, en die doet er twee dingen mee: de
  * advertenties worden persoonlijker, en de draaiknop van JOUW land gaat open om
  * met coins te kopen in plaats van met cash. */
-function LandKnop({ game }: { game: GameApi }) {
+export function LandKnop({ game, kaal = false }: { game: GameApi; kaal?: boolean }) {
   const { t } = useT();
   const account = game.state.account!;
   const [open, setOpen] = useState(false);
@@ -2953,8 +2958,10 @@ function LandKnop({ game }: { game: GameApi }) {
     ? LANDEN.filter((l) => l.naam.toLowerCase().includes(zoek.trim().toLowerCase()))
     : LANDEN;
 
+  // `kaal` = zonder eigen kaart, voor als hij als blok onder een sierkop staat.
+  const Buiten = kaal ? "div" : Card;
   return (
-    <Card style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+    <Buiten style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <span style={{ flex: 1, fontFamily: font.ui, fontWeight: 600, fontSize: 14, color: colors.ink }}>{t("landTitel")}</span>
         <button
@@ -3028,7 +3035,45 @@ function LandKnop({ game }: { game: GameApi }) {
           </div>
         </div>
       )}
-    </Card>
+    </Buiten>
+  );
+}
+
+/** Je uitrusting: alles wat je draagt of laat zien.
+ *
+ *  Draai-knop, level-knoppen, rol-skin, avatar-frame, titel en je divisie
+ *  stonden als zes losse kaarten in de profielinstellingen, waardoor je langs
+ *  je hele uiterlijk moest scrollen om bij je e-mailadres te komen. Het is één
+ *  onderwerp, dus het is één pagina. */
+function Uitrusting({ game, onShowShop, onBack }: { game: GameApi; onShowShop: () => void; onBack: () => void }) {
+  const { t } = useT();
+  const header = (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", paddingTop: "calc(14px + env(safe-area-inset-top))" }}>
+      <button onClick={() => { sound.uiTap(); onBack(); }} aria-label={t("back")} style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 2 }}>
+        <ArrowLeft size={20} />
+      </button>
+      <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>{t("uitrustingTitel")}</span>
+    </div>
+  );
+  return (
+    <Screen top={header}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        {/* Draai-knop-skin (shop 'buzzers' pack) plus de level-knoppen */}
+        <BuzzerPicker game={game} onShowShop={onShowShop} />
+
+        <ReelPicker game={game} onShowShop={onShowShop} />
+
+        {/* Avatar-frame (level-beloning) */}
+        <FramePicker game={game} />
+
+        {/* Titel: hoorde bij de tabs, die zijn weg, dus hij staat nu hier */}
+        <TitlePicker game={game} />
+
+        {/* Je divisie: hier staat wat het schild om je portret betekent, met de
+            hele ladder erachter. Het is geen keuze meer, dus het is geen kiezer. */}
+        <DivisieKaart game={game} />
+      </div>
+    </Screen>
   );
 }
 
@@ -3055,6 +3100,7 @@ export function ProfileSettings({
   const account = game.state.account!;
   const [pw, setPw] = useState("");
   const [email, setEmail] = useState("");
+  const [uitrusting, setUitrusting] = useState(false);
 
   useEffect(() => {
     game.refreshBlocked();
@@ -3069,73 +3115,73 @@ export function ProfileSettings({
       <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>{t("profileSettings")}</span>
     </div>
   );
+
+  if (uitrusting) return <Uitrusting game={game} onShowShop={onShowShop} onBack={() => setUitrusting(false)} />;
+
   return (
     <Screen top={header}>
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      {/* Waar je vandaan speelt. Het staat NERGENS op je profiel: het is een
-          instelling, geen persoonsgegeven dat je aan anderen laat zien. */}
-      <LandKnop game={game} />
-
-      {/* Soepele spelling stond hier ook, maar hij hoort bij TAAL en staat nu
-          op één plek: Instellingen > Taal & spelling. Dezelfde schakelaar op
-          twee schermen betekent dat je hem op de verkeerde plek zoekt. */}
-
-      {/* Draai-knop-skin (shop 'buzzers' pack) */}
-      <BuzzerPicker game={game} onShowShop={onShowShop} />
-
-      <ReelPicker game={game} onShowShop={onShowShop} />
-
-      {/* Avatar-frame (level-beloning) */}
-      <FramePicker game={game} />
-
-      {/* Titel: hoorde bij de tabs, die zijn weg, dus hij staat nu hier */}
-      <TitlePicker game={game} />
-
-      {/* Meldingen. Stond alleen in de balk die één keer langskwam; wie hem
-          toen wegtikte kon ze nergens meer aanzetten. */}
-      <MeldingenKaart />
-
-      {/* Je divisie: hier staat wat het schild om je portret betekent, met de
-          hele ladder erachter. Het is geen keuze meer, dus het is geen kiezer. */}
-      <DivisieKaart game={game} />
-
-      {/* e-mail koppelen */}
-      <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <span style={{ fontFamily: font.ui, fontWeight: 600, fontSize: 14, color: colors.ink }}>{t("emailTitle")}</span>
-        {account.email ? (
-          <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13, color: colors.sub }}>
-            {t("emailLinked")} <span style={{ color: colors.green }}>{account.email}</span>
-          </p>
-        ) : (
-          <>
-            <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.faint, lineHeight: 1.5 }}>{t("emailHint")}</p>
-            <div style={{ display: "flex", gap: 8 }}>
-              <input style={{ ...inputStyle, flex: 1 }} type="email" placeholder={t("emailPlaceholder")} value={email} onChange={(e) => setEmail(e.target.value)} />
-              <Button variant="ghost" disabled={!email.includes("@")} onClick={() => game.linkEmail(email)}>
-                {t("linkEmailBtn")}
-              </Button>
-            </div>
-          </>
-        )}
+      {/* Alles wat je draagt of laat zien: knoppen, skins, je frame, je titel
+          en je divisie. Zes kaarten die stuk voor stuk over hetzelfde gingen,
+          nu achter één deur. Wat je hier instelt zien anderen; wat eronder in
+          de sectie staat gaat over je account en ziet niemand. */}
+      <Card style={{ display: "flex", flexDirection: "column" }}>
+        <InstelRij
+          eerste
+          icoon={<Sparkles size={18} />}
+          label={t("uitrustingTitel")}
+          onder={t("uitrustingOnder")}
+          onClick={() => setUitrusting(true)}
+        />
       </Card>
 
-      {/* wachtwoord instellen / wijzigen */}
-      <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <span style={{ fontFamily: font.ui, fontWeight: 600, fontSize: 14, color: colors.ink }}>{t("passwordTitle")}</span>
-        {account.has_password ? (
-          <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13, color: colors.sub }}>
-            {t("passwordActive")} <span style={{ color: colors.green }}>&#10003;</span>
-          </p>
-        ) : (
-          <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.faint, lineHeight: 1.5 }}>
-            {account.email ? t("passwordSetHint") : t("passwordNeedEmailHint")}
-          </p>
-        )}
-        <div style={{ display: "flex", gap: 8 }}>
-          <input style={{ ...inputStyle, flex: 1 }} type="password" autoComplete="new-password" placeholder={t("passwordPlaceholder")} value={pw} onChange={(e) => setPw(e.target.value)} />
-          <Button variant="ghost" disabled={pw.length < 6} onClick={() => { game.setPassword(pw); setPw(""); }}>
-            {account.has_password ? t("passwordChangeBtn") : t("passwordSetBtn")}
-          </Button>
+      {/* Je account: hoe je erin komt en hoe we je bereiken. Eén sectie, want
+          het is één onderwerp. */}
+      <Card style={{ display: "flex", flexDirection: "column" }}>
+        {/* e-mail koppelen */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingBottom: 14 }}>
+          <span style={{ fontFamily: font.ui, fontWeight: 600, fontSize: 14, color: colors.ink }}>{t("emailTitle")}</span>
+          {account.email ? (
+            <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13, color: colors.sub }}>
+              {t("emailLinked")} <span style={{ color: colors.green }}>{account.email}</span>
+            </p>
+          ) : (
+            <>
+              <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.faint, lineHeight: 1.5 }}>{t("emailHint")}</p>
+              <div style={{ display: "flex", gap: 8 }}>
+                <input style={{ ...inputStyle, flex: 1 }} type="email" placeholder={t("emailPlaceholder")} value={email} onChange={(e) => setEmail(e.target.value)} />
+                <Button variant="ghost" disabled={!email.includes("@")} onClick={() => game.linkEmail(email)}>
+                  {t("linkEmailBtn")}
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* wachtwoord instellen / wijzigen */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "14px 0", borderTop: `1px solid ${colors.hairline}` }}>
+          <span style={{ fontFamily: font.ui, fontWeight: 600, fontSize: 14, color: colors.ink }}>{t("passwordTitle")}</span>
+          {account.has_password ? (
+            <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13, color: colors.sub }}>
+              {t("passwordActive")} <span style={{ color: colors.green }}>&#10003;</span>
+            </p>
+          ) : (
+            <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.faint, lineHeight: 1.5 }}>
+              {account.email ? t("passwordSetHint") : t("passwordNeedEmailHint")}
+            </p>
+          )}
+          <div style={{ display: "flex", gap: 8 }}>
+            <input style={{ ...inputStyle, flex: 1 }} type="password" autoComplete="new-password" placeholder={t("passwordPlaceholder")} value={pw} onChange={(e) => setPw(e.target.value)} />
+            <Button variant="ghost" disabled={pw.length < 6} onClick={() => { game.setPassword(pw); setPw(""); }}>
+              {account.has_password ? t("passwordChangeBtn") : t("passwordSetBtn")}
+            </Button>
+          </div>
+        </div>
+
+        {/* Meldingen. Stond alleen in de balk die één keer langskwam; wie hem
+            toen wegtikte kon ze nergens meer aanzetten. */}
+        <div style={{ paddingTop: 14, borderTop: `1px solid ${colors.hairline}` }}>
+          <MeldingenKaart kaal />
         </div>
       </Card>
 
