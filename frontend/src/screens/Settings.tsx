@@ -12,7 +12,6 @@ import { KnopPlaat } from "../components/KnopPlaat";
 import { BredeKnop } from "../components/BredeKnop";
 import { InstelRij } from "../components/InstelRij";
 import { TvPaneel } from "../components/TvPaneel";
-import { SierKop } from "../components/ProfileHero";
 import { LandKnop, PilKeuze } from "./Hub";
 import { Button } from "../components/Button";
 import { Toggle } from "../components/Toggle";
@@ -29,12 +28,6 @@ import { APP_VERSION } from "../version";
 import { setTileSkin, tileSkinOn } from "../theme/tileSkin";
 import { colors, font, withAlpha } from "../theme/tokens";
 
-/** De kop boven een blok instellingen.
- *
- *  Was een grijs regeltje in kapitalen, en dat is precies hoe een instelling er
- *  niet uit hoort te zien in een spel dat verderop overal gouden sierkoppen
- *  heeft. Dezelfde `SierKop` als op het profiel, dus dit scherm hoort er weer
- *  bij in plaats van eronder te hangen. */
 /** Een kaart die dichtklapt.
  *
  *  Instellingen groeide door tot een scherm waar je doorheen moest scrollen om
@@ -75,14 +68,6 @@ function Inklapbaar({ titel, icoon, open, onWissel, children }: {
   );
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <div style={{ marginBottom: 10 }}>
-      <SierKop label={typeof children === "string" ? children : String(children)} />
-    </div>
-  );
-}
-
 /** De kop van een onderpagina: terugpijl plus titel, precies zoals het
  *  hoofdscherm er zelf uitziet. */
 function SubKop({ titel, onBack }: { titel: string; onBack: () => void }) {
@@ -107,69 +92,75 @@ function TaalSpelling({ game, onBack }: { game: GameApi; onBack: () => void }) {
       <div style={{ display: "flex", flexDirection: "column", gap: 16, paddingTop: 8 }}>
         <SubKop titel={t("taalSpellingTitel")} onBack={onBack} />
 
-        <Card>
-          <SectionLabel>{t("language")}</SectionLabel>
-          {/* Dezelfde pil als op de ranglijst en in de winkel: een ring met
-              twee knoppen erin. Twee losse pillen naast elkaar lezen als twee
-              onafhankelijke schakelaars, en dat zijn ze niet. */}
-          <PilKeuze
-            actief={lang ?? "nl"}
-            onKies={setLang}
-            opties={[
-              { key: "nl" as const, label: "Nederlands" },
-              { key: "en" as const, label: "English" },
-            ]}
-          />
-        </Card>
-
-        {/* Waar je vandaan speelt. Stond bij je profiel, maar het is geen
-            persoonsgegeven dat je laat zien: het is dezelfde soort keuze als
-            je taal, en daarom staat het er nu naast. Alleen met account, want
-            het land hangt aan je profiel. */}
-        {!!account && (
-          <Card style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <SectionLabel>{t("landKop")}</SectionLabel>
-            <LandKnop game={game} kaal />
-          </Card>
-        )}
-
-        {/* Soepele spelling (dyslexie-hulp) voor Oefenen + Dagronde. Hangt aan
-            je account, dus zonder profiel valt er niets te kiezen. */}
-        <Card style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <SectionLabel>{t("spellingKop")}</SectionLabel>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <span style={{ flex: 1, fontFamily: font.ui, fontWeight: 600, fontSize: 14, color: account ? colors.ink : colors.faint }}>
-              {t("lenientTitle")}
-            </span>
-            <Toggle
-              on={!!account?.lenient_spelling}
-              disabled={!account}
-              onChange={(v) => { sound.uiTap(); game.setLenient(v); }}
+        {/* Eén sectie. Drie kaarten onder elkaar met elk een eigen sierkop
+            lazen als drie onderwerpen, en het is er één: hoe de app tegen je
+            praat en hoe streng er naar je woorden gekeken wordt. */}
+        <Card style={{ display: "flex", flexDirection: "column" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingBottom: 14 }}>
+            <span style={{ fontFamily: font.ui, fontWeight: 600, fontSize: 14, color: colors.ink }}>{t("language")}</span>
+            {/* Dezelfde pil als op de ranglijst en in de winkel: een ring met
+                twee knoppen erin. Twee losse pillen naast elkaar lezen als twee
+                onafhankelijke schakelaars, en dat zijn ze niet. */}
+            <PilKeuze
+              actief={lang ?? "nl"}
+              onKies={setLang}
+              opties={[
+                { key: "nl" as const, label: "Nederlands" },
+                { key: "en" as const, label: "English" },
+              ]}
             />
           </div>
-          <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.faint, lineHeight: 1.5 }}>
-            {account ? t("lenientHint") : t("lenientGast")}
-          </p>
+
+          {/* Waar je vandaan speelt. Stond bij je profiel, maar het is geen
+              persoonsgegeven dat je laat zien: het is dezelfde soort keuze als
+              je taal, en daarom staat het er nu naast. Alleen met account, want
+              het land hangt aan je profiel. */}
+          {!!account && (
+            <div style={{ padding: "14px 0", borderTop: `1px solid ${colors.hairline}` }}>
+              <LandKnop game={game} kaal />
+            </div>
+          )}
+
+          {/* Soepele spelling (dyslexie-hulp) voor Oefenen + Dagronde. Hangt aan
+              je account, dus zonder profiel valt er niets te kiezen. */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingTop: 14, borderTop: `1px solid ${colors.hairline}` }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ flex: 1, fontFamily: font.ui, fontWeight: 600, fontSize: 14, color: account ? colors.ink : colors.faint }}>
+                {t("lenientTitle")}
+              </span>
+              <Toggle
+                on={!!account?.lenient_spelling}
+                disabled={!account}
+                onChange={(v) => { sound.uiTap(); game.setLenient(v); }}
+              />
+            </div>
+            <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, color: colors.faint, lineHeight: 1.5 }}>
+              {account ? t("lenientHint") : t("lenientGast")}
+            </p>
+          </div>
         </Card>
       </div>
     </Screen>
   );
 }
 
-/** Installeren op een iPhone.
+/** Installeren met de hand.
  *
- *  WebKit heeft geen install-API (en elke browser op iOS is WebKit), dus daar
- *  kan geen knop het voor je doen: het gaat met de hand via Deel > Zet op
- *  beginscherm. Vandaar dezelfde gouden knop met daarachter de drie stappen,
- *  in plaats van een knop die niets doet. */
-function IosInstallPagina({ inApp, onBack }: { inApp: boolean; onBack: () => void }) {
+ *  WebKit heeft geen install-API (en elke browser op iOS is WebKit), dus op een
+ *  iPhone kan geen knop het voor je doen: het gaat via Deel > Zet op
+ *  beginscherm. Andere browsers kunnen het wel, maar bieden het pas aan als ze
+ *  er zin in hebben; dan wijst deze pagina de weg naar hun eigen menu. Beter
+ *  dan een knop die er niet is of niets doet. */
+function InstallPagina({ ios, inApp, onBack }: { ios: boolean; inApp: boolean; onBack: () => void }) {
   const { t } = useT();
   return (
     <Screen>
       <div style={{ display: "flex", flexDirection: "column", gap: 16, paddingTop: 8 }}>
         <SubKop titel={t("installIosTitle")} onBack={onBack} />
         <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {inApp ? (
+          {!ios ? (
+            <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13.5, lineHeight: 1.55, color: colors.sub }}>{t("installAndersHint")}</p>
+          ) : inApp ? (
             <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13.5, lineHeight: 1.55, color: colors.sub }}>{t("installIosSafari")}</p>
           ) : (
             <>
@@ -427,13 +418,18 @@ export function Settings({ game, onBack, onShowRules, onShowTour, onShowLegal, o
   // Staat de app al op het beginscherm, dan valt er niets te installeren. Kan
   // de browser het niet aanbieden en is het geen iPhone (waar het met de hand
   // gaat), dan zou de knop nergens heen gaan: dan liever geen knop.
-  const toonInstall = !standalone && (installable || ios);
+  // Zolang de app niet op het beginscherm staat hoort deze knop er te zijn.
+  // Eerder hing hij aan `installable`, en die vlag zet de browser pas als HIJ
+  // vindt dat het mag: op een telefoon waar de app al eens geinstalleerd was,
+  // of in een browser die het aanbod inhoudt, was de knop er dan gewoon niet.
+  // Kan de browser het niet zelf, dan wijst de pagina erachter de weg.
+  const toonInstall = !standalone;
 
   useEffect(() => onInstallChange(() => setInstallable(canInstall())), []);
 
   if (pagina === "taal") return <TaalSpelling game={game} onBack={() => setPagina(null)} />;
   if (pagina === "contact") return <ContactPagina onBack={() => setPagina(null)} onShowLegal={onShowLegal} />;
-  if (pagina === "install") return <IosInstallPagina inApp={iosInApp} onBack={() => setPagina(null)} />;
+  if (pagina === "install") return <InstallPagina ios={ios} inApp={iosInApp} onBack={() => setPagina(null)} />;
 
   return (
     <Screen>
@@ -453,7 +449,7 @@ export function Settings({ game, onBack, onShowRules, onShowTour, onShowLegal, o
             iOS opent hij de drie stappen (WebKit heeft geen install-API, dus
             daar kan geen knop het voor je doen). */}
         {toonInstall && (
-          <BredeKnop strek={false} onClick={() => { if (ios) setPagina("install"); else void promptInstall(); }}>
+          <BredeKnop strek={false} onClick={() => { if (!ios && installable) void promptInstall(); else setPagina("install"); }}>
             {t("installApp")}
           </BredeKnop>
         )}

@@ -8,8 +8,16 @@ export const colors = {
   panel: "rgba(255,255,255,.055)",
   panelBorder: "rgba(255,255,255,.12)",
   ink: "#F4EFFF",
-  sub: "#B6ABDA",
-  faint: "#8076A8",
+  // Lopende tekst en bijschriften stonden in lila (#B6ABDA en #8076A8). Op een
+  // donkerpaarse achtergrond is lila geen grijs maar een KLEUR die dicht bij de
+  // ondergrond ligt, en dan lees je hem half. Ze zijn nu bijna wit met een
+  // koele zweem: het verschil tussen de drie is nog steeds duidelijk, maar het
+  // komt van helderheid en niet meer van kleur.
+  sub: "#EDE8FA",
+  faint: "#C7C0DA",
+  // Het oude lila. Alleen nog voor UIT-standen: de niet-gekozen kant van een
+  // pil of schakelaar hoort juist NIET te schreeuwen.
+  lila: "#B6ABDA",
   red: "#FF564A",
   redDeep: "#D63A2F",
   redHi: "#FF7064",

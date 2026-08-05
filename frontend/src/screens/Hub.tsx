@@ -4013,7 +4013,8 @@ export function PilKeuze<T extends string>({ opties, actief, onKies, schuif }: {
                 background: "transparent",
                 border: `1px solid ${aan ? withAlpha("#C46BFF", 0.75) : "transparent"}`,
                 boxShadow: aan ? `0 0 12px ${withAlpha("#9A4BF0", 0.5)}, inset 0 0 10px ${withAlpha("#9A4BF0", 0.22)}` : "none",
-                color: aan ? colors.ink : colors.sub,
+                // Uit blijft lila: de gekozen kant hoort de heldere te zijn.
+                color: aan ? colors.ink : colors.lila,
                 fontFamily: font.ui, fontWeight: 700, fontSize: 13,
                 transition: "box-shadow .2s ease, border-color .2s ease, color .2s ease",
               }}

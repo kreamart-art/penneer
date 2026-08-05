@@ -3,17 +3,19 @@
 // list categories, list-only scoring, one ranked attempt per account. Guests
 // play the identical round unranked and get a profile nudge.
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Check, HelpCircle, Share2, X } from "lucide-react";
+import { ArrowLeft, Check, ChevronRight, HelpCircle, Share2, X } from "lucide-react";
 import { Avatar } from "../components/Avatar";
 import { Tv } from "../components/Tv";
 import { Button } from "../components/Button";
+import { BredeKnop } from "../components/BredeKnop";
+import { ontdekAan } from "../util/ontdekvlag";
 import { Screen, Card } from "../components/Layout";
 import { Topo } from "./Topo";
 import { ArenaDeel } from "./Arena";
 import type { GameApi } from "../net/socket";
 import { ArtIcoon } from "../components/ArtIcoon";
 import { GlasVeld } from "../components/GlasVeld";
-import { GOUD, PlekWapen } from "../components/ProfileHero";
+import { GOUD, PlekWapen, SierKop } from "../components/ProfileHero";
 import { GlasRij, Lijst } from "./Hub";
 import { DagSectie } from "../components/DagSectie";
 import { DagKop } from "../components/DagKop";
@@ -76,8 +78,48 @@ function fmtCountdown(total: number): string {
   return `${p(h)}:${p(m)}:${p(s)}`;
 }
 
+/** "Hoe werkt het?": vijf kolommen onder een sierkop.
+ *
+ *  Geen pictogrammen: het zijn vijf korte regels en vijf tekeningen erboven
+ *  maken er een rij plaatjes van waar je doorheen moet kijken om de tekst te
+ *  vinden. De dunne lijnen tussen de kolommen doen hetzelfde werk.
+ *
+ *  Vijf kolommen op een telefoon is smal (rond de 66 punten), dus de tekst is
+ *  klein en breekt af. Dat is precies de bedoeling: het is een overzicht dat je
+ *  scant, geen stuk om te lezen. */
+function UitlegRaster({ kop, punten }: { kop: string; punten: { titel: string; tekst: string }[] }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <SierKop label={kop} />
+      <div style={{ display: "grid", gridTemplateColumns: `repeat(${punten.length}, 1fr)` }}>
+        {punten.map((p, i) => (
+          <div
+            key={p.titel}
+            style={{
+              display: "flex", flexDirection: "column", alignItems: "center", gap: 5,
+              padding: "0 5px", textAlign: "center",
+              borderLeft: i === 0 ? "none" : `1px solid ${withAlpha(GOUD[2], 0.22)}`,
+            }}
+          >
+            <span style={{ fontFamily: font.ui, fontWeight: 800, fontSize: 9.5, letterSpacing: 0.4, textTransform: "uppercase", color: colors.gold, lineHeight: 1.25 }}>
+              {p.titel}
+            </span>
+            <span style={{ fontFamily: font.ui, fontSize: 10.5, color: colors.sub, lineHeight: 1.35 }}>
+              {p.tekst}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () => void; onProfile: () => void }) {
   const { t, tCat, lang } = useT();
+  // De nieuwe uitlegpagina staat nog achter de Ontdekken-schakelaar: de
+  // bovenste sectie moet nog art en tekst krijgen, dus hij hoort nog niet bij
+  // iedereen in beeld.
+  const nieuweUitleg = ontdekAan();
   const account = game.state.account;
   const [phase, setPhase] = useState<"intro" | "play" | "result">("intro");
   const [info, setInfo] = useState<{
@@ -372,6 +414,50 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
   }
 
   // ---- intro van het woordendeel ----
+  if (phase === "intro" && nieuweUitleg) {
+    const played = !!info?.played || (() => {
+      try {
+        const saved = JSON.parse(localStorage.getItem(LOCAL_KEY) || "null");
+        return !account && saved && saved.day === info?.day;
+      } catch {
+        return false;
+      }
+    })();
+    return (
+      <Screen top={header}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 20, paddingTop: 4 }}>
+          {/* De bovenste sectie (embleem, titel, uitleg, spelersteller) is er
+              bewust uit: daar komt nieuwe art en een nieuwe tekst voor. */}
+          <UitlegRaster
+            kop={t("dagUitlegKop")}
+            punten={[
+              { titel: t("dagPunt1Kop"), tekst: t("dagPunt1") },
+              { titel: t("dagPunt2Kop"), tekst: t("dagPunt2") },
+              { titel: t("dagPunt3Kop"), tekst: t("dagPunt3") },
+              { titel: t("dagPunt4Kop"), tekst: t("dagPunt4") },
+              { titel: t("dagPunt5Kop"), tekst: t("dagPunt5") },
+            ]}
+          />
+
+          {played ? (
+            <>
+              <p style={{ margin: 0, textAlign: "center", fontFamily: font.ui, fontSize: 13.5, color: colors.sub }}>{t("dailyPlayed")}</p>
+              <BredeKnop disabled={busy} onClick={viewResult}>{t("dailyViewResult").toUpperCase()}</BredeKnop>
+            </>
+          ) : (
+            <BredeKnop disabled={busy || !info} onClick={start}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                {t("dailyStart").toUpperCase()}
+                <ChevronRight size={17} strokeWidth={3} />
+              </span>
+            </BredeKnop>
+          )}
+          <Button variant="ghost" full onClick={() => setPart(null)}>{t("back")}</Button>
+        </div>
+      </Screen>
+    );
+  }
+
   if (phase === "intro") {
     const played = !!info?.played || (() => {
       try {
