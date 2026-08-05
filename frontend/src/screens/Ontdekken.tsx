@@ -13,6 +13,7 @@ import { Apple, ArrowLeft, Brain, Briefcase, Building2, Check, ChevronDown, Chev
 import type { LucideIcon } from "lucide-react";
 import { Button } from "../components/Button";
 import { LetterTegel } from "../components/LetterTegel";
+import { Lint } from "../components/Lint";
 import { GoudKader } from "../components/GoudKader";
 import { OntdekQuiz } from "./OntdekQuiz";
 import { KaartDetail } from "./KaartDetail";
@@ -945,30 +946,16 @@ function KaartTegel({ kaart, nu, onOpen, groot, chip }: {
         />
       )}
       {kaart.spoor && (
-        <span
-          style={{
-            position: "absolute", left: "4%", top: "5%",
-            padding: "2px 7px", borderRadius: 4,
-            background: "linear-gradient(180deg, #8B93B5, #59607F)",
-            fontFamily: font.ui, fontSize: groot ? 11 : 7.5, fontWeight: 800, letterSpacing: ".06em",
-            color: "#0B0A18", boxShadow: "0 2px 6px rgba(0,0,0,.45)",
-          }}
-        >
-          {t("ontdekkenSpoor")}
-        </span>
+        <Lint
+          soort="dubbel" tekst={t("ontdekkenSpoor")} breed={groot ? 96 : 56}
+          style={{ position: "absolute", left: "-4%", top: "1%" }}
+        />
       )}
       {nieuw && (
-        <span
-          style={{
-            position: "absolute", left: "4%", top: "5%",
-            padding: "2px 7px", borderRadius: 4,
-            background: `linear-gradient(180deg, ${colors.goldHi}, ${colors.gold})`,
-            fontFamily: font.ui, fontSize: groot ? 11 : 7.5, fontWeight: 800, letterSpacing: ".06em",
-            color: "#3B2300", boxShadow: "0 2px 6px rgba(0,0,0,.45)",
-          }}
-        >
-          {t("ontdekkenNieuw")}
-        </span>
+        <Lint
+          soort="nieuw" tekst={t("ontdekkenNieuw")} breed={groot ? 96 : 56}
+          style={{ position: "absolute", left: "-4%", top: "1%" }}
+        />
       )}
       {chip && (
         <span

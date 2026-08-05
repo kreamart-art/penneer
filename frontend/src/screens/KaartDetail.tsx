@@ -1,20 +1,20 @@
 // KAART DETAIL — de pagina die je krijgt als je een kaart aantikt.
 //
-// Nagebouwd naar de mockup, van boven naar beneden:
-//   1. de categoriepil
-//   2. de VOORKANT en de ACHTERKANT naast elkaar, met een pijl ertussen
-//   3. wanneer je hem ontdekte, waarmee, en zijn kaartnummer
-//   4. de stand van zijn letter, met delen en favoriet
-//   5. de weg terug naar de verzameling
+// EEN KAART, die zichzelf omdraait. Je komt binnen op de VOORKANT, en na een
+// halve tel draait hij naar de achterkant met alles wat je erover weet. Niet
+// twee kanten naast elkaar: dan valt er niets meer om te draaien en is de kaart
+// een uitklapplaatje in plaats van een kaart. Tikken draait hem terug.
 //
-// TWEE STUKKEN ART en de rest is code. De voorkant is een compleet plaatje: het
-// penembleem, de lauwertak en de gouden lijst zitten er al in, dus daar hoeft
-// alleen de categoriepil overheen. De achterkant is een LEGE lijst met een paars
-// binnenvlak; de naam, de foto en de feiten worden erin getekend.
+// Daaronder volgt de mockup: waar de kaart vandaan komt, de stand van zijn
+// letter met de deelknop, en de weg terug naar de verzameling.
 //
-// Waarom niet de kaart-art zoals hij in de verzameling ligt: die is een foto MET
-// een lijst eromheen, en de mockup wil de foto binnen het paarse vlak met de
-// feiten eronder. Dezelfde foto, andere opmaak.
+// TWEE STUKKEN ART, allebei even groot (659x1013), zodat de kaart bij het
+// draaien niet van maat verandert. De voorkant is een compleet plaatje; de
+// achterkant is een lege lijst met een BIJNA DOORZICHTIG binnenvlak (alfa 2 tot
+// 30, opgemeten naast het edelsteentje), en daar zit de truc: de foto ligt
+// eronder, dus de gouden lijst valt over de foto heen in plaats van ertegenaan
+// te stoppen. De foto wordt bovendien op de VORM van de kaart geknipt, zodat er
+// nergens een hoekje uitsteekt.
 import { useEffect, useState } from "react";
 import { ArrowRight, Building2, Globe, MessageSquare, Share2, Star } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -26,27 +26,22 @@ import { sound } from "../sound/sound";
 import { colors, font, withAlpha } from "../theme/tokens";
 import type { Kaart } from "./Ontdekken";
 
-/** De twee stukken art, met hun eigen verhouding. De voorkant is smaller dan de
- *  achterkant omdat de hoekkrullen anders liggen; elk krijgt dus zijn eigen
- *  aspect-ratio en niet een gedeelde. */
-const VOOR = { src: "/static/cards/voorkant-nieuw.webp", verh: 635 / 1003 };
-const ACHTER = { src: "/static/cards/achterkant-nieuw.webp", verh: 659 / 1013 };
+/** Allebei even groot: 659 bij 1013. */
+const KAART_VERH = 659 / 1013;
+const VOOR = "/static/cards/voorkant-nieuw.webp";
+const ACHTER = "/static/cards/achterkant-nieuw.webp";
 
-/** Het paarse binnenvlak van de ACHTERKANT, opgemeten op de art: de gouden lijst
- *  loopt links tot 5,6% en rechts vanaf 94,8%, boven tot 8,0% en onder vanaf
- *  97,0%. Daarbinnen komt alles te staan. */
+/** Het vlak binnen de lijst van de ACHTERKANT, opgemeten: de gouden lijst loopt
+ *  links tot 5,6% en rechts vanaf 94,8%, boven tot 8,0% en onder vanaf 97,0%. */
 const VLAK = { l: 0.056, r: 0.052, t: 0.080, b: 0.030 };
 
 /** ALLEEN DE FOTO UIT DE KAART, niet de kaart zelf.
  *
- *  image_path wijst naar de VOLLEDIGE kaart: de foto MET zijn gouden lijst. Die
- *  zomaar in het vlak leggen geeft een kaart in een kaart. Daarom knippen we
- *  hier het fotovenster eruit, met de maten waarmee die kaarten gezet zijn:
- *  x 38..624 van 659 en y 82..982 van 1013.
- *
- *  Het venster beslaat 89,1% van de breedte en 88,9% van de hoogte, dus de
- *  afbeelding gaat op 100/0,891 en schuift met datzelfde deel naar links en
- *  omhoog. Dan valt precies het venster over de doos. */
+ *  image_path wijst naar de VOLLEDIGE kaart: de foto met zijn gouden lijst. Die
+ *  zomaar in het vlak leggen geeft een kaart in een kaart. Hier knippen we het
+ *  fotovenster eruit, met de maten waarmee die kaarten gezet zijn: x 38..624
+ *  van 659 en y 82..982 van 1013. Dat venster is 89,1% bij 88,9%, dus de
+ *  afbeelding gaat op 100/0,891 en schuift met datzelfde deel op. */
 const FOTO = {
   breed: (100 / 0.8907).toFixed(3),
   hoog: (100 / 0.8894).toFixed(3),
@@ -54,8 +49,30 @@ const FOTO = {
   boven: (-(0.08095 / 0.8894) * 100).toFixed(3),
 };
 
-/** Een icoon per feit, zoals in het ontwerp. Valt terug op de bol, want een
- *  categorie kan velden hebben die hier nog niet in staan. */
+/** De achthoek van de secties, als knipvorm. Een categorieplaat is te klein
+ *  voor een SVG met eigen verlopen; de vorm alleen is hier genoeg. */
+const ACHTHOEK = "polygon(9px 0, calc(100% - 9px) 0, 100% 9px, 100% calc(100% - 9px), calc(100% - 9px) 100%, 9px 100%, 0 calc(100% - 9px), 0 9px)";
+const ACHTHOEK_KLEIN = "polygon(6px 0, calc(100% - 6px) 0, 100% 6px, 100% calc(100% - 6px), calc(100% - 6px) 100%, 6px 100%, 0 calc(100% - 6px), 0 6px)";
+
+/** De vakjes zijn DEZELFDE SECTIE als onderaan de pagina: GoudKader met zijn
+ *  achthoek, zijn binnenlijn en zijn hoekaccenten. Alleen de kleur verschilt,
+ *  die trekt hier naar paarsroze in plaats van naar goud.
+ *
+ *  Niet een nagemaakte achthoek met een verloopje: dan lijkt het erop maar mist
+ *  het de dubbele lijn en de oplichtende hoeken, en dat is precies wat de
+ *  secties hun diepte geeft. */
+const SECTIE = {
+  hoek: 7,
+  rond: 1.5,
+  kleur: "violet" as const,
+  dik: 0.55,
+  binnenlijn: true,
+  binnenSterkte: 0.42,
+  binnenKleur: "#F0B6FF",
+  hoekAccent: "#F0B6FF",
+  vulling: true as const,
+} as const;
+
 const FEIT_ICOON: Record<string, LucideIcon> = {
   hoofdstad: Building2,
   werelddeel: Globe,
@@ -69,37 +86,29 @@ const FEIT_ICOON: Record<string, LucideIcon> = {
 
 export interface FactRij { key: string; label: string; quiz?: boolean }
 
-/** Een regel op de achterkant: icoon, label, waarde. */
+/** Een feit op de achterkant, in dezelfde sectie als onderaan de pagina. */
 function FeitRij({ ico: Ico, label, waarde }: { ico: LucideIcon; label: string; waarde: string }) {
   return (
-    <div
-      style={{
-        display: "flex", alignItems: "center", gap: 7,
-        padding: "6px 9px", borderRadius: 8,
-        background: "rgba(10,3,26,.55)",
-        border: `1px solid ${withAlpha(colors.gold, 0.32)}`,
-      }}
-    >
-      <Ico size={13} color={colors.gold} style={{ flexShrink: 0 }} />
-      <span style={{ flex: 1, minWidth: 0, fontFamily: font.ui, fontSize: 9.5, fontWeight: 800, letterSpacing: ".06em", textTransform: "uppercase", color: colors.gold, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-        {label}
-      </span>
-      <span style={{ flexShrink: 0, maxWidth: "52%", fontFamily: font.ui, fontSize: 10.5, fontWeight: 700, color: colors.ink, textAlign: "right", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-        {waarde}
-      </span>
-    </div>
+    <GoudKader {...SECTIE} padding="4px 8px">
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <Ico size={11} color="#F0B6FF" style={{ flexShrink: 0 }} />
+        <span style={{ flex: 1, minWidth: 0, fontFamily: font.ui, fontSize: 8.5, fontWeight: 800, letterSpacing: ".05em", textTransform: "uppercase", color: "#F0B6FF", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {label}
+        </span>
+        <span style={{ flexShrink: 0, maxWidth: "54%", fontFamily: font.ui, fontSize: 9.5, fontWeight: 700, color: colors.ink, textAlign: "right", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {waarde}
+        </span>
+      </div>
+    </GoudKader>
   );
 }
 
-/** Een blokje in de balk met de herkomst van de kaart. */
 function MetaVak({ kop, waarde, sub }: { kop: string; waarde: React.ReactNode; sub?: string }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, minWidth: 0, textAlign: "center" }}>
       <span style={{ fontFamily: font.ui, fontSize: 9.5, color: colors.sub, whiteSpace: "nowrap" }}>{kop}</span>
       <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 12.5, lineHeight: 1.15, color: colors.ink }}>{waarde}</span>
-      {sub && (
-        <span style={{ fontFamily: font.ui, fontSize: 9.5, lineHeight: 1.2, color: "#C9A2FF" }}>{sub}</span>
-      )}
+      {sub && <span style={{ fontFamily: font.ui, fontSize: 9.5, lineHeight: 1.2, color: "#C9A2FF" }}>{sub}</span>}
     </div>
   );
 }
@@ -120,15 +129,21 @@ export function KaartDetail({
    *  hem zelf niet, want binnen die lijst is hij voor iedereen hetzelfde. */
   letter: string;
   rijen: FactRij[];
-  /** De stand van de letter waar deze kaart bij hoort. */
   letterHave: number;
   letterTotal: number;
   onVerzameling: () => void;
   onBack: () => void;
 }) {
   const { t } = useT();
-  const [gedraaid, setGedraaid] = useState(false);
+  // Begint op de voorkant en draait vanzelf om: dat is het moment waar je voor
+  // komt. Daarna draait hij met een tik heen en weer.
+  const [om, setOm] = useState(false);
   const [foto, setFoto] = useState(!!kaart.image_path);
+
+  useEffect(() => {
+    const id = window.setTimeout(() => setOm(true), 620);
+    return () => window.clearTimeout(id);
+  }, []);
 
   useEffect(() => {
     const opToets = (e: KeyboardEvent) => { if (e.key === "Escape") onBack(); };
@@ -160,193 +175,182 @@ export function KaartDetail({
         <span
           style={{
             display: "inline-flex", alignItems: "center", gap: 7,
-            padding: "6px 18px", borderRadius: 10,
-            background: `linear-gradient(180deg, ${withAlpha(colors.violet, 0.5)}, ${withAlpha(colors.violetDeep, 0.6)})`,
-            border: `1.5px solid ${withAlpha("#D9A6DF", 0.7)}`,
-            boxShadow: `0 0 14px ${withAlpha(colors.violet, 0.35)}`,
+            padding: "6px 18px", clipPath: ACHTHOEK,
+            background: "linear-gradient(180deg, rgba(92,34,138,.9), rgba(52,16,88,.95))",
+            boxShadow: `inset 0 0 0 1.5px ${withAlpha("#E39BFF", 0.6)}`,
             fontFamily: font.wide, fontSize: 13, letterSpacing: 1.4, color: colors.ink,
             textTransform: "uppercase",
           }}
         >
-          <Globe size={15} color="#C9A2FF" />
+          <Globe size={15} color="#F0B6FF" />
           {categorieLabel}
         </span>
       </div>
 
-      {/* ---- de twee kanten ---- */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: 6 }}>
-        {/* VOORKANT: compleet plaatje, alleen de categoriepil komt erover. */}
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontFamily: font.wide, fontSize: 9.5, letterSpacing: 1.2, color: "#C9A2FF", textAlign: "center", marginBottom: 5 }}>
-            {t("kdVoorkant")}
-          </div>
+      {/* ---- DE KAART, die zichzelf omdraait ---- */}
+      <div style={{ display: "flex", justifyContent: "center" }}>
+        <div style={{ width: "min(66%, 240px)", perspective: 1200 }}>
           <button
-            onClick={() => { sound.uiTap(); setGedraaid(false); }}
-            aria-label={t("kdVoorkant")}
-            className="pressable"
+            onClick={() => { sound.uiTap(); setOm((v) => !v); }}
+            aria-label={kaart.word || ""}
             style={{
-              position: "relative", width: "100%", aspectRatio: `${VOOR.verh}`,
+              position: "relative", width: "100%", aspectRatio: `${KAART_VERH}`,
               background: "transparent", border: "none", padding: 0, cursor: "pointer", display: "block",
-              opacity: gedraaid ? 0.55 : 1, transition: "opacity .25s ease",
+              transformStyle: "preserve-3d",
+              transform: om ? "rotateY(180deg)" : "rotateY(0deg)",
+              transition: "transform .7s cubic-bezier(.2,.8,.2,1)",
             }}
           >
-            <img
-              src={VOOR.src} alt="" aria-hidden draggable={false}
-              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }}
-            />
-            {/* De plaat met de categorie, op de plek die de art vrijlaat. */}
+            {/* VOORKANT */}
             <span
               style={{
-                position: "absolute", left: "14%", right: "14%", bottom: "16%",
-                display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
-                padding: "3px 0", borderRadius: 6,
-                background: "rgba(10,4,26,.82)", border: `1px solid ${withAlpha("#D9A6DF", 0.6)}`,
-                fontFamily: font.wide, fontSize: "clamp(7px, 2.4vw, 11px)", letterSpacing: ".08em",
-                color: colors.ink, textTransform: "uppercase",
+                position: "absolute", inset: 0, display: "block",
+                backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden",
               }}
             >
-              <Globe size={10} color="#C9A2FF" />
-              {categorieLabel}
+              <img
+                src={VOOR} alt="" aria-hidden draggable={false}
+                style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }}
+              />
+              {/* De categorieplaat: smal, in dezelfde achthoek als de secties. */}
+              <span
+                style={{
+                  position: "absolute", left: "50%", bottom: "16%", transform: "translateX(-50%)",
+                  display: "inline-flex", alignItems: "center", gap: 4,
+                  padding: "3px 10px", clipPath: ACHTHOEK_KLEIN, whiteSpace: "nowrap",
+                  background: "linear-gradient(180deg, rgba(92,34,138,.92), rgba(52,16,88,.95))",
+                  boxShadow: `inset 0 0 0 1px ${withAlpha("#E39BFF", 0.55)}`,
+                  fontFamily: font.wide, fontSize: "clamp(6.5px, 2.2vw, 9.5px)", letterSpacing: ".08em",
+                  color: colors.ink, textTransform: "uppercase",
+                }}
+              >
+                <Globe size={9} color="#F0B6FF" />
+                {categorieLabel}
+              </span>
             </span>
-          </button>
-        </div>
 
-        <ArrowRight size={22} color={colors.gold} style={{ marginTop: 16, flexShrink: 0 }} />
-
-        {/* ACHTERKANT: lege lijst, inhoud erin getekend. */}
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontFamily: font.wide, fontSize: 9.5, letterSpacing: 1.2, color: "#C9A2FF", textAlign: "center", marginBottom: 5 }}>
-            {t("kdAchterkant")}
-          </div>
-          <button
-            onClick={() => { sound.uiTap(); setGedraaid(true); }}
-            aria-label={kaart.word || t("kdAchterkant")}
-            className="pressable"
-            style={{
-              position: "relative", width: "100%", aspectRatio: `${ACHTER.verh}`,
-              background: "transparent", border: "none", padding: 0, cursor: "pointer", display: "block",
-              opacity: gedraaid ? 1 : 0.85, transition: "opacity .25s ease",
-            }}
-          >
-            {/* DE FOTO LIGT ONDER DE LIJST. Het binnenvlak van de art is bijna
-                doorzichtig (alfa 2 tot 30 gemeten), dus de gouden lijn valt
-                gewoon over de foto heen in plaats van ertegenaan te stoppen.
-                Vandaar deze volgorde: eerst de foto, dan de lijst, dan de tekst.
-
-                De doos loopt tot ONDER de lijst door (2,5% aan de zijkanten,
-                3,5% bovenin, tegen de 5,6% en 8,0% van het vlak zelf), zodat er
-                nergens een naad te zien is. */}
-            <div
+            {/* ACHTERKANT */}
+            <span
               style={{
-                position: "absolute", left: "2.5%", right: "2.5%", top: "3.5%", bottom: "2%",
-                overflow: "hidden", borderRadius: 6,
+                position: "absolute", inset: 0, display: "block",
+                backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden",
+                transform: "rotateY(180deg)",
               }}
             >
-              {foto ? (
-                <img
-                  src={kaart.image_path as string} alt="" aria-hidden draggable={false}
-                  onError={() => setFoto(false)}
-                  style={{
-                    position: "absolute",
-                    left: `${FOTO.links}%`, top: `${FOTO.boven}%`,
-                    width: `${FOTO.breed}%`, height: `${FOTO.hoog}%`,
-                    maxWidth: "none", display: "block",
-                    // Naar boven toe uitvergroot: de foto hoort de BOVENKANT van
-                    // de kaart te vullen, en het onderste deel van de bron loopt
-                    // toch al weg in het paars.
-                    transform: "scale(1.16)", transformOrigin: "50% 0",
-                  }}
-                />
-              ) : (
+              {/* De foto ligt ONDER de lijst en is op de VORM van de kaart
+                  geknipt: zo loopt hij helemaal onder de dikke rand door en
+                  steekt er nergens een hoekje uit. */}
+              <span
+                style={{
+                  position: "absolute", inset: 0, display: "block", overflow: "hidden",
+                  WebkitMaskImage: `url(${ACHTER})`, maskImage: `url(${ACHTER})`,
+                  WebkitMaskSize: "100% 100%", maskSize: "100% 100%",
+                  WebkitMaskRepeat: "no-repeat", maskRepeat: "no-repeat",
+                }}
+              >
+                {foto ? (
+                  <img
+                    src={kaart.image_path as string} alt="" aria-hidden draggable={false}
+                    onError={() => setFoto(false)}
+                    style={{
+                      position: "absolute",
+                      left: `${FOTO.links}%`, top: `${FOTO.boven}%`,
+                      width: `${FOTO.breed}%`, height: `${FOTO.hoog}%`,
+                      maxWidth: "none", display: "block",
+                      // Naar boven uitvergroot: de foto hoort de BOVENKANT van
+                      // de kaart te vullen, en de onderkant van de bron loopt
+                      // toch al weg in het paars.
+                      transform: "scale(1.14)", transformOrigin: "50% 0",
+                    }}
+                  />
+                ) : (
+                  <span
+                    aria-hidden
+                    style={{
+                      position: "absolute", left: 0, right: 0, top: "16%", textAlign: "center",
+                      fontFamily: font.display, fontWeight: 800, fontSize: "clamp(26px, 9vw, 44px)",
+                      color: withAlpha(colors.gold, 0.3),
+                    }}
+                  >
+                    {letter}
+                  </span>
+                )}
                 <span
                   aria-hidden
                   style={{
-                    position: "absolute", left: 0, right: 0, top: "16%", textAlign: "center",
-                    fontFamily: font.display, fontWeight: 800, fontSize: "clamp(26px, 9vw, 44px)",
-                    color: withAlpha(colors.gold, 0.3),
-                  }}
-                >
-                  {letter}
-                </span>
-              )}
-              {/* De uitloop naar paars, zodat de feiten leesbaar op de foto
-                  liggen en de foto niet met een harde rand ophoudt. */}
-              <span
-                aria-hidden
-                style={{
-                  position: "absolute", inset: 0,
-                  background: "linear-gradient(180deg, transparent 34%, rgba(24,10,52,.7) 50%, rgba(20,8,44,.96) 64%)",
-                }}
-              />
-            </div>
-
-            <img
-              src={ACHTER.src} alt="" aria-hidden draggable={false}
-              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block", pointerEvents: "none" }}
-            />
-
-            <div
-              style={{
-                position: "absolute",
-                left: `${VLAK.l * 100}%`, right: `${VLAK.r * 100}%`,
-                top: `${VLAK.t * 100}%`, bottom: `${VLAK.b * 100}%`,
-                display: "flex", flexDirection: "column", gap: 3,
-                padding: "4% 6%", minWidth: 0,
-              }}
-            >
-              <NeonText
-                accent={colors.gold} blur={10} glow={0.55}
-                style={{
-                  fontFamily: font.display, fontWeight: 800,
-                  fontSize: "clamp(11px, 3.9vw, 18px)", lineHeight: 1.05, textAlign: "center",
-                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block",
-                  flexShrink: 0,
-                }}
-              >
-                {kaart.word}
-              </NeonText>
-
-              {kaart.iso && (
-                <img
-                  src={`/vlaggen/${kaart.iso}.webp`} alt=""
-                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-                  style={{
-                    position: "absolute", right: "6%", top: "1%", width: "22%",
-                    borderRadius: 2, boxShadow: "0 2px 7px rgba(0,0,0,.7)",
+                    position: "absolute", inset: 0,
+                    // LICHT houden: de bronfoto vaagt zelf al weg naar paars
+                    // vanaf 52%. Een tweede donkere laag daarbovenop maakte de
+                    // hele foto grauw; dit is net genoeg om de feiten leesbaar
+                    // te houden.
+                    background: "linear-gradient(180deg, transparent 44%, rgba(20,8,44,.45) 64%, rgba(20,8,44,.85) 82%)",
                   }}
                 />
-              )}
+              </span>
 
-              <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: 3, minWidth: 0 }}>
-                {feiten.filter((r) => r.key !== "weetje").map((r) => (
-                  <FeitRij
-                    key={r.key}
-                    ico={FEIT_ICOON[r.key] ?? Globe}
-                    label={r.label}
-                    waarde={String((kaart.facts || {})[r.key])}
+              <img
+                src={ACHTER} alt="" aria-hidden draggable={false}
+                style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block", pointerEvents: "none" }}
+              />
+
+              <span
+                style={{
+                  position: "absolute",
+                  left: `${VLAK.l * 100}%`, right: `${VLAK.r * 100}%`,
+                  top: `${VLAK.t * 100}%`, bottom: `${VLAK.b * 100}%`,
+                  display: "flex", flexDirection: "column", gap: 3,
+                  padding: "4% 6%", minWidth: 0,
+                }}
+              >
+                <NeonText
+                  accent={colors.gold} blur={10} glow={0.55}
+                  style={{
+                    fontFamily: font.display, fontWeight: 800,
+                    fontSize: "clamp(11px, 4.4vw, 17px)", lineHeight: 1.05, textAlign: "center",
+                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block",
+                    flexShrink: 0,
+                  }}
+                >
+                  {kaart.word}
+                </NeonText>
+
+                {kaart.iso && (
+                  <img
+                    src={`/vlaggen/${kaart.iso}.webp`} alt=""
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                    style={{ position: "absolute", right: "6%", top: "1%", width: "22%", borderRadius: 2, display: "block" }}
                   />
-                ))}
-                {(kaart.facts || {}).weetje && (
-                  <div
-                    style={{
-                      padding: "6px 9px", borderRadius: 8,
-                      background: "rgba(10,3,26,.62)", border: `1px solid ${withAlpha(colors.gold, 0.32)}`,
-                    }}
-                  >
-                    <span style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
-                      <Star size={12} color={colors.gold} fill={colors.gold} style={{ flexShrink: 0 }} />
-                      <span style={{ fontFamily: font.ui, fontSize: 9.5, fontWeight: 800, letterSpacing: ".06em", textTransform: "uppercase", color: colors.gold }}>
-                        {t("kdWeetje")}
-                      </span>
-                    </span>
-                    <span style={{ display: "block", fontFamily: font.ui, fontSize: 9.5, lineHeight: 1.35, color: colors.ink }}>
-                      {String((kaart.facts || {}).weetje)}
-                    </span>
-                  </div>
                 )}
-              </div>
-            </div>
+
+                <span style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: 3, minWidth: 0 }}>
+                  {feiten.filter((r) => r.key !== "weetje").map((r) => (
+                    <FeitRij
+                      key={r.key}
+                      ico={FEIT_ICOON[r.key] ?? Globe}
+                      label={r.label}
+                      waarde={String((kaart.facts || {})[r.key])}
+                    />
+                  ))}
+                  {(kaart.facts || {}).weetje && (
+                    <GoudKader {...SECTIE} padding="4px 8px">
+                      <span style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 2 }}>
+                        <Star size={10} color="#F0B6FF" fill="#F0B6FF" style={{ flexShrink: 0 }} />
+                        <span style={{ fontFamily: font.ui, fontSize: 8.5, fontWeight: 800, letterSpacing: ".05em", textTransform: "uppercase", color: "#F0B6FF" }}>
+                          {t("kdWeetje")}
+                        </span>
+                      </span>
+                      <span style={{ display: "block", fontFamily: font.ui, fontSize: 8.5, lineHeight: 1.3, color: colors.ink }}>
+                        {String((kaart.facts || {}).weetje)}
+                      </span>
+                    </GoudKader>
+                  )}
+                </span>
+              </span>
+            </span>
           </button>
+          <div style={{ marginTop: 7, textAlign: "center", fontFamily: font.ui, fontSize: 10.5, color: colors.faint }}>
+            {om ? t("kdAchterkant") : t("kdVoorkant")} · {t("ontdekkenDraaiOm")}
+          </div>
         </div>
       </div>
 
@@ -354,7 +358,7 @@ export function KaartDetail({
       <GoudKader hoek={11} kleur="violet" dik={0.6} gloed vulling="licht" binnenlijn hoekAccent="#F3B53E" padding={11}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", alignItems: "center", gap: 4 }}>
           <MetaVak kop={t("kdOntdektOp")} waarde={datum || "-"} />
-          <span style={{ display: "flex", justifyContent: "center", borderInline: `1px solid ${withAlpha("#572D7C", 0.7)}` , width: "100%" }}>
+          <span style={{ display: "flex", justifyContent: "center", borderInline: `1px solid ${withAlpha("#572D7C", 0.7)}`, width: "100%" }}>
             <MetaVak
               kop={t("kdVerzameldIn")}
               waarde={t(kaart.spoor ? "kdSpoor" : "kdOefenronde")}
@@ -365,10 +369,9 @@ export function KaartDetail({
         </div>
       </GoudKader>
 
-      {/* ---- de stand van de letter, met delen en favoriet ---- */}
+      {/* ---- de stand van de letter, met delen ---- */}
       <GoudKader hoek={11} kleur="violet" dik={0.6} gloed vulling="licht" binnenlijn hoekAccent="#F3B53E" padding={10}>
         <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-          {/* De letter als munt, zoals in het ontwerp. */}
           <span
             style={{
               flexShrink: 0, width: 40, height: 40, borderRadius: "50%", display: "grid", placeItems: "center",
@@ -404,18 +407,14 @@ export function KaartDetail({
               <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 12, color: colors.gold }}>{pct}%</span>
             </span>
           </span>
-          {/* Delen en favoriet als twee vierkante knoppen, zoals in het ontwerp.
-              Favoriet is nog niet aan te zetten: er is geen endpoint voor, dus
-              hij zou een knop zijn die niets onthoudt. */}
           <button
             onClick={() => void deel()}
             aria-label={t("kdDelen")}
             className="pressable"
             style={{
               flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
-              padding: "7px 9px", borderRadius: 9, cursor: "pointer",
-              background: `linear-gradient(180deg, ${withAlpha(colors.violet, 0.55)}, ${withAlpha(colors.violetDeep, 0.65)})`,
-              border: `1px solid ${withAlpha("#D9A6DF", 0.6)}`,
+              padding: "7px 9px", clipPath: ACHTHOEK_KLEIN, cursor: "pointer", border: "none",
+              background: "linear-gradient(180deg, rgba(92,34,138,.92), rgba(52,16,88,.95))",
             }}
           >
             <Share2 size={15} color={colors.ink} />

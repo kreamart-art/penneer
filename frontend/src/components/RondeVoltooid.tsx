@@ -20,6 +20,7 @@ import { Brain, Check, Flame, Layers, RotateCw, Target, X as Kruis } from "lucid
 import { Button } from "./Button";
 import { CloseIcon } from "./CloseIcon";
 import { GoudKader } from "./GoudKader";
+import { Lint } from "./Lint";
 import { SierKop } from "./ProfileHero";
 import { NeonText } from "./NeonText";
 import { useT } from "../i18n/i18n";
@@ -339,18 +340,8 @@ function KaartTegel({ kaart }: { kaart: NieuweKaart }) {
             {kaart.word.toUpperCase()}
           </span>
         </span>
-        {/* Het lintje linksboven, half over de lijst heen zoals in het ontwerp. */}
-        <span
-          style={{
-            position: "absolute", left: -2, top: 5,
-            padding: "1px 5px 1px 4px", borderRadius: "0 3px 3px 0",
-            background: `linear-gradient(180deg, ${colors.goldHi}, ${colors.gold})`,
-            fontFamily: font.ui, fontSize: 7, fontWeight: 800, letterSpacing: 0.4,
-            color: "#3A2405", textTransform: "uppercase",
-          }}
-        >
-          {t("rvNieuw")}
-        </span>
+        {/* Het lint linksboven, half over de lijst heen zoals in het ontwerp. */}
+        <Lint soort="nieuw" tekst={t("rvNieuw")} breed={50} style={{ position: "absolute", left: "-6%", top: "0%" }} />
       </div>
     </div>
   );
