@@ -274,7 +274,7 @@ function KaartTegel({ kaart }: { kaart: NieuweKaart }) {
     <div style={{ position: "relative", minWidth: 0 }}>
       <div
         style={{
-          position: "relative", width: "100%", aspectRatio: "658 / 1012",
+          position: "relative", width: "100%", aspectRatio: "659 / 1013",
           borderRadius: 5, overflow: "hidden",
           border: `1px solid ${withAlpha(colors.gold, 0.7)}`,
           boxShadow: `0 0 9px ${withAlpha(colors.gold, 0.28)}`,

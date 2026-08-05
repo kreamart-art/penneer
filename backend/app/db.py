@@ -4268,9 +4268,10 @@ class Database:
     # ---- kaartpack -----------------------------------------------------------
     # Vijf kaarten voor munten. Wat je al hebt komt terug als munten, zodat een
     # dubbele geen teleurstelling is maar wisselgeld.
-    # De prijs ligt BOVEN wat vijf dubbele kaarten hoogstens opleveren
-    # (5 x 30 = 150), zodat een pack nooit een muntenpers kan worden. Je koopt
-    # het voor de kaarten; het wisselgeld is de bodem, niet de opbrengst.
+    # EEN PACK IS NIET TE KOOP. Je verdient hem, met scherven uit een potje.
+    # Munten heb je zo genoeg; als je er packs van kon kopen, is de verzameling
+    # een kwestie van geduld in plaats van spelen. PACK_KOSTEN staat er nog voor
+    # het geval er ooit een winkel-pack komt, maar de route gebruikt hem niet.
     PACK_KOSTEN = 150
     PACK_KAARTEN = 5
 
@@ -4363,7 +4364,7 @@ class Database:
         n = int(rows[0]["n"]) if rows else 0
         return max(5, min(30, round(n / 8)))
 
-    def pack_open(self, user_id: str, met: str = "munten") -> dict:
+    def pack_open(self, user_id: str, met: str = "scherven") -> dict:
         """Reken het pack af en ken toe wat eruit komt.
 
         `met` is "munten" of "scherven". Geeft {"error": ...} terug als het niet

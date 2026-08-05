@@ -758,9 +758,10 @@ async def discover_pack_open(request: Request) -> JSONResponse:
     uid = db.auth(_bearer(request))
     if not uid:
         return JSONResponse({"error": "auth"}, status_code=401)
-    body = await request.json() if request.headers.get("content-length") else {}
-    met = "scherven" if str((body or {}).get("met") or "") == "scherven" else "munten"
-    uit = db.pack_open(uid, met)
+    # ALTIJD met scherven. Een pack is te verdienen en niet te koop; de
+    # muntenkant van pack_open blijft bestaan voor een eventueel winkel-pack,
+    # maar hier komt hij er niet in.
+    uit = db.pack_open(uid, "scherven")
     if uit.get("error") in ("te_weinig", "te_weinig_scherven"):
         return JSONResponse(uit, status_code=402)
     if uit.get("error"):

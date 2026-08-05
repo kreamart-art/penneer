@@ -9,13 +9,13 @@
 // verzameling die op twee toestellen anders staat is erger dan een verzameling
 // die een halve seconde later verschijnt.
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
-import { Apple, ArrowLeft, Brain, Briefcase, Building2, Check, ChevronDown, ChevronLeft, ChevronRight, Filter, Flame, Globe, Layers, Lightbulb, PawPrint } from "lucide-react";
+import { Apple, ArrowLeft, Brain, Briefcase, Building2, Check, ChevronDown, ChevronRight, Filter, Flame, Globe, Layers, Lightbulb, PawPrint } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "../components/Button";
 import { LetterTegel } from "../components/LetterTegel";
 import { GoudKader } from "../components/GoudKader";
 import { OntdekQuiz } from "./OntdekQuiz";
-import { PackScherm } from "./PackScherm";
+import { KaartDetail } from "./KaartDetail";
 import { useT } from "../i18n/i18n";
 import { colors, font, panelStyle, withAlpha } from "../theme/tokens";
 import { sound } from "../sound/sound";
@@ -385,11 +385,10 @@ function SectieKop({ children, onder }: {
   );
 }
 
-function Hub({ data, onCategorie, onOefenen, onQuiz, onVerzameling, onPack }: {
+function Hub({ data, onCategorie, onOefenen, onQuiz, onVerzameling }: {
   data: Overview; onCategorie: (c: string) => void; onOefenen: (letter: string | null) => void;
   onQuiz: (mode: "letter" | "review", letter: string | null, category: string) => void;
   onVerzameling: () => void;
-  onPack: () => void;
 }) {
   const { t } = useT();
   // De quiz vraagt naar FEITEN, dus hij draait op de categorie waar je de
@@ -577,46 +576,8 @@ function Hub({ data, onCategorie, onOefenen, onQuiz, onVerzameling, onPack }: {
         </div>
       </GoudKader>
 
-      {/* Kaarten kopen in plaats van ze bij elkaar spelen. Boven de
-          verzamelbalk, want dit is een manier om AAN kaarten te komen en de
-          balk eronder brengt je naar wat je al hebt. */}
-      <PackBalk onClick={onPack} />
-
       <VerzamelBalk onClick={onVerzameling} />
     </>
-  );
-}
-
-/** De ingang naar het kaartpack: de pack-art met een regel ernaast. */
-function PackBalk({ onClick }: { onClick: () => void }) {
-  const { t } = useT();
-  return (
-    <GoudKader hoek={12} kleur="violet" dik={0.7} gloed vulling binnenlijn hoekAccent="#F3B53E" puntjes padding={0}>
-      <button
-        onClick={() => { sound.uiTap(); onClick(); }}
-        className="pressable"
-        style={{
-          display: "flex", alignItems: "center", gap: 10, width: "100%",
-          padding: "9px 12px", background: "transparent", border: "none",
-          cursor: "pointer", textAlign: "left",
-        }}
-      >
-        <img
-          src="/ui/pack-dicht.webp" alt="" aria-hidden draggable={false}
-          style={{ height: 52, width: "auto", display: "block", flexShrink: 0,
-            filter: "drop-shadow(0 0 8px rgba(255,194,61,.3))" }}
-        />
-        <span style={{ flex: 1, minWidth: 0 }}>
-          <span style={{ display: "block", fontFamily: font.display, fontWeight: 800, fontSize: 15, color: colors.gold }}>
-            {t("packTitel")}
-          </span>
-          <span style={{ display: "block", marginTop: 2, fontFamily: font.ui, fontSize: 11.5, lineHeight: 1.3, color: colors.sub }}>
-            {t("packBalkSub")}
-          </span>
-        </span>
-        <ChevronRight size={20} color={colors.gold} style={{ flexShrink: 0 }} />
-      </button>
-    </GoudKader>
   );
 }
 
@@ -721,7 +682,7 @@ function Categorie({ data, onLetter }: { data: CategoryView; onLetter: (l: strin
 // stukken gesneden naar /ontdek. Het kader is een border-image, want dat is de
 // enige manier om een versierde lijst mee te laten rekken zonder dat de hoeken
 // vervormen: de hoeken blijven staan, alleen de rechte stukken worden opgerekt.
-const KAART_RATIO = "658 / 1012";
+const KAART_RATIO = "659 / 1013";
 
 // De sectie is EEN afbeelding: het kader, de ronde medaille links en de twee
 // platen rechts zitten er al in. De inhoud gaat er als laag overheen, op de
@@ -1045,7 +1006,11 @@ function KaartTegel({ kaart, nu, onOpen, groot, chip }: {
   );
 }
 
-function Letter({ data, onVerzameling }: { data: LetterView; onVerzameling: () => void }) {
+function Letter({ data, onVerzameling, onTitel }: {
+  data: LetterView; onVerzameling: () => void;
+  /** De kop van het scherm hoort mee te veranderen als je een kaart opent. */
+  onTitel?: (detail: boolean) => void;
+}) {
   const { t } = useT();
   const [sortering, setSortering] = useState<Sortering>("az");
   const [filter, setFilter] = useState<Filter>("alles");
@@ -1074,6 +1039,25 @@ function Letter({ data, onVerzameling }: { data: LetterView; onVerzameling: () =
 
   const filterLabel = filter === "alles" ? t("ontdekkenFilterAlles")
     : filter === "ontdekt" ? t("ontdekkenFilterOntdekt") : t("ontdekkenFilterMist");
+
+  // EEN KAART OPEN IS EEN EIGEN PAGINA en geen overlay meer: de detailpagina
+  // toont de voorkant en de achterkant naast elkaar met alles wat je erover
+  // weet, en dat past niet in een venster over het raster heen.
+  const open = openIdx !== null && openIdx >= 0 ? ontdekt[openIdx] : null;
+  if (open) {
+    return (
+      <KaartDetail
+        kaart={open}
+        categorieLabel={data.label}
+        letter={data.letter}
+        rijen={data.fact_schema}
+        letterHave={data.discovered}
+        letterTotal={data.total}
+        onVerzameling={onVerzameling}
+        onBack={() => { setOpenIdx(null); onTitel?.(false); }}
+      />
+    );
+  }
 
   return (
     <>
@@ -1106,7 +1090,7 @@ function Letter({ data, onVerzameling }: { data: LetterView; onVerzameling: () =
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6 }}>
             {kaarten.map((k) => (
-              <KaartTegel key={k.id} kaart={k} nu={nu} onOpen={() => setOpenIdx(ontdekt.findIndex((c) => c.id === k.id))} />
+              <KaartTegel key={k.id} kaart={k} nu={nu} onOpen={() => { setOpenIdx(ontdekt.findIndex((c) => c.id === k.id)); onTitel?.(true); }} />
             ))}
           </div>
         )}
@@ -1156,165 +1140,15 @@ function Letter({ data, onVerzameling }: { data: LetterView; onVerzameling: () =
         </div>
       </div>
 
-      {openIdx !== null && openIdx >= 0 && (
-        <KaartGroot
-          kaarten={ontdekt} index={openIdx} rijen={data.fact_schema} nu={nu}
-          onGa={setOpenIdx} onSluit={() => setOpenIdx(null)}
-        />
-      )}
     </>
   );
 }
-
-/** De kaart op ware grootte, als overlay. */
-/** De kaart op ware grootte: voorkant met het beeld, achterkant met de feiten.
- *
- *  Tikken draait hem om. De feiten staan op de ACHTERKANT en niet in een
- *  paneel eronder, want dat is wat een verzamelkaart is: beeld aan de ene kant,
- *  wat je erover weet aan de andere. Een lijstje eronder maakt er een
- *  productpagina van.
- *
- *  De pager loopt alleen langs kaarten die je HEBT. Bladeren naar een kaart die
- *  je niet hebt zou de spanning van het raster weghalen. */
-function KaartGroot({ kaarten, index, rijen, nu, onGa, onSluit }: {
-  kaarten: Kaart[]; index: number; rijen: FactRow[]; nu: number;
-  onGa: (i: number) => void; onSluit: () => void;
-}) {
-  const { t } = useT();
-  const [om, setOm] = useState(false);
-  const kaart = kaarten[index];
-
-  // Bij het bladeren altijd met de voorkant beginnen: anders zie je de feiten
-  // van de volgende kaart voordat je hem gezien hebt.
-  useEffect(() => { setOm(false); }, [index]);
-
-  useEffect(() => {
-    const opToets = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onSluit();
-      if (e.key === "ArrowLeft" && index > 0) onGa(index - 1);
-      if (e.key === "ArrowRight" && index < kaarten.length - 1) onGa(index + 1);
-      if (e.key === " " || e.key === "Enter") { e.preventDefault(); setOm((v) => !v); }
-    };
-    window.addEventListener("keydown", opToets);
-    return () => window.removeEventListener("keydown", opToets);
-  }, [onSluit, onGa, index, kaarten.length]);
-
-  if (!kaart) return null;
-  const feiten = rijen.filter((r) => kaart.facts?.[r.key]);
-
-  const blader = (naar: number, label: string, kant: "links" | "rechts") => {
-    const kan = naar >= 0 && naar < kaarten.length;
-    return (
-      <button
-        onClick={() => { if (kan) { sound.uiTap(); onGa(naar); } }}
-        disabled={!kan}
-        aria-label={label}
-        style={{
-          background: "transparent", border: "none", padding: 8,
-          cursor: kan ? "pointer" : "default", opacity: kan ? 1 : 0.25,
-          color: colors.ink, display: "flex", flexShrink: 0,
-        }}
-      >
-        {kant === "links" ? <ChevronLeft size={26} /> : <ChevronRight size={26} />}
-      </button>
-    );
-  };
-
-  return (
-    <div
-      role="dialog" aria-modal="true" aria-label={kaart.word || ""}
-      onClick={onSluit}
-      style={{
-        position: "fixed", inset: 0, zIndex: 60, display: "grid", placeItems: "center",
-        background: "rgba(4,1,14,.86)", padding: 18,
-      }}
-    >
-      <div onClick={(e) => e.stopPropagation()} style={{ display: "flex", alignItems: "center", gap: 2 }}>
-        {blader(index - 1, t("ontdekkenVorige"), "links")}
-
-        <div style={{ width: "min(66vw, 290px)" }}>
-          <div className={`ontdek-flip${om ? " om" : ""}`}>
-            <div className="ontdek-flip-binnen" style={{ aspectRatio: KAART_RATIO }}>
-              <button
-                onClick={() => { sound.uiTap(); setOm((v) => !v); }}
-                aria-label={t("ontdekkenDraaiOm")}
-                className="ontdek-flip-kant"
-                style={{ position: "absolute", inset: 0, padding: 0, border: "none", background: "transparent", cursor: "pointer" }}
-              >
-                <KaartTegel kaart={kaart} nu={nu} groot />
-              </button>
-
-              {/* De achterkant: het pen-embleem als ondergrond, de feiten erop. */}
-              <button
-                onClick={() => { sound.uiTap(); setOm((v) => !v); }}
-                aria-label={t("ontdekkenDraaiOm")}
-                className="ontdek-flip-kant ontdek-flip-achter"
-                style={{ padding: 0, border: "none", background: "transparent", cursor: "pointer" }}
-              >
-                <img
-                  src="/static/cards/achterkant.webp" alt=""
-                  style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }}
-                />
-                {/* Een donker vlak over het embleem. Zonder dit valt de tekst
-                    midden in de gouden ring en is er geen woord te lezen: de
-                    achterkant is mooi, maar hier moet hij vooral ondergrond
-                    zijn. */}
-                <div
-                  style={{
-                    position: "absolute", left: "13%", right: "13%", top: "16%", bottom: "14%",
-                    display: "flex", flexDirection: "column", justifyContent: "center", gap: 2,
-                    padding: "10px 12px", borderRadius: 10,
-                    background: "linear-gradient(180deg, rgba(8,3,20,.86), rgba(8,3,20,.93))",
-                    border: `1px solid ${withAlpha(colors.gold, 0.35)}`,
-                    boxShadow: "0 8px 24px rgba(0,0,0,.5)",
-                  }}
-                >
-                  <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: "clamp(13px, 4.6vw, 19px)", color: colors.gold, textAlign: "center", marginBottom: 8, textShadow: "0 2px 8px rgba(0,0,0,.8)" }}>
-                    {kaart.word}
-                  </span>
-                  {/* Een SPOOR heeft geen feiten om te tonen: die zijn precies
-                      wat er nog te verdienen valt. In plaats van een lege
-                      achterkant staat hier hoe je hem binnenhaalt. */}
-                  {kaart.spoor ? (
-                    <span style={{ fontFamily: font.ui, fontSize: 11.5, color: colors.sub, textAlign: "center", lineHeight: 1.4 }}>
-                      {t("ontdekkenSpoorUitleg")}
-                    </span>
-                  ) : feiten.length === 0 ? (
-                    <span style={{ fontFamily: font.ui, fontSize: 11.5, color: colors.sub, textAlign: "center", lineHeight: 1.35 }}>
-                      {t("ontdekkenGeenFeiten")}
-                    </span>
-                  ) : feiten.map((r) => (
-                    <div key={r.key} style={{ display: "flex", justifyContent: "space-between", gap: 8, padding: "3px 0", borderTop: `1px solid ${withAlpha(colors.gold, 0.18)}` }}>
-                      <span style={{ fontFamily: font.ui, fontSize: "clamp(9px, 2.9vw, 12px)", color: colors.sub }}>{r.label}</span>
-                      <span style={{ fontFamily: font.ui, fontSize: "clamp(9px, 2.9vw, 12px)", fontWeight: 700, color: colors.ink, textAlign: "right" }}>
-                        {kaart.facts?.[r.key]}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </button>
-            </div>
-          </div>
-
-          <div style={{ marginTop: 10, textAlign: "center", fontFamily: font.ui, fontSize: 11.5, color: colors.faint }}>
-            {t("ontdekkenKaartVan", { n: index + 1, total: kaarten.length })} · {t("ontdekkenDraaiOm")}
-          </div>
-        </div>
-
-        {blader(index + 1, t("ontdekkenVolgende"), "rechts")}
-      </div>
-    </div>
-  );
-}
-
-// ---- shell ------------------------------------------------------------------
 
 type Stap =
   | { soort: "hub" }
   | { soort: "categorie"; category: string }
   | { soort: "letter"; category: string; letter: string }
-  | { soort: "quiz"; category: string; letter: string | null; mode: "letter" | "review" }
-  | { soort: "pack" };
+  | { soort: "quiz"; category: string; letter: string | null; mode: "letter" | "review" };
 
 export function Ontdekken({ onBack, onOefenen, startQuiz }: {
   onBack: () => void;
@@ -1336,6 +1170,9 @@ export function Ontdekken({ onBack, onOefenen, startQuiz }: {
   const [cat, setCat] = useState<CategoryView | null>(null);
   const [letter, setLetter] = useState<LetterView | null>(null);
   const [fout, setFout] = useState(false);
+  // Staat er een kaart open op de letterpagina? Dan hoort de kop mee te
+  // veranderen; de terugpijl blijft van de letterpagina zelf.
+  const [kaartOpen, setKaartOpen] = useState(false);
 
   // Een eigen decor: dezelfde kleuren als de voortgangssectie, met een ovale
   // vignette. Anders liggen de secties op een achtergrond uit een andere
@@ -1379,7 +1216,7 @@ export function Ontdekken({ onBack, onOefenen, startQuiz }: {
     stap.soort === "hub" ? t("ontdekkenTitel")
       : stap.soort === "categorie" ? (cat?.label ?? t("ontdekkenLaden"))
       : stap.soort === "quiz" ? t("ontdekkenQuiz")
-      : stap.soort === "pack" ? t("packKop")
+      : kaartOpen ? t("kdTitel")
       : t("ontdekkenLetter", { letter: stap.letter });
 
   const gast = overview?.guest ?? cat?.guest ?? letter?.guest ?? false;
@@ -1426,12 +1263,9 @@ export function Ontdekken({ onBack, onOefenen, startQuiz }: {
             onQuiz={(mode, letter, category) =>
               setStapel((s) => [...s, { soort: "quiz", category, letter, mode }])}
             onVerzameling={() => setStapel((s) => [...s, { soort: "categorie", category: "land" }])}
-            onPack={() => setStapel((s) => [...s, { soort: "pack" }])}
             onCategorie={(c) => setStapel((s) => [...s, { soort: "categorie", category: c }])}
           />
         )
-      ) : stap.soort === "pack" ? (
-        <PackScherm onVerzameling={() => setStapel([{ soort: "hub" }, { soort: "categorie", category: "land" }])} />
       ) : stap.soort === "quiz" ? (
         <OntdekQuiz
           category={stap.category} letter={stap.letter} mode={stap.mode}
@@ -1446,7 +1280,7 @@ export function Ontdekken({ onBack, onOefenen, startQuiz }: {
           />
         )
       ) : (
-        letter && <Letter data={letter} onVerzameling={terug} />
+        letter && <Letter data={letter} onVerzameling={terug} onTitel={setKaartOpen} />
       )}
     </div>
   );

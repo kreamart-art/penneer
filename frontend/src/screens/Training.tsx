@@ -5,6 +5,7 @@
 // needed, nothing stored (the progress/collection layer is a later step).
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Apple, Brain, Briefcase, Building2, Check, Globe, HelpCircle, Info, Layers, PawPrint, RotateCw, Shuffle, Target, X } from "lucide-react";
+import { BredeKnop } from "../components/BredeKnop";
 import { GoudKader } from "../components/GoudKader";
 import { RondeVoltooid, type Beloning, type NieuweKaart } from "../components/RondeVoltooid";
 import { Tv } from "../components/Tv";
@@ -302,9 +303,11 @@ export function Training({ onBack, lenient = false, onOntdekken, startLetter, on
             </div>
           </GoudKader>
 
-          <Button variant="gold" full disabled={cats.length === 0 || busy} onClick={() => void startRound()}>
+          {/* De brede plaat: hij loopt van rand tot rand, net als de secties
+              erboven, want dit is de hoofdactie van dit scherm. */}
+          <BredeKnop disabled={cats.length === 0 || busy} onClick={() => void startRound()}>
             {t("trainStart")}
-          </Button>
+          </BredeKnop>
 
           {/* Twee kleinere ingangen naast elkaar. De quizronde loopt via
               Ontdekken, want daar zitten de feiten waarover gevraagd wordt. */}
