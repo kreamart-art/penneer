@@ -228,23 +228,18 @@ export function KaartDetail({
               opacity: gedraaid ? 1 : 0.85, transition: "opacity .25s ease",
             }}
           >
-            <img
-              src={ACHTER.src} alt="" aria-hidden draggable={false}
-              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }}
-            />
-            {/* HET VLAK BINNEN DE LIJST. De foto vult het HELEMAAL en loopt
-                dus achter de feiten door, precies zoals de kaart in de
-                verzameling eruitziet. Geen lijstje om de foto: de gouden rand
-                van de kaart is al de lijst, en een tweede eromheen maakt er een
-                plaatje in een plaatje van. Onderin loopt hij uit naar paars,
-                zodat de feiten leesbaar op de foto liggen. */}
+            {/* DE FOTO LIGT ONDER DE LIJST. Het binnenvlak van de art is bijna
+                doorzichtig (alfa 2 tot 30 gemeten), dus de gouden lijn valt
+                gewoon over de foto heen in plaats van ertegenaan te stoppen.
+                Vandaar deze volgorde: eerst de foto, dan de lijst, dan de tekst.
+
+                De doos loopt tot ONDER de lijst door (2,5% aan de zijkanten,
+                3,5% bovenin, tegen de 5,6% en 8,0% van het vlak zelf), zodat er
+                nergens een naad te zien is. */}
             <div
               style={{
-                position: "absolute",
-                left: `${VLAK.l * 100}%`, right: `${VLAK.r * 100}%`,
-                top: `${VLAK.t * 100}%`, bottom: `${VLAK.b * 100}%`,
-                overflow: "hidden", borderRadius: 3,
-                background: "linear-gradient(180deg, #2A1550, #150A2E)",
+                position: "absolute", left: "2.5%", right: "2.5%", top: "3.5%", bottom: "2%",
+                overflow: "hidden", borderRadius: 6,
               }}
             >
               {foto ? (
@@ -256,13 +251,17 @@ export function KaartDetail({
                     left: `${FOTO.links}%`, top: `${FOTO.boven}%`,
                     width: `${FOTO.breed}%`, height: `${FOTO.hoog}%`,
                     maxWidth: "none", display: "block",
+                    // Naar boven toe uitvergroot: de foto hoort de BOVENKANT van
+                    // de kaart te vullen, en het onderste deel van de bron loopt
+                    // toch al weg in het paars.
+                    transform: "scale(1.16)", transformOrigin: "50% 0",
                   }}
                 />
               ) : (
                 <span
                   aria-hidden
                   style={{
-                    position: "absolute", left: 0, right: 0, top: "18%", textAlign: "center",
+                    position: "absolute", left: 0, right: 0, top: "16%", textAlign: "center",
                     fontFamily: font.display, fontWeight: 800, fontSize: "clamp(26px, 9vw, 44px)",
                     color: withAlpha(colors.gold, 0.3),
                   }}
@@ -270,77 +269,81 @@ export function KaartDetail({
                   {letter}
                 </span>
               )}
-              {/* De uitloop naar paars. Begint halverwege, zodat de bovenkant
-                  van de foto vrij blijft en de onderkant de feiten draagt. */}
+              {/* De uitloop naar paars, zodat de feiten leesbaar op de foto
+                  liggen en de foto niet met een harde rand ophoudt. */}
               <span
                 aria-hidden
                 style={{
                   position: "absolute", inset: 0,
-                  background: "linear-gradient(180deg, transparent 30%, rgba(24,10,52,.72) 48%, rgba(20,8,44,.95) 62%)",
+                  background: "linear-gradient(180deg, transparent 34%, rgba(24,10,52,.7) 50%, rgba(20,8,44,.96) 64%)",
                 }}
               />
+            </div>
+
+            <img
+              src={ACHTER.src} alt="" aria-hidden draggable={false}
+              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block", pointerEvents: "none" }}
+            />
+
+            <div
+              style={{
+                position: "absolute",
+                left: `${VLAK.l * 100}%`, right: `${VLAK.r * 100}%`,
+                top: `${VLAK.t * 100}%`, bottom: `${VLAK.b * 100}%`,
+                display: "flex", flexDirection: "column", gap: 3,
+                padding: "4% 6%", minWidth: 0,
+              }}
+            >
+              <NeonText
+                accent={colors.gold} blur={10} glow={0.55}
+                style={{
+                  fontFamily: font.display, fontWeight: 800,
+                  fontSize: "clamp(11px, 3.9vw, 18px)", lineHeight: 1.05, textAlign: "center",
+                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block",
+                  flexShrink: 0,
+                }}
+              >
+                {kaart.word}
+              </NeonText>
+
               {kaart.iso && (
                 <img
                   src={`/vlaggen/${kaart.iso}.webp`} alt=""
                   onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-                  // Geen lijstje om de vlag: de kaart heeft er zelf al een, en
-                  // een randje eromheen maakt van een vlag een sticker. Alleen
-                  // een schaduw, zodat hij van de foto loskomt.
                   style={{
-                    position: "absolute", right: "6%", top: "4%", width: "22%",
+                    position: "absolute", right: "6%", top: "1%", width: "22%",
                     borderRadius: 2, boxShadow: "0 2px 7px rgba(0,0,0,.7)",
                   }}
                 />
               )}
 
-              <div
-                style={{
-                  position: "absolute", inset: 0,
-                  display: "flex", flexDirection: "column", gap: 3,
-                  padding: "5% 6%", minWidth: 0,
-                }}
-              >
-                <NeonText
-                  accent={colors.gold} blur={10} glow={0.55}
-                  style={{
-                    fontFamily: font.display, fontWeight: 800,
-                    fontSize: "clamp(11px, 3.9vw, 18px)", lineHeight: 1.05, textAlign: "center",
-                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block",
-                    flexShrink: 0,
-                  }}
-                >
-                  {kaart.word}
-                </NeonText>
-
-                {/* De feiten onderaan, op het deel waar de foto is weggevaagd. */}
-                <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: 3, minWidth: 0 }}>
-                  {feiten.filter((r) => r.key !== "weetje").map((r) => (
-                    <FeitRij
-                      key={r.key}
-                      ico={FEIT_ICOON[r.key] ?? Globe}
-                      label={r.label}
-                      waarde={String((kaart.facts || {})[r.key])}
-                    />
-                  ))}
-                  {(kaart.facts || {}).weetje && (
-                    <div
-                      style={{
-                        padding: "6px 9px", borderRadius: 8,
-                        background: "rgba(10,3,26,.62)", border: `1px solid ${withAlpha(colors.gold, 0.32)}`,
-                      }}
-                    >
-                      <span style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
-                        <Star size={12} color={colors.gold} fill={colors.gold} style={{ flexShrink: 0 }} />
-                        <span style={{ fontFamily: font.ui, fontSize: 9.5, fontWeight: 800, letterSpacing: ".06em", textTransform: "uppercase", color: colors.gold }}>
-                          {t("kdWeetje")}
-                        </span>
+              <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: 3, minWidth: 0 }}>
+                {feiten.filter((r) => r.key !== "weetje").map((r) => (
+                  <FeitRij
+                    key={r.key}
+                    ico={FEIT_ICOON[r.key] ?? Globe}
+                    label={r.label}
+                    waarde={String((kaart.facts || {})[r.key])}
+                  />
+                ))}
+                {(kaart.facts || {}).weetje && (
+                  <div
+                    style={{
+                      padding: "6px 9px", borderRadius: 8,
+                      background: "rgba(10,3,26,.62)", border: `1px solid ${withAlpha(colors.gold, 0.32)}`,
+                    }}
+                  >
+                    <span style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+                      <Star size={12} color={colors.gold} fill={colors.gold} style={{ flexShrink: 0 }} />
+                      <span style={{ fontFamily: font.ui, fontSize: 9.5, fontWeight: 800, letterSpacing: ".06em", textTransform: "uppercase", color: colors.gold }}>
+                        {t("kdWeetje")}
                       </span>
-                      <span style={{ display: "block", fontFamily: font.ui, fontSize: 9.5, lineHeight: 1.35, color: colors.ink }}>
-                        {String((kaart.facts || {}).weetje)}
-                      </span>
-                    </div>
-                  )}
-                </div>
+                    </span>
+                    <span style={{ display: "block", fontFamily: font.ui, fontSize: 9.5, lineHeight: 1.35, color: colors.ink }}>
+                      {String((kaart.facts || {}).weetje)}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </button>
