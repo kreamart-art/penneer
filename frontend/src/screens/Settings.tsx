@@ -6,11 +6,12 @@
 // de rondleiding als popup. Daarvoor was het een stapel losse kaarten en
 // knoppen waarin je moest zoeken waar iets stond.
 import { useEffect, useState } from "react";
-import { ArrowLeft, ChevronRight, Compass, Globe, HelpCircle, Mail, Music, Palette, Share, Trash2, UserCog, Volume2 } from "lucide-react";
+import { ChevronRight, Compass, Globe, HelpCircle, Mail, Music, Palette, Share, Trash2, UserCog, Volume2 } from "lucide-react";
 import { Logo } from "../components/Logo";
 import { KnopPlaat } from "../components/KnopPlaat";
 import { BredeKnop } from "../components/BredeKnop";
 import { InstelRij } from "../components/InstelRij";
+import { SchermKop } from "../components/SchermKop";
 import { TvPaneel } from "../components/TvPaneel";
 import { LandKnop, PilKeuze } from "./Hub";
 import { Button } from "../components/Button";
@@ -68,17 +69,9 @@ function Inklapbaar({ titel, icoon, open, onWissel, children }: {
   );
 }
 
-/** De kop van een onderpagina: terugpijl plus titel, precies zoals het
- *  hoofdscherm er zelf uitziet. */
+/** Dezelfde kop als overal elders in de app; zie components/SchermKop.tsx. */
 function SubKop({ titel, onBack }: { titel: string; onBack: () => void }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-      <button onClick={() => { sound.uiTap(); onBack(); }} style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.ink, display: "flex" }}>
-        <ArrowLeft size={22} />
-      </button>
-      <h2 style={{ margin: 0, fontFamily: font.display, fontWeight: 700, fontSize: 24, color: colors.ink }}>{titel}</h2>
-    </div>
-  );
+  return <SchermKop titel={titel} onBack={onBack} style={{ padding: 0, paddingTop: 0 }} />;
 }
 
 /** Taal & spelling: in welke taal de app tegen je praat, en hoe streng er naar
@@ -434,12 +427,7 @@ export function Settings({ game, onBack, onShowRules, onShowTour, onShowLegal, o
   return (
     <Screen>
       <div style={{ display: "flex", flexDirection: "column", gap: 16, paddingTop: 8 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <button onClick={onBack} style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.ink, display: "flex" }}>
-            <ArrowLeft size={22} />
-          </button>
-          <h2 style={{ margin: 0, fontFamily: font.display, fontWeight: 700, fontSize: 24, color: colors.ink }}>{t("settingsTitle")}</h2>
-        </div>
+        <SubKop titel={t("settingsTitle")} onBack={onBack} />
 
         {/* Alles in één sectie. De volgorde is: wat je hier meteen omzet
             eerst, daarna wat een eigen pagina opent. */}

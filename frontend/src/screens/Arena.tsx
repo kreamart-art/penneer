@@ -26,6 +26,7 @@ import { ArtSchaduw, GOUD, KADER_LIJN_ROOD, NeonKader, Paneel, PlekWapen } from 
 import { GlasRij, Lijst } from "./Hub";
 import { Kleurenklem } from "./_PreviewKleurenklem";
 import { Rekenladder } from "./_PreviewRekenladder";
+import { Waaghet } from "./Waaghet";
 import { Woordketen } from "./_PreviewWoordketen";
 import { Lettersoep } from "./_PreviewLettersoep";
 import type { GameApi } from "../net/socket";
@@ -597,6 +598,10 @@ export function ArenaDeel({ game, onBack }: { game: GameApi; onBack: () => void 
             // opgaven is kort en je onthoudt hem. Twee keer dezelfde kleuren in
             // dezelfde volgorde is niet meer de Stroop-test maar een dictee.
             <Kleurenklem seed={`${poging.seed}:${poging.attempt_id}`} onKlaar={klaar} />
+          ) : info?.game === "waaghet" ? (
+            // Ook per poging vers: dezelfde vragen twee keer is geen
+            // durfspel meer maar een geheugentest.
+            <Waaghet seed={`${poging.seed}:${poging.attempt_id}`} onKlaar={klaar} />
           ) : info?.game === "woordketen" ? (
             // Ook per poging vers. Twee keer dezelfde ketting is geen
             // taalspel meer maar een geheugenspel.

@@ -312,7 +312,7 @@ export function Results({ game }: { game: GameApi }) {
         {game.isSpectator ? (
           <p style={{ textAlign: "center", fontFamily: font.ui, fontSize: 14, color: colors.sub, margin: 0 }}>{t("waitNext")}</p>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <Button
               variant={iAmReady ? "ghost" : isLast ? "gold" : "primary"}
               full

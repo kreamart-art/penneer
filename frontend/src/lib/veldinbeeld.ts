@@ -19,8 +19,9 @@
 // hij daarom precies de bug op die we willen weghalen.
 import { useEffect } from "react";
 
-/** Lucht tussen de onderkant van het veld en de bovenkant van het toetsenbord. */
-const MARGE = 14;
+/** Lucht tussen de onderkant van het veld en de bovenkant van het toetsenbord.
+ *  Ruim genoeg voor de suggestiebalk die iOS er soms nog bovenop zet. */
+const MARGE = 18;
 /** Onder deze inkorting is er geen toetsenbord maar een adresbalk die wegrolt. */
 const DREMPEL = 80;
 
@@ -53,8 +54,12 @@ function zorgInBeeld(): void {
 
   const r = el.getBoundingClientRect();
   const onder = vv.offsetTop + vv.height;
+  // ALTIJD op dezelfde lijn, niet alleen als het veld eronder valt. Anders
+  // landt het eerste veld net boven het toetsenbord en staat het tweede
+  // halverwege het scherm: dan springt de pagina bij elk veld een ander eind.
+  // Vandaar ook omhoog schuiven als het veld te hoog staat, zolang dat kan.
   const teveel = r.bottom + MARGE - onder;
-  if (teveel <= 1) return;
+  if (Math.abs(teveel) <= 2) return;
 
   const doos = scroller(el);
   if (doos) doos.scrollBy({ top: teveel, behavior: "smooth" });

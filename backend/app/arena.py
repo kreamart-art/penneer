@@ -39,15 +39,16 @@ import hashlib
 # staan zo ver mogelijk uit elkaar: Rekenladder op zondag en donderdag, Woordketen
 # op maandag en zaterdag. Nooit twee dagen achter elkaar hetzelfde.
 #
-# NOG TE BOUWEN: Wereldprik en Waaghet. Die krijgen de dubbele plekken zodra ze
-# af zijn, dus zaterdag en donderdag, en dan draait elk spel weer één dag.
+# Waaghet heeft de dubbele zaterdag overgenomen; Woordketen draait dus weer één
+# dag. NOG TE BOUWEN: Wereldprik, die krijgt de zondag zodra hij af is en dan
+# heeft elk spel zijn eigen dag.
 GAMES: dict[int, dict] = {
     0: {"key": "woordketen", "af": True},
     1: {"key": "flitsreeks", "af": True},
     2: {"key": "lettersoep", "af": True},
     3: {"key": "rekenladder", "af": True},
     4: {"key": "kleurenklem", "af": True},
-    5: {"key": "woordketen", "af": True},
+    5: {"key": "waaghet", "af": True},
     6: {"key": "rekenladder", "af": True},
 }
 
@@ -87,6 +88,18 @@ def plausibel(game: str, score: int, level: int, time_ms: int) -> bool:
         # helft, want de laatste (gefaalde) reeks telt niet mee in level.
         minimum = sum(k * 160 for k in range(1, level + 1))
         return time_ms >= minimum
+    if game == "waaghet":
+        # Score-contract met de client: de pot verdubbelt per goed antwoord en
+        # begint op tien. Je incasseert 10 * 2^(level-1), of je verliest alles
+        # en dan is de score nul. Iets ertussenin bestaat niet.
+        if score not in (0, 10 * 2 ** max(0, level - 1)):
+            return False
+        if score and level < 1:
+            return False
+        # Tijd: elke vraag kost minstens lezen plus tikken. Acht tienden per
+        # vraag is ruim onder wat een mens haalt en ver boven wat een scriptje
+        # nodig heeft.
+        return time_ms >= 800 * level
     if game == "lettersoep":
         # Score-contract met de client: een woord van n letters is 100 * 2^(n-3),
         # dus 100 voor drie letters en 3200 voor acht, en langer bestaat niet.

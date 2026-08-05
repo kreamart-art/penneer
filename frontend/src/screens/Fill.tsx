@@ -2,7 +2,7 @@
 // mode). Active player owns "Pen neer"; others can flag "Ik ben klaar"; the
 // spelleider sees how many are ready. Spectators watch read-only.
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check } from "lucide-react";
+import { Check, ChevronDown } from "lucide-react";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { Tv } from "../components/Tv";
@@ -132,6 +132,10 @@ export function Fill({ game }: { game: GameApi }) {
             {cats.map((cat, i) => (
               <div key={cat}>
                 <label style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: colors.faint, marginLeft: 4 }}>{tCat(cat)}</label>
+                {/* Het veld met een pijl erin: naar het volgende vakje zonder
+                    het toetsenbord weg te tikken. Op de laatste staat hij niet,
+                    want daar is geen volgende. */}
+                <div style={{ position: "relative" }}>
                 <input
                   ref={(el) => {
                     inputs.current[i] = el;
@@ -164,10 +168,26 @@ export function Fill({ game }: { game: GameApi }) {
                     // is het enige verschil tussen leeg en gevuld, en genoeg.
                     borderRadius: 999,
                     boxShadow: `inset 0 0 0 1.5px ${answers[cat] ? withAlpha(colors.gold, 0.55) : withAlpha("#C8A0FF", 0.22)}`,
-                    padding: "12px 18px",
+                    padding: i + 1 < cats.length ? "12px 46px 12px 18px" : "12px 18px",
                     transition: "box-shadow .12s ease",
                   }}
                 />
+                {i + 1 < cats.length && !roundOver && (
+                  <button
+                    type="button"
+                    aria-label={t("volgendeVeld")}
+                    onClick={() => inputs.current[i + 1]?.focus()}
+                    style={{
+                      position: "absolute", right: 6, top: "50%", transform: "translateY(-50%)",
+                      width: 34, height: 34, display: "grid", placeItems: "center",
+                      borderRadius: 999, border: "none", cursor: "pointer",
+                      background: withAlpha("#C8A0FF", 0.12), color: colors.sub,
+                    }}
+                  >
+                    <ChevronDown size={18} />
+                  </button>
+                )}
+                </div>
               </div>
             ))}
           </div>

@@ -3,7 +3,7 @@
 // list categories, list-only scoring, one ranked attempt per account. Guests
 // play the identical round unranked and get a profile nudge.
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Check, ChevronRight, HelpCircle, Share2, X } from "lucide-react";
+import { ArrowLeft, Check, ChevronDown, ChevronRight, HelpCircle, Share2, X } from "lucide-react";
 import { Avatar } from "../components/Avatar";
 import { Tv } from "../components/Tv";
 import { Button } from "../components/Button";
@@ -506,6 +506,24 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
                   placeholder={t("fillPlaceholder", { cat: tCat(cat), letter })}
                   kaderStyle={{ marginTop: 4 }}
                 />
+                {/* Naar het volgende vakje zonder het toetsenbord weg te
+                    tikken, net als in een potje. */}
+                {i + 1 < cats.length && (
+                  <div style={{ display: "flex", justifyContent: "flex-end", marginTop: -34, marginRight: 10, height: 0 }}>
+                    <button
+                      type="button"
+                      aria-label={t("volgendeVeld")}
+                      onClick={() => inputs.current[i + 1]?.focus()}
+                      style={{
+                        width: 32, height: 32, display: "grid", placeItems: "center",
+                        borderRadius: 999, border: "none", cursor: "pointer",
+                        background: withAlpha("#C8A0FF", 0.12), color: colors.sub,
+                      }}
+                    >
+                      <ChevronDown size={17} />
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>

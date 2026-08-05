@@ -9,9 +9,10 @@
 // verzameling die op twee toestellen anders staat is erger dan een verzameling
 // die een halve seconde later verschijnt.
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
-import { Apple, ArrowLeft, Brain, Briefcase, Building2, Check, ChevronDown, ChevronRight, Filter, Flame, Globe, Layers, Lightbulb, PawPrint } from "lucide-react";
+import { Apple, Brain, Briefcase, Building2, Check, ChevronDown, ChevronRight, Filter, Flame, Globe, Layers, Lightbulb, PawPrint } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "../components/Button";
+import { SchermKop } from "../components/SchermKop";
 import { LetterTegel } from "../components/LetterTegel";
 import { Lint } from "../components/Lint";
 import { GoudKader } from "../components/GoudKader";
@@ -79,22 +80,12 @@ async function haal<T>(pad: string): Promise<T> {
 
 // ---- kleine bouwstenen ------------------------------------------------------
 
+/** Dezelfde kop als overal elders in de app; zie components/SchermKop.tsx.
+ *  Ontdekken had zijn eigen maat (21 vet-800 in een h1) en dat las naast het
+ *  duel als een ander programma. De marge eronder blijft, want deze kop staat
+ *  IN de pagina en niet in de vaste bovenrand. */
 function Kop({ titel, onBack }: { titel: string; onBack: () => void }) {
-  const { t } = useT();
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-      <button
-        onClick={() => { sound.uiTap(); onBack(); }}
-        aria-label={t("back")}
-        style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 2 }}
-      >
-        <ArrowLeft size={20} />
-      </button>
-      <h1 style={{ margin: 0, fontFamily: font.display, fontWeight: 800, fontSize: 21, color: colors.ink }}>
-        {titel}
-      </h1>
-    </div>
-  );
+  return <SchermKop titel={titel} onBack={onBack} style={{ padding: "0 0 16px", paddingTop: 0 }} />;
 }
 
 /** Ring met het percentage erin. Puur SVG, geen extra afhankelijkheid.

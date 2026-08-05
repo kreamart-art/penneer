@@ -33,7 +33,7 @@ export function RulesGate({ game }: { game: GameApi }) {
           </p>
         </div>
 
-        <RulesContent />
+        <RulesContent zonderRoom />
 
         {/* who has confirmed */}
         <div style={{ display: "flex", alignItems: "center", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
@@ -58,7 +58,7 @@ export function RulesGate({ game }: { game: GameApi }) {
         {game.isSpectator ? (
           <p style={{ textAlign: "center", fontFamily: font.ui, fontSize: 14, color: colors.sub, margin: 0 }}>{t("waitNext")}</p>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <Button
               variant={iAmReady ? "ghost" : "gold"}
               full

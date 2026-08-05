@@ -46,10 +46,13 @@ function StepArt({ kind }: { kind: "rooms" | "spin" | "fill" | "score" }) {
 
 // The rules list itself, shared between the how-to screen and the pre-game
 // rules gate (everyone confirms these before the host can start).
-export function RulesContent() {
+export function RulesContent({ zonderRoom = false }: { zonderRoom?: boolean }) {
   const { t } = useT();
   const steps: { kind: "rooms" | "spin" | "fill" | "score"; title: string; body: string }[] = [
-    { kind: "rooms", title: t("rulesStep1Title"), body: t("rulesStep1Body") },
+    // "Maak of join een room" hoort NIET in de regels vlak voor een potje: je
+    // zit al in de room. Op het hoe-werkt-het-scherm staat hij wel, want daar
+    // lees je hem voordat je er een hebt.
+    ...(zonderRoom ? [] : [{ kind: "rooms" as const, title: t("rulesStep1Title"), body: t("rulesStep1Body") }]),
     { kind: "spin", title: t("rulesStep2Title"), body: t("rulesStep2Body") },
     { kind: "fill", title: t("rulesStep3Title"), body: t("rulesStep3Body") },
     { kind: "score", title: t("rulesStep4Title"), body: t("rulesStep4Body") },

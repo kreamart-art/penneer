@@ -3410,7 +3410,7 @@ function FriendsTab({ game, onChallenge, onGaNaar }: { game: GameApi; onChalleng
           <div
             onClick={(e) => e.stopPropagation()}
             className="pop-in"
-            style={{ width: "100%", maxWidth: 330, display: "flex", flexDirection: "column", gap: 12, padding: "24px 20px 20px", borderRadius: 22, background: "linear-gradient(180deg, #2a1c48, #160D30)", border: `1px solid ${withAlpha(colors.gold, 0.5)}`, boxShadow: "0 24px 80px rgba(0,0,0,.65)", textAlign: "center" }}
+            style={{ width: "100%", maxWidth: 330, display: "flex", flexDirection: "column", gap: 15, padding: "24px 20px 20px", borderRadius: 22, background: "linear-gradient(180deg, #2a1c48, #160D30)", border: `1px solid ${withAlpha(colors.gold, 0.5)}`, boxShadow: "0 24px 80px rgba(0,0,0,.65)", textAlign: "center" }}
           >
             <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 18, color: colors.gold }}>
               {t("uitdaagKop", { naam: kiesVoor.name })}
