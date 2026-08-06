@@ -76,13 +76,35 @@ let rust = 0;
  *  en er nog een rit voor maken voelt als een scherm dat niet stil kan zitten. */
 const SPELING = 8;
 
+/** Meetlijn naar de server. Een echte iPhone is van hier niet te debuggen, en
+ *  dit raadsel is drie keer op een gok afgeketst; nu eerst kijken wat het
+ *  toestel zelf zegt. Maximaal een handvol regels per sessie, en hij mag weg
+ *  zodra de oorzaak vaststaat. */
+let meldingen = 0;
+function meld(data: Record<string, unknown>): void {
+  if (meldingen >= 10) return;
+  meldingen += 1;
+  try {
+    void fetch("/api/debug/viewport", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+      keepalive: true,
+    }).catch(() => {});
+  } catch { /* meten mag nooit iets breken */ }
+}
+
 function zorgInBeeld(): void {
   const vv = window.visualViewport;
   if (!vv) return;
   const layout = document.documentElement.clientHeight || window.innerHeight;
   const toetsenbord = layout - vv.height;
   // Geen toetsenbord? Dan doet de browser het prima zelf.
-  if (toetsenbord < DREMPEL) { zetRuimte(0); return; }
+  if (toetsenbord < DREMPEL) {
+    zetRuimte(0);
+    meld({ tag: "veld-geen-tb", layout, vv: Math.round(vv.height), off: Math.round(vv.offsetTop) });
+    return;
+  }
   zetRuimte(toetsenbord);
 
   if (Date.now() < rust) return;
@@ -96,7 +118,10 @@ function zorgInBeeld(): void {
   // halverwege het scherm: dan springt de pagina bij elk veld een ander eind.
   // Vandaar ook omhoog schuiven als het veld te hoog staat, zolang dat kan.
   const teveel = r.bottom + MARGE - onder;
-  if (Math.abs(teveel) <= SPELING) return;
+  if (Math.abs(teveel) <= SPELING) {
+    meld({ tag: "veld-staat-goed", teveel: Math.round(teveel), bottom: Math.round(r.bottom), onder: Math.round(onder) });
+    return;
+  }
 
   rust = Date.now() + 650;
   const doos = scroller(el);
@@ -115,7 +140,17 @@ function zorgInBeeld(): void {
     zetRuimte(toetsenbord + (teveel - beschikbaar) + 8);
     void doc.offsetHeight;
   }
+  const voorY = window.scrollY;
   window.scrollBy({ top: teveel, behavior: "smooth" });
+  meld({
+    tag: "veld-zet", teveel: Math.round(teveel), tb: Math.round(toetsenbord),
+    bottom: Math.round(r.bottom), onder: Math.round(onder),
+    y: Math.round(voorY), sh: doc.scrollHeight, ch: doc.clientHeight, besch: Math.round(beschikbaar),
+  });
+  window.setTimeout(() => {
+    const na = (document.activeElement as HTMLElement | null)?.getBoundingClientRect();
+    meld({ tag: "veld-na", y: Math.round(window.scrollY), bottom: na ? Math.round(na.bottom) : -1, sh: doc.scrollHeight });
+  }, 500);
 }
 
 /** Roep dit ÉÉN keer aan, op het hoogste niveau van de app. */
