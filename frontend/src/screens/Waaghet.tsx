@@ -28,7 +28,7 @@ import { KADER_LIJN_ROOD, NeonKader } from "../components/ProfileHero";
 import { Scorebord } from "../components/Scorebord";
 import { Hulpbalk } from "../components/Hulpbalk";
 import { KeuzeMachine } from "../components/KeuzeMachine";
-import { HULPEN, Klokbalk, Ladder, LADDER_BREED, SECTIE, SomVenster, TabKader } from "./_PreviewRekenladder";
+import { HULPEN, Klokbalk, Ladder, LADDER_BREED, LADDER_VERH, SECTIE, SomVenster, TabKader } from "./_PreviewRekenladder";
 import { VAK } from "./Arena";
 import { Screen } from "../components/Layout";
 import { useT } from "../i18n/i18n";
@@ -178,11 +178,11 @@ export function vraagVoor(seed: string, i: number, en: boolean, omgekeerd: boole
   return { cat, opties, goed, omgekeerd: false };
 }
 
-/** De machine staat iets breder dan de ladder (84,9vw). Dat moet ook: de bollen
- *  zijn maar 16% van de plaat, dus op ladderbreedte is een bol 55 punten en past
- *  er geen woord meer op. Breder dan 92vw kan niet zonder de pagina zijwaarts te
- *  laten schuiven. */
-const MACHINE_BREED = "92vw";
+/** De machine staat breder dan de ladder (84,9vw), want tijdens de keuze is hij
+ *  het enige dat er staat: scorebord, vraagpaneel en hulpbalk zijn dan mee uit
+ *  beeld gevallen. Breder dan dit kan niet zonder de pagina zijwaarts te laten
+ *  schuiven. */
+const MACHINE_BREED = "96vw";
 
 // ---- het spel ---------------------------------------------------------------
 
@@ -321,23 +321,45 @@ export function Waaghet({ seed, onKlaar }: {
   const kopregel =
     fase === "klaar"
       ? (uitslag?.verloren ? t("waagKwijt") : t("waagBinnen", { n: uitslag?.score ?? 0 }))
-      : fase === "keuze"
-      ? t("waagGoed")
       : vraag.omgekeerd
       ? t("waagVraagOm", { cat: tCat(vraag.cat).toUpperCase() })
       : t("waagVraag", { cat: tCat(vraag.cat).toUpperCase() });
 
+  // Tijdens de keuze blijft ALLEEN de machine staan. Scorebord, vraagpaneel en
+  // hulpbalk vallen mee uit beeld met de ladder, maar ze houden hun plek in de
+  // kolom: zo staat de machine precies daar waar de ladder stond, en niet
+  // ergens hogerop omdat de rest is weggehaald.
+  const wegvallen = valt || fase === "keuze";
+  const kolom = wegvallen ? "waag-val" : ronde > 1 || fase === "klaar" ? "waag-terug" : undefined;
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
-      <Scorebord
-        breedte={VAK}
-        links={{ kop: t("waagRonde"), waarde: String(ronde) }}
-        rechts={{ kop: t("waagPot"), waarde: String(pot) }}
+    // De kolom maakt een eigen stapellaag, zodat de sluier hieronder op -1 kan
+    // staan: dan dekt hij wel de zaal af maar niets van het spel zelf.
+    <div style={{ position: "relative", zIndex: 0, display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
+      {/* De zaal gaat op zwart zodra de ladder valt, en weer aan als de machine
+          weg is. Hij begint al tijdens de VAL: de zaal dooft terwijl de ladder
+          eruit zakt, en de machine komt in het donker aan. */}
+      <div
+        aria-hidden
+        style={{
+          position: "fixed", inset: 0, background: "#000", zIndex: -1,
+          opacity: valt || fase === "keuze" ? 1 : 0,
+          transition: "opacity .42s ease",
+          pointerEvents: "none",
+        }}
       />
+
+      <div className={kolom} style={{ width: "100%", display: "flex", justifyContent: "center" }}>
+        <Scorebord
+          breedte={VAK}
+          links={{ kop: t("waagRonde"), waarde: String(ronde) }}
+          rechts={{ kop: t("waagPot"), waarde: String(pot) }}
+        />
+      </div>
 
       {/* Zelfde vraagpaneel als de Rekenladder: de gouden lijst met de naam op
           een tab, het venster erin en de klok eronder. */}
-      <div style={{ width: SECTIE, marginTop: 12 }}>
+      <div className={kolom} style={{ width: SECTIE, marginTop: 12 }}>
         <TabKader titel="WAAG HET">
           <span
             style={{
@@ -362,59 +384,60 @@ export function Waaghet({ seed, onKlaar }: {
                 textShadow: "0 0 18px rgba(255,210,120,.4), 0 2px 4px rgba(0,0,0,.8)",
               }}
             >
-              {fase === "klaar"
-                ? (uitslag?.score ?? 0)
-                : fase === "keuze"
-                ? `${pot} \u2192 ${volgendePot}`
-                : tCat(vraag.cat).toUpperCase()}
+              {fase === "klaar" ? (uitslag?.score ?? 0) : tCat(vraag.cat).toUpperCase()}
             </span>
           </SomVenster>
 
           {fase === "vraag" ? (
             <Klokbalk rest={rest} seconden={seconden} />
           ) : (
-            <span style={{ height: 38, display: "grid", placeItems: "center", fontFamily: font.ui, fontSize: 12, color: withAlpha("#FFE7A8", 0.75) }}>
-              {fase === "keuze" ? t("waagOfKwijt") : ""}
-            </span>
+            <span style={{ height: 38 }} />
           )}
         </TabKader>
       </div>
 
-      {/* Op de plek van de ladder. Heb je het goed, dan VALT de ladder uit
-          beeld en zakt de machine erin: dezelfde ruimte, dus ze mogen elkaar
-          niet overlappen en de wissel loopt via de klok in kies(). */}
-      {fase === "keuze" ? (
-        <div style={{ width: MACHINE_BREED, marginTop: 4 }}>
-          <KeuzeMachine
-            titel={t("waagKiesTitel")}
-            potKop={t("waagPot")}
-            pot={pot}
-            pakKort={t("waagPakKort")}
-            doorKort={t("waagDoorKort")}
-            onPak={() => { sound.munten(); eindig(pot, false); }}
-            onDoor={doorgaan}
-          />
-        </div>
-      ) : (
-        <div
-          className={valt ? "waag-val" : ronde > 1 && fase === "vraag" ? "waag-terug" : undefined}
-          style={{ display: "flex", justifyContent: "center", width: "100%" }}
-        >
-          <Ladder
-            keuzes={vraag.opties}
-            antwoord={vraag.goed}
-            oordeel={oordeel}
-            onKies={kies}
-            slapend={false}
-            klaar={fase === "klaar"}
-            weg={weg}
-            tip={tip}
-          />
-        </div>
-      )}
+      {/* DE PLEK VAN DE LADDER. Die plek blijft gereserveerd, ook als de ladder
+          er niet meer is: tijdens de keuze staat de machine op het hart van
+          dezelfde ruimte. Vandaar de vaste hoogte uit de eigen verhouding van de
+          ladder, en de machine er absoluut in gecentreerd. */}
+      <div
+        style={{
+          position: "relative",
+          width: "100%", height: `${(LADDER_BREED / LADDER_VERH).toFixed(2)}vw`,
+          display: "flex", justifyContent: "center",
+        }}
+      >
+        {fase === "keuze" ? (
+          <div style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%,-50%)", width: MACHINE_BREED }}>
+            <KeuzeMachine
+              titel={t("waagKiesTitel")}
+              potKop={t("waagPot")}
+              pot={pot}
+              volgende={volgendePot}
+              pakLabel={t("waagIncasseer", { n: pot })}
+              doorLabel={t("waagDoorgaan")}
+              onPak={() => { sound.munten(); eindig(pot, false); }}
+              onDoor={doorgaan}
+            />
+          </div>
+        ) : (
+          <div className={kolom} style={{ display: "flex", justifyContent: "center", width: "100%" }}>
+            <Ladder
+              keuzes={vraag.opties}
+              antwoord={vraag.goed}
+              oordeel={oordeel}
+              onKies={kies}
+              slapend={false}
+              klaar={fase === "klaar"}
+              weg={weg}
+              tip={tip}
+            />
+          </div>
+        )}
+      </div>
 
       {/* De hulpbalk onder de ladder, met dezelfde drie hulpen. */}
-      <div style={{ marginTop: 10 }}>
+      <div className={kolom} style={{ marginTop: 10 }}>
         <Hulpbalk
           hulpen={HULPEN.map((h) => ({ ...h, aantal: voorraad[h.sleutel] ?? 0 }))}
           breedte={`${LADDER_BREED}vw`}
@@ -425,7 +448,7 @@ export function Waaghet({ seed, onKlaar }: {
 
       {/* Incasseren of doorgaan. Tijdens een vraag staat hier de stopknop, want
           ook dan mag je met je pot naar huis. */}
-      <div style={{ marginTop: 12, width: SECTIE, display: "flex", flexDirection: "column", gap: 12 }}>
+      <div className={kolom} style={{ marginTop: 12, width: SECTIE, display: "flex", flexDirection: "column", gap: 12 }}>
         {fase === "vraag" && pot > 0 && (
           <div style={{ display: "flex", justifyContent: "center" }}>
             <NeonKader radius={999} dik={0.5} vulling="zwart" lijn={KADER_LIJN_ROOD} gloed={`0 0 12px ${withAlpha(colors.red, 0.35)}`} binnen={{ padding: 0 }}>
@@ -457,7 +480,7 @@ export function PreviewWaaghet() {
   return (
     <Screen
       top={
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", paddingTop: "calc(14px + env(safe-area-inset-top))" }}>
+        <div style={{ position: "relative", zIndex: 3, display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", paddingTop: "calc(14px + env(safe-area-inset-top))" }}>
           <span style={{ flex: 1, fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>Arena</span>
           <button
             onClick={() => setPotje(`${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`)}

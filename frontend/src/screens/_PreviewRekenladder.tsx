@@ -264,6 +264,9 @@ const LADDER_H = 733;
 // de tekening, dus het puntje zit (442 + 2070,6)/2092 = 120,11vw onder de
 // schermrand.
 export const LADDER_BREED = 84.90;      // vw
+/** Verhouding van de ladderplaat, zodat een ander scherm dezelfde plek kan
+ *  reserveren zonder de maten opnieuw over te tikken. */
+export const LADDER_VERH = 1100 / 733;
 // Waar hij verticaal landt bepaalt de kolom; de MAAT komt uit de puntjes.
 // De puntjes zelf zijn gereedschap en geen decor; die zijn uit de zaal gepoetst.
 
