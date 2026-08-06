@@ -4,7 +4,7 @@
 // reveals the words from the list you did not name yet. Stateless: no account
 // needed, nothing stored (the progress/collection layer is a later step).
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Apple, Brain, Briefcase, Building2, Check, Globe, HelpCircle, Info, Layers, PawPrint, RotateCw, Shuffle, Target, X } from "lucide-react";
+import { ArrowLeft, Apple, Brain, Briefcase, Building2, Check, ChevronDown, Globe, HelpCircle, Info, Layers, PawPrint, RotateCw, Shuffle, Target, X } from "lucide-react";
 import { BredeKnop } from "../components/BredeKnop";
 import { GoudKader } from "../components/GoudKader";
 import { RondeVoltooid, type Beloning, type NieuweKaart } from "../components/RondeVoltooid";
@@ -408,20 +408,40 @@ export function Training({ onBack, lenient = false, onOntdekken, startLetter, on
             {cats.map((cat, i) => (
               <div key={cat}>
                 <label style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: colors.faint, marginLeft: 4 }}>{tCat(cat)}</label>
-                <GlasVeld
-                  ref={(el) => { inputs.current[i] = el; }}
-                  gevuld={!!answers[cat]}
-                  value={answers[cat] ?? ""}
-                  onChange={(e) => setAnswers((a) => ({ ...a, [cat]: e.target.value }))}
-                  onKeyDown={(e) => {
-                    if (e.key !== "Enter") return;
-                    if (i < cats.length - 1) inputs.current[i + 1]?.focus();
-                    else submit();
-                  }}
-                  autoComplete="off" autoCorrect="off" spellCheck={false}
-                  placeholder={t("fillPlaceholder", { cat: tCat(cat), letter })}
-                  kaderStyle={{ marginTop: 4 }}
-                />
+                {/* Het pijltje ligt IN het veld: naar het volgende vakje zonder
+                    het toetsenbord weg te tikken, net als in een potje en in de
+                    dagronde. */}
+                <div style={{ position: "relative" }}>
+                  <GlasVeld
+                    ref={(el) => { inputs.current[i] = el; }}
+                    gevuld={!!answers[cat]}
+                    value={answers[cat] ?? ""}
+                    onChange={(e) => setAnswers((a) => ({ ...a, [cat]: e.target.value }))}
+                    onKeyDown={(e) => {
+                      if (e.key !== "Enter") return;
+                      if (i < cats.length - 1) inputs.current[i + 1]?.focus();
+                      else submit();
+                    }}
+                    autoComplete="off" autoCorrect="off" spellCheck={false}
+                    placeholder={t("fillPlaceholder", { cat: tCat(cat), letter })}
+                    kaderStyle={{ marginTop: 4 }}
+                  />
+                  {i + 1 < cats.length && (
+                    <button
+                      type="button"
+                      aria-label={t("volgendeVeld")}
+                      onClick={() => inputs.current[i + 1]?.focus()}
+                      style={{
+                        position: "absolute", right: 8, top: "calc(50% + 2px)", transform: "translateY(-50%)",
+                        width: 32, height: 32, display: "grid", placeItems: "center",
+                        borderRadius: 999, border: "none", cursor: "pointer",
+                        background: withAlpha("#C8A0FF", 0.12), color: colors.sub,
+                      }}
+                    >
+                      <ChevronDown size={17} />
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>

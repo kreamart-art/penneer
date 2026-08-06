@@ -418,6 +418,12 @@ body {
    smaller problem than a broken page height. */
 #root {
   overflow-x: clip;
+  /* Ruimte onderaan zolang het toetsenbord staat, gezet door lib/veldinbeeld.ts.
+     Zonder die strook kan de pagina niet ver genoeg scrollen om het onderste
+     vakje boven het toetsenbord te krijgen; de browser schuift dan het hele
+     BEELD op in plaats van de pagina, en dat is het zweven waarbij de kop half
+     onder de statusbalk verdwijnt. Buiten het toetsenbord om is hij nul. */
+  padding-bottom: var(--toetsenbordruimte, 0px);
 }
 
 /* Inputs reset to the arcade look. */

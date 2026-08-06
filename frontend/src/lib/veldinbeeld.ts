@@ -20,8 +20,13 @@
 import { useEffect } from "react";
 
 /** Lucht tussen de onderkant van het veld en de bovenkant van het toetsenbord.
- *  Ruim genoeg voor de suggestiebalk die iOS er soms nog bovenop zet. */
-const MARGE = 18;
+ *
+ *  RUIM, en dat is geen smaak. Boven het toetsenbord zweeft op iOS nog een balk
+ *  (de pijltjes met "Gereed", en soms een suggestiebalk of AutoFill eroverheen)
+ *  die NIET in `visualViewport` zit. Op achttien punten lag het veld daar precies
+ *  onder en kon je niet zien wat je typte. Vierenvijftig is die balk plus een
+ *  vinger lucht, zodat het veld erboven staat en niet ertegenaan. */
+const MARGE = 54;
 /** Onder deze inkorting is er geen toetsenbord maar een adresbalk die wegrolt. */
 const DREMPEL = 80;
 
@@ -43,14 +48,28 @@ function scroller(el: HTMLElement): HTMLElement | null {
   return null;
 }
 
+/** Ruimte onderaan de pagina zolang het toetsenbord staat.
+ *
+ *  Zonder die ruimte KAN de pagina niet ver genoeg scrollen voor de onderste
+ *  vakjes: de browser schuift dan het hele beeld op in plaats van de pagina, en
+ *  dat is het zweven waarbij de kop half onder de statusbalk verdwijnt en je
+ *  alsnog niets ziet. Met een strook ter grootte van het toetsenbord is er
+ *  altijd genoeg om te scrollen en blijft de pagina staan waar hij hoort.
+ *  Hij staat op #root, dus hij is weg zodra het toetsenbord dat is. */
+function zetRuimte(px: number): void {
+  document.documentElement.style.setProperty("--toetsenbordruimte", `${Math.round(px)}px`);
+}
+
 function zorgInBeeld(): void {
   const el = document.activeElement as HTMLElement | null;
-  if (!isVeld(el)) return;
   const vv = window.visualViewport;
   if (!vv) return;
   const layout = document.documentElement.clientHeight || window.innerHeight;
+  const toetsenbord = layout - vv.height;
   // Geen toetsenbord? Dan doet de browser het prima zelf.
-  if (layout - vv.height < DREMPEL) return;
+  if (toetsenbord < DREMPEL) { zetRuimte(0); return; }
+  zetRuimte(toetsenbord);
+  if (!isVeld(el)) return;
 
   const r = el.getBoundingClientRect();
   const onder = vv.offsetTop + vv.height;
@@ -83,6 +102,7 @@ export function useVeldInBeeld(): void {
     vv.addEventListener("resize", straks);
     vv.addEventListener("scroll", straks);
     return () => {
+      zetRuimte(0);
       window.clearTimeout(timer);
       document.removeEventListener("focusin", straks, true);
       vv.removeEventListener("resize", straks);

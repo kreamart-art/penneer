@@ -492,29 +492,33 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
             {cats.map((cat, i) => (
               <div key={cat}>
                 <label style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: colors.faint, marginLeft: 4 }}>{tCat(cat)}</label>
-                <GlasVeld
-                  ref={(el) => { inputs.current[i] = el; }}
-                  gevuld={!!answers[cat]}
-                  value={answers[cat] ?? ""}
-                  onChange={(e) => setAnswers((a) => ({ ...a, [cat]: e.target.value }))}
-                  onKeyDown={(e) => {
-                    if (e.key !== "Enter") return;
-                    if (i < cats.length - 1) inputs.current[i + 1]?.focus();
-                    else void submit();
-                  }}
-                  autoComplete="off" autoCorrect="off" spellCheck={false}
-                  placeholder={t("fillPlaceholder", { cat: tCat(cat), letter })}
-                  kaderStyle={{ marginTop: 4 }}
-                />
-                {/* Naar het volgende vakje zonder het toetsenbord weg te
-                    tikken, net als in een potje. */}
-                {i + 1 < cats.length && (
-                  <div style={{ display: "flex", justifyContent: "flex-end", marginTop: -34, marginRight: 10, height: 0 }}>
+                {/* Het pijltje ligt IN het veld, net als in een potje: absoluut
+                    en op het hart. Het stond hier eerst in de stroom met een
+                    negatieve marge en hoogte nul, en dat trok elk blok 34 punten
+                    korter: het volgende kopje kwam boven op het vorige veld te
+                    liggen en alle vakjes leken op elkaar geschoven. */}
+                <div style={{ position: "relative" }}>
+                  <GlasVeld
+                    ref={(el) => { inputs.current[i] = el; }}
+                    gevuld={!!answers[cat]}
+                    value={answers[cat] ?? ""}
+                    onChange={(e) => setAnswers((a) => ({ ...a, [cat]: e.target.value }))}
+                    onKeyDown={(e) => {
+                      if (e.key !== "Enter") return;
+                      if (i < cats.length - 1) inputs.current[i + 1]?.focus();
+                      else void submit();
+                    }}
+                    autoComplete="off" autoCorrect="off" spellCheck={false}
+                    placeholder={t("fillPlaceholder", { cat: tCat(cat), letter })}
+                    kaderStyle={{ marginTop: 4 }}
+                  />
+                  {i + 1 < cats.length && (
                     <button
                       type="button"
                       aria-label={t("volgendeVeld")}
                       onClick={() => inputs.current[i + 1]?.focus()}
                       style={{
+                        position: "absolute", right: 8, top: "calc(50% + 2px)", transform: "translateY(-50%)",
                         width: 32, height: 32, display: "grid", placeItems: "center",
                         borderRadius: 999, border: "none", cursor: "pointer",
                         background: withAlpha("#C8A0FF", 0.12), color: colors.sub,
@@ -522,8 +526,8 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
                     >
                       <ChevronDown size={17} />
                     </button>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             ))}
           </div>
