@@ -16,7 +16,7 @@
 // Verder is alles code: dezelfde GoudKader met binnenlijn als de rest van de
 // laatste schermen, zodat deze pagina bij Oefenen hoort en niet erop lijkt.
 import { useEffect, useMemo, useState } from "react";
-import { Brain, Check, Flame, Layers, RotateCw, Target, X as Kruis } from "lucide-react";
+import { Apple, Brain, Briefcase, Building2, ChevronRight, Check, Flame, Globe, Layers, PawPrint, RotateCw, Target, X as Kruis } from "lucide-react";
 import { Button } from "./Button";
 import { CloseIcon } from "./CloseIcon";
 import { GoudKader } from "./GoudKader";
@@ -27,39 +27,27 @@ import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { colors, font, withAlpha } from "../theme/tokens";
 
-/** De krans, opgemeten op /ui/krans.webp (871 x 823).
+/** De medaille. De nieuwe plaat draagt de pen ER AL IN, dus de lege krans met
+ *  het muntlogo als tweede laag erin kan weg, en daarmee ook het gereken aan het
+ *  hart van die binnencirkel.
  *
- *  Het donkere binnenveld is met een flood fill vanuit het hart gevonden: 572 bij
- *  576 pixels, oppervlak 253593 tegen 258767 voor een perfecte ellips met die
- *  doos, dus het IS een cirkel. Daar gaat het muntlogo in. De krans zelf hangt
- *  hoger dan zijn doos suggereert, want de kroon zit erbovenop; vandaar dat het
- *  hart van de cirkel op 53,6% van de hoogte ligt en niet op de helft. */
-const KRANS = { verh: 871 / 823, hartX: 0.4994, hartY: 0.5358, cirkel: 0.6567 };
+ *  ?v=2 omdat de plaat is vervangen: /ui/ staat cache-first in de service
+ *  worker, dus zonder nieuwe URL houdt een geinstalleerde app de oude. */
+const KRANS_ART = "/ui/krans.webp?v=2";
+/** Verhouding van die plaat (1294 x 996 na het uitsnijden). Nodig om in de balk
+ *  zijn BREEDTE vrij te houden: reserveer je alleen zijn hoogte, dan legt hij
+ *  zijn krans over "+75 Munten" heen. */
+const KRANS_VERH = 1294 / 996;
 
-/** De balk, opgemeten op /ui/balk-goud.webp (1292 x 281).
- *
- *  De gouden lijst loopt boven tot y 27 en onder vanaf y 219; links en rechts
- *  is de rand schuin, dus de veilige binnenmaat is gemeten op een kwart en
- *  driekwart hoogte (x 82..1210 en 106..1187). Het hart van het VELD ligt op
- *  43,8% van de hoogte en niet op de helft: de onderrand met zijn gloed is
- *  dikker dan de bovenrand. */
-const BALK = { verh: 1292 / 281, l: 0.055, r: 0.055, t: 0.096, b: 0.221, hart: 0.438 };
+/** Hoe hoog de medaille is ten opzichte van de balk. Boven de 1 steekt hij er
+ *  boven en onder uit en wordt de balk zijn voetstuk; dat is wat de mockup doet
+ *  en het is ook wat het beeld draagt. */
+const KRANS_OP_BALK = 1.5;
 
-/** Hoe groot de krans is ten opzichte van de balk. Op 1 zou hij precies zo hoog
- *  zijn als de balk en dan is het een medaille IN een balk; hierboven steekt hij
- *  er boven en onder uit en wordt de balk zijn voetstuk. Dat is wat de mockup
- *  doet en het is ook wat het beeld draagt.
- *
- *  1,62 en niet 1,75: bij 1,75 beslaat de krans 44% van het veld en dan lag hij
- *  over "Ervaring" en "Munten" heen. Zie MIDDEN. */
-const KRANS_OP_BALK = 1.62;
-
-/** Hoe breed de middenkolom van de balk is, als deel van het VELD. Daar staat de
- *  krans, dus dit moet minstens zijn breedte zijn, anders schuift de tekst
- *  eronder. De krans meet KRANS_OP_BALK / BALK.verh / KRANS.verh van de
- *  balkbreedte, wat op deze getallen 33,3% is; het veld is 89% van de balk, dus
- *  de krans is 37,4% van het veld en 40% laat er nog een kier omheen. */
-const MIDDEN = "40%";
+/** De hoogte van de balk zelf, in punten. De balk is nu code en geen plaat meer,
+ *  dus hij heeft geen verhouding die zijn hoogte bepaalt: die komt uit wat erin
+ *  staat (een teken van 22 met een getal van 20 erboven een label van 10). */
+const BALK_HOOG = 62;
 
 const SNIPPERS = [colors.gold, colors.goldHi, colors.violet, colors.green, "#FF7AC2", colors.orange];
 
@@ -195,29 +183,28 @@ function XpTeken({ maat = 30 }: { maat?: number }) {
   );
 }
 
-/** De kop: krans op de balk, met links de XP en rechts de munten.
+/** De kop: de medaille op de balk, met links de XP en rechts de munten.
  *
- *  De krans ligt als losse laag OVER de balk en telt niet mee voor de hoogte
- *  van de balk; de ruimte die hij erboven nodig heeft komt als padding op het
- *  omhulsel. Anders zou de balk meegroeien met de krans en zijn verhouding
- *  verliezen. */
+ *  De balk is CODE en geen plaat: een brede gouden achthoeklijn met een donkere
+ *  vulling op dertig procent, zodat de confetti en de gloed erachter meespelen
+ *  in plaats van te worden afgedekt. Dezelfde achthoek als alle secties in de
+ *  app, dus hij hoort er vanzelf bij.
+ *
+ *  De medaille ligt als losse laag OVER de balk en telt niet mee voor de hoogte;
+ *  de ruimte die hij erboven en eronder nodig heeft komt als padding op het
+ *  omhulsel. */
 function Kroon({ xp, munten }: { xp: number; munten: number }) {
   const { t } = useT();
+  const medaille = BALK_HOOG * KRANS_OP_BALK;
+  const oversteek = (medaille - BALK_HOOG) / 2;
   return (
-    <div style={{ position: "relative", width: "100%", paddingTop: `${((KRANS_OP_BALK - 1) * 100) / BALK.verh / 2}%` }}>
-      <div style={{ position: "relative", width: "100%", aspectRatio: `${BALK.verh}` }}>
-        <img
-          src="/ui/balk-goud.webp" alt="" aria-hidden draggable={false}
-          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }}
-        />
-        {/* Het veld binnen de lijst. De middenkolom is lucht: daar staat de
-            krans, en tekst eronder zou erachter verdwijnen. */}
+    <div style={{ position: "relative", width: "100%", paddingTop: oversteek, paddingBottom: oversteek }}>
+      <GoudKader hoek={16} rond={2.5} dik={0.9} vulKleur="rgba(6,2,18,.3)" binnenlijn binnenSterkte={0.16} padding={0}>
         <div
           style={{
-            position: "absolute",
-            left: `${BALK.l * 100}%`, right: `${BALK.r * 100}%`,
-            top: `${BALK.t * 100}%`, bottom: `${BALK.b * 100}%`,
-            display: "grid", gridTemplateColumns: `1fr ${MIDDEN} 1fr`, alignItems: "center", gap: 2,
+            height: BALK_HOOG,
+            display: "grid", gridTemplateColumns: `1fr ${Math.round(medaille * KRANS_VERH + 6)}px 1fr`,
+            alignItems: "center", gap: 2, padding: "0 14px",
           }}
         >
           <Winst teken={<XpTeken maat={22} />} waarde={xp} label={t("rvXp")} kleur={colors.ink} />
@@ -227,35 +214,18 @@ function Kroon({ xp, munten }: { xp: number; munten: number }) {
             waarde={munten} label={t("rvMunten")} kleur={colors.gold} rechts
           />
         </div>
+      </GoudKader>
 
-        {/* De krans, gecentreerd op het HART VAN HET VELD en niet op de doos:
-            de onderrand van de balk is dikker dan de bovenrand, dus op 50% zou
-            hij zichtbaar te laag hangen. */}
-        <div
-          style={{
-            position: "absolute", left: "50%", top: `${BALK.hart * 100}%`,
-            transform: "translate(-50%, -50%)",
-            width: `${(KRANS_OP_BALK * 100) / BALK.verh / KRANS.verh}%`,
-            aspectRatio: `${KRANS.verh}`,
-          }}
-        >
-          <img
-            src="/ui/krans.webp" alt="" aria-hidden draggable={false}
-            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }}
-          />
-          {/* Het muntlogo in de binnencirkel. Op 62% van die cirkel: vol zou het
-              tegen de binnenring plakken, en dan lezen twee ringen als een. */}
-          <img
-            src="/logo-klein.webp" alt="" aria-hidden draggable={false}
-            style={{
-              position: "absolute",
-              left: `${KRANS.hartX * 100}%`, top: `${KRANS.hartY * 100}%`,
-              width: `${KRANS.cirkel * 62}%`, transform: "translate(-50%, -50%)",
-              display: "block",
-            }}
-          />
-        </div>
-      </div>
+      {/* De medaille, op het hart van de balk. Hij draagt de pen zelf al, dus er
+          ligt niets meer overheen. */}
+      <img
+        src={KRANS_ART} alt="" aria-hidden draggable={false}
+        style={{
+          position: "absolute", left: "50%", top: "50%", transform: "translate(-50%, -50%)",
+          height: medaille, width: "auto", maxWidth: "none", display: "block",
+          filter: "drop-shadow(0 4px 12px rgba(0,0,0,.55))",
+        }}
+      />
     </div>
   );
 }
@@ -347,13 +317,52 @@ function KaartTegel({ kaart }: { kaart: NieuweKaart }) {
   );
 }
 
+/** Het teken voor een voortgangsrij: de categorie krijgt zijn eigen icoon, de
+ *  letter zichzelf in een ring. Uit de mockup, en het scheelt lezen: je ziet aan
+ *  de vorm al of de rij over een categorie of over de letter gaat. */
+const CAT_TEKEN: Record<string, typeof Globe> = {
+  land: Globe, stad: Building2, vrucht: Apple, dier: PawPrint, beroep: Briefcase,
+};
+
+function VoortgangTeken({ v }: { v: Voortgang }) {
+  const maat = 30;
+  const ring: React.CSSProperties = {
+    width: maat, height: maat, borderRadius: "50%", flexShrink: 0,
+    display: "grid", placeItems: "center",
+    background: "rgba(0,0,0,.42)",
+    boxShadow: `inset 0 0 0 1.5px ${withAlpha(v.soort === "letter" ? colors.gold : colors.violet, 0.75)}`,
+  };
+  if (v.soort === "letter") {
+    return (
+      <span style={ring} aria-hidden>
+        <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 15, lineHeight: 1, color: colors.gold }}>
+          {v.label.toUpperCase()}
+        </span>
+      </span>
+    );
+  }
+  const Teken = CAT_TEKEN[v.sleutel.toLowerCase()] ?? Layers;
+  return (
+    <span style={ring} aria-hidden>
+      <Teken size={15} color="#C89BFF" />
+    </span>
+  );
+}
+
 /** Een voortgangsbalk met zijn kop en het aantal dat erbij kwam. */
 function BalkRij({ v }: { v: Voortgang }) {
   const { t } = useT();
   const pct = v.total > 0 ? Math.min(100, Math.round((v.have / v.total) * 100)) : 0;
+  // Hoeveel procent er deze ronde bij kwam. Uit de mockup, en het is het enige
+  // getal op deze pagina dat zegt wat DEZE ronde deed in plaats van waar je
+  // staat.
+  const voor = v.total > 0 ? Math.round(((v.have - v.plus) / v.total) * 100) : 0;
+  const delta = Math.max(0, pct - voor);
   const label = v.soort === "letter" ? t("rvLetterLabel", { letter: v.label }) : v.label;
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
+    <div style={{ display: "flex", gap: 8, minWidth: 0 }}>
+      <VoortgangTeken v={v} />
+      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
         <span style={{ flex: 1, minWidth: 0, fontFamily: font.display, fontWeight: 700, fontSize: 12.5, color: colors.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {label}
@@ -382,7 +391,13 @@ function BalkRij({ v }: { v: Voortgang }) {
           }}
         />
       </div>
-      <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 11, color: colors.gold }}>{pct}%</span>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 5 }}>
+        <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 11, color: colors.gold }}>{pct}%</span>
+        {delta > 0 && (
+          <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 10, color: colors.green }}>▲+{delta}%</span>
+        )}
+      </div>
+      </div>
     </div>
   );
 }
@@ -406,7 +421,6 @@ function Prestatie({ teken, label, waarde, na }: {
 }
 
 export function RondeVoltooid({
-  letter,
   goed,
   fout,
   kaarten,
@@ -416,7 +430,6 @@ export function RondeVoltooid({
   onOntdekken,
   onQuiz,
 }: {
-  letter: string;
   /** Antwoorden die in de lijst stonden, over deze oefensessie. */
   goed: number;
   /** Antwoorden die fout of leeg waren, over dezelfde sessie. */
@@ -505,9 +518,8 @@ export function RondeVoltooid({
                 accent={colors.gold} blur={16} glow={0.65}
                 style={{ fontFamily: font.display, fontWeight: 800, fontSize: "clamp(23px, 7.6vw, 30px)", lineHeight: 1.05 }}
               >
-                {t("rvTitel")}
+                {t("rvTitel").toUpperCase()}
               </NeonText>
-              <div style={{ marginTop: 3, fontFamily: font.ui, fontSize: 13, color: colors.ink }}>{t("rvSub")}</div>
             </div>
 
             {/* ---- de beloning ---- */}
@@ -534,9 +546,14 @@ export function RondeVoltooid({
               <GoudKader {...vak}>
                 <SierKop label={t("rvKaartenKop")} />
                 {gehaald.length === 0 ? (
-                  <p style={{ margin: "8px 0 2px", fontFamily: font.ui, fontSize: 11.5, lineHeight: 1.4, color: colors.sub, textAlign: "center" }}>
-                    {sporen.length > 0 ? t("rvGeenGehaaldUitleg") : t("rvGeenKaarten")}
-                  </p>
+                  // Alleen de kale mededeling als er ook geen sporen zijn. De
+                  // uitleg eronder is weg: die maakte van een korte sectie een
+                  // lap tekst, en wie sporen ziet staan snapt het uit de rij.
+                  sporen.length === 0 ? (
+                    <p style={{ margin: "8px 0 2px", fontFamily: font.ui, fontSize: 11.5, lineHeight: 1.4, color: colors.sub, textAlign: "center" }}>
+                      {t("rvGeenKaarten")}
+                    </p>
+                  ) : null
                 ) : (
                   <div style={{ display: "grid", gridTemplateColumns: `repeat(${toon.length}, 1fr) 1.05fr`, gap: 6, marginTop: 7 }}>
                     {toon.map((k) => <KaartTegel key={k.id} kaart={k} />)}
@@ -577,7 +594,7 @@ export function RondeVoltooid({
                       </span>
                     </div>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                      {sporen.slice(0, 12).map((k) => (
+                      {sporen.slice(0, 9).map((k) => (
                         <span
                           key={k.id}
                           style={{
@@ -590,9 +607,6 @@ export function RondeVoltooid({
                         </span>
                       ))}
                     </div>
-                    <p style={{ margin: "6px 0 0", fontFamily: font.ui, fontSize: 9.5, lineHeight: 1.35, color: colors.faint }}>
-                      {t("rvSporenUitleg")}
-                    </p>
                   </div>
                 )}
               </GoudKader>
@@ -640,7 +654,9 @@ export function RondeVoltooid({
                       {t("rvQuizBody")}
                     </span>
                     <Button variant="gold" full compact onClick={() => { sound.uiTap(); onQuiz(); }} style={{ fontSize: 12.5 }}>
-                      {t("rvQuizKnop")}
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                        {t("rvQuizKnop")} <ChevronRight size={14} />
+                      </span>
                     </Button>
                   </div>
                 </GoudKader>
@@ -675,12 +691,6 @@ export function RondeVoltooid({
               )}
             </div>
 
-            {/* De letter waar dit over ging, als voetregel: de popup zelf noemt
-                hem nergens meer en zonder dat is het na twee rondes niet meer
-                terug te zien welke ronde dit was. */}
-            <span style={{ fontFamily: font.ui, fontSize: 10, color: colors.faint, textAlign: "center" }}>
-              {t("rvLetterVoet", { letter })}
-            </span>
           </div>
         </GoudKader>
       </div>

@@ -461,7 +461,6 @@ export function Training({ onBack, lenient = false, onOntdekken, startLetter, on
     <Screen top={header}>
       {voltooid && (
         <RondeVoltooid
-          letter={voltooid.letter}
           goed={sessionCorrect}
           fout={sessionFout}
           kaarten={voltooid.new_cards ?? []}

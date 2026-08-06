@@ -46,6 +46,7 @@ export function GoudKader({
   gloedMaat = 1,
   gloedKlasse,
   vulling = false,
+  vulKleur,
   vullingArt,
   binnenlijn = false,
   binnenSterkte = 0.2,
@@ -97,6 +98,10 @@ export function GoudKader({
    *  een vak dat OP zo'n sectie ligt: met dezelfde vulling lopen de twee
    *  onderin in elkaar over en verdwijnt de onderrand van het bovenste vak. */
   vulling?: boolean | "licht";
+  /** Een eigen vulling in plaats van het paarse verloop: elke geldige CSS-kleur,
+   *  dus ook een doorzichtige. Handig voor een vlak dat de achtergrond moet
+   *  laten meespelen in plaats van hem af te dekken. */
+  vulKleur?: string;
   /** Vul het vak met ART in plaats van met het verloop hierboven.
    *
    *  DE AFBEELDING WORDT OP DE ACHTHOEK GEKNIPT. Een plaatje in een gewone doos
@@ -162,7 +167,7 @@ export function GoudKader({
   // Een vak met art erin is net zo goed een vak met een binnenkant: de lijn
   // eromheen hoort dus hetzelfde licht te volgen (van boven), of de binnenkant
   // nu een verloop is of een plaatje.
-  const heeftVulling = !!vulling || !!vullingArt;
+  const heeftVulling = !!vulling || !!vullingArt || !!vulKleur;
 
   /** De acht punten van de achthoek, `naarBinnen` pixels naar binnen geschoven.
    *  Een vorm die overal even ver naar binnen gaat, krijgt een kleinere schuine
@@ -397,6 +402,7 @@ export function GoudKader({
           </defs>
 
           {/* De binnenkant eerst, want alles wat lijn is hoort erbovenop. */}
+          {vulKleur && !vulling && !vullingArt && <path d={punten} fill={vulKleur} />}
           {vulling && !vullingArt && <path d={punten} fill={`url(#${id}v)`} />}
           {vullingArt && (
             // `slice` is wat `cover` is voor een achtergrond: vullen en de rest
