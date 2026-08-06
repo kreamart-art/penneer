@@ -109,12 +109,19 @@ function Bol({ links, breed, hoog, maat, bedrag, onClick, label }: {
       <span
         style={{
           fontFamily: font.display, fontWeight: 800, fontSize: maat * krimp,
-          lineHeight: 1, color: "#FFFFFF", textShadow: SCHADUW,
+          lineHeight: 1, color: "#FFFFFF",
+          // Een schaduw ONDER het getal en niet eromheen: hij hoort te lezen als
+          // licht dat van boven komt, niet als een waas achter de cijfers.
+          textShadow: `0 ${(maat * 0.11).toFixed(1)}px ${(maat * 0.16).toFixed(1)}px rgba(0,0,0,.6)`,
           // De bollen staan een slag naar achteren gekanteld. Een getal dat
           // kaarsrecht op het scherm staat ligt daardoor niet OP de knop maar
           // ervoor. Vandaar dezelfde kanteling: de perspectiefafstand loopt mee
           // met de maat, anders klopt de verkorting alleen op één schermbreedte.
-          transform: `perspective(${breed * 0.62}px) rotateX(${KANTEL}deg)`,
+          // De opwaartse schuif is een OOGCORRECTIE: op het rekenkundige hart
+          // van het groene vlak leest het getal als te laag, want de onderste
+          // helft van de bol vangt het licht en de gouden rand zit daar vlak
+          // onder. Zeven procent van de bolhoogte is genoeg.
+          transform: `perspective(${breed * 0.62}px) translateY(${-(hoog * 0.07).toFixed(2)}px) rotateX(${KANTEL}deg)`,
           transformOrigin: "center",
         }}
       >
