@@ -60,8 +60,16 @@ function zetRuimte(px: number): void {
   document.documentElement.style.setProperty("--toetsenbordruimte", `${Math.round(px)}px`);
 }
 
+/** Tot wanneer we onze EIGEN beweging niet als aanleiding zien. Zonder deze rem
+ *  schudt het scherm: het zetje is vloeiend, dus een meting halverwege die rit
+ *  zegt dat het veld nog niet goed staat, dat levert een nieuw zetje op, en zo
+ *  blijven ze elkaar aanjagen. */
+let rust = 0;
+/** Onder deze afwijking laten we het staan. Een paar punten scheef ziet niemand,
+ *  en er nog een rit voor maken voelt als een scherm dat niet stil kan zitten. */
+const SPELING = 8;
+
 function zorgInBeeld(): void {
-  const el = document.activeElement as HTMLElement | null;
   const vv = window.visualViewport;
   if (!vv) return;
   const layout = document.documentElement.clientHeight || window.innerHeight;
@@ -69,6 +77,9 @@ function zorgInBeeld(): void {
   // Geen toetsenbord? Dan doet de browser het prima zelf.
   if (toetsenbord < DREMPEL) { zetRuimte(0); return; }
   zetRuimte(toetsenbord);
+
+  if (Date.now() < rust) return;
+  const el = document.activeElement as HTMLElement | null;
   if (!isVeld(el)) return;
 
   const r = el.getBoundingClientRect();
@@ -78,8 +89,9 @@ function zorgInBeeld(): void {
   // halverwege het scherm: dan springt de pagina bij elk veld een ander eind.
   // Vandaar ook omhoog schuiven als het veld te hoog staat, zolang dat kan.
   const teveel = r.bottom + MARGE - onder;
-  if (Math.abs(teveel) <= 2) return;
+  if (Math.abs(teveel) <= SPELING) return;
 
+  rust = Date.now() + 650;
   const doos = scroller(el);
   if (doos) doos.scrollBy({ top: teveel, behavior: "smooth" });
   else window.scrollBy({ top: teveel, behavior: "smooth" });
@@ -90,23 +102,26 @@ export function useVeldInBeeld(): void {
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
-    // Bij het openen van het toetsenbord komt de resize een paar beeldjes na de
-    // focus, en op iOS soms in twee stappen. Vandaar beide gebeurtenissen, elk
-    // met een kleine vertraging zodat we meten als alles staat.
+    // Twee aanleidingen, en niet meer dan dat: je tikt een veld aan (focusin) of
+    // het toetsenbord komt of gaat (resize). NIET op scroll: dat was de derde,
+    // en die maakte er een schudpartij van. Elk zetje is zelf een scroll, dus
+    // die luisteraar hoorde vooral zichzelf, en wie tijdens het typen even
+    // wegschoof werd meteen teruggetrokken.
+    //
+    // De vertraging staat er omdat de resize op iOS een paar beeldjes na de
+    // focus komt, soms in twee stappen: zo meten we als alles staat.
     let timer = 0;
     const straks = () => {
       window.clearTimeout(timer);
-      timer = window.setTimeout(zorgInBeeld, 120);
+      timer = window.setTimeout(zorgInBeeld, 140);
     };
     document.addEventListener("focusin", straks, true);
     vv.addEventListener("resize", straks);
-    vv.addEventListener("scroll", straks);
     return () => {
       zetRuimte(0);
       window.clearTimeout(timer);
       document.removeEventListener("focusin", straks, true);
       vv.removeEventListener("resize", straks);
-      vv.removeEventListener("scroll", straks);
     };
   }, []);
 }
