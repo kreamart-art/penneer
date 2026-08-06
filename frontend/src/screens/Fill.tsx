@@ -13,6 +13,7 @@ import type { GameApi } from "../net/socket";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { useToetsenbordOp } from "../lib/veldinbeeld";
+import { RodeKnop } from "../components/RodeKnop";
 import { KreetKiezer } from "../components/Kreten";
 import { KreetZwever } from "../components/KreetZwever";
 import { colors, font, withAlpha } from "../theme/tokens";
@@ -244,9 +245,9 @@ export function Fill({ game }: { game: GameApi }) {
           <div style={{ maxWidth: 460, margin: "0 auto", padding: "0 18px", pointerEvents: "auto" }}>
             {/* No local click sound: the buzzer plays for EVERYONE (presser
                 included) off the server's round_ended broadcast, in App. */}
-            <Button variant="danger" full onClick={() => { sound.haptic([15, 40, 15]); game.stopRound(); }}>
+            <RodeKnop onClick={() => { sound.haptic([15, 40, 15]); game.stopRound(); }}>
               {t("penNeer")}
-            </Button>
+            </RodeKnop>
           </div>
         </div>
       )}
@@ -269,7 +270,11 @@ export function Fill({ game }: { game: GameApi }) {
           {/* De klaarknop met het kreetteken ernaast. Het teken is klein en staat
               rechts: de knop blijft de daad, de kreet is de franje. Zie
               components/Kreten.tsx. */}
+          {/* Even veel ruimte LINKS als het kreetteken rechts inneemt. Zonder
+              die tegenwicht staat de knop de breedte van dat teken uit het hart,
+              en dat zie je meteen aan een knop die de hele breedte pakt. */}
           <div style={{ maxWidth: 460, margin: "0 auto", padding: "0 18px", pointerEvents: "auto", display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ width: 44, flexShrink: 0 }} aria-hidden />
             <div style={{ flex: 1, minWidth: 0 }}>
               <Button
                 variant={iAmReady ? "ghost" : "gold"}

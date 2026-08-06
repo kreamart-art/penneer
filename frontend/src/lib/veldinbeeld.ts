@@ -72,24 +72,6 @@ let rust = 0;
  *  en er nog een rit voor maken voelt als een scherm dat niet stil kan zitten. */
 const SPELING = 8;
 
-/** Meetlijn naar de server. Een echte iPhone is van hier niet te debuggen, en
- *  dit raadsel is drie keer op een gok afgeketst; nu eerst kijken wat het
- *  toestel zelf zegt. Maximaal een handvol regels per sessie, en hij mag weg
- *  zodra de oorzaak vaststaat. */
-let meldingen = 0;
-function meld(data: Record<string, unknown>): void {
-  if (meldingen >= 10) return;
-  meldingen += 1;
-  try {
-    void fetch("/api/debug/viewport", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-      keepalive: true,
-    }).catch(() => {});
-  } catch { /* meten mag nooit iets breken */ }
-}
-
 function zorgInBeeld(poging = 0): void {
   const vv = window.visualViewport;
   if (!vv) return;
@@ -107,7 +89,6 @@ function zorgInBeeld(poging = 0): void {
       const nu = (document.documentElement.clientHeight || window.innerHeight) - vv2.height;
       if (nu < DREMPEL) zetRuimte(0);
     }, 500);
-    meld({ tag: "veld-geen-tb", layout, vv: Math.round(vv.height), off: Math.round(vv.offsetTop) });
     return;
   }
   zetRuimte(toetsenbord);
@@ -139,10 +120,7 @@ function zorgInBeeld(poging = 0): void {
   // hetzelfde de andere kant op. Eén richting stopt vanzelf: schiet hij door,
   // dan staat het vakje hooguit wat hoog, en daar kijk je overheen.
   const teveel = schermBodem - doel;
-  if (teveel <= SPELING) {
-    meld({ tag: "veld-staat-goed", teveel: Math.round(teveel), scherm: Math.round(schermBodem), doel: Math.round(doel), off: Math.round(vv.offsetTop) });
-    return;
-  }
+  if (teveel <= SPELING) return;
 
   rust = Date.now() + 650;
   const doos = scroller(el);
@@ -165,26 +143,10 @@ function zorgInBeeld(poging = 0): void {
     zetRuimte(toetsenbord + (teveel - beschikbaar) + 8);
     void doc.offsetHeight;
   }
-  const voorY = window.scrollY;
   // Niet vloeiend: een rit van een paar honderd milliseconden loopt door
   // terwijl iOS zelf ook schuift, en dan meet de volgende gebeurtenis halverwege
   // twee bewegingen. In één keer zetten is lelijker en veel voorspelbaarder.
   window.scrollBy({ top: teveel, behavior: "auto" });
-  meld({
-    tag: "veld-zet", p: poging, teveel: Math.round(teveel), tb: Math.round(toetsenbord),
-    scherm: Math.round(schermBodem), doel: Math.round(doel), off: Math.round(vv.offsetTop),
-    y: Math.round(voorY), sh: doc.scrollHeight, besch: Math.round(beschikbaar),
-  });
-  window.setTimeout(() => {
-    const na = (document.activeElement as HTMLElement | null)?.getBoundingClientRect();
-    const vv2 = window.visualViewport;
-    meld({
-      tag: "veld-na", p: poging, y: Math.round(window.scrollY),
-      scherm: na && vv2 ? Math.round(na.bottom - vv2.offsetTop) : -1,
-      doel: vv2 ? Math.round(vv2.height - MARGE) : -1,
-      off: vv2 ? Math.round(vv2.offsetTop) : -1,
-    });
-  }, 500);
 
   // NAKIJKEN. Het zetje komt niet altijd helemaal aan: op het toestel gemeten
   // ging er 389 in terwijl er 418 gevraagd was, en dat verschil is precies

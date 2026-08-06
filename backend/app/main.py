@@ -54,10 +54,8 @@ async def debug_viewport(request: Request) -> Response:
         body = await request.json()
     except Exception:
         return Response(status_code=204)
-    ua = str(body.pop("ua", ""))[:60]
-    # Alles wat er in zit, afgekapt: deze lijn dient om een echt toestel te
-    # meten, en welke velden dat zijn verschilt per raadsel.
-    print(f"[viewport] {str(body)[:500]} ua={ua}", flush=True)
+    keep = {k: body.get(k) for k in ("tag", "inner", "client", "visual", "screen", "dpr", "scrollY")}
+    print(f"[viewport] {keep} ua={str(body.get('ua'))[:80]}", flush=True)
     return Response(status_code=204)
 
 
