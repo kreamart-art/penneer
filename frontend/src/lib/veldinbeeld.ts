@@ -100,8 +100,22 @@ function zorgInBeeld(): void {
 
   rust = Date.now() + 650;
   const doos = scroller(el);
-  if (doos) doos.scrollBy({ top: teveel, behavior: "smooth" });
-  else window.scrollBy({ top: teveel, behavior: "smooth" });
+  if (doos) { doos.scrollBy({ top: teveel, behavior: "smooth" }); return; }
+
+  // De pagina moet het zetje ook KUNNEN maken. Is er te weinig te scrollen, dan
+  // schuift de browser niets en blijft het veld staan waar het stond: dat is
+  // waarom het onderste vakje toch onder de balk bleef hangen. Dus eerst de
+  // strook onderaan zo groot maken dat het zetje past.
+  //
+  // En daarna de layout FORCEREN, want zonder die aanraking rekent het scrollen
+  // nog met de oude paginahoogte en wordt het zetje alsnog afgekapt.
+  const doc = document.documentElement;
+  const beschikbaar = doc.scrollHeight - doc.clientHeight - window.scrollY;
+  if (teveel > beschikbaar) {
+    zetRuimte(toetsenbord + (teveel - beschikbaar) + 8);
+    void doc.offsetHeight;
+  }
+  window.scrollBy({ top: teveel, behavior: "smooth" });
 }
 
 /** Roep dit ÉÉN keer aan, op het hoogste niveau van de app. */
