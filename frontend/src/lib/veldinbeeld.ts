@@ -17,7 +17,7 @@
 // Waarom `visualViewport` en niet `scrollIntoView`: die laatste rekent met de
 // layout-viewport, en die weet niet dat er een toetsenbord staat. Op iOS levert
 // hij daarom precies de bug op die we willen weghalen.
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 /** Lucht tussen de onderkant van het veld en de onderkant van het vak dat iOS
  *  zelf als zichtbaar opgeeft.
@@ -223,4 +223,37 @@ export function useVeldInBeeld(): void {
       vv.removeEventListener("resize", straks);
     };
   }, []);
+}
+
+/** Staat het toetsenbord op dit moment open?
+ *
+ *  Voor schermen met een ZWEVENDE knop onderaan. Die knop hangt vast aan de
+ *  onderkant van de pagina, en die onderkant zit met een toetsenbord ergens
+ *  achter dat toetsenbord: dan ligt hij met zijn donkere band precies over de
+ *  vakjes waar je in typt. Zolang je typt hoort hij er niet te zijn.
+ *
+ *  Het uitzetten gaat met een halve tel vertraging, om dezelfde reden als de
+ *  strook hierboven: iOS meldt tussendoor de volle hoogte terwijl het
+ *  toetsenbord gewoon staat, en zonder die rem knippert de knop. */
+export function useToetsenbordOp(): boolean {
+  const [op, setOp] = useState(false);
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    let timer = 0;
+    const meet = () => {
+      const layout = document.documentElement.clientHeight || window.innerHeight;
+      const staat = layout - vv.height >= DREMPEL;
+      window.clearTimeout(timer);
+      if (staat) setOp(true);
+      else timer = window.setTimeout(() => setOp(false), 450);
+    };
+    meet();
+    vv.addEventListener("resize", meet);
+    return () => {
+      window.clearTimeout(timer);
+      vv.removeEventListener("resize", meet);
+    };
+  }, []);
+  return op;
 }

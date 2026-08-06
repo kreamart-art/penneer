@@ -12,6 +12,7 @@ import { TopBar } from "../components/TopBar";
 import type { GameApi } from "../net/socket";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
+import { useToetsenbordOp } from "../lib/veldinbeeld";
 import { KreetKiezer } from "../components/Kreten";
 import { KreetZwever } from "../components/KreetZwever";
 import { colors, font, withAlpha } from "../theme/tokens";
@@ -65,8 +66,15 @@ export function Fill({ game }: { game: GameApi }) {
   // Floating bottom button: with a timer the TIMER ends the round, so there is
   // no stop button — only "Geen tijd" gives the spelleider the "Pen neer" stop.
   // Everyone else (and the spelleider in timed mode) gets "Ik ben klaar".
-  const showFloatingStop = !isSpectator && !satOut && !roundOver && game.isActive && noTimer;
-  const showFloatingReady = !isSpectator && !satOut && !roundOver && !showFloatingStop;
+  // Zolang je TYPT hoort de zwevende knop er niet te zijn. Hij hangt vast aan de
+  // onderkant van de pagina, en die zit met een toetsenbord ergens achter dat
+  // toetsenbord: dan ligt zijn donkere band precies over de vakjes waar je in
+  // typt. Zodra het toetsenbord weg is staat hij er weer, en tot die tijd komt
+  // een ingevuld laatste vakje met Enter ook binnen.
+  const toetsenbordOp = useToetsenbordOp();
+  const mag = !isSpectator && !satOut && !roundOver;
+  const showFloatingStop = mag && game.isActive && noTimer && !toetsenbordOp;
+  const showFloatingReady = mag && !(game.isActive && noTimer) && !toetsenbordOp;
 
   return (
     <Screen top={<TopBar code={room.code} roundNo={room.round_no} totalRounds={room.settings.rounds} connected={game.state.status === "open"} onLeave={game.leaveRoom} game={game} />}>
@@ -74,7 +82,7 @@ export function Fill({ game }: { game: GameApi }) {
           alleen de uitzending hem, en zat wie aan het typen was er precies naast
           op het moment dat het ertoe doet. */}
       <KreetZwever game={game} />
-      <div style={{ display: "flex", flexDirection: "column", gap: 16, paddingBottom: showFloatingReady || showFloatingStop ? 104 : 0 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 16, paddingBottom: mag ? 104 : 0 }}>
         {/* De letter op de TV, dezelfde als in de lobby en in Oefenen. De klok
             staat eronder en niet erop: op het scherm zou hij naast de letter om
             aandacht vragen, terwijl de letter is waar je naar kijkt. */}
@@ -146,7 +154,16 @@ export function Fill({ game }: { game: GameApi }) {
                     if (!roundOver) change(cat, e.target.value);
                   }}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") inputs.current[i + 1]?.focus();
+                    if (e.key !== "Enter") return;
+                    const volgende = inputs.current[i + 1];
+                    if (volgende) { volgende.focus(); return; }
+                    // Laatste vakje: melden dat je klaar bent, want de zwevende
+                    // knop staat er niet zolang het toetsenbord er is.
+                    e.currentTarget.blur();
+                    if (mag && !(game.isActive && noTimer) && !iAmReady) {
+                      sound.ready();
+                      game.setReady(true);
+                    }
                   }}
                   autoComplete="off"
                   name={`vak${i + 1}`}
