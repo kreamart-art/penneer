@@ -108,26 +108,24 @@ function zorgInBeeld(poging = 0): void {
   if (!isVeld(el)) return;
 
   const r = el.getBoundingClientRect();
-  // De onderrand van het zichtbare vak, gerekend ALSOF het kijkvenster gewoon
-  // op de pagina ligt. Dat `vv.offsetTop` erbij optellen was de laatste fout:
-  // iOS tilt zijn kijkvenster tijdelijk op in plaats van de pagina te scrollen
-  // (in de meting stond hij op 403, dan op 116, dan weer op 0), en zolang hij
-  // opgetild is lijkt er onderaan veel meer ruimte dan er straks is. Dan meet je
-  // "die staat goed", de tilt zakt terug naar nul, en het vakje glijdt precies
-  // die honderd punten onder de balk. Vandaar de vaste onderrand: hooguit staat
-  // het vakje even te hoog, en dat kun je tenminste lezen.
-  const onder = vv.height;
-  // ALLEEN als het veld te LAAG staat. Het terugtrekken van een veld dat al
-  // hoog genoeg staat was de bron van de ellende: iOS schuift zelf ook (het zet
-  // het veld boven de toetsen) en verplaatst daarbij zijn eigen kijkvenster, dus
-  // een correctie in twee richtingen loopt achter iOS aan en telt zijn zetje er
-  // bovenop. Op het toestel gemeten: gevraagd om 237 punten, uitgekomen op 562,
-  // waarna het veld aan de bovenkant het beeld uit lag en de volgende meting hem
-  // weer terugtrok. Eén richting kan niet pendelen: elke correctie brengt het
-  // veld omhoog, en zodra het boven de lijn staat gebeurt er niets meer.
-  const teveel = r.bottom + MARGE - onder;
-  if (teveel <= SPELING) {
-    meld({ tag: "veld-staat-goed", teveel: Math.round(teveel), bottom: Math.round(r.bottom), onder: Math.round(onder), off: Math.round(vv.offsetTop) });
+  // WAAR STAAT HET VAKJE OP HET GLAS.
+  //
+  // Twee dingen bepalen dat, en ik heb ze drie keer door elkaar gehaald:
+  //   - de pagina kan gescrold zijn (dat zit al in getBoundingClientRect)
+  //   - iOS kan zijn kijkvenster OPTILLEN in plaats van te scrollen, en dat
+  //     staat in `visualViewport.offsetTop` (gemeten waarden: 0, 103, 116, 305,
+  //     403 op hetzelfde scherm, binnen een paar tellen)
+  //
+  // Wat je ziet is het verschil van die twee. Reken je met alleen de eerste, dan
+  // staat het vakje te laag zodra de tilt wegvalt; tel je de tilt bij de
+  // onderrand op, dan denk je dat er ruimte is die er straks niet meer is. Dus:
+  // alles op het glas, en de onderrand van het glas is gewoon de hoogte van het
+  // zichtbare vak.
+  const schermBodem = r.bottom - vv.offsetTop;
+  const doel = vv.height - MARGE;
+  const teveel = schermBodem - doel;
+  if (Math.abs(teveel) <= SPELING) {
+    meld({ tag: "veld-staat-goed", teveel: Math.round(teveel), scherm: Math.round(schermBodem), doel: Math.round(doel), off: Math.round(vv.offsetTop) });
     return;
   }
 
@@ -158,13 +156,19 @@ function zorgInBeeld(poging = 0): void {
   // twee bewegingen. In één keer zetten is lelijker en veel voorspelbaarder.
   window.scrollBy({ top: teveel, behavior: "auto" });
   meld({
-    tag: "veld-zet", teveel: Math.round(teveel), tb: Math.round(toetsenbord),
-    bottom: Math.round(r.bottom), onder: Math.round(onder), off: Math.round(vv.offsetTop),
-    y: Math.round(voorY), sh: doc.scrollHeight, ch: doc.clientHeight, besch: Math.round(beschikbaar),
+    tag: "veld-zet", p: poging, teveel: Math.round(teveel), tb: Math.round(toetsenbord),
+    scherm: Math.round(schermBodem), doel: Math.round(doel), off: Math.round(vv.offsetTop),
+    y: Math.round(voorY), sh: doc.scrollHeight, besch: Math.round(beschikbaar),
   });
   window.setTimeout(() => {
     const na = (document.activeElement as HTMLElement | null)?.getBoundingClientRect();
-    meld({ tag: "veld-na", p: poging, y: Math.round(window.scrollY), bottom: na ? Math.round(na.bottom) : -1, sh: doc.scrollHeight });
+    const vv2 = window.visualViewport;
+    meld({
+      tag: "veld-na", p: poging, y: Math.round(window.scrollY),
+      scherm: na && vv2 ? Math.round(na.bottom - vv2.offsetTop) : -1,
+      doel: vv2 ? Math.round(vv2.height - MARGE) : -1,
+      off: vv2 ? Math.round(vv2.offsetTop) : -1,
+    });
   }, 500);
 
   // NAKIJKEN. Het zetje komt niet altijd helemaal aan: op het toestel gemeten
