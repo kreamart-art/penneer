@@ -90,7 +90,7 @@ function meld(data: Record<string, unknown>): void {
   } catch { /* meten mag nooit iets breken */ }
 }
 
-function zorgInBeeld(): void {
+function zorgInBeeld(poging = 0): void {
   const vv = window.visualViewport;
   if (!vv) return;
   const layout = document.documentElement.clientHeight || window.innerHeight;
@@ -103,16 +103,12 @@ function zorgInBeeld(): void {
   }
   zetRuimte(toetsenbord);
 
-  if (Date.now() < rust) return;
+  if (poging === 0 && Date.now() < rust) return;
   const el = document.activeElement as HTMLElement | null;
   if (!isVeld(el)) return;
 
   const r = el.getBoundingClientRect();
   const onder = vv.offsetTop + vv.height;
-  // ALTIJD op dezelfde lijn, niet alleen als het veld eronder valt. Anders
-  // landt het eerste veld net boven het toetsenbord en staat het tweede
-  // halverwege het scherm: dan springt de pagina bij elk veld een ander eind.
-  // Vandaar ook omhoog schuiven als het veld te hoog staat, zolang dat kan.
   // ALLEEN als het veld te LAAG staat. Het terugtrekken van een veld dat al
   // hoog genoeg staat was de bron van de ellende: iOS schuift zelf ook (het zet
   // het veld boven de toetsen) en verplaatst daarbij zijn eigen kijkvenster, dus
@@ -129,7 +125,11 @@ function zorgInBeeld(): void {
 
   rust = Date.now() + 650;
   const doos = scroller(el);
-  if (doos) { doos.scrollBy({ top: teveel, behavior: "auto" }); return; }
+  if (doos) {
+    doos.scrollBy({ top: teveel, behavior: "auto" });
+    if (poging < 2) window.setTimeout(() => zorgInBeeld(poging + 1), 260);
+    return;
+  }
 
   // De pagina moet het zetje ook KUNNEN maken. Is er te weinig te scrollen, dan
   // schuift de browser niets en blijft het veld staan waar het stond: dat is
@@ -156,8 +156,15 @@ function zorgInBeeld(): void {
   });
   window.setTimeout(() => {
     const na = (document.activeElement as HTMLElement | null)?.getBoundingClientRect();
-    meld({ tag: "veld-na", y: Math.round(window.scrollY), bottom: na ? Math.round(na.bottom) : -1, sh: doc.scrollHeight });
+    meld({ tag: "veld-na", p: poging, y: Math.round(window.scrollY), bottom: na ? Math.round(na.bottom) : -1, sh: doc.scrollHeight });
   }, 500);
+
+  // NAKIJKEN. Het zetje komt niet altijd helemaal aan: op het toestel gemeten
+  // ging er 389 in terwijl er 418 gevraagd was, en dat verschil is precies
+  // genoeg om de balk weer op het vakje te laten liggen. Dus meteen daarna nog
+  // een keer meten en het restje bijleggen. Twee keer, meer niet, en alleen
+  // omhoog, dus dit kan niet aan het pendelen slaan.
+  if (poging < 2) window.setTimeout(() => zorgInBeeld(poging + 1), 260);
 }
 
 /** Roep dit ÉÉN keer aan, op het hoogste niveau van de app. */
