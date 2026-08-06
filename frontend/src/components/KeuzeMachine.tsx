@@ -46,10 +46,7 @@ const VLAK = {
  *  net zo op hun ondergrond liggen als daar. */
 const SCHADUW = "0 2px 6px rgba(0,0,0,.65), 0 0 14px rgba(0,0,0,.5)";
 
-const MAAT = { titel: 0.037, potKop: 0.026, potGetal: 0.082, bolGetal: 0.075 } as const;
-/** Hoe ver de twee bollen naar achteren staan, in graden. Opgemeten aan de
- *  gouden ring om de knop: die is in het echt rond en op de plaat een ellips. */
-const KANTEL = 16;
+const MAAT = { titel: 0.037, potKop: 0.026, potGetal: 0.082, woord: 0.036 } as const;
 
 /** Goud met een verloop, geknipt op de letter.
  *
@@ -81,17 +78,14 @@ function Goud({ maat, spatie = 0.5, schaduw = false, children }: {
   );
 }
 
-/** Een bol. Geen woord en geen teken erop, alleen een BEDRAG: de bol is een
- *  zesde van de plaat, dus op een telefoon zestig punten breed, en daar past
- *  "INCASSEER" niet op. Met de twee bedragen naast elkaar staat de hele keuze er
- *  ook zonder woorden: groen is wat je zeker hebt, rood is wat het wordt als je
- *  doorgaat. De kleur zegt de rest. */
-function Bol({ links, breed, hoog, maat, bedrag, onClick, label }: {
-  links: number; breed: number; hoog: number; /** lettergrootte, uit de breedte van de MACHINE */ maat: number;
-  bedrag: string; onClick: () => void; label: string;
+/** Een bol. Kaal: er staat geen woord en geen getal op. Hij is een zesde van de
+ *  plaat, dus op een telefoon zestig punten breed, en alles wat je erop legt
+ *  wordt daar te klein of te druk. Het woord staat eronder en het bedrag staat
+ *  in het scherm erboven; de kleur doet de rest. */
+function Bol({ links, breed, hoog, onClick, label }: {
+  links: number; breed: number; hoog: number; onClick: () => void;
+  /** voor schermlezers; het woord staat zichtbaar onder de machine */ label: string;
 }) {
-  // Vier cijfers passen niet op dezelfde maat als twee.
-  const krimp = bedrag.length >= 5 ? 0.62 : bedrag.length === 4 ? 0.76 : 1;
   return (
     <button
       onClick={onClick}
@@ -101,45 +95,37 @@ function Bol({ links, breed, hoog, maat, bedrag, onClick, label }: {
         position: "absolute",
         left: `${links * 100}%`, top: `${VLAK.bol.y * 100}%`,
         width: breed, height: hoog, transform: "translate(-50%,-50%)",
-        display: "grid", placeItems: "center",
         border: "none", background: "transparent", padding: 0, cursor: "pointer",
         borderRadius: "50%",
       }}
-    >
-      <span
-        style={{
-          fontFamily: font.display, fontWeight: 800, fontSize: maat * krimp,
-          lineHeight: 1, color: "#FFFFFF",
-          // Een schaduw ONDER het getal en niet eromheen: hij hoort te lezen als
-          // licht dat van boven komt, niet als een waas achter de cijfers.
-          textShadow: `0 ${(maat * 0.11).toFixed(1)}px ${(maat * 0.16).toFixed(1)}px rgba(0,0,0,.6)`,
-          // De bollen staan een slag naar achteren gekanteld. Een getal dat
-          // kaarsrecht op het scherm staat ligt daardoor niet OP de knop maar
-          // ervoor. Vandaar dezelfde kanteling: de perspectiefafstand loopt mee
-          // met de maat, anders klopt de verkorting alleen op één schermbreedte.
-          // De opwaartse schuif is een OOGCORRECTIE: op het rekenkundige hart
-          // van het groene vlak leest het getal als te laag, want de onderste
-          // helft van de bol vangt het licht en de gouden rand zit daar vlak
-          // onder. Zeven procent van de bolhoogte is genoeg.
-          transform: `perspective(${breed * 0.62}px) translateY(${-(hoog * 0.07).toFixed(2)}px) rotateX(${KANTEL}deg)`,
-          transformOrigin: "center",
-        }}
-      >
-        {bedrag}
-      </span>
-    </button>
+    />
   );
 }
 
-export function KeuzeMachine({ titel, potKop, pot, volgende, pakLabel, doorLabel, onPak, onDoor }: {
+/** Het woord onder de machine, in het hart van zijn eigen knop. Op de bol zelf
+ *  past het niet: die is een zesde van de plaat en dus zestig punten breed. */
+function Woord({ links, maat, kleur, children }: { links: number; maat: number; kleur: string; children: React.ReactNode }) {
+  return (
+    <span
+      style={{
+        position: "absolute", left: `${links * 100}%`, top: "100%",
+        transform: "translate(-50%, 2px)", whiteSpace: "nowrap",
+        fontFamily: font.display, fontWeight: 700, fontSize: maat, letterSpacing: maat * 0.06,
+        lineHeight: 1, color: kleur, textShadow: SCHADUW,
+      }}
+    >
+      {children}
+    </span>
+  );
+}
+
+export function KeuzeMachine({ titel, potKop, pot, pakLabel, doorLabel, onPak, onDoor }: {
   /** Op de banner. */
   titel: string;
   /** Boven het bedrag in het scherm. */
   potKop: string;
-  /** Wat er nu ligt: op het scherm en op de groene bol. */
+  /** Wat er nu ligt. Staat in het scherm van de machine. */
   pot: number;
-  /** Wat het wordt als je doorgaat: op de rode bol. */
-  volgende: number;
   /** Alleen voor schermlezers; op de bol staat een bedrag. */
   pakLabel: string;
   doorLabel: string;
@@ -215,8 +201,14 @@ export function KeuzeMachine({ titel, potKop, pot, volgende, pakLabel, doorLabel
         </div>
       </div>
 
-      <Bol links={VLAK.bol.groen} breed={bolBreed} hoog={bolHoog} maat={breed * MAAT.bolGetal} bedrag={String(pot)} label={pakLabel} onClick={onPak} />
-      <Bol links={VLAK.bol.rood} breed={bolBreed} hoog={bolHoog} maat={breed * MAAT.bolGetal} bedrag={String(volgende)} label={doorLabel} onClick={onDoor} />
+      {/* GROEN gaat door, ROOD stopt. Groen is overal "ga" en rood is overal
+          "stop", en dat weegt zwaarder dan dat de groene knop het geld geeft:
+          op een knop lees je eerst de kleur en pas daarna het getal. Op groen
+          staat dus wat het WORDT, op rood wat je NU hebt. */}
+      <Bol links={VLAK.bol.groen} breed={bolBreed} hoog={bolHoog} label={doorLabel} onClick={onDoor} />
+      <Bol links={VLAK.bol.rood} breed={bolBreed} hoog={bolHoog} label={`${pakLabel} ${pot}`} onClick={onPak} />
+      <Woord links={VLAK.bol.groen} maat={breed * MAAT.woord} kleur={colors.ink}>{doorLabel}</Woord>
+      <Woord links={VLAK.bol.rood} maat={breed * MAAT.woord} kleur={colors.ink}>{pakLabel}</Woord>
     </div>
   );
 }

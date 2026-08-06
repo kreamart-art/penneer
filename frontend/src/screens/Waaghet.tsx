@@ -226,7 +226,6 @@ export function Waaghet({ seed, onKlaar }: {
     [seed, vers, ronde, en, trap.omgekeerd],
   );
   const pot = potNa(goed);
-  const volgendePot = potNa(goed + 1);
 
   const begon = useRef(performance.now());
   const deadline = useRef(performance.now());
@@ -413,8 +412,7 @@ export function Waaghet({ seed, onKlaar }: {
               titel={t("waagKiesTitel")}
               potKop={t("waagPot")}
               pot={pot}
-              volgende={volgendePot}
-              pakLabel={t("waagIncasseer", { n: pot })}
+              pakLabel={t("waagIncasseerKaal")}
               doorLabel={t("waagDoorgaan")}
               onPak={() => { sound.munten(); eindig(pot, false); }}
               onDoor={doorgaan}
