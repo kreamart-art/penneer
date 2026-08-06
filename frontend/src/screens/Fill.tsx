@@ -12,7 +12,6 @@ import { TopBar } from "../components/TopBar";
 import type { GameApi } from "../net/socket";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
-import { useToetsenbordOp } from "../lib/veldinbeeld";
 import { RodeKnop } from "../components/RodeKnop";
 import { KreetKiezer } from "../components/Kreten";
 import { KreetZwever } from "../components/KreetZwever";
@@ -67,15 +66,11 @@ export function Fill({ game }: { game: GameApi }) {
   // Floating bottom button: with a timer the TIMER ends the round, so there is
   // no stop button — only "Geen tijd" gives the spelleider the "Pen neer" stop.
   // Everyone else (and the spelleider in timed mode) gets "Ik ben klaar".
-  // Zolang je TYPT hoort de zwevende knop er niet te zijn. Hij hangt vast aan de
-  // onderkant van de pagina, en die zit met een toetsenbord ergens achter dat
-  // toetsenbord: dan ligt zijn donkere band precies over de vakjes waar je in
-  // typt. Zodra het toetsenbord weg is staat hij er weer, en tot die tijd komt
-  // een ingevuld laatste vakje met Enter ook binnen.
-  const toetsenbordOp = useToetsenbordOp();
+  // Wie mag er iets doen, en wat. De spelleider zonder klok zet de ronde stop
+  // ("Pen neer"), iedereen anders meldt zich klaar.
   const mag = !isSpectator && !satOut && !roundOver;
-  const showFloatingStop = mag && game.isActive && noTimer && !toetsenbordOp;
-  const showFloatingReady = mag && !(game.isActive && noTimer) && !toetsenbordOp;
+  const showStop = mag && game.isActive && noTimer;
+  const showKlaar = mag && !(game.isActive && noTimer);
 
   return (
     <Screen top={<TopBar code={room.code} roundNo={room.round_no} totalRounds={room.settings.rounds} connected={game.state.status === "open"} onLeave={game.leaveRoom} game={game} />}>
@@ -83,7 +78,7 @@ export function Fill({ game }: { game: GameApi }) {
           alleen de uitzending hem, en zat wie aan het typen was er precies naast
           op het moment dat het ertoe doet. */}
       <KreetZwever game={game} />
-      <div style={{ display: "flex", flexDirection: "column", gap: 16, paddingBottom: mag ? 104 : 0 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 16, paddingBottom: 8 }}>
         {/* De letter op de TV, dezelfde als in de lobby en in Oefenen. De klok
             staat eronder en niet erop: op het scherm zou hij naast de letter om
             aandacht vragen, terwijl de letter is waar je naar kijkt. */}
@@ -161,7 +156,7 @@ export function Fill({ game }: { game: GameApi }) {
                     // Laatste vakje: melden dat je klaar bent, want de zwevende
                     // knop staat er niet zolang het toetsenbord er is.
                     e.currentTarget.blur();
-                    if (mag && !(game.isActive && noTimer) && !iAmReady) {
+                    if (showKlaar && !iAmReady) {
                       sound.ready();
                       game.setReady(true);
                     }
@@ -213,7 +208,12 @@ export function Fill({ game }: { game: GameApi }) {
           </div>
         )}
 
-        {/* controls (the action itself is the floating button below) */}
+        {/* De DAAD staat onder de vakjes, in de kolom, net als in de dagronde.
+            Hij zweefde: vast aan de onderkant van het scherm, over de pagina
+            heen. Met een toetsenbord zit die onderkant achter dat toetsenbord en
+            lag zijn donkere band precies over de vakjes waar je in typt. In de
+            kolom heeft hij dat probleem niet: hij staat waar hij hoort, onder
+            het laatste vakje, en je scrolt er vanzelf naartoe. */}
         {satOut ? null : isSpectator ? (
           <p style={{ textAlign: "center", fontFamily: font.ui, fontSize: 13.5, color: colors.sub, margin: "4px 0 0" }}>{t("spectatorNote")}</p>
         ) : game.isActive && noTimer ? (
@@ -225,55 +225,13 @@ export function Fill({ game }: { game: GameApi }) {
             {iAmReady ? t("youReady") : noTimer ? t("xStopsTime", { name: active?.name ?? "?" }) : t("fillFast")}
           </p>
         )}
-      </div>
 
-      {/* Floating "Pen neer" (spelleider) — always reachable, also with a timer */}
-      {showFloatingStop && (
-        <div
-          style={{
-            position: "fixed",
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 20,
-            paddingBottom: "calc(14px + env(safe-area-inset-bottom))",
-            paddingTop: 26,
-            background: `linear-gradient(0deg, ${colors.bg0} 55%, transparent)`,
-            pointerEvents: "none",
-          }}
-        >
-          <div style={{ maxWidth: 460, margin: "0 auto", padding: "0 18px", pointerEvents: "auto" }}>
-            {/* No local click sound: the buzzer plays for EVERYONE (presser
-                included) off the server's round_ended broadcast, in App. */}
-            <RodeKnop onClick={() => { sound.haptic([15, 40, 15]); game.stopRound(); }}>
-              {t("penNeer")}
-            </RodeKnop>
-          </div>
-        </div>
-      )}
-
-      {/* Floating ready button (non-active players) so everyone notices it */}
-      {showFloatingReady && (
-        <div
-          style={{
-            position: "fixed",
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 20,
-            paddingBottom: "calc(14px + env(safe-area-inset-bottom))",
-            paddingTop: 26,
-            background: `linear-gradient(0deg, ${colors.bg0} 55%, transparent)`,
-            pointerEvents: "none",
-          }}
-        >
-          {/* De klaarknop met het kreetteken ernaast. Het teken is klein en staat
-              rechts: de knop blijft de daad, de kreet is de franje. Zie
-              components/Kreten.tsx. */}
-          {/* Even veel ruimte LINKS als het kreetteken rechts inneemt. Zonder
-              die tegenwicht staat de knop de breedte van dat teken uit het hart,
-              en dat zie je meteen aan een knop die de hele breedte pakt. */}
-          <div style={{ maxWidth: 460, margin: "0 auto", padding: "0 18px", pointerEvents: "auto", display: "flex", alignItems: "center", gap: 8 }}>
+        {showKlaar && (
+          // De klaarknop met het kreetteken ernaast. Het teken is klein en staat
+          // rechts: de knop blijft de daad, de kreet is de franje. Links staat
+          // even veel ruimte, anders staat de knop de breedte van dat teken uit
+          // het hart en dat zie je meteen aan een knop op volle breedte.
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ width: 44, flexShrink: 0 }} aria-hidden />
             <div style={{ flex: 1, minWidth: 0 }}>
               <Button
@@ -294,8 +252,17 @@ export function Fill({ game }: { game: GameApi }) {
               }}
             />
           </div>
-        </div>
-      )}
+        )}
+
+        {showStop && (
+          // Geen eigen kliktoon: de zoemer klinkt voor IEDEREEN, ook voor wie
+          // drukt, uit de uitzending van de server (zie App).
+          <RodeKnop onClick={() => { sound.haptic([15, 40, 15]); game.stopRound(); }}>
+            {t("penNeer")}
+          </RodeKnop>
+        )}
+      </div>
+
     </Screen>
   );
 }
