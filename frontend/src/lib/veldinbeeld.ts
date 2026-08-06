@@ -19,21 +19,17 @@
 // hij daarom precies de bug op die we willen weghalen.
 import { useEffect } from "react";
 
-/** Lucht tussen de onderkant van het veld en wat iOS als onderkant van het
- *  zichtbare vak opgeeft.
+/** Lucht tussen de onderkant van het veld en de onderkant van het vak dat iOS
+ *  zelf als zichtbaar opgeeft.
  *
- *  RUIM, en dat is meetwerk en geen smaak. `visualViewport` trekt op iOS alleen
- *  de TOETSEN af. Wat daar bovenop zweeft telt hij mee als zichtbaar, terwijl
- *  het je veld gewoon afdekt:
- *
- *    de balk met de pijltjes en "Gereed"   ~44 punten
- *    de suggestierij erboven (AutoFill)    ~45 punten
- *
- *  Op 54 punten lag het veld daarom nog precies onder "AutoFill Contact". Honderd
- *  is die twee balken plus een vinger lucht. Staat er geen suggestierij, dan
- *  hangt het veld een stukje hoger, en dat is precies goed: boven de balk in
- *  plaats van ertegenaan. */
-const MARGE = 100;
+ *  KLEIN, en dat is gemeten op het toestel zelf. Op een iPhone 16 met iOS 18.7
+ *  meldt Safari met het toetsenbord open een vak van 449 punten hoog, terwijl de
+ *  toetsen pas op 564 beginnen en de AutoFill-balk op 501. Wat iOS "verborgen"
+ *  noemt is dus ruim vijftig punten meer dan er werkelijk voor staat: op zijn
+ *  eigen onderrand zit je al boven die balken. Honderd punten marge duwde het
+ *  veld daarom tot bijna buiten beeld (gemeten: onderkant op 24). Zestien is een
+ *  haartje lucht en verder niets. */
+const MARGE = 16;
 /** Onder deze inkorting is er geen toetsenbord maar een adresbalk die wegrolt. */
 const DREMPEL = 80;
 
@@ -117,15 +113,23 @@ function zorgInBeeld(): void {
   // landt het eerste veld net boven het toetsenbord en staat het tweede
   // halverwege het scherm: dan springt de pagina bij elk veld een ander eind.
   // Vandaar ook omhoog schuiven als het veld te hoog staat, zolang dat kan.
+  // ALLEEN als het veld te LAAG staat. Het terugtrekken van een veld dat al
+  // hoog genoeg staat was de bron van de ellende: iOS schuift zelf ook (het zet
+  // het veld boven de toetsen) en verplaatst daarbij zijn eigen kijkvenster, dus
+  // een correctie in twee richtingen loopt achter iOS aan en telt zijn zetje er
+  // bovenop. Op het toestel gemeten: gevraagd om 237 punten, uitgekomen op 562,
+  // waarna het veld aan de bovenkant het beeld uit lag en de volgende meting hem
+  // weer terugtrok. Eén richting kan niet pendelen: elke correctie brengt het
+  // veld omhoog, en zodra het boven de lijn staat gebeurt er niets meer.
   const teveel = r.bottom + MARGE - onder;
-  if (Math.abs(teveel) <= SPELING) {
+  if (teveel <= SPELING) {
     meld({ tag: "veld-staat-goed", teveel: Math.round(teveel), bottom: Math.round(r.bottom), onder: Math.round(onder) });
     return;
   }
 
   rust = Date.now() + 650;
   const doos = scroller(el);
-  if (doos) { doos.scrollBy({ top: teveel, behavior: "smooth" }); return; }
+  if (doos) { doos.scrollBy({ top: teveel, behavior: "auto" }); return; }
 
   // De pagina moet het zetje ook KUNNEN maken. Is er te weinig te scrollen, dan
   // schuift de browser niets en blijft het veld staan waar het stond: dat is
@@ -141,7 +145,10 @@ function zorgInBeeld(): void {
     void doc.offsetHeight;
   }
   const voorY = window.scrollY;
-  window.scrollBy({ top: teveel, behavior: "smooth" });
+  // Niet vloeiend: een rit van een paar honderd milliseconden loopt door
+  // terwijl iOS zelf ook schuift, en dan meet de volgende gebeurtenis halverwege
+  // twee bewegingen. In één keer zetten is lelijker en veel voorspelbaarder.
+  window.scrollBy({ top: teveel, behavior: "auto" });
   meld({
     tag: "veld-zet", teveel: Math.round(teveel), tb: Math.round(toetsenbord),
     bottom: Math.round(r.bottom), onder: Math.round(onder),
@@ -164,12 +171,14 @@ export function useVeldInBeeld(): void {
     // die luisteraar hoorde vooral zichzelf, en wie tijdens het typen even
     // wegschoof werd meteen teruggetrokken.
     //
-    // De vertraging staat er omdat de resize op iOS een paar beeldjes na de
-    // focus komt, soms in twee stappen: zo meten we als alles staat.
+    // De vertraging is RUIM, want iOS schuift zelf ook: hij zet het veld boven
+    // de toetsen zodra het toetsenbord er is. Meten we daar middenin, dan
+    // corrigeren we een beeld dat nog beweegt. Pas als iOS klaar is heeft onze
+    // meting betekenis.
     let timer = 0;
     const straks = () => {
       window.clearTimeout(timer);
-      timer = window.setTimeout(zorgInBeeld, 140);
+      timer = window.setTimeout(zorgInBeeld, 350);
     };
     document.addEventListener("focusin", straks, true);
     vv.addEventListener("resize", straks);
