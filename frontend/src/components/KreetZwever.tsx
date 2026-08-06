@@ -17,10 +17,16 @@
 // opzet het enige in de app dat er zo uitziet: alles eromheen is paars en goud,
 // dus een witte ballon springt eruit zonder dat er iets hoeft te knipperen.
 //
-// ALLEEN VAN EEN ANDER. Je eigen klaarmelding zie je aan de knop die van kleur
-// verschiet; een ballon van jezelf zou alleen je eigen scherm vullen.
+// VAN IEDEREEN, OOK VAN JEZELF. Eerst hing hij aan de klaarmeldingen en sloeg
+// hij je eigen roep over. Maar wie een teken stuurt hoort te zien dat het
+// aankwam, anders lijkt het alsof er niets gebeurde. Hij hangt nu aan een eigen
+// bericht van de server (`kreet`), dus hij werkt ook voor de spelleider die
+// "Pen neer" drukt en nooit "klaar" is.
+//
+// TWEE SOORTEN: een vaste zin, of een sticker uit onze eigen pakketten.
 import { useEffect, useRef, useState } from "react";
 import { KREET_KEUZE, kreetSleutel } from "./Kreten";
+import { EMOTE_SRC } from "./emotes";
 import { Avatar } from "./Avatar";
 import type { GameApi } from "../net/socket";
 import { useT } from "../i18n/i18n";
@@ -34,7 +40,10 @@ type Ballon = {
   sleutel: number;
   naam: string;
   kleur: string;
+  /** De zin, of leeg als het een sticker is. */
   zin: string;
+  /** De sticker, als het er een is. */
+  sticker?: string;
   userId?: string | null;
   heeftFoto?: boolean;
   fotoVer?: number;
@@ -43,35 +52,27 @@ type Ballon = {
 export function KreetZwever({ game }: { game: GameApi }) {
   const { t } = useT();
   const room = game.state.room;
-  const klaar = room?.ready_ids ?? [];
-  const kreten = room?.ready_kreten;
+  const zwaai = game.state.kreetZwaai;
   const [ballon, setBallon] = useState<Ballon | null>(null);
-  const gezien = useRef<Set<string>>(new Set(klaar));
-  const teller = useRef(0);
+  const gezien = useRef(0);
 
   useEffect(() => {
-    const nu = new Set(klaar);
-    // Wie er NIEUW bij is gekomen sinds de vorige keer. Wie klaar afzet
-    // verdwijnt gewoon uit de verzameling en mag later opnieuw roepen.
-    const nieuw = klaar.filter((id) => !gezien.current.has(id) && id !== game.me?.id);
-    gezien.current = nu;
-    const id = nieuw[nieuw.length - 1];
-    if (!id || !room) return;
-    const p = room.players.find((x) => x.id === id);
+    if (!zwaai || !room || zwaai.n === gezien.current) return;
+    gezien.current = zwaai.n;
+    const p = room.players.find((x) => x.id === zwaai.playerId);
     if (!p) return;
-    const kreet = kreten?.[id];
-    teller.current += 1;
     setBallon({
-      sleutel: teller.current,
+      sleutel: zwaai.n,
       naam: p.name,
       kleur: p.color,
-      zin: kreet && KREET_KEUZE.has(kreet) ? t(kreetSleutel(kreet)) : t("streamIsKlaar"),
+      zin: zwaai.kreet && KREET_KEUZE.has(zwaai.kreet) ? t(kreetSleutel(zwaai.kreet)) : "",
+      sticker: zwaai.emote,
       userId: p.user_id,
       heeftFoto: p.has_avatar,
       fotoVer: p.avatar_ver,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [klaar.join(","), kreten]);
+  }, [zwaai?.n]);
 
   useEffect(() => {
     if (!ballon) return;
@@ -114,9 +115,13 @@ export function KreetZwever({ game }: { game: GameApi }) {
           <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 800, color: "#100C1C", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {ballon.naam}
           </span>
-          <span style={{ fontFamily: font.ui, fontSize: 13.5, fontWeight: 600, color: "#2A2438", lineHeight: 1.25 }}>
-            {ballon.zin}
-          </span>
+          {ballon.sticker ? (
+            <img src={EMOTE_SRC(ballon.sticker)} alt="" width={54} height={54} style={{ width: 54, height: 54, display: "block", objectFit: "contain" }} />
+          ) : (
+            <span style={{ fontFamily: font.ui, fontSize: 13.5, fontWeight: 600, color: "#2A2438", lineHeight: 1.25 }}>
+              {ballon.zin}
+            </span>
+          )}
         </span>
       </div>
       {/* Het staartje RECHTSonder, want de ballon hangt rechts: twee driehoeken

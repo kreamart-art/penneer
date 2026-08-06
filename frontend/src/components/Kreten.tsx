@@ -11,6 +11,7 @@
 // andere weg (backend/app/rooms.py, KREET_SLEUTELS).
 import { useEffect, useRef, useState } from "react";
 import { GlasKnop, GoudLijnDefs } from "./GlasKnop";
+import { EMOTE_PACKS, EMOTE_SRC, FREE_EMOTE_PACKS } from "./emotes";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { colors, font, withAlpha } from "../theme/tokens";
@@ -38,13 +39,24 @@ export function kreetSleutel(kreet: string): string {
 export function KreetKiezer({
   onKies,
   maat = 44,
+  pakketten,
 }: {
-  /** De gekozen kreet. Dit MELDT je meteen klaar, met die zin erbij. */
-  onKies: (kreet: string) => void;
+  /** Wat er gekozen is: een zin OF een sticker, nooit allebei. */
+  onKies: (keuze: { kreet?: string; emote?: string }) => void;
   maat?: number;
+  /** Welke stickerpakketten deze speler mag sturen. Leeg valt terug op het
+   *  gratis pakket, net als in de chat. */
+  pakketten?: string[];
 }) {
   const { t } = useT();
   const [open, setOpen] = useState(false);
+  // Twee soorten tekens: de vaste ZINNEN en onze eigen STICKERS. Ze staan in
+  // hetzelfde laadje achter twee tabs en niet onder elkaar: het zijn twee
+  // manieren om hetzelfde te doen, en een lijst van zestien zinnen met daaronder
+  // zesendertig plaatjes is geen laadje meer maar een scherm.
+  const [tab, setTab] = useState<"zin" | "sticker">("zin");
+  const mijn = new Set(pakketten ?? FREE_EMOTE_PACKS);
+  const stickers = EMOTE_PACKS.filter((p) => mijn.has(p.id));
   const doos = useRef<HTMLDivElement | null>(null);
 
   // Buiten het laadje tikken sluit het. Zonder dit blijft het openstaan over
@@ -112,7 +124,45 @@ export function KreetKiezer({
             zIndex: 40,
           }}
         >
-          {KREET_PAKKETTEN.map(({ pak, sleutels }) => (
+          <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+            {(["zin", "sticker"] as const).map((k) => (
+              <button
+                key={k}
+                type="button"
+                onClick={() => { sound.uiTap(); setTab(k); }}
+                style={{
+                  flex: 1, padding: "6px 0", borderRadius: 9, border: "none", cursor: "pointer",
+                  fontFamily: font.ui, fontSize: 11, fontWeight: 700, letterSpacing: 0.4,
+                  background: tab === k ? withAlpha(colors.gold, 0.22) : "rgba(255,255,255,.05)",
+                  color: tab === k ? colors.gold : colors.sub,
+                }}
+              >
+                {t(k === "zin" ? "kreetTabZin" : "kreetTabSticker")}
+              </button>
+            ))}
+          </div>
+
+          {tab === "sticker" && (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6 }}>
+              {stickers.flatMap((p) => p.emotes).map((id) => (
+                <button
+                  key={id}
+                  type="button"
+                  className="pressable"
+                  onClick={() => { sound.uiTap(); setOpen(false); onKies({ emote: id }); }}
+                  style={{
+                    display: "grid", placeItems: "center", padding: 2,
+                    borderRadius: 10, border: "none", cursor: "pointer",
+                    background: "rgba(255,255,255,.04)",
+                  }}
+                >
+                  <img src={EMOTE_SRC(id)} alt="" width={58} height={58} style={{ width: 58, height: 58, display: "block", objectFit: "contain" }} />
+                </button>
+              ))}
+            </div>
+          )}
+
+          {tab === "zin" && KREET_PAKKETTEN.map(({ pak, sleutels }) => (
             <div key={pak} style={{ marginBottom: 6 }}>
               <div
                 style={{
@@ -135,7 +185,7 @@ export function KreetKiezer({
                   onClick={() => {
                     sound.uiTap();
                     setOpen(false);
-                    onKies(s);
+                    onKies({ kreet: s });
                   }}
                   style={{
                     display: "block",

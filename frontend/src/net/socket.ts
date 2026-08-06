@@ -410,6 +410,10 @@ export interface ClientState {
   // In-room chat (so players can ask what a word means without leaving).
   chat: ChatMessage[];
   chatSeen: number; // messages considered read (drives the unread badge)
+  /** Het laatste chatteken dat iemand de room in riep (zin of sticker). De
+   *  teller loopt op, ook als dezelfde persoon hetzelfde nog eens roept: de
+   *  ballon hoort dan opnieuw te komen. */
+  kreetZwaai: { n: number; playerId: string; kreet?: string; emote?: string } | null;
   chatOpen: boolean; // panel open — kept here so it survives screen changes
   // Account + social state (all null/empty for guests).
   account: Account | null;
@@ -491,6 +495,7 @@ type ServerMessage =
   | { type: "timer_started"; duration: number; ends_at: number }
   | { type: "round_ended" }
   | { type: "ready_updated"; ready_ids: string[] }
+  | { type: "kreet"; player_id: string; kreet?: string; emote?: string }
   | { type: "results"; round_no: number; answers: RoundView["answers"]; points: RoundView["points"]; scores: Record<string, number> }
   | { type: "results_updated"; points: RoundView["points"]; scores: Record<string, number>; answers: RoundView["answers"] }
   | { type: "game_over"; scores: Record<string, number>; winner_id: string | null }
@@ -603,6 +608,7 @@ const initialState: ClientState = {
   gekocht: null,
   chat: [],
   chatSeen: 0,
+  kreetZwaai: null,
   chatOpen: false,
   chatTyping: {},
   account: null,
@@ -848,6 +854,10 @@ function reducer(state: ClientState, action: Action): ClientState {
       };
     case "match_summary":
       return { ...state, matchSummary: { won: msg.won, xp_gained: msg.xp_gained, level_before: msg.level_before, level_after: msg.level_after, badges: msg.badges, missions_done: msg.missions_done } };
+    case "kreet": {
+      const n = (state.kreetZwaai?.n ?? 0) + 1;
+      return { ...state, kreetZwaai: { n, playerId: msg.player_id, kreet: msg.kreet, emote: msg.emote } };
+    }
     case "chat_history":
       return { ...state, chat: msg.messages };
     case "chat": {
@@ -926,6 +936,9 @@ export interface GameApi {
   redeemAiCode: (code: string) => void;
   clearShopResult: () => void;
   sendChat: (text: string, voice?: { id: string; dur: number }, emote?: string, imageId?: string, replyTo?: number) => void;
+  /** Een chatteken de room in roepen: een vaste zin of een sticker. Los van
+   *  klaar melden, zodat ook de spelleider met "Pen neer" kan roepen. */
+  stuurKreet: (kreet?: string, emote?: string) => void;
   deleteChat: (id: number) => void;
   sendChatTyping: (typing: boolean) => void;
   openChat: () => void;
@@ -1164,6 +1177,7 @@ export function useGame(): GameApi {
       if (c) send({ type: "shop_redeem", code: c });
     },
     clearShopResult: () => dispatch({ type: "clearShopResult" }),
+    stuurKreet: (kreet, emote) => send({ type: "kreet", kreet, emote }),
     sendChat: (text, voice, emote, imageId, replyTo) => {
       const t = text.trim().slice(0, 280);
       // Het antwoord hangt aan elke soort bericht: je kunt met een sticker of

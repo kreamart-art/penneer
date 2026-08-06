@@ -913,6 +913,35 @@ class RoomManager:
         await self.broadcast(room, {"type": "ready_updated", "ready_ids": list(room.ready_ids)})
         await self.send_state(room)
 
+    async def kreet(self, player_id: str, payload: dict) -> None:
+        """Een chatteken tijdens het invullen: een vaste zin of een sticker.
+
+        LOS van klaar melden. De spelleider die "Pen neer" drukt hoort ook te
+        kunnen roepen, en die is nooit "klaar"; dat zat er eerst aan vast omdat
+        de kreet met `set_ready` meeliftte.
+
+        Naar IEDEREEN in de room, ook naar de verzender zelf. Wie roept hoort te
+        zien dat het aankwam, anders lijkt het alsof er niets gebeurde.
+
+        Alleen een SLEUTEL komt erdoor, nooit eigen tekst: de kijker leest de zin
+        in zijn eigen taal en niemand duwt zijn eigen woorden op het scherm van
+        een ander. Stickers zitten achter hun pakket, net als in de chat."""
+        room = self.room_of_player(player_id)
+        if room is None or room.phase not in ("fill", "rules"):
+            return
+        p = room.get_player(player_id)
+        if p is None or p.is_spectator or p.is_bot:
+            return
+        zin = payload.get("kreet")
+        if isinstance(zin, str) and zin in KREET_SLEUTELS:
+            await self.broadcast(room, {"type": "kreet", "player_id": player_id, "kreet": zin})
+            return
+        emote = payload.get("emote")
+        if isinstance(emote, str) and emote in EMOTE_IDS:
+            if PACK_FOR_EMOTE[emote] not in get_db().emote_packs_of(p.user_id):
+                return
+            await self.broadcast(room, {"type": "kreet", "player_id": player_id, "emote": emote})
+
     async def stop_round(self, player_id: str) -> None:
         room = self.room_of_player(player_id)
         if room is None or room.phase != "fill" or room.active_player_id != player_id:

@@ -66,6 +66,21 @@ export function Fill({ game }: { game: GameApi }) {
   // Floating bottom button: with a timer the TIMER ends the round, so there is
   // no stop button — only "Geen tijd" gives the spelleider the "Pen neer" stop.
   // Everyone else (and the spelleider in timed mode) gets "Ik ben klaar".
+  // Een chatteken de room in roepen. Het gaat ALTIJD naar iedereen, ook naar
+  // jezelf: wie roept hoort te zien dat het aankwam. Een ZIN naast de klaarknop
+  // is bovendien nog steeds klaar gaan met die zin erbij, want zo staat hij ook
+  // boven je naam in de uitzending. Een sticker is alleen een sticker, en de
+  // spelleider met "Pen neer" is nooit klaar, dus die meldt niets.
+  const roep = ({ kreet, emote }: { kreet?: string; emote?: string }) => {
+    if (emote) { game.stuurKreet(undefined, emote); return; }
+    if (!kreet) return;
+    game.stuurKreet(kreet);
+    if (showKlaar) {
+      if (!iAmReady) { sound.ready(); sound.haptic(12); }
+      game.setReady(true, kreet);
+    }
+  };
+
   // Wie mag er iets doen, en wat. De spelleider zonder klok zet de ronde stop
   // ("Pen neer"), iedereen anders meldt zich klaar.
   const mag = !isSpectator && !satOut && !roundOver;
@@ -243,23 +258,24 @@ export function Fill({ game }: { game: GameApi }) {
                 {iAmReady ? t("notYet") : t("imReady")}
               </Button>
             </div>
-            <KreetKiezer
-              onKies={(kreet) => {
-                // Een kreet kiezen IS klaar gaan, met die zin erbij. Wie al
-                // klaar stond wisselt alleen van zin.
-                if (!iAmReady) { sound.ready(); sound.haptic(12); }
-                game.setReady(true, kreet);
-              }}
-            />
+            <KreetKiezer pakketten={game.state.account?.emote_packs} onKies={roep} />
           </div>
         )}
 
         {showStop && (
-          // Geen eigen kliktoon: de zoemer klinkt voor IEDEREEN, ook voor wie
-          // drukt, uit de uitzending van de server (zie App).
-          <RodeKnop onClick={() => { sound.haptic([15, 40, 15]); game.stopRound(); }}>
-            {t("penNeer")}
-          </RodeKnop>
+          // Ook de spelleider mag roepen. Dat kon niet zolang een kreet aan
+          // klaar melden vastzat, en juist deze speler is nooit "klaar".
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ width: 44, flexShrink: 0 }} aria-hidden />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              {/* Geen eigen kliktoon: de zoemer klinkt voor IEDEREEN, ook voor
+                  wie drukt, uit de uitzending van de server (zie App). */}
+              <RodeKnop onClick={() => { sound.haptic([15, 40, 15]); game.stopRound(); }}>
+                {t("penNeer")}
+              </RodeKnop>
+            </div>
+            <KreetKiezer pakketten={game.state.account?.emote_packs} onKies={roep} />
+          </div>
         )}
       </div>
 
