@@ -19,14 +19,21 @@
 // hij daarom precies de bug op die we willen weghalen.
 import { useEffect } from "react";
 
-/** Lucht tussen de onderkant van het veld en de bovenkant van het toetsenbord.
+/** Lucht tussen de onderkant van het veld en wat iOS als onderkant van het
+ *  zichtbare vak opgeeft.
  *
- *  RUIM, en dat is geen smaak. Boven het toetsenbord zweeft op iOS nog een balk
- *  (de pijltjes met "Gereed", en soms een suggestiebalk of AutoFill eroverheen)
- *  die NIET in `visualViewport` zit. Op achttien punten lag het veld daar precies
- *  onder en kon je niet zien wat je typte. Vierenvijftig is die balk plus een
- *  vinger lucht, zodat het veld erboven staat en niet ertegenaan. */
-const MARGE = 54;
+ *  RUIM, en dat is meetwerk en geen smaak. `visualViewport` trekt op iOS alleen
+ *  de TOETSEN af. Wat daar bovenop zweeft telt hij mee als zichtbaar, terwijl
+ *  het je veld gewoon afdekt:
+ *
+ *    de balk met de pijltjes en "Gereed"   ~44 punten
+ *    de suggestierij erboven (AutoFill)    ~45 punten
+ *
+ *  Op 54 punten lag het veld daarom nog precies onder "AutoFill Contact". Honderd
+ *  is die twee balken plus een vinger lucht. Staat er geen suggestierij, dan
+ *  hangt het veld een stukje hoger, en dat is precies goed: boven de balk in
+ *  plaats van ertegenaan. */
+const MARGE = 100;
 /** Onder deze inkorting is er geen toetsenbord maar een adresbalk die wegrolt. */
 const DREMPEL = 80;
 
