@@ -97,7 +97,16 @@ function zorgInBeeld(poging = 0): void {
   const toetsenbord = layout - vv.height;
   // Geen toetsenbord? Dan doet de browser het prima zelf.
   if (toetsenbord < DREMPEL) {
-    zetRuimte(0);
+    // NIET meteen weghalen. iOS meldt tussendoor een paar keer de volle hoogte
+    // terwijl het toetsenbord gewoon staat, en dan verdween de strook onderaan,
+    // kromp de pagina, en sprong de scrolpositie terug naar boven: dat is het op
+    // en neer. Pas weghalen als het toetsenbord een halve tel weg BLIJFT.
+    window.setTimeout(() => {
+      const vv2 = window.visualViewport;
+      if (!vv2) return;
+      const nu = (document.documentElement.clientHeight || window.innerHeight) - vv2.height;
+      if (nu < DREMPEL) zetRuimte(0);
+    }, 500);
     meld({ tag: "veld-geen-tb", layout, vv: Math.round(vv.height), off: Math.round(vv.offsetTop) });
     return;
   }
@@ -123,8 +132,14 @@ function zorgInBeeld(poging = 0): void {
   // zichtbare vak.
   const schermBodem = r.bottom - vv.offsetTop;
   const doel = vv.height - MARGE;
+  // ALLEEN als het vakje te laag staat. Twee richtingen kan niet, en nu weet ik
+  // ook waarom: iOS TILT zijn kijkvenster mee als je scrolt. Gemeten: 107 punten
+  // gescrold, kijkvenster 107 omhoog, vakje dus 214 punten verplaatst op het
+  // glas. Elke correctie schiet daarmee dubbel door, en een correctie terug doet
+  // hetzelfde de andere kant op. Eén richting stopt vanzelf: schiet hij door,
+  // dan staat het vakje hooguit wat hoog, en daar kijk je overheen.
   const teveel = schermBodem - doel;
-  if (Math.abs(teveel) <= SPELING) {
+  if (teveel <= SPELING) {
     meld({ tag: "veld-staat-goed", teveel: Math.round(teveel), scherm: Math.round(schermBodem), doel: Math.round(doel), off: Math.round(vv.offsetTop) });
     return;
   }
