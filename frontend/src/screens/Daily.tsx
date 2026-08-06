@@ -508,7 +508,7 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
                       if (i < cats.length - 1) inputs.current[i + 1]?.focus();
                       else void submit();
                     }}
-                    autoComplete="off" autoCorrect="off" spellCheck={false}
+                    autoComplete="off" name={`vak${i + 1}`} inputMode="text" autoCorrect="off" spellCheck={false}
                     placeholder={t("fillPlaceholder", { cat: tCat(cat), letter })}
                     kaderStyle={{ marginTop: 4 }}
                   />

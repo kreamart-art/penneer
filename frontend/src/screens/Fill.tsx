@@ -149,6 +149,8 @@ export function Fill({ game }: { game: GameApi }) {
                     if (e.key === "Enter") inputs.current[i + 1]?.focus();
                   }}
                   autoComplete="off"
+                  name={`vak${i + 1}`}
+                  inputMode="text"
                   autoCorrect="off"
                   spellCheck={false}
                   placeholder={t("fillPlaceholder", { cat: tCat(cat), letter })}
