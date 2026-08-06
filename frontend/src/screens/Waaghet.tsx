@@ -24,11 +24,13 @@
 // een af van de ander, dan keurt de server een eerlijke poging af.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LogOut } from "lucide-react";
-import { KADER_LIJN_GOUD, KADER_LIJN_PAARS, KADER_LIJN_ROOD, NeonKader } from "../components/ProfileHero";
+import { KADER_LIJN_ROOD, NeonKader } from "../components/ProfileHero";
 import { Scorebord } from "../components/Scorebord";
 import { Hulpbalk } from "../components/Hulpbalk";
+import { KeuzeMachine } from "../components/KeuzeMachine";
 import { HULPEN, Klokbalk, Ladder, LADDER_BREED, SECTIE, SomVenster, TabKader } from "./_PreviewRekenladder";
 import { VAK } from "./Arena";
+import { Screen } from "../components/Layout";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { colors, font, withAlpha } from "../theme/tokens";
@@ -176,6 +178,12 @@ export function vraagVoor(seed: string, i: number, en: boolean, omgekeerd: boole
   return { cat, opties, goed, omgekeerd: false };
 }
 
+/** De machine staat iets breder dan de ladder (84,9vw). Dat moet ook: de bollen
+ *  zijn maar 16% van de plaat, dus op ladderbreedte is een bol 55 punten en past
+ *  er geen woord meer op. Breder dan 92vw kan niet zonder de pagina zijwaarts te
+ *  laten schuiven. */
+const MACHINE_BREED = "92vw";
+
 // ---- het spel ---------------------------------------------------------------
 
 export function Waaghet({ seed, onKlaar }: {
@@ -200,6 +208,9 @@ export function Waaghet({ seed, onKlaar }: {
   const [weg, setWeg] = useState<string[]>([]); // door 50/50 weggehaald
   const [tip, setTip] = useState<string | null>(null);
   const [uitslag, setUitslag] = useState<{ score: number; verloren: boolean } | null>(null);
+  // De ladder valt uit beeld zodra je het goed hebt; op zijn plek zakt de
+  // machine naar binnen. Twee losse stappen, want ze delen dezelfde ruimte.
+  const [valt, setValt] = useState(false);
 
   const trap = useMemo(() => trapVoor(ronde), [ronde]);
   const vraag = useMemo(
@@ -249,11 +260,14 @@ export function Waaghet({ seed, onKlaar }: {
     setOordeel({ gekozen: w, goed: juist });
     if (juist) {
       sound.approve();
+      // 420 ms groen zien, dan valt de ladder (340 ms), dan staat de machine er.
+      window.setTimeout(() => setValt(true), 420);
       window.setTimeout(() => {
         setGoed((g) => g + 1);
         setOordeel(null);
+        setValt(false);
         setFase("keuze");
-      }, 550);
+      }, 760);
     } else {
       window.setTimeout(() => eindig(0, true), 900);
     }
@@ -299,6 +313,8 @@ export function Waaghet({ seed, onKlaar }: {
   const kopregel =
     fase === "klaar"
       ? (uitslag?.verloren ? t("waagKwijt") : t("waagBinnen", { n: uitslag?.score ?? 0 }))
+      : fase === "keuze"
+      ? t("waagGoed")
       : vraag.omgekeerd
       ? t("waagVraagOm", { cat: tCat(vraag.cat).toUpperCase() })
       : t("waagVraag", { cat: tCat(vraag.cat).toUpperCase() });
@@ -338,7 +354,11 @@ export function Waaghet({ seed, onKlaar }: {
                 textShadow: "0 0 18px rgba(255,210,120,.4), 0 2px 4px rgba(0,0,0,.8)",
               }}
             >
-              {fase === "klaar" ? (uitslag?.score ?? 0) : fase === "keuze" ? pot : tCat(vraag.cat).toUpperCase()}
+              {fase === "klaar"
+                ? (uitslag?.score ?? 0)
+                : fase === "keuze"
+                ? `${pot} \u2192 ${volgendePot}`
+                : tCat(vraag.cat).toUpperCase()}
             </span>
           </SomVenster>
 
@@ -346,23 +366,44 @@ export function Waaghet({ seed, onKlaar }: {
             <Klokbalk rest={rest} seconden={seconden} />
           ) : (
             <span style={{ height: 38, display: "grid", placeItems: "center", fontFamily: font.ui, fontSize: 12, color: withAlpha("#FFE7A8", 0.75) }}>
-              {fase === "keuze" ? t("waagGoedIs", { n: volgendePot }) : ""}
+              {fase === "keuze" ? t("waagOfKwijt") : ""}
             </span>
           )}
         </TabKader>
       </div>
 
-      {/* De vier antwoorden op dezelfde ladder als de Rekenladder. */}
-      <Ladder
-        keuzes={vraag.opties}
-        antwoord={vraag.goed}
-        oordeel={oordeel}
-        onKies={kies}
-        slapend={false}
-        klaar={fase === "klaar"}
-        weg={weg}
-        tip={tip}
-      />
+      {/* Op de plek van de ladder. Heb je het goed, dan VALT de ladder uit
+          beeld en zakt de machine erin: dezelfde ruimte, dus ze mogen elkaar
+          niet overlappen en de wissel loopt via de klok in kies(). */}
+      {fase === "keuze" ? (
+        <div style={{ width: MACHINE_BREED, marginTop: 4 }}>
+          <KeuzeMachine
+            titel={t("waagKiesTitel")}
+            potKop={t("waagPot")}
+            pot={pot}
+            pakKort={t("waagPakKort")}
+            doorKort={t("waagDoorKort")}
+            onPak={() => { sound.munten(); eindig(pot, false); }}
+            onDoor={doorgaan}
+          />
+        </div>
+      ) : (
+        <div
+          className={valt ? "waag-val" : ronde > 1 && fase === "vraag" ? "waag-terug" : undefined}
+          style={{ display: "flex", justifyContent: "center", width: "100%" }}
+        >
+          <Ladder
+            keuzes={vraag.opties}
+            antwoord={vraag.goed}
+            oordeel={oordeel}
+            onKies={kies}
+            slapend={false}
+            klaar={fase === "klaar"}
+            weg={weg}
+            tip={tip}
+          />
+        </div>
+      )}
 
       {/* De hulpbalk onder de ladder, met dezelfde drie hulpen. */}
       <div style={{ marginTop: 10 }}>
@@ -377,28 +418,6 @@ export function Waaghet({ seed, onKlaar }: {
       {/* Incasseren of doorgaan. Tijdens een vraag staat hier de stopknop, want
           ook dan mag je met je pot naar huis. */}
       <div style={{ marginTop: 12, width: SECTIE, display: "flex", flexDirection: "column", gap: 12 }}>
-        {fase === "keuze" && (
-          <>
-            <NeonKader radius={999} dik={0.5} vulling="zwart" lijn={KADER_LIJN_GOUD} binnen={{ padding: 0 }}>
-              <button
-                onClick={() => { sound.munten(); eindig(pot, false); }}
-                className="pressable"
-                style={{ width: "100%", minHeight: 50, border: "none", background: "transparent", cursor: "pointer", fontFamily: font.display, fontWeight: 800, fontSize: 16, color: colors.gold }}
-              >
-                {t("waagIncasseer", { n: pot })}
-              </button>
-            </NeonKader>
-            <NeonKader radius={999} dik={0.5} vulling="zwart" lijn={KADER_LIJN_PAARS} binnen={{ padding: 0 }}>
-              <button
-                onClick={doorgaan}
-                className="pressable"
-                style={{ width: "100%", minHeight: 50, border: "none", background: "transparent", cursor: "pointer", fontFamily: font.display, fontWeight: 800, fontSize: 16, color: colors.ink }}
-              >
-                {t("waagDoorgaan")}
-              </button>
-            </NeonKader>
-          </>
-        )}
         {fase === "vraag" && pot > 0 && (
           <div style={{ display: "flex", justifyContent: "center" }}>
             <NeonKader radius={999} dik={0.5} vulling="zwart" lijn={KADER_LIJN_ROOD} gloed={`0 0 12px ${withAlpha(colors.red, 0.35)}`} binnen={{ padding: 0 }}>
@@ -421,3 +440,29 @@ export function Waaghet({ seed, onKlaar }: {
     </div>
   );
 }
+
+/** De testversie achter `?waag`: eigen kop, eigen sleutel, levert niets in.
+ *  Dezelfde opzet als de andere vier arenaspellen, zodat je de machine kunt
+ *  nakijken zonder een dagronde op te maken. */
+export function PreviewWaaghet() {
+  const [potje, setPotje] = useState(() => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`);
+  return (
+    <Screen
+      top={
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", paddingTop: "calc(14px + env(safe-area-inset-top))" }}>
+          <span style={{ flex: 1, fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>Arena</span>
+          <button
+            onClick={() => setPotje(`${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`)}
+            style={{ background: "transparent", border: "none", cursor: "pointer", fontFamily: font.ui, fontSize: 11.5, fontWeight: 600, color: colors.redHi }}
+          >
+            testversie, telt niet mee
+          </button>
+        </div>
+      }
+    >
+      <Waaghet key={potje} seed={potje} />
+    </Screen>
+  );
+}
+
+export default PreviewWaaghet;

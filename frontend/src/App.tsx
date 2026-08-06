@@ -43,6 +43,7 @@ const PreviewLettersoep = lazy(() => import("./screens/_PreviewLettersoep"));
 // En dat van zaterdag, achter ?klem.
 const PreviewKleurenklem = lazy(() => import("./screens/_PreviewKleurenklem"));
 const PreviewRekenladder = lazy(() => import("./screens/_PreviewRekenladder"));
+const PreviewWaaghet = lazy(() => import("./screens/Waaghet"));
 // En dat van maandag, achter ?keten.
 const PreviewWoordketen = lazy(() => import("./screens/_PreviewWoordketen"));
 const PreviewPack = lazy(() => import("./screens/_PreviewPack"));
@@ -538,6 +539,8 @@ export default function App() {
     screen = <PreviewKleurenklem />;
   } else if (typeof location !== "undefined" && location.search.includes("reken")) {
     screen = <PreviewRekenladder />;
+  } else if (typeof location !== "undefined" && location.search.includes("waag")) {
+    screen = <PreviewWaaghet />;
   } else if (typeof location !== "undefined" && location.search.includes("keten")) {
     screen = <PreviewWoordketen />;
   } else if (typeof location !== "undefined" && location.search.includes("pack")) {

@@ -1629,3 +1629,32 @@ body.ketenspel::after {
   .pack-wipt, .pack-gloed { animation: none; }
   .pack-kaart { animation: pack-kaart 1ms linear forwards; }
 }
+
+/* WAAG HET: de ladder valt uit beeld en de machine zakt op zijn plek.
+   Twee losse bewegingen en geen kruisvervaging, want ze delen dezelfde ruimte:
+   de ladder moet weg zijn voordat de machine er staat, anders zie je even twee
+   dingen door elkaar heen op de plek waar je net getikt hebt. */
+@keyframes waag-val {
+  from { transform: translateY(0) scale(1); opacity: 1; }
+  to   { transform: translateY(46px) scale(.96); opacity: 0; }
+}
+.waag-val { animation: waag-val .34s cubic-bezier(.45,0,.85,.35) forwards; }
+
+@keyframes waag-machine {
+  0%   { transform: translateY(-26px) scale(.93); opacity: 0; }
+  55%  { opacity: 1; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+.waag-machine { animation: waag-machine .42s cubic-bezier(.22,.9,.3,1.12) both; }
+
+/* De ladder die terugkomt als je doorgaat: dezelfde weg terug, van onder. */
+@keyframes waag-terug {
+  from { transform: translateY(30px); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+.waag-terug { animation: waag-terug .3s cubic-bezier(.2,.9,.3,1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .waag-val { animation-duration: 1ms; }
+  .waag-machine, .waag-terug { animation: none; }
+}
