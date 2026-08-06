@@ -194,6 +194,14 @@ export function Waaghet({ seed, onKlaar }: {
 }) {
   const { t, tCat, lang } = useT();
   const en = lang === "en";
+  // De zaal om het spel heen. Elk arenaspel zet zijn eigen decor zodra het
+  // begint (de arena haalt de hal van het voorportaal juist weg), en Waag het
+  // was de enige die dat niet deed: dan zie je tijdens het spel de gewone
+  // achtergrond van de app, en die is veel lichter dan een zaal.
+  useEffect(() => {
+    document.body.classList.add("waagspel");
+    return () => document.body.classList.remove("waagspel");
+  }, []);
   const [ronde, setRonde] = useState(1);
   const [goed, setGoed] = useState(0);
   const [fase, setFase] = useState<"vraag" | "keuze" | "klaar">("vraag");

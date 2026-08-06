@@ -43,6 +43,18 @@ const PreviewLettersoep = lazy(() => import("./screens/_PreviewLettersoep"));
 // En dat van zaterdag, achter ?klem.
 const PreviewKleurenklem = lazy(() => import("./screens/_PreviewKleurenklem"));
 const PreviewRekenladder = lazy(() => import("./screens/_PreviewRekenladder"));
+/** Staat deze testvlag in de URL?
+ *
+ *  Met `search.includes(naam)` ging dit mis: `?spel=waaghet` bevat "waag", dus
+ *  de testlink naar het ARENASPEL kwam uit op de losse testpagina. Hetzelfde
+ *  gold stilletjes al voor `?spel=lettersoep` ("soep"), `?spel=kleurenklem`
+ *  ("klem"), `?spel=rekenladder` ("reken") en `?spel=woordketen` ("keten"): die
+ *  vier openden de testpagina in plaats van de arena. Nu wordt de vlag als
+ *  eigen parameter gelezen, dus `?waag` telt en `?spel=waaghet` niet. */
+function proef(naam: string): boolean {
+  if (typeof location === "undefined") return false;
+  return new URLSearchParams(location.search).has(naam);
+}
 const PreviewWaaghet = lazy(() => import("./screens/Waaghet"));
 // En dat van maandag, achter ?keten.
 const PreviewWoordketen = lazy(() => import("./screens/_PreviewWoordketen"));
@@ -533,17 +545,17 @@ export default function App() {
     );
   } else if (!lang) {
     screen = <LanguagePage />;
-  } else if (typeof location !== "undefined" && location.search.includes("soep")) {
+  } else if (proef("soep")) {
     screen = <PreviewLettersoep />;
-  } else if (typeof location !== "undefined" && location.search.includes("klem")) {
+  } else if (proef("klem")) {
     screen = <PreviewKleurenklem />;
-  } else if (typeof location !== "undefined" && location.search.includes("reken")) {
+  } else if (proef("reken")) {
     screen = <PreviewRekenladder />;
-  } else if (typeof location !== "undefined" && location.search.includes("waag")) {
+  } else if (proef("waag")) {
     screen = <PreviewWaaghet />;
-  } else if (typeof location !== "undefined" && location.search.includes("keten")) {
+  } else if (proef("keten")) {
     screen = <PreviewWoordketen />;
-  } else if (typeof location !== "undefined" && location.search.includes("pack")) {
+  } else if (proef("pack")) {
     screen = <PreviewPack />;
   } else if (showRules) {
     screen = <Rules onBack={() => setShowRules(false)} />;

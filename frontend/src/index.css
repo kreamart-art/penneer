@@ -1417,7 +1417,8 @@ html.klassiek body.lijst::after {
    die lagen wel, maar daar liggen ze om art te temmen die met de secties
    concurreert. Deze zaal is zelf al rustig in het midden. */
 body.rekenzaal::after,
-body.rekenspel::after {
+body.rekenspel::after,
+body.waagspel::after {
   content: "";
   position: fixed;
   left: 0;
@@ -1440,6 +1441,16 @@ body.rekenzaal::after {
   background-image: url("/ui/reken/bg-lobby.webp?v=2");
 }
 body.rekenspel::after {
+  background-image: url("/ui/reken/bg-spel.webp?v=3");
+}
+/* Waag het staat in DEZELFDE zaal, en dat is geen bezuiniging: het spel staat op
+   dezelfde ladder, dus het hoort in dezelfde ruimte. De zaal is verder leeg in
+   het midden (banieren en pilaren aan de zijkanten, een podium onderin), dus er
+   staat niets in dat naar rekenen verwijst.
+   Zonder deze regel viel Waag het als enige arenaspel terug op de gewone
+   achtergrond van de app, en die is een stuk lichter dan een zaal: je stapte uit
+   de hal het spel in en het decor viel weg. */
+body.waagspel::after {
   background-image: url("/ui/reken/bg-spel.webp?v=3");
 }
 
