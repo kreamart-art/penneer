@@ -24,7 +24,7 @@ import { colors, font } from "../theme/tokens";
 
 /** ?v= erbij omdat /ui/ cache-first in de service worker staat: zonder nieuwe
  *  URL houdt een geïnstalleerde app de oude plaat vast. */
-const ART = "/ui/waaghet-machine.webp?v=2";
+const ART = "/ui/waaghet-machine.webp?v=3";
 /** Verhouding van de plaat (2939x1945 na het uitsnijden). */
 const VERHOUDING = 2939 / 1945;
 
@@ -42,21 +42,41 @@ const VLAK = {
 /** Maten als deel van de BREEDTE van de machine. Niet overgenomen uit de mockup:
  *  die is 2939 breed en op een telefoon staat de machine op ~360, dus de maten
  *  van de mockup zouden hier onleesbaar klein uitvallen. */
-const MAAT = { titel: 0.037, potKop: 0.026, potGetal: 0.082, bolGetal: 0.075 } as const;
+/** De schaduw van de main page (de tegels op Landing), zodat de cijfers hier
+ *  net zo op hun ondergrond liggen als daar. */
+const SCHADUW = "0 2px 6px rgba(0,0,0,.65), 0 0 14px rgba(0,0,0,.5)";
 
-/** Goud met een verloop, geknipt op de letter. Geen text-shadow erbij: die
- *  wordt over het geknipte verloop heen getekend en maakt het vuil. */
-function Goud({ maat, spatie = 0.5, children }: { maat: number; spatie?: number; children: React.ReactNode }) {
+const MAAT = { titel: 0.037, potKop: 0.026, potGetal: 0.082, bolGetal: 0.075 } as const;
+/** Hoe ver de twee bollen naar achteren staan, in graden. Opgemeten aan de
+ *  gouden ring om de knop: die is in het echt rond en op de plaat een ellips. */
+const KANTEL = 16;
+
+/** Goud met een verloop, geknipt op de letter.
+ *
+ *  De schaduw kan er NIET als text-shadow bij: die wordt over het geknipte
+ *  verloop heen getekend en maakt het goud vuil. Hij komt daarom als tweede,
+ *  ONZICHTBARE kopie eronder te liggen: zelfde letters, kleur transparant, en
+ *  alleen zijn text-shadow is te zien. Geen filter, want `drop-shadow` rastert
+ *  op iOS apart en zet dan de rechthoek van die laag over je element heen. */
+function Goud({ maat, spatie = 0.5, schaduw = false, children }: {
+  maat: number; spatie?: number; schaduw?: boolean; children: React.ReactNode;
+}) {
+  const letters: React.CSSProperties = {
+    fontFamily: font.display, fontWeight: 800, fontSize: maat, letterSpacing: spatie,
+    lineHeight: 1, whiteSpace: "nowrap",
+  };
+  const goud: React.CSSProperties = {
+    ...letters,
+    backgroundImage: "linear-gradient(180deg,#FFF6D2 0%,#FFD983 42%,#E7A63A 74%,#F6DD8A 100%)",
+    WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent",
+  };
+  if (!schaduw) return <span style={goud}>{children}</span>;
   return (
-    <span
-      style={{
-        fontFamily: font.display, fontWeight: 800, fontSize: maat, letterSpacing: spatie,
-        lineHeight: 1, whiteSpace: "nowrap",
-        backgroundImage: "linear-gradient(180deg,#FFF6D2 0%,#FFD983 42%,#E7A63A 74%,#F6DD8A 100%)",
-        WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent",
-      }}
-    >
-      {children}
+    <span style={{ position: "relative", display: "inline-block" }}>
+      <span aria-hidden style={{ ...letters, position: "absolute", left: 0, top: 0, color: "transparent", textShadow: SCHADUW }}>
+        {children}
+      </span>
+      <span style={{ ...goud, position: "relative" }}>{children}</span>
     </span>
   );
 }
@@ -89,7 +109,13 @@ function Bol({ links, breed, hoog, maat, bedrag, onClick, label }: {
       <span
         style={{
           fontFamily: font.display, fontWeight: 800, fontSize: maat * krimp,
-          lineHeight: 1, color: "#FFFFFF", textShadow: "0 2px 6px rgba(0,0,0,.7)",
+          lineHeight: 1, color: "#FFFFFF", textShadow: SCHADUW,
+          // De bollen staan een slag naar achteren gekanteld. Een getal dat
+          // kaarsrecht op het scherm staat ligt daardoor niet OP de knop maar
+          // ervoor. Vandaar dezelfde kanteling: de perspectiefafstand loopt mee
+          // met de maat, anders klopt de verkorting alleen op één schermbreedte.
+          transform: `perspective(${breed * 0.62}px) rotateX(${KANTEL}deg)`,
+          transformOrigin: "center",
         }}
       >
         {bedrag}
@@ -155,18 +181,21 @@ export function KeuzeMachine({ titel, potKop, pot, volgende, pakLabel, doorLabel
         <Goud maat={breed * MAAT.titel} spatie={breed * 0.004}>{titel}</Goud>
       </div>
 
-      {/* het scherm */}
+      {/* het scherm. Label en bedrag staan op de hoogte waar ze in de mockup
+          stonden en niet netjes gecentreerd: "IN DE POT" hoort dichter op het
+          getal te zitten dan op de bovenrand. Gemeten op de bron: het label op
+          17,3% van de binnenkant en het getal op 60%. */}
       <div
         style={{
           position: "absolute",
           left: `${VLAK.scherm.l * 100}%`, right: `${(1 - VLAK.scherm.r) * 100}%`,
           top: `${VLAK.scherm.t * 100}%`, bottom: `${(1 - VLAK.scherm.b) * 100}%`,
-          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-          gap: breed * 0.012,
         }}
       >
         <span
           style={{
+            position: "absolute", left: 0, right: 0, top: "17.3%",
+            transform: "translateY(-50%)", textAlign: "center",
             fontFamily: font.display, fontWeight: 700, fontSize: breed * MAAT.potKop,
             letterSpacing: breed * 0.006, lineHeight: 1, whiteSpace: "nowrap",
             color: colors.ink, textTransform: "uppercase",
@@ -174,7 +203,9 @@ export function KeuzeMachine({ titel, potKop, pot, volgende, pakLabel, doorLabel
         >
           {potKop}
         </span>
-        <Goud maat={breed * MAAT.potGetal} spatie={breed * 0.002}>{pot}</Goud>
+        <div style={{ position: "absolute", left: 0, right: 0, top: "60%", transform: "translateY(-50%)", textAlign: "center" }}>
+          <Goud maat={breed * MAAT.potGetal} spatie={breed * 0.002} schaduw>{pot}</Goud>
+        </div>
       </div>
 
       <Bol links={VLAK.bol.groen} breed={bolBreed} hoog={bolHoog} maat={breed * MAAT.bolGetal} bedrag={String(pot)} label={pakLabel} onClick={onPak} />
