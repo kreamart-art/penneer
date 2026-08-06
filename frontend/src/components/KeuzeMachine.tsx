@@ -20,11 +20,14 @@
 // van de afbeelding. Ze schalen mee, want alle maten worden uit de gemeten
 // breedte gerekend en niet uit vaste pixels.
 import { useEffect, useRef, useState } from "react";
+import { sound } from "../sound/sound";
 import { colors, font } from "../theme/tokens";
 
 /** ?v= erbij omdat /ui/ cache-first in de service worker staat: zonder nieuwe
  *  URL houdt een geïnstalleerde app de oude plaat vast. */
-const ART = "/ui/waaghet-machine.webp?v=3";
+const ART = "/ui/waaghet-machine.webp?v=4";
+/** De twee bollen liggen los op de plaat, zodat ze kunnen indrukken. */
+const BOL = { groen: "/ui/waag-bol-groen.webp", rood: "/ui/waag-bol-rood.webp" } as const;
 /** Verhouding van de plaat (2939x1945 na het uitsnijden). */
 const VERHOUDING = 2939 / 1945;
 
@@ -37,6 +40,12 @@ const VLAK = {
   banner: { l: 863 / 2939, r: 2023 / 2939, t: 304 / 1945, b: 479 / 1945 },
   scherm: { l: 603 / 2939, r: 2293 / 2939, t: 588 / 1945, b: 963 / 1945 },
   bol: { b: 490 / 2939, h: 450 / 1945, y: 1319 / 1945, groen: 885 / 2939, rood: 1988 / 2939 },
+  /** De uitgeknipte bollen, met de doos waarin ze uit de plaat zijn gehaald
+   *  (groen 627,1081 en rood 1730,1081, allebei 517 x 477). */
+  knip: {
+    b: 517 / 2939, h: 477 / 1945, t: 1081 / 1945,
+    groen: 627 / 2939, rood: 1730 / 2939,
+  },
 } as const;
 
 /** Maten als deel van de BREEDTE van de machine. Niet overgenomen uit de mockup:
@@ -78,27 +87,53 @@ function Goud({ maat, spatie = 0.5, schaduw = false, children }: {
   );
 }
 
-/** Een bol. Kaal: er staat geen woord en geen getal op. Hij is een zesde van de
- *  plaat, dus op een telefoon zestig punten breed, en alles wat je erop legt
- *  wordt daar te klein of te druk. Het woord staat eronder en het bedrag staat
- *  in het scherm erboven; de kleur doet de rest. */
-function Bol({ links, breed, hoog, onClick, label }: {
-  links: number; breed: number; hoog: number; onClick: () => void;
+/** Een bol. Hij is uit de plaat GEKNIPT en ligt er als eigen plaatje bovenop;
+ *  in de plaat staat op die plek een donkere holte. Daardoor kan hij echt
+ *  indrukken: hij zakt in zijn eigen schaduw in plaats van over de originele bol
+ *  heen te schuiven.
+ *
+ *  De klik loopt met een korte vertraging: doorgaan of incasseren haalt de hele
+ *  machine weg, en zonder die tel zie je de knop nooit ingedrukt staan. */
+function Bol({ vak, kunst, onClick, label }: {
+  vak: { l: number; t: number; b: number; h: number }; kunst: string;
+  onClick: () => void;
   /** voor schermlezers; het woord staat zichtbaar onder de machine */ label: string;
 }) {
+  const [gedrukt, setGedrukt] = useState(false);
+  const bezig = useRef(false);
+  const doe = () => {
+    if (bezig.current) return;
+    bezig.current = true;
+    setGedrukt(true);
+    sound.uiTap();
+    window.setTimeout(onClick, 160);
+  };
   return (
     <button
-      onClick={onClick}
       aria-label={label}
-      className="pressable"
+      onPointerDown={() => setGedrukt(true)}
+      onPointerUp={() => { if (!bezig.current) setGedrukt(false); }}
+      onPointerCancel={() => { if (!bezig.current) setGedrukt(false); }}
+      onPointerLeave={() => { if (!bezig.current) setGedrukt(false); }}
+      onClick={doe}
       style={{
         position: "absolute",
-        left: `${links * 100}%`, top: `${VLAK.bol.y * 100}%`,
-        width: breed, height: hoog, transform: "translate(-50%,-50%)",
+        left: `${vak.l * 100}%`, top: `${vak.t * 100}%`,
+        width: `${vak.b * 100}%`, height: `${vak.h * 100}%`,
         border: "none", background: "transparent", padding: 0, cursor: "pointer",
-        borderRadius: "50%",
+        WebkitTapHighlightColor: "transparent", touchAction: "manipulation",
       }}
-    />
+    >
+      <img
+        src={kunst} alt="" aria-hidden draggable={false}
+        style={{
+          width: "100%", height: "100%", display: "block", maxWidth: "none",
+          transform: gedrukt ? "translateY(5%) scale(.985)" : "none",
+          filter: gedrukt ? "brightness(.8)" : "none",
+          transition: "transform .09s ease-out, filter .09s ease-out",
+        }}
+      />
+    </button>
   );
 }
 
@@ -144,12 +179,6 @@ export function KeuzeMachine({ titel, potKop, pot, pakLabel, doorLabel, onPak, o
     return () => ro.disconnect();
   }, []);
 
-  const bolBreed = breed * VLAK.bol.b;
-  // De hoogte gaat DOOR de verhouding en niet er maal: het vlak is een deel van
-  // de HOOGTE van de plaat, en die is breed/VERHOUDING. Maal in plaats van deel
-  // maakt het tikvlak ruim twee keer te hoog, en dan ligt de knop half over het
-  // scherm erboven.
-  const bolHoog = (breed / VERHOUDING) * VLAK.bol.h;
 
   return (
     <div
@@ -205,8 +234,14 @@ export function KeuzeMachine({ titel, potKop, pot, pakLabel, doorLabel, onPak, o
           "stop", en dat weegt zwaarder dan dat de groene knop het geld geeft:
           op een knop lees je eerst de kleur en pas daarna het getal. Op groen
           staat dus wat het WORDT, op rood wat je NU hebt. */}
-      <Bol links={VLAK.bol.groen} breed={bolBreed} hoog={bolHoog} label={doorLabel} onClick={onDoor} />
-      <Bol links={VLAK.bol.rood} breed={bolBreed} hoog={bolHoog} label={`${pakLabel} ${pot}`} onClick={onPak} />
+      <Bol
+        vak={{ l: VLAK.knip.groen, t: VLAK.knip.t, b: VLAK.knip.b, h: VLAK.knip.h }}
+        kunst={BOL.groen} label={doorLabel} onClick={onDoor}
+      />
+      <Bol
+        vak={{ l: VLAK.knip.rood, t: VLAK.knip.t, b: VLAK.knip.b, h: VLAK.knip.h }}
+        kunst={BOL.rood} label={`${pakLabel} ${pot}`} onClick={onPak}
+      />
       <Woord links={VLAK.bol.groen} maat={breed * MAAT.woord} kleur={colors.ink}>{doorLabel}</Woord>
       <Woord links={VLAK.bol.rood} maat={breed * MAAT.woord} kleur={colors.ink}>{pakLabel}</Woord>
     </div>

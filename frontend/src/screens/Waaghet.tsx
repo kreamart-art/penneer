@@ -334,7 +334,16 @@ export function Waaghet({ seed, onKlaar }: {
   return (
     // De kolom maakt een eigen stapellaag, zodat de sluier hieronder op -1 kan
     // staan: dan dekt hij wel de zaal af maar niets van het spel zelf.
-    <div style={{ position: "relative", zIndex: 0, display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
+    // De maatvoering is die van de Rekenladder: negen punten tussen de
+    // onderdelen bovenop hun eigen marges, en onderaan lucht zodat de hulpbalk
+    // niet tegen de onderbalk plakt.
+    <div
+      style={{
+        position: "relative", zIndex: 0, flex: 1, width: "100%",
+        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+        gap: 9, paddingBottom: 24,
+      }}
+    >
       {/* De zaal gaat op zwart zodra de ladder valt, en weer aan als de machine
           weg is. Hij begint al tijdens de VAL: de zaal dooft terwijl de ladder
           eruit zakt, en de machine komt in het donker aan. */}
