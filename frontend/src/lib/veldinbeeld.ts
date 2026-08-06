@@ -108,7 +108,15 @@ function zorgInBeeld(poging = 0): void {
   if (!isVeld(el)) return;
 
   const r = el.getBoundingClientRect();
-  const onder = vv.offsetTop + vv.height;
+  // De onderrand van het zichtbare vak, gerekend ALSOF het kijkvenster gewoon
+  // op de pagina ligt. Dat `vv.offsetTop` erbij optellen was de laatste fout:
+  // iOS tilt zijn kijkvenster tijdelijk op in plaats van de pagina te scrollen
+  // (in de meting stond hij op 403, dan op 116, dan weer op 0), en zolang hij
+  // opgetild is lijkt er onderaan veel meer ruimte dan er straks is. Dan meet je
+  // "die staat goed", de tilt zakt terug naar nul, en het vakje glijdt precies
+  // die honderd punten onder de balk. Vandaar de vaste onderrand: hooguit staat
+  // het vakje even te hoog, en dat kun je tenminste lezen.
+  const onder = vv.height;
   // ALLEEN als het veld te LAAG staat. Het terugtrekken van een veld dat al
   // hoog genoeg staat was de bron van de ellende: iOS schuift zelf ook (het zet
   // het veld boven de toetsen) en verplaatst daarbij zijn eigen kijkvenster, dus
@@ -119,7 +127,7 @@ function zorgInBeeld(poging = 0): void {
   // veld omhoog, en zodra het boven de lijn staat gebeurt er niets meer.
   const teveel = r.bottom + MARGE - onder;
   if (teveel <= SPELING) {
-    meld({ tag: "veld-staat-goed", teveel: Math.round(teveel), bottom: Math.round(r.bottom), onder: Math.round(onder) });
+    meld({ tag: "veld-staat-goed", teveel: Math.round(teveel), bottom: Math.round(r.bottom), onder: Math.round(onder), off: Math.round(vv.offsetTop) });
     return;
   }
 
@@ -151,7 +159,7 @@ function zorgInBeeld(poging = 0): void {
   window.scrollBy({ top: teveel, behavior: "auto" });
   meld({
     tag: "veld-zet", teveel: Math.round(teveel), tb: Math.round(toetsenbord),
-    bottom: Math.round(r.bottom), onder: Math.round(onder),
+    bottom: Math.round(r.bottom), onder: Math.round(onder), off: Math.round(vv.offsetTop),
     y: Math.round(voorY), sh: doc.scrollHeight, ch: doc.clientHeight, besch: Math.round(beschikbaar),
   });
   window.setTimeout(() => {
