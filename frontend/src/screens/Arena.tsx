@@ -513,6 +513,15 @@ export function ArenaDeel({ game, onBack }: { game: GameApi; onBack: () => void 
     return () => window.clearInterval(id);
   }, []);
 
+  // Een spel dat vandaag NIET aan de beurt is, met de hand opgevraagd via
+  // ?spel=<sleutel>. Voor het testen van een nieuw spel voordat zijn dag komt:
+  // je speelt hem echt, maar de score gaat nergens heen (zie `klaar`), dus het
+  // dagbord blijft schoon.
+  const testSpel = useMemo(() => {
+    const p = new URLSearchParams(window.location.search).get("spel") || "";
+    return SPELLEN.has(p) ? p : "";
+  }, []);
+
   const start = () => {
     sound.uiTap();
     fetch("/api/arena/start", { method: "POST", headers: { "Content-Type": "application/json", ...authHeaders() }, body: "{}" })
@@ -523,7 +532,12 @@ export function ArenaDeel({ game, onBack }: { game: GameApi; onBack: () => void 
       .catch(() => {});
   };
 
-  const klaar = (score: number, level: number, timeMs: number) => {
+  // VASTHOUDEN. Deze functie gaat als `onKlaar` naar het spel dat draait, en
+  // zonder useCallback is hij bij elke tekening een andere: de klok hierboven
+  // telt de dag af en tekent de arena dus elke seconde opnieuw. Een spel dat
+  // zijn eigen klok aan `onKlaar` ophangt begint dan elke seconde overnieuw, en
+  // dat is precies wat er bij Waag het gebeurde.
+  const klaar = useCallback((score: number, level: number, timeMs: number) => {
     if (!poging) return;
     if (testSpel) {
       // Testmodus: het spel van vandaag is een ander, dus de server zou deze
@@ -547,16 +561,8 @@ export function ArenaDeel({ game, onBack }: { game: GameApi; onBack: () => void 
         sound.win();
       })
       .catch(() => { setUitslag({ score, level, rank: 0 }); setFase("klaar"); });
-  };
+  }, [poging, testSpel]);
 
-  // Een spel dat vandaag NIET aan de beurt is, met de hand opgevraagd via
-  // ?spel=<sleutel>. Voor het testen van een nieuw spel voordat zijn dag komt:
-  // je speelt hem echt, maar de score gaat nergens heen (zie `klaar`), dus het
-  // dagbord blijft schoon.
-  const testSpel = useMemo(() => {
-    const p = new URLSearchParams(window.location.search).get("spel") || "";
-    return SPELLEN.has(p) ? p : "";
-  }, []);
   const spel = testSpel || info?.game || "";
   const spelNaam = spel ? t(`arenaSpel_${spel}`) : "";
 

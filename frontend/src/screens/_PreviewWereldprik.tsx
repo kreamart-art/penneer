@@ -36,10 +36,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LogOut } from "lucide-react";
 import { Screen } from "../components/Layout";
-import { Scorebord } from "../components/Scorebord";
+import { Scorebord, WERELD_PLAAT } from "../components/Scorebord";
 import { KADER_LIJN_ROOD, NeonKader } from "../components/ProfileHero";
 import { Klokbalk, SECTIE, SomVenster, TabKader } from "./_PreviewRekenladder";
-import { VAK } from "./Arena";
 import { DOELEN, PER_TIER, type Doel } from "../data/wereld";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
@@ -616,8 +615,13 @@ export function Wereldprik({ seed, onKlaar, onOpnieuw }: {
         gap: 9, paddingBottom: 24,
       }}
     >
+      {/* Eigen bord: zwart met goud, met de wereldbol en de speld in het hart.
+          Hij staat zo breed als de kaart eronder, want die twee horen als een
+          geheel te lezen. */}
       <Scorebord
-        breedte={VAK}
+        plaat={WERELD_PLAAT}
+        maat={30}
+        breedte={KAART_BREED}
         links={{ kop: t("prikRonde"), waarde: String(ronde) }}
         rechts={{ kop: t("soepPunten"), waarde: String(totaal) }}
       />

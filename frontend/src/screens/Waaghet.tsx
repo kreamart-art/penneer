@@ -240,6 +240,21 @@ export function Waaghet({ seed, onKlaar }: {
     onKlaar?.(score, goed, Math.round(performance.now() - begon.current));
   }, [goed, onKlaar]);
 
+  // `eindig` in een ref, en dat is DE reden dat de klok stil bleef staan.
+  //
+  // Hij hing in de afhankelijkheden van de klok hieronder, en hij verandert van
+  // gedaante zodra `goed` of `onKlaar` dat doet. In de arena is `onKlaar` een
+  // functie die bij elke tekening opnieuw wordt gemaakt, en de arena tekent
+  // ELKE SECONDE opnieuw (de teller die laat zien hoe lang de dag nog open is).
+  // Dus elke seconde: nieuwe `eindig`, effect opnieuw, deadline weer op vol. De
+  // balk zakte een tel en sprong terug, eindeloos, en de vraag liep nooit af.
+  //
+  // In de losse testversie viel dat niet op: daar is er geen arena omheen en
+  // blijft `onKlaar` leeg. Dat is precies waarom dit alleen op de telefoon leek
+  // te gebeuren; het gebeurde overal waar het spel in de arena stond.
+  const eindigRef = useRef(eindig);
+  eindigRef.current = eindig;
+
   // De klok van DEZE vraag. Op nul ben je alles kwijt: een vraag laten lopen is
   // hetzelfde als hem fout hebben, anders zou wachten gratis zijn.
   useEffect(() => {
@@ -255,11 +270,13 @@ export function Waaghet({ seed, onKlaar }: {
       if (over <= 0) {
         window.clearInterval(id);
         setOordeel({ gekozen: null, goed: false });
-        window.setTimeout(() => eindig(0, true), 900);
+        window.setTimeout(() => eindigRef.current(0, true), 900);
       }
     }, 100);
     return () => window.clearInterval(id);
-  }, [fase, ronde, vers, trap.venster, eindig]);
+    // GEEN `eindig` in deze lijst: alleen een nieuwe vraag hoort de klok
+    // opnieuw te laten beginnen.
+  }, [fase, ronde, vers, trap.venster]);
 
   const kies = (w: string) => {
     if (fase !== "vraag" || oordeel || weg.includes(w)) return;
