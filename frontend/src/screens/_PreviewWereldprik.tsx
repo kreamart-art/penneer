@@ -245,7 +245,8 @@ function Loep({ p, breed }: { p: Punt; breed: number }) {
           position: "absolute", width: kaartBreed, height: kaartHoog, maxWidth: "none",
           left: MAAT / 2 - p.x * kaartBreed,
           top: MAAT / 2 - p.y * kaartHoog,
-        }}
+          WebkitUserSelect: "none", userSelect: "none", pointerEvents: "none",
+        } as React.CSSProperties}
       />
       <span style={{ position: "absolute", left: "50%", top: 0, bottom: 0, width: 1, marginLeft: -0.5, background: "rgba(255,90,78,.55)" }} />
       <span style={{ position: "absolute", top: "50%", left: 0, right: 0, height: 1, marginTop: -0.5, background: "rgba(255,90,78,.55)" }} />
@@ -325,6 +326,7 @@ function Kaart({
         onPrik(uitVak(e));
       }}
       onPointerCancel={() => { drukt.current = false; onWijs(null); }}
+      className="prik-vlak"
       style={{
         // GEEN overflow hier. De loep hangt boven je vinger en steekt dus buiten
         // de kaart uit; knip je hem hier af, dan zie je een halve cirkel op de
@@ -334,7 +336,16 @@ function Kaart({
         touchAction: "none",
         cursor: actief ? "crosshair" : "default",
         WebkitTapHighlightColor: "transparent",
-      }}
+        // ZONDER DEZE DRIE IS HET SPEL OP IOS ONSPEELBAAR. Het mikken is
+        // ingedrukt HOUDEN op een afbeelding, en dat is precies het gebaar
+        // waarmee Safari na een halve seconde zijn eigen menu opent
+        // ("Afbeelding bewaren"). Dan ligt er een systeemvenster over de kaart
+        // terwijl de klok loopt. `touch-action` houdt dat niet tegen: dat gaat
+        // over scrollen en zoomen, niet over de vergrootknop.
+        WebkitTouchCallout: "none",
+        WebkitUserSelect: "none",
+        userSelect: "none",
+      } as React.CSSProperties}
     >
      <div
        style={{
@@ -349,7 +360,7 @@ function Kaart({
      >
       <img
         src={KAART} alt="" aria-hidden draggable={false}
-        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block", maxWidth: "none" }}
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block", maxWidth: "none", WebkitUserSelect: "none", userSelect: "none", pointerEvents: "none" } as React.CSSProperties}
       />
       {/* De breedtegraden als rustige hulplijnen: evenaar, keerkringen en de
           poolcirkel. Ze staan op hun ECHTE plek in de projectie, dus ze zijn

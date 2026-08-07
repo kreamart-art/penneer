@@ -1467,6 +1467,23 @@ body.wereldspel::after {
   background-image: url("/ui/reken/bg-spel.webp?v=3");
 }
 
+/* De kaart van Wereldprik. Het mikken is ingedrukt HOUDEN op een afbeelding, en
+   dat is precies het gebaar waarmee Safari na een halve seconde zijn eigen menu
+   opent ("Afbeelding bewaren"): dan ligt er een systeemvenster over de kaart
+   terwijl de klok loopt. `touch-action` houdt dat niet tegen, dat gaat over
+   scrollen en zoomen.
+
+   Dit staat in de css en niet in een style-attribuut, want Chrome kent
+   -webkit-touch-callout niet en gooit hem er bij het zetten via de DOM gewoon
+   uit. In een stylesheet reist de regel ongewijzigd mee naar de telefoon. */
+.prik-vlak,
+.prik-vlak * {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
 /* De ring die één keer uit de speld slaat bij de onthulling. Kort en klein: hij
    is er om je oog naar de plek te trekken, niet om een show te geven. */
 @keyframes prik-slag {
