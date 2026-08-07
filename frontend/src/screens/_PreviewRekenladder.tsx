@@ -704,14 +704,17 @@ export function TabKader({ titel, children }: { titel: string; children: React.R
  *  stopwatchje ervoor en de seconden erachter in een ring. De ring loopt mee
  *  leeg, dus je ziet hetzelfde tweemaal maar op twee schalen: de balk voor de
  *  grote lijn, de ring voor de laatste tellen. */
-export function Klokbalk({ rest, seconden }: { rest: number; seconden: number }) {
+export function Klokbalk({ rest, seconden, goud = false }: { rest: number; seconden: number; goud?: boolean }) {
   const r = Math.max(0, Math.min(1, rest));
   // Geen omslagpunt maar een VERLOOP. Een balk die op 28 procent ineens rood
   // wordt leest als een storing; een die geleidelijk warmer wordt leest als tijd
   // die opraakt. Hij begint te kleuren op 70 procent en is op nul helemaal rood.
   const hitte = Math.max(0, Math.min(1, (0.7 - r) / 0.7));
-  const kleur = meng(VIOLET, ROOD, hitte);
-  const licht = meng(VIOLET_LICHT, ROOD_LICHT, hitte);
+  // Wereldprik staat op een zwart-gouden plaat en niet op de paarse lijst van de
+  // Rekenladder. Een violette balk daarin is de enige koele kleur op het scherm,
+  // en dan leest hij als iets dat er niet bij hoort.
+  const kleur = meng(goud ? "#F2AE33" : VIOLET, ROOD, hitte);
+  const licht = meng(goud ? "#FFE7A8" : VIOLET_LICHT, ROOD_LICHT, hitte);
   const omtrek = 2 * Math.PI * 15;
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10, width: "100%" }}>

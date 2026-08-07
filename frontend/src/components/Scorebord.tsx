@@ -56,21 +56,22 @@ export const SCORE_RUIT = {
 export const SOEP_PLAAT: Plaat = { art: "/ui/soep/scorebord.webp?v=1", v: SCORE_V, ruit: SCORE_RUIT };
 
 /** En die van Wereldprik: zwart met goud, met de wereldbol en de speld in het
- *  hart. Opgemeten op de uitsnede van 1448x486, waarna hij op 1200 breed is
+ *  hart. Opgemeten op de uitsnede van 2862x924, waarna hij op 1200 breed is
  *  gezet; de breuken veranderen daar niet van.
  *
- *  De twee vlakken zijn het DONKERE binnenwerk van de panelen, met lucht tegen
- *  de gouden lijst aan. Gemeten door de bijna-zwarte pixels te tellen (max van
- *  rood, groen en blauw onder de 55) en niet op het oog: het paneel loopt links
- *  van 60 tot 508 en rechts van 940 tot 1388, en dat die twee elkaars spiegel
- *  zijn is apart nagerekend op het hart van de plaat (724). */
+ *  De twee vlakken zijn TRAPEZIUMS: bovenin loopt het paneel van 68 tot 1005 en
+ *  onderin van 284 tot ongeveer 1000. Het tekstvlak past dus in het SMALSTE deel
+ *  en staat op het hart daarvan (300 tot 900), anders hangt het getal in de
+ *  onderhoek tegen de schuine lijst aan. Rechts is de spiegel daarvan, gemeten
+ *  op het hart van de plaat (1431).
+ */
 export const WERELD_PLAAT: Plaat = {
-  art: "/ui/wereld/scorebord.webp?v=1",
-  v: 1448 / 486,
+  art: "/ui/wereld/scorebord.webp?v=2",
+  v: 2862 / 924,
   ruit: {
-    t: 130 / 486, h: (375 - 130) / 486,
-    links: { l: 90 / 1448, b: (480 - 90) / 1448 },
-    rechts: { l: 968 / 1448, b: (1358 - 968) / 1448 },
+    t: 280 / 924, h: (740 - 280) / 924,
+    links: { l: 300 / 2862, b: (900 - 300) / 2862 },
+    rechts: { l: 1962 / 2862, b: (2562 - 1962) / 2862 },
   },
 };
 

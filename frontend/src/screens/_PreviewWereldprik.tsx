@@ -34,11 +34,11 @@
 // hoogstens 100 * level * (level + 1). Wijkt de een af van de ander, dan keurt
 // de server een eerlijke poging af.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { LogOut } from "lucide-react";
+import { Globe, LogOut } from "lucide-react";
 import { Screen } from "../components/Layout";
 import { Scorebord, WERELD_PLAAT } from "../components/Scorebord";
-import { KADER_LIJN_ROOD, NeonKader } from "../components/ProfileHero";
-import { Klokbalk, SECTIE, SomVenster, TabKader } from "./_PreviewRekenladder";
+import { ArtSchaduw, KADER_LIJN_ROOD, NeonKader } from "../components/ProfileHero";
+import { Klokbalk } from "./_PreviewRekenladder";
 import { DOELEN, PER_TIER, type Doel } from "../data/wereld";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
@@ -52,10 +52,10 @@ const LAT_ONDER = -58;
 const KAART = "/ui/wereld/kaart.webp?v=1";
 /** Breed op hoog, uit dezelfde twee getallen: 360 graden lengte op 142 breedte. */
 const KAART_VERH = 360 / (LAT_BOVEN - LAT_ONDER);
-/** Hoe breed de kaart op het scherm staat. Zo breed als er is: de hoogte volgt
- *  uit de projectie (ruim tweeënhalf keer zo breed als hoog), dus alles wat je
- *  aan breedte inlevert lever je twee keer in aan aanwijsbaarheid. */
-const KAART_BREED = "min(420px, 96vw)";
+/** Hoe breed de drie platen op het scherm staan. Zo breed als er is: de kaart
+ *  is ruim tweeënhalf keer zo breed als hoog, dus alles wat je aan breedte
+ *  inlevert lever je twee keer in aan aanwijsbaarheid. */
+const SECTIE_BREED = "min(420px, 96vw)";
 
 /** Waar een plek op de kaart staat, als deel van breedte en hoogte (0 tot 1). */
 export function naarVak(la: number, lo: number): { x: number; y: number } {
@@ -331,7 +331,11 @@ function Kaart({
         // de kaart uit; knip je hem hier af, dan zie je een halve cirkel op de
         // kaartrand. Alles wat wel binnen de lijst hoort te blijven (de zee, de
         // plaat, de hulplijnen) zit daarom in een eigen geknipte laag hieronder.
-        position: "relative", width: "100%", aspectRatio: `${KAART_VERH}`,
+        // De HOOGTE bindt en niet de breedte: het binnenwerk van het kaartvak is
+        // 2,667 breed op hoog en de kaart 2,535, dus op volle hoogte blijft er
+        // links en rechts een streepje lucht over in plaats van dat er onder- en
+        // bovenaan een stuk wereld af valt.
+        position: "relative", height: "100%", aspectRatio: `${KAART_VERH}`,
         touchAction: "none",
         cursor: actief ? "crosshair" : "default",
         WebkitTapHighlightColor: "transparent",
@@ -348,13 +352,10 @@ function Kaart({
     >
      <div
        style={{
-        position: "absolute", inset: 0, borderRadius: 10, overflow: "hidden",
-        // De zee. Die zit niet in de plaat (die is land alleen, met een
-        // doorzichtige oceaan) maar hier, zodat hij dezelfde diepte heeft als
-        // elk ander donker vlak in de app.
-        background:
-          "radial-gradient(120% 150% at 50% 20%, #16103A 0%, #0A0620 62%, #05020E 100%)",
-        boxShadow: "inset 0 0 0 1px rgba(154,75,240,.35), inset 0 2px 14px rgba(0,0,0,.7), 0 0 16px rgba(154,75,240,.18)",
+        // GEEN eigen zee meer: de kaart ligt in het kaartvak, en het donkere
+        // binnenwerk van die plaat IS de oceaan. Een tweede verloop hierboven
+        // zou een tweede vlak op het eerste tekenen.
+        position: "absolute", inset: 0, overflow: "hidden",
        }}
      >
       <img
@@ -448,7 +449,7 @@ function Naam({ tekst }: { tekst: string }) {
         className="klem-kom"
         style={{
           whiteSpace: "nowrap", lineHeight: 1,
-          fontFamily: font.display, fontWeight: 800, fontSize: 34, letterSpacing: 0.5,
+          fontFamily: font.display, fontWeight: 800, fontSize: 40, letterSpacing: 0.5,
           color: "#FFFFFF",
           textShadow: "0 0 18px rgba(255,210,120,.4), 0 2px 4px rgba(0,0,0,.8)",
           transform: schaal < 1 ? `scale(${schaal.toFixed(3)})` : undefined,
@@ -457,6 +458,99 @@ function Naam({ tekst }: { tekst: string }) {
       >
         {tekst}
       </span>
+    </div>
+  );
+}
+
+// ---- de drie platen ---------------------------------------------------------
+//
+// Het scherm staat op drie vellen: de standenbalk, het vraagvak en het
+// kaartvak. Ze zijn alle drie UITGESNEDEN op wat er werkelijk staat (het
+// alfakanaal zat er al in, de doorzichtige rand eromheen is weggeknipt) en op
+// 1200 breed gezet, want breder dan dat wordt op een telefoon toch nooit
+// getoond.
+//
+// De vlakken erin zijn opgemeten op de volle uitsnede en staan hier als BREUKEN
+// van de plaat: de secties schalen met de schermbreedte en dan moet alles wat
+// erop ligt vanzelf meeschuiven.
+const VRAAGVAK = "/ui/wereld/vraagvak.webp?v=1";
+const KAARTVAK = "/ui/wereld/kaartvak.webp?v=1";
+/** Verhoudingen van de twee vellen, uit hun eigen uitsnede. */
+const VRAAG_V = 3030 / 1157;
+const KAARTVAK_V = 3350 / 1435;
+
+/** Waar de tekst in het vraagvak staat, gemeten op 3030x1157.
+ *
+ *  De TAB is een trapezium: bovenin loopt hij van 1051 tot 1991 en onderin, waar
+ *  de gouden lijst hem afsluit (y 215), van 1124 tot 1910. Het opschrift past dus
+ *  in het smalste deel.
+ *
+ *  De TITEL staat tussen de twee gouden streepjes die in de plaat getekend zijn:
+ *  die lopen van 679 tot 1023 en van 1996 tot 2339, allebei op y 360. Wat
+ *  ertussen past is 1023 tot 1996, en dat is precies het gat. */
+const VRAAG_VLAK = {
+  tab: { l: 1180 / 3030, b: 675 / 3030, t: 40 / 1157, h: 150 / 1157 },
+  titel: { l: 1023 / 3030, b: 973 / 3030, t: 320 / 1157, h: 80 / 1157 },
+  naam: { l: 240 / 3030, b: 2550 / 3030, t: 455 / 1157, h: 310 / 1157 },
+  klok: { l: 210 / 3030, b: 2610 / 3030, t: 845 / 1157, h: 220 / 1157 },
+} as const;
+
+/** En het venster van het kaartvak, gemeten op 3350x1435: de gouden lijst ligt
+ *  op x 75 en 3335 en op y 100 en 1390, dus dit is wat er binnen valt met een
+ *  streepje lucht ertegenaan. */
+const KAARTVAK_VLAK = { l: 150 / 3350, b: 3120 / 3350, t: 175 / 1435, h: 1170 / 1435 };
+
+const pct = (f: number) => `${(f * 100).toFixed(3)}%`;
+
+/** Een van de vlakken op een plaat: een doos die met de plaat meeschaalt. */
+function Vlak({ vak, children }: { vak: { l: number; b: number; t: number; h: number }; children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        left: pct(vak.l), width: pct(vak.b), top: pct(vak.t), height: pct(vak.h),
+        display: "flex", alignItems: "center", justifyContent: "center",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+/** Het vraagvak: de plaat met de tab, de titel tussen de streepjes, de naam en
+ *  de klok. De schaduw is een tweede kopie van dezelfde plaat, zwartgemaakt en
+ *  vervaagd, net als onder de platen op de hoofdpagina; een drop-shadow-filter
+ *  breekt op iOS. */
+function Vraagvak({ titel, kop, kopKleur, naam, onder }: {
+  titel: string;
+  kop: string;
+  kopKleur: string;
+  naam: React.ReactNode;
+  onder: React.ReactNode;
+}) {
+  return (
+    <div style={{ position: "relative", width: "100%", aspectRatio: `${VRAAG_V}`, flexShrink: 0 }}>
+      <ArtSchaduw art={VRAAGVAK} />
+      <img src={VRAAGVAK} alt="" aria-hidden draggable={false} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} />
+      <Vlak vak={VRAAG_VLAK.tab}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}>
+          <Globe size={13} strokeWidth={2.2} color="#F2AE33" style={{ flexShrink: 0 }} />
+          <span style={{ fontFamily: font.wide, fontSize: 11.5, letterSpacing: 1.6, marginRight: -1.6, color: "#FFE7A8" }}>{titel}</span>
+        </span>
+      </Vlak>
+      <Vlak vak={VRAAG_VLAK.titel}>
+        <span
+          style={{
+            whiteSpace: "nowrap", lineHeight: 1,
+            fontFamily: font.display, fontWeight: 800, fontSize: 14.5, letterSpacing: 0.6,
+            color: kopKleur, textShadow: "0 2px 6px rgba(0,0,0,.6)",
+          }}
+        >
+          {kop}
+        </span>
+      </Vlak>
+      <Vlak vak={VRAAG_VLAK.naam}>{naam}</Vlak>
+      <Vlak vak={VRAAG_VLAK.klok}>{onder}</Vlak>
     </div>
   );
 }
@@ -612,36 +706,32 @@ export function Wereldprik({ seed, onKlaar, onOpnieuw }: {
       style={{
         position: "relative", flex: 1, width: "100%",
         display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-        gap: 9, paddingBottom: 24,
+        // RUIMER DAN DE MOCKUP. Daar staan de drie platen tegen elkaar aan en
+        // dan leest het als een blok in plaats van als drie dingen. Veertien
+        // punten ertussen is genoeg om ze uit elkaar te houden zonder dat het
+        // scherm uit elkaar valt, en de schaduw onder elke plaat heeft die lucht
+        // ook nodig om ergens op te vallen.
+        gap: 14, paddingBottom: 24,
       }}
     >
-      {/* Eigen bord: zwart met goud, met de wereldbol en de speld in het hart.
-          Hij staat zo breed als de kaart eronder, want die twee horen als een
+      {/* De standenbalk: zwart met goud, met de wereldbol en de speld in het
+          hart. Alle drie de platen staan even breed, want ze horen als een
           geheel te lezen. */}
       <Scorebord
         plaat={WERELD_PLAAT}
         maat={30}
-        breedte={KAART_BREED}
+        breedte={SECTIE_BREED}
         links={{ kop: t("prikRonde"), waarde: String(ronde) }}
         rechts={{ kop: t("soepPunten"), waarde: String(totaal) }}
       />
 
-      <div style={{ width: SECTIE, marginTop: 12 }}>
-        <TabKader titel="WERELDPRIK">
-          <span
-            style={{
-              height: 20, display: "grid", placeItems: "center",
-              whiteSpace: "nowrap", lineHeight: 1,
-              fontFamily: font.display, fontWeight: 800, fontSize: 15.5, letterSpacing: 0.4,
-              color: uitslag && !uitslag.punten ? "#FF8E86" : uitslag ? "#9BE8A0" : "#FFFFFF",
-              textShadow: "0 2px 6px rgba(0,0,0,.6)",
-            }}
-          >
-            {kop}
-          </span>
-
-          <SomVenster>
-            {fase === "klaar" ? (
+      <div style={{ width: SECTIE_BREED }}>
+        <Vraagvak
+          titel="WERELDPRIK"
+          kop={kop}
+          kopKleur={uitslag && !uitslag.punten ? "#FF8E86" : uitslag ? "#9BE8A0" : "#FFFFFF"}
+          naam={
+            fase === "klaar" ? (
               <span
                 className="klem-kom"
                 style={{
@@ -653,62 +743,71 @@ export function Wereldprik({ seed, onKlaar, onOpnieuw }: {
               </span>
             ) : (
               <Naam tekst={naam} />
-            )}
-          </SomVenster>
-
-          {fase === "spel" ? (
-            <Klokbalk rest={rest} seconden={Math.max(0, Math.ceil((rest * venster) / 1000))} />
-          ) : (
-            <span
-              style={{
-                height: 38, display: "grid", placeItems: "center",
-                fontFamily: font.display, fontWeight: 800, fontSize: 17,
-                color: uitslag?.punten ? "#FFD873" : withAlpha("#FFE7A8", 0.6),
-              }}
-            >
-              {uitslag?.punten ? `+${uitslag.punten}` : ""}
-            </span>
-          )}
-        </TabKader>
-      </div>
-
-      {/* De kaart staat BREDER dan het vraagpaneel, en dat is geen smaak: elke
-          punt breedte is hier honderd kilometer nauwkeurigheid. Op 96vw is de
-          wereld op een telefoon van 393 punten 377 breed in plaats van de 322
-          van de sectie, en dat scheelt een vijfde in wat je kunt aanwijzen. */}
-      <div style={{ width: KAART_BREED, marginTop: 4 }}>
-        <Kaart
-          wijs={wijs}
-          prik={prik}
-          doel={fase === "spel" ? null : doel}
-          dichtst={naaste}
-          actief={fase === "spel"}
-          onWijs={setWijs}
-          onPrik={doePrik}
+            )
+          }
+          onder={
+            fase === "spel" ? (
+              <Klokbalk goud rest={rest} seconden={Math.max(0, Math.ceil((rest * venster) / 1000))} />
+            ) : (
+              <span
+                style={{
+                  display: "grid", placeItems: "center",
+                  fontFamily: font.display, fontWeight: 800, fontSize: 19,
+                  color: uitslag?.punten ? "#FFD873" : withAlpha("#FFE7A8", 0.6),
+                }}
+              >
+                {uitslag?.punten ? `+${uitslag.punten}` : ""}
+              </span>
+            )
+          }
         />
-        {/* De naam onder de kaart en niet erop: op de kaart ligt hij half in
-            zee of over een buurland heen, en dan lees je hem net niet. */}
-        <div style={{ height: 20, marginTop: 6, display: "grid", placeItems: "center" }}>
-          {fase !== "spel" ? (
-            <span style={{ fontFamily: font.ui, fontSize: 12.5, fontWeight: 700, color: "#FFE7A8" }}>
-              {naam}
-            </span>
-          ) : (
-            <span style={{ fontFamily: font.ui, fontSize: 11.5, color: withAlpha("#FFE7A8", 0.55) }}>
-              {t("prikHint", { n: Math.round(tolerantie) })}
-            </span>
-          )}
-        </div>
       </div>
 
-      <div style={{ marginTop: 6 }}>
-        <NeonKader radius={999} dik={0.5} vulling="zwart" lijn={KADER_LIJN_ROOD} gloed={`0 0 12px ${withAlpha(colors.red, 0.35)}`} binnen={{ padding: 0 }}>
+      {/* Het kaartvak. De kaart ligt IN de plaat: het donkere binnenwerk is de
+          oceaan en de gouden lijst de rand. */}
+      <div style={{ width: SECTIE_BREED, position: "relative", aspectRatio: `${KAARTVAK_V}`, flexShrink: 0 }}>
+        <ArtSchaduw art={KAARTVAK} />
+        <img src={KAARTVAK} alt="" aria-hidden draggable={false} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} />
+        <Vlak vak={KAARTVAK_VLAK}>
+          <Kaart
+            wijs={wijs}
+            prik={prik}
+            doel={fase === "spel" ? null : doel}
+            dichtst={naaste}
+            actief={fase === "spel"}
+            onWijs={setWijs}
+            onPrik={doePrik}
+          />
+        </Vlak>
+      </div>
+
+      {/* De naam van het doel, of de bediening. ONDER de plaat en niet erop: in
+          de mockup ligt dat zinnetje in de linkeronderhoek van de kaart, en daar
+          ligt Patagonie. Een doel dat achter je eigen uitleg schuilgaat is geen
+          doel meer. */}
+      <div style={{ height: 18, display: "grid", placeItems: "center", marginTop: -4 }}>
+        {fase !== "spel" ? (
+          <span style={{ fontFamily: font.ui, fontSize: 12.5, fontWeight: 700, color: "#FFE7A8" }}>
+            {naam}
+          </span>
+        ) : (
+          <span style={{ fontFamily: font.ui, fontSize: 11.5, color: withAlpha("#FFE7A8", 0.55) }}>
+            {t("prikHint", { n: Math.round(tolerantie) })}
+          </span>
+        )}
+      </div>
+
+      {/* De stopknop, zo breed als in de mockup maar in het ROOD van de app.
+          Stoppen is overal in dit spel rood; groen betekent hier doorgaan, en
+          dan zou dezelfde kleur op twee schermen het tegenovergestelde zeggen. */}
+      <div style={{ width: `calc(${SECTIE_BREED} * 0.66)`, marginTop: 2 }}>
+        <NeonKader radius={999} dik={0.5} vulling="zwart" lijn={KADER_LIJN_ROOD} gloed={`0 0 14px ${withAlpha(colors.red, 0.4)}`} binnen={{ padding: 0 }}>
           <button
             onClick={fase === "klaar" ? onOpnieuw : stop}
             className="pressable"
-            style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, background: "transparent", border: "none", cursor: "pointer", color: colors.redHi, fontFamily: font.ui, fontSize: 13, fontWeight: 600, padding: "7px 16px" }}
+            style={{ display: "flex", width: "100%", alignItems: "center", justifyContent: "center", gap: 8, background: "transparent", border: "none", cursor: "pointer", color: colors.redHi, fontFamily: font.wide, fontSize: 13, letterSpacing: 1.2, fontWeight: 600, padding: "10px 16px" }}
           >
-            <LogOut size={14} /> {fase === "klaar" ? t("arenaOpnieuw") : t("arenaStop")}
+            <LogOut size={15} /> {(fase === "klaar" ? t("arenaOpnieuw") : t("arenaStop")).toUpperCase()}
           </button>
         </NeonKader>
       </div>
