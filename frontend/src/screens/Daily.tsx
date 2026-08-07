@@ -291,7 +291,12 @@ export function Daily({ game, onBack, onProfile }: { game: GameApi; onBack: () =
       <button onClick={() => (part && phase === "intro" ? setPart(null) : onBack())} aria-label={t("back")} style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.faint, display: "flex", padding: 2 }}>
         <ArrowLeft size={20} />
       </button>
-      <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>{t("dailyTitle")}
+      {/* De naam van het DEEL waar je in staat, niet die van de dagronde. Op de
+          keuzepagina hoort er "Dagronde" te staan, want daar kies je tussen de
+          drie; ben je eenmaal in het woordendeel, dan heet die pagina "Woorden",
+          net zoals het topografiedeel "Topografie" heet. */}
+      <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, color: colors.ink }}>
+        {part === "words" ? t("partWords") : t("dailyTitle")}
       </span>
     </div>
   );

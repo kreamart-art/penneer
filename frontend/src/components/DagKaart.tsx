@@ -22,12 +22,17 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { KADER_LIJN_PAARS, NeonKader } from "./ProfileHero";
 import { colors, font } from "../theme/tokens";
 
-/** Dezelfde lijst, twee emblemen. De kalender is uit de ring gehaald (de schijf
- *  is opnieuw opgebouwd uit de kleur van zijn eigen rand) en er staat een
- *  wereldbol in de plaats voor het topografiedeel. Ring, lauwerkrans en stralen
- *  zijn in beide gelijk, want het is hetzelfde onderdeel van dezelfde dag. */
+/** Dezelfde lijst, twee emblemen. De schijf in de ring is bij allebei opnieuw
+ *  opgebouwd uit zijn eigen omgeving, en daar staat het teken van dat deel op:
+ *  een boek voor de woorden en een wereldbol voor de topografie. De kalender
+ *  hoorde bij de dagronde als geheel en staat daarom nergens meer in een deel.
+ *  Ring, lauwerkrans en stralen zijn in beide gelijk, want het is hetzelfde
+ *  onderdeel van dezelfde dag.
+ *
+ *  De `?v=` hoort erbij: /ui/ komt bij de servicewerker uit de cache, dus een
+ *  overschreven plaat op hetzelfde adres blijft anders de oude tonen. */
 const ART = {
-  woorden: "/ui/dag-sectie.webp",
+  woorden: "/ui/dag-sectie.webp?v=2",
   topo: "/ui/dag-sectie-topo.webp",
 } as const;
 /** Verhouding van de plaat (929x860). */
