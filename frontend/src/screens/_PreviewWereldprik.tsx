@@ -34,7 +34,7 @@
 // hoogstens 100 * level * (level + 1). Wijkt de een af van de ander, dan keurt
 // de server een eerlijke poging af.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Globe, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { Screen } from "../components/Layout";
 import { Scorebord, WERELD_PLAAT } from "../components/Scorebord";
 import { ArtSchaduw, KADER_LIJN_ROOD, NeonKader } from "../components/ProfileHero";
@@ -418,21 +418,24 @@ function Kaart({
   );
 }
 
-/** De naam van het doel in het venster. Lange namen (Bosnië en Herzegovina,
- *  Verenigde Arabische Emiraten) passen niet op de maat van een korte, dus de
- *  letter krimpt tot hij past. Gemeten en niet op het aantal tekens geteld: een
- *  i is smaller dan een W. */
-function Naam({ tekst }: { tekst: string }) {
+/** Alles wat op deze platen staat moet PASSEN, en de vensters zijn smal. Deze
+ *  doos meet wat erin staat en krimpt het net zo ver als nodig.
+ *
+ *  Meten en niet op het aantal tekens gokken: een i is smaller dan een W, en de
+ *  breedte van het venster hangt aan de schermbreedte. `offsetWidth` is de maat
+ *  ZONDER de schaal (een transform verandert de layout niet), dus de meting kan
+ *  niet met zichzelf op hol slaan. */
+function Passend({ children, ruimte = 0.92 }: { children: React.ReactNode; ruimte?: number }) {
   const doos = useRef<HTMLDivElement | null>(null);
-  const span = useRef<HTMLSpanElement | null>(null);
+  const binnen = useRef<HTMLSpanElement | null>(null);
   const [schaal, setSchaal] = useState(1);
   useEffect(() => {
     const meet = () => {
-      const d = doos.current, s = span.current;
+      const d = doos.current, s = binnen.current;
       if (!d || !s) return;
-      const ruimte = d.clientWidth * 0.92;
       const vol = s.offsetWidth;
-      setSchaal(vol > ruimte && vol > 0 ? ruimte / vol : 1);
+      const past = d.clientWidth * ruimte;
+      setSchaal(vol > past && vol > 0 ? past / vol : 1);
     };
     meet();
     const d = doos.current;
@@ -440,11 +443,29 @@ function Naam({ tekst }: { tekst: string }) {
     const ro = new ResizeObserver(meet);
     ro.observe(d);
     return () => ro.disconnect();
-  }, [tekst]);
+  }, [children, ruimte]);
   return (
     <div ref={doos} style={{ width: "100%", display: "grid", placeItems: "center" }}>
       <span
-        ref={span}
+        ref={binnen}
+        style={{
+          whiteSpace: "nowrap", display: "inline-block",
+          transform: schaal < 1 ? `scale(${schaal.toFixed(3)})` : undefined,
+          transformOrigin: "center",
+        }}
+      >
+        {children}
+      </span>
+    </div>
+  );
+}
+
+/** De naam van het doel in het venster. Lange namen (Bosnië en Herzegovina,
+ *  Verenigde Arabische Emiraten) passen niet op de maat van een korte. */
+function Naam({ tekst }: { tekst: string }) {
+  return (
+    <Passend>
+      <span
         key={tekst}
         className="klem-kom"
         style={{
@@ -452,13 +473,11 @@ function Naam({ tekst }: { tekst: string }) {
           fontFamily: font.display, fontWeight: 800, fontSize: 40, letterSpacing: 0.5,
           color: "#FFFFFF",
           textShadow: "0 0 18px rgba(255,210,120,.4), 0 2px 4px rgba(0,0,0,.8)",
-          transform: schaal < 1 ? `scale(${schaal.toFixed(3)})` : undefined,
-          transformOrigin: "center",
         }}
       >
         {tekst}
       </span>
-    </div>
+    </Passend>
   );
 }
 
@@ -533,21 +552,23 @@ function Vraagvak({ titel, kop, kopKleur, naam, onder }: {
       <ArtSchaduw art={VRAAGVAK} />
       <img src={VRAAGVAK} alt="" aria-hidden draggable={false} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} />
       <Vlak vak={VRAAG_VLAK.tab}>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}>
-          <Globe size={13} strokeWidth={2.2} color="#F2AE33" style={{ flexShrink: 0 }} />
-          <span style={{ fontFamily: font.wide, fontSize: 11.5, letterSpacing: 1.6, marginRight: -1.6, color: "#FFE7A8" }}>{titel}</span>
-        </span>
+        <span style={{ fontFamily: font.wide, fontSize: 11.5, letterSpacing: 1.6, marginRight: -1.6, color: "#FFE7A8", whiteSpace: "nowrap" }}>{titel}</span>
       </Vlak>
       <Vlak vak={VRAAG_VLAK.titel}>
-        <span
-          style={{
-            whiteSpace: "nowrap", lineHeight: 1,
-            fontFamily: font.display, fontWeight: 800, fontSize: 14.5, letterSpacing: 0.6,
-            color: kopKleur, textShadow: "0 2px 6px rgba(0,0,0,.6)",
-          }}
-        >
-          {kop}
-        </span>
+        {/* Ook deze regel krimpt als hij niet past. Het gat tussen de twee
+            streepjes is smal (een derde van de plaat), en "1240 KM ERNAAST" is
+            twee keer zo lang als "MIDDENIN". */}
+        <Passend ruimte={0.98}>
+          <span
+            style={{
+              whiteSpace: "nowrap", lineHeight: 1,
+              fontFamily: font.display, fontWeight: 800, fontSize: 14.5, letterSpacing: 0.6,
+              color: kopKleur, textShadow: "0 2px 6px rgba(0,0,0,.6)",
+            }}
+          >
+            {kop}
+          </span>
+        </Passend>
       </Vlak>
       <Vlak vak={VRAAG_VLAK.naam}>{naam}</Vlak>
       <Vlak vak={VRAAG_VLAK.klok}>{onder}</Vlak>
@@ -697,7 +718,7 @@ export function Wereldprik({ seed, onKlaar, onOpnieuw }: {
   };
 
   const kop =
-    fase === "klaar" ? (gehaald.current === 1 ? t("prikGestrandEen") : t("prikGestrand", { n: gehaald.current }))
+    fase === "klaar" ? t("prikGestrand")
       : uitslag ? (uitslag.raak ? t("prikMiddenin") : uitslag.km < 0 ? t("prikTeLaat") : t("prikErnaast", { n: uitslag.km }))
         : t("prikWaarLigt");
 

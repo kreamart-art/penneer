@@ -1424,8 +1424,7 @@ html.klassiek body.lijst::after {
    concurreert. Deze zaal is zelf al rustig in het midden. */
 body.rekenzaal::after,
 body.rekenspel::after,
-body.waagspel::after,
-body.wereldspel::after {
+body.waagspel::after {
   content: "";
   position: fixed;
   left: 0;
@@ -1460,11 +1459,21 @@ body.rekenspel::after {
 body.waagspel::after {
   background-image: url("/ui/reken/bg-spel.webp?v=3");
 }
-/* Wereldprik staat in diezelfde zaal, om dezelfde reden: het is een arena, en
-   een arena is een plek. De kaart brengt zijn eigen kleur mee (goud land op een
-   bijna zwarte zee), dus een tweede decor eromheen zou alleen maar concurreren. */
+/* WERELDPRIK HEEFT GEEN ZAAL. Het spel staat op drie zwart-gouden platen en een
+   kaart met goud land; een paarse zaal eromheen is dan de enige plek waar nog
+   een andere kleur vandaan komt, en die trekt het hele scherm uit elkaar.
+
+   Wat hier staat is de achtergrond van de mockup, en die is nagemeten op het
+   bestand zelf: tussen de secties ligt hij op (0,0,2), aan de randen rond
+   (5,8,12) en in het midden rond (15,16,21). Dat is dus geen zwart vlak maar
+   een heel zachte opklaring naar het hart van het scherm. */
 body.wereldspel::after {
-  background-image: url("/ui/reken/bg-spel.webp?v=3");
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(130% 78% at 50% 44%, #10121A 0%, #07080E 52%, #020306 100%);
 }
 
 /* De kaart van Wereldprik. Het mikken is ingedrukt HOUDEN op een afbeelding, en

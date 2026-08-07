@@ -886,8 +886,9 @@ const nl: Dict = {
   prikErnaast: "{n} KM ERNAAST",
   prikMiddenin: "MIDDENIN",
   prikTeLaat: "TE LAAT",
-  prikGestrand: "GESTRAND NA {n} RONDEN",
-  prikGestrandEen: "GESTRAND NA 1 RONDE",
+  // Kort, want dit staat in het gat tussen de twee streepjes op de plaat. Hoe
+  // ver je kwam hoeft er niet bij: dat staat naast je in de standenbalk.
+  prikGestrand: "GESTRAND",
   prikHint: "houd vast om te mikken, laat los om te prikken",
   arenaSpel_wereldprik: "Wereldprik",
   arenaSpel_waaghet: "Waag het",
@@ -2156,8 +2157,7 @@ const en: Dict = {
   prikErnaast: "{n} KM OFF",
   prikMiddenin: "SPOT ON",
   prikTeLaat: "TOO LATE",
-  prikGestrand: "OUT AFTER {n} ROUNDS",
-  prikGestrandEen: "OUT AFTER 1 ROUND",
+  prikGestrand: "GAME OVER",
   prikHint: "hold to aim, release to pin",
   arenaSpel_wereldprik: "Map pin",
   arenaSpel_waaghet: "Push your luck",
