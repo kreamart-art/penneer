@@ -29,6 +29,7 @@ import { Rekenladder } from "./_PreviewRekenladder";
 import { Waaghet } from "./Waaghet";
 import { Woordketen } from "./_PreviewWoordketen";
 import { Lettersoep } from "./_PreviewLettersoep";
+import { Wereldprik } from "./_PreviewWereldprik";
 import type { GameApi } from "../net/socket";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
@@ -477,7 +478,7 @@ function Flitsreeks({ seed, onKlaar }: { seed: string; onKlaar: (score: number, 
 
 /** De spellen die de arena kent. Alleen voor de testlink hieronder; welk spel
  *  er op een dag draait bepaalt de server. */
-const SPELLEN = new Set(["lettersoep", "rekenladder", "kleurenklem", "woordketen", "flitsreeks", "waaghet"]);
+const SPELLEN = new Set(["lettersoep", "rekenladder", "kleurenklem", "woordketen", "flitsreeks", "waaghet", "wereldprik"]);
 
 export function ArenaDeel({ game, onBack }: { game: GameApi; onBack: () => void }) {
   const { t } = useT();
@@ -628,6 +629,11 @@ export function ArenaDeel({ game, onBack }: { game: GameApi; onBack: () => void 
             // Ook per poging vers. Twee keer dezelfde ketting is geen
             // taalspel meer maar een geheugenspel.
             <Woordketen seed={`${poging.seed}:${poging.attempt_id}`} onKlaar={klaar} />
+          ) : spel === "wereldprik" ? (
+            // Ook per poging vers, en hier is het verschil het grootst: dezelfde
+            // plekken in dezelfde volgorde betekent dat je de tweede keer alleen
+            // nog hoeft te onthouden waar je de vorige keer prikte.
+            <Wereldprik seed={`${poging.seed}:${poging.attempt_id}`} onKlaar={klaar} />
           ) : (
             // Ook per poging vers, net als de andere vier. Hij stond op de kale
             // dagseed, dus elke poging van elke speler kreeg de hele dag exact

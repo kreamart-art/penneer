@@ -1424,7 +1424,8 @@ html.klassiek body.lijst::after {
    concurreert. Deze zaal is zelf al rustig in het midden. */
 body.rekenzaal::after,
 body.rekenspel::after,
-body.waagspel::after {
+body.waagspel::after,
+body.wereldspel::after {
   content: "";
   position: fixed;
   left: 0;
@@ -1458,6 +1459,25 @@ body.rekenspel::after {
    de hal het spel in en het decor viel weg. */
 body.waagspel::after {
   background-image: url("/ui/reken/bg-spel.webp?v=3");
+}
+/* Wereldprik staat in diezelfde zaal, om dezelfde reden: het is een arena, en
+   een arena is een plek. De kaart brengt zijn eigen kleur mee (goud land op een
+   bijna zwarte zee), dus een tweede decor eromheen zou alleen maar concurreren. */
+body.wereldspel::after {
+  background-image: url("/ui/reken/bg-spel.webp?v=3");
+}
+
+/* De ring die één keer uit de speld slaat bij de onthulling. Kort en klein: hij
+   is er om je oog naar de plek te trekken, niet om een show te geven. */
+@keyframes prik-slag {
+  0% { transform: scale(0.25); opacity: 1; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+.prik-slag {
+  animation: prik-slag 0.75s ease-out forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .prik-slag { animation: none; opacity: 0; }
 }
 
 

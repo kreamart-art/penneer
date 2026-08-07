@@ -35,13 +35,9 @@ import hashlib
 # Weekdag (maandag = 0) -> spel. De key is ook de i18n-sleutel op de client
 # (arena_<key> en arena_<key>_uitleg).
 #
-# Vijf gebouwde spellen over zeven dagen, dus twee komen twee keer langs. Ze
-# staan zo ver mogelijk uit elkaar: Rekenladder op zondag en donderdag, Woordketen
-# op maandag en zaterdag. Nooit twee dagen achter elkaar hetzelfde.
-#
-# Waaghet heeft de dubbele zaterdag overgenomen; Woordketen draait dus weer één
-# dag. NOG TE BOUWEN: Wereldprik, die krijgt de zondag zodra hij af is en dan
-# heeft elk spel zijn eigen dag.
+# ZEVEN SPELLEN OVER ZEVEN DAGEN: elk spel heeft nu zijn eigen dag, en geen
+# enkele komt twee keer langs. Wereldprik heeft de dubbele Rekenladder van de
+# zondag overgenomen; die draait dus weer één dag, op donderdag.
 GAMES: dict[int, dict] = {
     0: {"key": "woordketen", "af": True},
     1: {"key": "flitsreeks", "af": True},
@@ -49,7 +45,7 @@ GAMES: dict[int, dict] = {
     3: {"key": "rekenladder", "af": True},
     4: {"key": "kleurenklem", "af": True},
     5: {"key": "waaghet", "af": True},
-    6: {"key": "rekenladder", "af": True},
+    6: {"key": "wereldprik", "af": True},
 }
 
 
@@ -159,6 +155,22 @@ def plausibel(game: str, score: int, level: int, time_ms: int) -> bool:
         # leeg gelopen.
         ruimte = sum(WOORDKETEN_VENSTER(k) for k in range(1, level + 2))
         return time_ms <= 8000 + ruimte + 900 * level
+    if game == "wereldprik":
+        # Score-contract met de client: ronde k levert 100*k punten plus hooguit
+        # nog eens 100*k naar rato van hoe dicht je zat, dus ten hoogste 200*k.
+        # `level` is het aantal ronden dat je GEHAALD hebt (de ronde waarin je
+        # strandde telt niet mee), dus dat zijn de ronden k = 1 tot en met level.
+        #   som van 200*k voor k=1..level  =  100 * level * (level + 1)
+        if score > 100 * level * (level + 1):
+            return False
+        # Tijd van onderen: na elke prik staat de onthulling 1,7 seconde in beeld
+        # voordat de volgende plek komt. Ruim eronder gerekend (een halve
+        # seconde), want dit moet scriptjes vangen en geen snelle spelers.
+        if time_ms < 500 * level:
+            return False
+        # En van boven: alle klokken bij elkaar plus die onthullingen, met marge.
+        # Langer kan niet, want dan was de klok allang leeg gelopen.
+        return time_ms <= 5000 + (WERELDPRIK_VENSTER + 2500) * (level + 1)
     if game == "rekenladder":
         # Score-contract met de client: trede k levert 100*k punten plus hooguit
         # 50*k naar rato van de overgehouden tijd, dus ten hoogste 150*k. `level`
@@ -203,6 +215,17 @@ def REKENLADDER_VENSTER(trede: int) -> int:
     frontend/src/screens/_PreviewRekenladder.tsx; staat het hier anders, dan
     keurt de server een eerlijke poging af."""
     return 20000
+
+
+# Hoeveel milliseconden je krijgt om een plek aan te wijzen: VIJFTIEN SECONDEN,
+# elke ronde dezelfde. Prikken is een besluit, geen puzzel: wie het weet heeft er
+# drie seconden voor nodig en wie het niet weet komt er in dertig ook niet uit.
+#
+# De klim zit in de doelen (van Frankrijk naar Kirgizie) en in de tolerantie, die
+# per ronde krimpt. Moet gelijk lopen met VENSTER in
+# frontend/src/screens/_PreviewWereldprik.tsx; staat het hier anders, dan keurt de
+# server een eerlijke poging af.
+WERELDPRIK_VENSTER = 15000
 
 
 def KLEURENKLEM_VENSTER(ronde: int) -> int:

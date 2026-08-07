@@ -6,14 +6,17 @@ from app import arena
 def test_rotatie_dekt_de_hele_week():
     """Elke weekdag heeft een spel, en de kalender ligt vast."""
     assert [arena.GAMES[d]["key"] for d in range(7)] == [
-        "woordketen", "wereldprik", "waaghet", "flitsreeks",
-        "lettersoep", "kleurenklem", "rekenladder",
+        "woordketen", "flitsreeks", "lettersoep", "rekenladder",
+        "kleurenklem", "waaghet", "wereldprik",
     ]
+    # En elk spel draait precies EEN dag: sinds Wereldprik af is komt er geen
+    # enkele twee keer per week langs.
+    assert len({arena.GAMES[d]["key"] for d in range(7)}) == 7
 
 
 def test_spel_voor_volgt_de_weekdag():
     # 2026-07-30 is een donderdag.
-    assert arena.spel_voor("2026-07-30")["key"] == "flitsreeks"
+    assert arena.spel_voor("2026-07-30")["key"] == "rekenladder"
     assert arena.spel_voor("2026-08-03")["key"] == "woordketen"  # maandag
 
 
@@ -35,10 +38,10 @@ def test_flitsreeks_scorecontract():
     assert not arena.plausibel("flitsreeks", -1, 0, 0)
 
 
-def test_onaffe_spellen_weigeren_inzendingen():
-    assert not arena.plausibel("woordketen", 100, 1, 60000)
-    assert not arena.plausibel("wereldprik", 100, 1, 60000)
-    assert not arena.plausibel("waaghet", 100, 1, 60000)
+def test_onbekend_spel_weigert_inzendingen():
+    """Wat geen spel is levert niets in. De zeven die er zijn worden hieronder
+    stuk voor stuk nagerekend; dit vangt een sleutel die niet bestaat."""
+    assert not arena.plausibel("hinkelpad", 100, 1, 60000)
 
 
 def test_rekenladder_scorecontract():
@@ -57,20 +60,19 @@ def test_rekenladder_scorecontract():
     assert not arena.plausibel("rekenladder", -1, 1, 1000)
 
 
-def test_rekenladder_klok_zakt_en_stopt():
-    """De klok zakt per trede en blijft op drie seconden staan; daaronder is een
-    som van twee bewerkingen geen rekenwerk meer maar een gok. Deze getallen
-    moeten gelijk zijn aan vensterVoor() op de client."""
-    assert arena.REKENLADDER_VENSTER(1) == 9000
-    assert arena.REKENLADDER_VENSTER(8) == 6200
-    assert arena.REKENLADDER_VENSTER(15) == 3400
-    assert arena.REKENLADDER_VENSTER(16) == 3000
-    assert arena.REKENLADDER_VENSTER(40) == 3000
+def test_rekenladder_klok_staat_stil():
+    """De klok is op elke trede twintig seconden. Hij liep af van negen naar
+    drie, en dat mat reactiesnelheid in plaats van rekenen; de steiging zit nu in
+    de sommen. Deze getallen moeten gelijk zijn aan vensterVoor() op de client."""
+    assert arena.REKENLADDER_VENSTER(1) == 20000
+    assert arena.REKENLADDER_VENSTER(8) == 20000
+    assert arena.REKENLADDER_VENSTER(40) == 20000
 
 
-def test_zondag_is_rekenladder_en_speelbaar():
-    """2026-08-02 is een zondag: de eerste dagronde met dit spel."""
-    spel = arena.spel_voor("2026-08-02")
+def test_donderdag_is_rekenladder_en_speelbaar():
+    """2026-08-06 is een donderdag: daar staat de Rekenladder sinds Wereldprik
+    de zondag overnam."""
+    spel = arena.spel_voor("2026-08-06")
     assert spel["key"] == "rekenladder"
     assert spel["af"] is True
 
@@ -103,11 +105,12 @@ def test_kleurenklem_venster_loopt_dicht_en_stopt():
     assert arena.KLEURENKLEM_VENSTER(40) == 700
 
 
-def test_zaterdag_is_kleurenklem_en_speelbaar():
-    """2026-08-01 is een zaterdag: de eerste dagronde waarin dit spel draait."""
-    spel = arena.spel_voor("2026-08-01")
+def test_vrijdag_is_kleurenklem_en_speelbaar():
+    """2026-08-07 is een vrijdag; de zaterdag ging naar Waag het."""
+    spel = arena.spel_voor("2026-08-07")
     assert spel["key"] == "kleurenklem"
     assert spel["af"] is True
+    assert arena.spel_voor("2026-08-08")["key"] == "waaghet"      # zaterdag
 
 
 def test_lettersoep_scorecontract():
@@ -130,3 +133,48 @@ def test_lettersoep_doelen_lopen_op():
     assert doelen[0] == 3 and doelen[9] == 8
     assert doelen == sorted(doelen)              # nooit omlaag
     assert arena.LETTERSOEP_DOEL(99) == 8        # voorbij de ladder blijft hij staan
+
+
+def test_wereldprik_scorecontract():
+    """Ronde k is 100*k tot 200*k waard, en `level` is het aantal ronden dat je
+    HAALDE. Zondag draait hierop."""
+    # Meteen mis in ronde 1: nul ronden gehaald, nul punten, mag.
+    assert arena.plausibel("wereldprik", 0, 0, 3000)
+    # Vijf ronden gehaald: hoogstens 200*(1+2+3+4+5) = 3000.
+    assert arena.plausibel("wereldprik", 2100, 5, 40000)
+    assert arena.plausibel("wereldprik", 3000, 5, 40000)
+    assert not arena.plausibel("wereldprik", 3001, 5, 40000)     # meer dan er kan
+    assert not arena.plausibel("wereldprik", 2100, 5, 2400)      # onmogelijk snel
+    ruimte = (arena.WERELDPRIK_VENSTER + 2500) * 6
+    assert arena.plausibel("wereldprik", 2100, 5, 5000 + ruimte)
+    assert not arena.plausibel("wereldprik", 2100, 5, 5001 + ruimte)
+    assert not arena.plausibel("wereldprik", -1, 1, 1000)
+
+
+def test_wereldprik_venster_staat_vast():
+    """Vijftien seconden per plek, elke ronde dezelfde. Moet gelijk zijn aan
+    VENSTER in _PreviewWereldprik.tsx."""
+    assert arena.WERELDPRIK_VENSTER == 15000
+
+
+def test_wereldprik_een_realistisch_potje_wordt_geaccepteerd():
+    """Niet alleen de randen maar een POTJE zoals het echt gespeeld wordt.
+
+    De client rekent per ronde 100*k plus hooguit nog eens 100*k naar rato van de
+    nabijheid. Hieronder een speler die gemiddeld op driekwart van de tolerantie
+    zit, twaalf ronden haalt en er per ronde vier seconden over doet plus de
+    onthulling van 1,7 seconde. Zo'n poging hoort er gewoon door te komen; anders
+    keurt de server een eerlijke speler af.
+    """
+    level = 12
+    score = sum(100 * k + round(100 * k * 0.75) for k in range(1, level + 1))
+    tijd = int((4000 + 1700) * level + 15000)      # plus de ronde waarin hij strandde
+    assert arena.plausibel("wereldprik", score, level, tijd)
+    # En een speler die er telkens de volle klok over doet, past er ook nog in.
+    traag = (arena.WERELDPRIK_VENSTER + 1700) * level + arena.WERELDPRIK_VENSTER
+    assert arena.plausibel("wereldprik", score, level, traag)
+    # Wie precies raak prikt haalt het maximum, en dat is de bovengrens zelf.
+    vol = sum(200 * k for k in range(1, level + 1))
+    assert vol == 100 * level * (level + 1)
+    assert arena.plausibel("wereldprik", vol, level, tijd)
+    assert not arena.plausibel("wereldprik", vol + 1, level, tijd)

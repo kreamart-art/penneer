@@ -58,6 +58,9 @@ function proef(naam: string): boolean {
 const PreviewWaaghet = lazy(() => import("./screens/Waaghet"));
 // En dat van maandag, achter ?keten.
 const PreviewWoordketen = lazy(() => import("./screens/_PreviewWoordketen"));
+// En dat van zondag, achter ?prik. Eigen brok en dat scheelt hier het meest: de
+// wereldkaart en de doelenbank hoeven alleen te komen als je hem opent.
+const PreviewWereldprik = lazy(() => import("./screens/_PreviewWereldprik"));
 const PreviewPack = lazy(() => import("./screens/_PreviewPack"));
 import { InviteBanner } from "./components/InviteBanner";
 import { DmBanner } from "./components/DmBanner";
@@ -555,6 +558,8 @@ export default function App() {
     screen = <PreviewWaaghet />;
   } else if (proef("keten")) {
     screen = <PreviewWoordketen />;
+  } else if (proef("prik")) {
+    screen = <PreviewWereldprik />;
   } else if (proef("pack")) {
     screen = <PreviewPack />;
   } else if (showRules) {
