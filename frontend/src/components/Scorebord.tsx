@@ -9,6 +9,7 @@
 // De maten zijn OPGEMETEN in het bestand en staan in breuken van de sectie, niet
 // in pixels: de balk schaalt mee met de schermbreedte en de ruitjes moeten dan
 // vanzelf mee schuiven.
+import { useLayoutEffect, useRef, useState } from "react";
 import { font, withAlpha } from "../theme/tokens";
 
 /** Breedte gedeeld door hoogte van de plaat. */
@@ -38,15 +39,52 @@ export const SCORE_RUIT = {
 
 const pct = (f: number) => `${(f * 100).toFixed(3)}%`;
 
-/** Een van de twee ruitjes: een kop in klein kapitaal met het getal eronder. */
+/** Hoeveel van de vensterbreedte het getal mag beslaan. De rest is lucht tegen
+ *  de gouden lijst aan; een cijfer dat de rand raakt leest als een fout. */
+const RUIMTE = 0.86;
+
+/** Een van de twee ruitjes: een kop in klein kapitaal met het getal eronder.
+ *
+ *  Het getal KRIMPT als het niet past. In Waag het verdubbelt de pot elke ronde,
+ *  dus na tien goede antwoorden staat er 5120 en na vijftien 163840; op de vaste
+ *  maat liep dat het venster uit en stond het over de gouden lijst heen.
+ *
+ *  Meten en niet gokken op het aantal cijfers: een 1 is smaller dan een 8, en de
+ *  breedte van het venster hangt aan de schermbreedte. `offsetWidth` is de maat
+ *  ZONDER de schaal (een transform verandert de layout niet), dus de meting kan
+ *  niet met zichzelf op hol slaan. */
 export function Meter({ kop, waarde, kleur = "#FFF3D0", breuk }: {
   kop: string;
   waarde: string;
   kleur?: string;
   breuk: { l: number; b: number };
 }) {
+  const doos = useRef<HTMLDivElement | null>(null);
+  const tekst = useRef<HTMLSpanElement | null>(null);
+  const [schaal, setSchaal] = useState(1);
+
+  useLayoutEffect(() => {
+    const meet = () => {
+      const d = doos.current;
+      const s = tekst.current;
+      if (!d || !s) return;
+      const vol = s.offsetWidth;
+      const ruimte = d.clientWidth * RUIMTE;
+      setSchaal(vol > 0 && vol > ruimte ? ruimte / vol : 1);
+    };
+    meet();
+    const d = doos.current;
+    if (!d) return;
+    // De balk schaalt met de schermbreedte, dus draaien of een ander toestel
+    // verandert de ruimte. Dan hoort de meting opnieuw te gebeuren.
+    const ro = new ResizeObserver(meet);
+    ro.observe(d);
+    return () => ro.disconnect();
+  }, [waarde]);
+
   return (
     <div
+      ref={doos}
       style={{
         position: "absolute",
         left: pct(breuk.l), width: pct(breuk.b),
@@ -58,7 +96,18 @@ export function Meter({ kop, waarde, kleur = "#FFF3D0", breuk }: {
           blijft staan. Die telt mee in de breedte, dus zonder de correctie staat
           het woord er een halve spatie te ver links in. */}
       <span style={{ fontFamily: font.wide, fontSize: 11, letterSpacing: 1.7, marginRight: -1.7, color: withAlpha("#FFE7A8", 0.72) }}>{kop}</span>
-      <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 26, lineHeight: 1, color: kleur, fontVariantNumeric: "tabular-nums", textShadow: "0 0 12px rgba(255,190,60,.5)" }}>{waarde}</span>
+      <span
+        ref={tekst}
+        style={{
+          fontFamily: font.display, fontWeight: 800, fontSize: 26, lineHeight: 1, color: kleur,
+          fontVariantNumeric: "tabular-nums", textShadow: "0 0 12px rgba(255,190,60,.5)",
+          whiteSpace: "nowrap",
+          transform: schaal < 1 ? `scale(${schaal.toFixed(3)})` : undefined,
+          transformOrigin: "center",
+        }}
+      >
+        {waarde}
+      </span>
     </div>
   );
 }
