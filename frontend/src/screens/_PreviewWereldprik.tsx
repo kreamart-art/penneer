@@ -493,10 +493,10 @@ function Naam({ tekst }: { tekst: string }) {
 // van de plaat: de secties schalen met de schermbreedte en dan moet alles wat
 // erop ligt vanzelf meeschuiven.
 const VRAAGVAK = "/ui/wereld/vraagvak.webp?v=1";
-const KAARTVAK = "/ui/wereld/kaartvak.webp?v=1";
+const KAARTVAK = "/ui/wereld/kaartvak.webp?v=2";
 /** Verhoudingen van de twee vellen, uit hun eigen uitsnede. */
 const VRAAG_V = 3030 / 1157;
-const KAARTVAK_V = 3350 / 1435;
+const KAARTVAK_V = 3350 / 1699;
 
 /** Waar de tekst in het vraagvak staat, gemeten op 3030x1157.
  *
@@ -514,10 +514,49 @@ const VRAAG_VLAK = {
   klok: { l: 210 / 3030, b: 2610 / 3030, t: 845 / 1157, h: 220 / 1157 },
 } as const;
 
-/** En het venster van het kaartvak, gemeten op 3350x1435: de gouden lijst ligt
- *  op x 75 en 3335 en op y 100 en 1390, dus dit is wat er binnen valt met een
+/** Het venster van het kaartvak, gemeten op 3350x1699: de gouden lijst ligt op
+ *  x 75 en 3335 en op y 90 en 1635, dus dit is wat er binnen valt met een
  *  streepje lucht ertegenaan. */
-const KAARTVAK_VLAK = { l: 150 / 3350, b: 3120 / 3350, t: 175 / 1435, h: 1170 / 1435 };
+const KAARTVAK_VLAK = { l: 120 / 3350, b: 3110 / 3350, t: 115 / 1699, h: 1495 / 1699 };
+
+/** Hoeveel van dat venster de KAART inneemt.
+ *
+ *  Het venster is 2,08 breed op hoog en de kaart 2,535, dus op volle breedte
+ *  blijft er onderaan een band over. Die band is geen verlies maar precies wat
+ *  de mockup vraagt: daar staat de uitleg in de onderrand van het kaartvak. Op
+ *  de vorige, lagere plaat kon dat niet, en toen stond die regel eronder.
+ *
+ *  De kaart gaat op volle BREEDTE en niet op volle hoogte: elke punt breedte is
+ *  honderd kilometer nauwkeurigheid, en die band eronder is toch nodig. */
+const KAART_DEEL = 1227 / 1495;
+
+/** De puntjes die de andere twee secties langs hun randen hebben, in code
+ *  nagemaakt zodat ze meeschalen en op elke plaat te hergebruiken zijn.
+ *
+ *  Opgemeten op het vraagvak (3030 breed): vierkant raster met een stap van
+ *  28,3 (0,934% van de plaatbreedte), een punt met een kern van ongeveer twee
+ *  pixels, kleur (192, 148, 107), fel in de eerste twee kolommen en na acht à
+ *  tien kolommen weg. Die uitdoving is hier het masker; het raster zelf is één
+ *  radiale verloopje dat zich herhaalt. */
+function Puntjes({ kant, breedte }: { kant: "links" | "rechts"; breedte: string }) {
+  const stap = `calc(${breedte} * 0.00934)`;
+  const vervaag = `linear-gradient(to ${kant === "links" ? "right" : "left"}, #000 0%, rgba(0,0,0,.55) 40%, transparent 100%)`;
+  return (
+    <span
+      aria-hidden
+      style={{
+        position: "absolute", top: 0, bottom: 0,
+        [kant === "links" ? "left" : "right"]: 0,
+        width: `calc(${breedte} * 0.093)`,
+        backgroundImage: "radial-gradient(circle, rgba(192,148,107,.9) 0 0.7px, rgba(192,148,107,0) 1.2px)",
+        backgroundSize: `${stap} ${stap}`,
+        WebkitMaskImage: vervaag,
+        maskImage: vervaag,
+        pointerEvents: "none",
+      } as React.CSSProperties}
+    />
+  );
+}
 
 const pct = (f: number) => `${(f * 100).toFixed(3)}%`;
 
@@ -785,37 +824,47 @@ export function Wereldprik({ seed, onKlaar, onOpnieuw }: {
       </div>
 
       {/* Het kaartvak. De kaart ligt IN de plaat: het donkere binnenwerk is de
-          oceaan en de gouden lijst de rand. */}
+          oceaan, de gouden lijst de rand, en in de band onderin staat wat er te
+          doen valt. */}
       <div style={{ width: SECTIE_BREED, position: "relative", aspectRatio: `${KAARTVAK_V}`, flexShrink: 0 }}>
         <ArtSchaduw art={KAARTVAK} />
         <img src={KAARTVAK} alt="" aria-hidden draggable={false} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} />
-        <Vlak vak={KAARTVAK_VLAK}>
-          <Kaart
-            wijs={wijs}
-            prik={prik}
-            doel={fase === "spel" ? null : doel}
-            dichtst={naaste}
-            actief={fase === "spel"}
-            onWijs={setWijs}
-            onPrik={doePrik}
-          />
-        </Vlak>
-      </div>
-
-      {/* De naam van het doel, of de bediening. ONDER de plaat en niet erop: in
-          de mockup ligt dat zinnetje in de linkeronderhoek van de kaart, en daar
-          ligt Patagonie. Een doel dat achter je eigen uitleg schuilgaat is geen
-          doel meer. */}
-      <div style={{ height: 18, display: "grid", placeItems: "center", marginTop: -4 }}>
-        {fase !== "spel" ? (
-          <span style={{ fontFamily: font.ui, fontSize: 12.5, fontWeight: 700, color: "#FFE7A8" }}>
-            {naam}
-          </span>
-        ) : (
-          <span style={{ fontFamily: font.ui, fontSize: 11.5, color: withAlpha("#FFE7A8", 0.55) }}>
-            {t("prikHint", { n: Math.round(tolerantie) })}
-          </span>
-        )}
+        {/* GEEN overflow op dit venster: de loep hangt boven je vinger en steekt
+            dus buiten de kaart uit. */}
+        <div
+          style={{
+            position: "absolute",
+            left: pct(KAARTVAK_VLAK.l), width: pct(KAARTVAK_VLAK.b),
+            top: pct(KAARTVAK_VLAK.t), height: pct(KAARTVAK_VLAK.h),
+          }}
+        >
+          <Puntjes kant="links" breedte={SECTIE_BREED} />
+          <Puntjes kant="rechts" breedte={SECTIE_BREED} />
+          <div style={{ position: "absolute", left: 0, right: 0, top: 0, height: pct(KAART_DEEL), display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Kaart
+              wijs={wijs}
+              prik={prik}
+              doel={fase === "spel" ? null : doel}
+              dichtst={naaste}
+              actief={fase === "spel"}
+              onWijs={setWijs}
+              onPrik={doePrik}
+            />
+          </div>
+          {/* De band onder de kaart: tijdens het spel de bediening, daarna de
+              naam van de plek die je zocht. */}
+          <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: pct(1 - KAART_DEEL), display: "flex", alignItems: "center", justifyContent: "center", paddingInline: "4%" }}>
+            {fase !== "spel" ? (
+              <span style={{ fontFamily: font.ui, fontSize: 12.5, fontWeight: 700, color: "#FFE7A8", whiteSpace: "nowrap" }}>
+                {naam}
+              </span>
+            ) : (
+              <span style={{ fontFamily: font.ui, fontSize: 11, color: withAlpha("#FFE7A8", 0.5), whiteSpace: "nowrap" }}>
+                {t("prikHint", { n: Math.round(tolerantie) })}
+              </span>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* De stopknop, zo breed als in de mockup maar in het ROOD van de app.
