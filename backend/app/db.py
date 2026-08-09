@@ -3328,6 +3328,12 @@ class Database:
         # rommel in de tabel.
         self._exec("UPDATE meldingen SET gelezen=1 WHERE user_id=? AND gelezen=0", (user_id,))
 
+    def meldingen_wissen(self, user_id: str) -> None:
+        """Alles weg voor deze speler, ook de verborgen soorten: die staan niet
+        in de lijst maar zijn wel rijen in de tabel, en "alles wissen" hoort
+        alles te wissen."""
+        self._exec("DELETE FROM meldingen WHERE user_id=?", (user_id,))
+
     def melding_weg(self, user_id: str, melding_id: int) -> None:
         """Gooi een melding weg. Met het user_id erbij in de WHERE, want een id
         uit de client is een getal dat iemand kan verzinnen."""

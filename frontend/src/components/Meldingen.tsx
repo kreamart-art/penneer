@@ -128,6 +128,40 @@ export function MeldingBanner({
  *  de tik ging meteen ergens heen, dus je kon nooit lezen wat er stond: je werd
  *  weggestuurd voor je het gelezen had. Nu klapt hij open, staat de hele tekst
  *  er, en pas dan kun je met de knop eronder naar waar hij over gaat. */
+/** Een kleine knop in de kop van de meldingenlijst: "Alles gelezen" en "Alles
+ *  wissen". Klein en rustig, want ze staan naast een titel en niet onder een
+ *  scherm; de rode variant vraagt eerst om bevestiging en licht dan op. */
+export function MeldKnop({ label, onClick, rood = false, actief = false }: {
+  label: string;
+  onClick: () => void;
+  rood?: boolean;
+  actief?: boolean;
+}) {
+  const kleur = rood ? "#FF8E86" : "#FFE7A8";
+  return (
+    <button
+      onClick={onClick}
+      className="pressable"
+      style={{
+        flexShrink: 0,
+        background: actief ? withAlpha(colors.red, 0.22) : "rgba(255,255,255,.05)",
+        border: `1px solid ${actief ? withAlpha(colors.red, 0.7) : withAlpha(kleur, 0.28)}`,
+        borderRadius: 999,
+        padding: "4px 10px",
+        cursor: "pointer",
+        fontFamily: font.ui,
+        fontSize: 11,
+        fontWeight: 600,
+        letterSpacing: 0.2,
+        color: kleur,
+        whiteSpace: "nowrap",
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
 export function MeldingRij({
   melding, nieuw, onOpen, onWeg,
 }: {

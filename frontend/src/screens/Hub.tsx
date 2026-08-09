@@ -15,7 +15,7 @@ import { TelHex } from "../components/TelHex";
 import { SchermTip } from "../components/SchermTip";
 import { DIVISIE_ACCENT, GOUD, KADER_LIJN_GOUD, KADER_LIJN_LOOP, KADER_LIJN_PAARS, KADER_LIJN_ROOD, KADER_LIJN_XP, NeonKader, Paneel, PlekWapen, Prestatie, RingFoto, RingPortret, SCHILD_KLEUREN, SectieKop, SierKop, StatKaart, divisieKleur, type SchildKleur } from "../components/ProfileHero";
 import { DivisieLadder, Schild, divisieNaam } from "../components/Divisie";
-import { MeldingRij } from "../components/Meldingen";
+import { MeldKnop, MeldingRij } from "../components/Meldingen";
 import { WALLPAPERS, wallpaperKlasse, wallpaperStijl, wallpaperVan, wallpaperZet, type WallpaperId } from "../components/Wallpaper";
 import { CANVAS } from "../lib/canvaskleur";
 import { ensurePushSubscription } from "../pwa/push";
@@ -3707,6 +3707,11 @@ function InboxTab({ game, onGaNaar }: { game: GameApi; onGaNaar: (naar: string) 
   // openstaat: loop je naar de inbox en kom je terug, dan heb je ze gezien en
   // hoort de stip weg te zijn.
   const [warenNieuw, setWarenNieuw] = useState<Set<number>>(new Set());
+  // Eén tik vraagt, de tweede doet het. Een venster met "weet je het zeker" is
+  // hier te zwaar; een knop die van kleur verandert en om bevestiging vraagt is
+  // genoeg voor iets wat je zelf net hebt aangetikt.
+  const [wisVraag, setWisVraag] = useState(false);
+  useEffect(() => { if (vak !== "meld") setWisVraag(false); }, [vak]);
   useEffect(() => {
     if (vak !== "meld") { setWarenNieuw((oud) => (oud.size ? new Set() : oud)); return; }
     if (!account) return;
@@ -3757,10 +3762,32 @@ function InboxTab({ game, onGaNaar }: { game: GameApi; onGaNaar: (naar: string) 
 
     {vak === "meld" && (
       <Card style={{ display: "flex", flexDirection: "column", gap: 3, padding: "13px 7px 14px" }}>
-        {/* Geen "markeer als gelezen" meer: dat gebeurt hierboven vanzelf zodra
-            je op dit vak staat. Een knop om iets te bevestigen wat je zojuist
-            gedaan hebt (kijken) is werk dat de app zelf hoort te doen. */}
-        <SectieKop style={{ paddingInline: 6 }} label={t("meldingenTitle")} />
+        {/* Kijken is nog steeds lezen (zie hierboven), maar er staan twee
+            knoppen bij. "Alles gelezen" haalt ook de gouden stipjes weg van wat
+            er tijdens DIT bezoek nieuw was, want die blijven anders staan tot je
+            wegloopt. "Alles wissen" gooit de lijst leeg; die vraagt eerst,
+            omdat je hem niet terugkrijgt. */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, paddingInline: 6 }}>
+          <SectieKop style={{ flex: 1 }} label={t("meldingenTitle")} />
+          {meldingen.length > 0 && (
+            <>
+              <MeldKnop
+                label={t("meldAllesGelezen")}
+                onClick={() => { sound.uiTap(); game.meldingenLezen(); setWarenNieuw(new Set()); }}
+              />
+              <MeldKnop
+                label={wisVraag ? t("meldAllesZeker") : t("meldAllesWeg")}
+                rood
+                onClick={() => {
+                  sound.uiTap();
+                  if (wisVraag) { game.meldingenWissen(); setWisVraag(false); setWarenNieuw(new Set()); }
+                  else setWisVraag(true);
+                }}
+                actief={wisVraag}
+              />
+            </>
+          )}
+        </div>
         {meldingen.length === 0 ? (
           <p style={{ margin: "8px 0 0", paddingInline: 8, fontFamily: font.ui, fontSize: 13, color: colors.faint }}>{t("meldingenLeeg")}</p>
         ) : (

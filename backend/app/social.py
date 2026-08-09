@@ -151,6 +151,15 @@ class AccountManager:
         self.db.meldingen_gelezen(uid)
         await self.meldingen_lijst(ws, {})
 
+    async def meldingen_wis(self, ws: Any, data: dict) -> None:
+        """Alles weg. De lijst gaat daarna gewoon terug, dus de teller en het
+        scherm komen uit dezelfde bron als altijd."""
+        uid = self.user_of(ws)
+        if not uid:
+            return
+        self.db.meldingen_wissen(uid)
+        await self.meldingen_lijst(ws, {})
+
     async def melding_weg(self, ws: Any, data: dict) -> None:
         uid = self.user_of(ws)
         if not uid:
@@ -462,6 +471,7 @@ class AccountManager:
             "meldingen": self.meldingen_lijst,
             "meldingen_lees": self.meldingen_lees,
             "melding_weg": self.melding_weg,
+            "meldingen_wis": self.meldingen_wis,
             "divisie_gezien": self.divisie_gezien,
             "set_avatar_frame": self.set_avatar_frame,
             "claim_buzzer_reward": self.claim_buzzer_reward,

@@ -428,10 +428,20 @@ export default function App() {
     let alWeg = false;
     try { alWeg = sessionStorage.getItem("penneer.refAdKlein") === "1"; } catch { /* geen opslag */ }
     if (alWeg) { setUitslagKlaar(true); return; }
-    const na = () => window.setTimeout(() => setUitslagKlaar(true), 2000);
+    const na = (ms: number) => window.setTimeout(() => setUitslagKlaar(true), ms);
     let timer: number | undefined;
-    const luister = () => { timer = na(); };
+    const luister = () => { window.clearTimeout(timer); timer = na(2000); };
     window.addEventListener(AD_WEG, luister);
+    // HET VANGNET, en zonder dit bleef er een badge branden die nooit meer
+    // uitging. Deze vlag wacht op de werf-advertentie, maar die staat alleen op
+    // de vriendenpagina: open je de app en ga je nergens heen, dan komt AD_WEG
+    // nooit, blijft de vlag op false, en dan verschijnt de divisie-uitslag
+    // nooit. Die uitslag is precies wat het stipje op de ranglijst-tab wist, dus
+    // dat stipje bleef staan tot je toevallig langs je vrienden liep.
+    //
+    // Drie tellen is ruim: staat de advertentie er wel, dan is hij binnen die
+    // tijd getekend en neemt zijn eigen luisteraar het over.
+    timer = na(3000);
     return () => { window.removeEventListener(AD_WEG, luister); window.clearTimeout(timer); };
   }, []);
 

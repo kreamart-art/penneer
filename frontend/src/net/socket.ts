@@ -992,6 +992,7 @@ export interface GameApi {
   meldingenLaden: () => void;
   meldingenLezen: () => void;
   meldingWeg: (id: number) => void;
+  meldingenWissen: () => void;
   gekochtGezien: () => void;
   setAvatarFrame: (frame: string | null) => void;
   claimBuzzerReward: (skin: string, equip: boolean) => void;
@@ -1260,6 +1261,7 @@ export function useGame(): GameApi {
     meldingenLaden: () => send({ type: "meldingen" }),
     meldingenLezen: () => send({ type: "meldingen_lees" }),
     meldingWeg: (id) => send({ type: "melding_weg", id }),
+    meldingenWissen: () => send({ type: "meldingen_wis" }),
     gekochtGezien: () => dispatch({ type: "gekochtGezien" }),
     setAvatarFrame: (frame) => send({ type: "set_avatar_frame", frame }),
     claimBuzzerReward: (skin, equip) => send({ type: "claim_buzzer_reward", skin, equip }),
