@@ -7,6 +7,20 @@ import { geworvenDoor } from "./referral";
 
 // ---- types mirroring the server's public() shapes --------------------------
 
+/** Een openstaande melding, zoals de admin hem ziet. */
+export interface Rapport {
+  id: number;
+  soort: string;
+  reden: string;
+  tekst: string | null;
+  created_at: number;
+  status: string;
+  melder: string;
+  doel: string;
+  melder_naam: string;
+  doel_naam: string;
+}
+
 export interface AdminStats {
   accounts: number;
   accounts_nieuw_7d: number;
@@ -397,6 +411,7 @@ export interface ClientState {
   // Admin (owner) state.
   isAdmin: boolean;
   adminStats: AdminStats | null; // dashboard-cijfers, alleen na admin_stats-verzoek
+  rapporten: Rapport[];          // openstaande meldingen, alleen voor een admin
   adminAi: AdminAi | null;
   recoveryCodes: RecoveryCode[];
   aiCodes: AiCodeInfo | null; // AI-referee unlock-code stats + freshly generated codes
@@ -501,6 +516,8 @@ type ServerMessage =
   | { type: "game_over"; scores: Record<string, number>; winner_id: string | null }
   | { type: "admin_ok"; is_admin: boolean; ai: AdminAi; recovery_codes: RecoveryCode[]; ai_codes: AiCodeInfo; avatar_codes?: AiCodeInfo; buzzer_codes?: AiCodeInfo }
   | { type: "admin_stats"; stats: AdminStats }
+  | { type: "rapporten"; items: Rapport[] }
+  | { type: "rapport_ok" }
   | { type: "admin_categories"; categories: AdminCategory[]; note?: string }
   | { type: "shop_result"; ok: boolean; reason: string }
   | { type: "coins_result"; ok: boolean; reason: string; item?: string }
@@ -598,6 +615,7 @@ const initialState: ClientState = {
   roundEndedToken: 0,
   isAdmin: false,
   adminStats: null,
+  rapporten: [],
   adminAi: null,
   adminCategories: null,
   recoveryCodes: [],
@@ -736,6 +754,10 @@ function reducer(state: ClientState, action: Action): ClientState {
     case "results_updated":
     case "game_over":
       return state; // room_state carries the authoritative snapshot
+    case "rapporten":
+      return { ...state, rapporten: msg.items };
+    case "rapport_ok":
+      return state;
     case "admin_stats":
       return { ...state, adminStats: msg.stats };
     case "admin_ok":
@@ -993,6 +1015,11 @@ export interface GameApi {
   meldingenLezen: () => void;
   meldingWeg: (id: number) => void;
   meldingenWissen: () => void;
+  /** Iemand melden. `tekst` is wat er gemeld wordt (een bericht bijvoorbeeld),
+   *  zodat de melding leesbaar blijft als de ander het weghaalt. */
+  rapporteer: (doel: string, reden: string, soort?: string, tekst?: string) => void;
+  adminRapporten: () => void;
+  adminRapportSluit: (id: number) => void;
   gekochtGezien: () => void;
   setAvatarFrame: (frame: string | null) => void;
   claimBuzzerReward: (skin: string, equip: boolean) => void;
@@ -1262,6 +1289,9 @@ export function useGame(): GameApi {
     meldingenLezen: () => send({ type: "meldingen_lees" }),
     meldingWeg: (id) => send({ type: "melding_weg", id }),
     meldingenWissen: () => send({ type: "meldingen_wis" }),
+    rapporteer: (doel, reden, soort = "speler", tekst) => send({ type: "rapport", doel, reden, soort, tekst }),
+    adminRapporten: () => send({ type: "admin_rapporten" }),
+    adminRapportSluit: (id) => send({ type: "admin_rapport_sluit", id }),
     gekochtGezien: () => dispatch({ type: "gekochtGezien" }),
     setAvatarFrame: (frame) => send({ type: "set_avatar_frame", frame }),
     claimBuzzerReward: (skin, equip) => send({ type: "claim_buzzer_reward", skin, equip }),

@@ -151,6 +151,27 @@ class AccountManager:
         self.db.meldingen_gelezen(uid)
         await self.meldingen_lijst(ws, {})
 
+    async def rapport(self, ws: Any, data: dict) -> None:
+        """Iemand melden. Bewust WEINIG velden: wie, waarom, en wat er stond.
+        De rest (wanneer, van wie) weet de server zelf, en hoe minder de client
+        mag meesturen, hoe minder er te verzinnen valt."""
+        uid = self.user_of(ws)
+        if not uid:
+            return
+        doel = str(data.get("doel") or "")
+        reden = str(data.get("reden") or "")[:40]
+        soort = str(data.get("soort") or "speler")[:20]
+        tekst = data.get("tekst")
+        if not doel or not reden or doel == uid:
+            return
+        if not self.db.get_user(doel):
+            return
+        self.db.rapport_add(uid, doel, soort, reden, tekst if isinstance(tekst, str) else None, time.time())
+        # Melden en blokkeren zijn twee dingen, maar wie meldt wil die persoon
+        # nu meestal niet meer horen. Dat blijft aan de speler; hier bevestigen
+        # we alleen dat het binnen is.
+        await self._send(ws, {"type": "rapport_ok"})
+
     async def meldingen_wis(self, ws: Any, data: dict) -> None:
         """Alles weg. De lijst gaat daarna gewoon terug, dus de teller en het
         scherm komen uit dezelfde bron als altijd."""
@@ -472,6 +493,7 @@ class AccountManager:
             "meldingen_lees": self.meldingen_lees,
             "melding_weg": self.melding_weg,
             "meldingen_wis": self.meldingen_wis,
+            "rapport": self.rapport,
             "divisie_gezien": self.divisie_gezien,
             "set_avatar_frame": self.set_avatar_frame,
             "claim_buzzer_reward": self.claim_buzzer_reward,

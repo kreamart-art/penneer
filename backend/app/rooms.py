@@ -204,6 +204,27 @@ class RoomManager:
         except Exception:
             pass
 
+    async def admin_rapporten(self, ws: Any, player_id: Optional[str], payload: dict) -> None:
+        """De meldingen die nog open staan. Alleen voor een ingelogde admin,
+        want hier staan namen van spelers in en wat ze naar elkaar sturen."""
+        if not self._is_admin_conn(ws):
+            return
+        try:
+            await ws.send_json({"type": "rapporten", "items": get_db().rapporten_open()})
+        except Exception:
+            pass
+
+    async def admin_rapport_sluit(self, ws: Any, player_id: Optional[str], payload: dict) -> None:
+        """Afgehandeld. De regel blijft staan (dat is de geschiedenis van wat er
+        gemeld is), hij verdwijnt alleen uit de wachtrij."""
+        if not self._is_admin_conn(ws):
+            return
+        try:
+            get_db().rapport_sluit(int(payload.get("id") or 0))
+        except (TypeError, ValueError):
+            return
+        await self.admin_rapporten(ws, player_id, {})
+
     async def admin_gen_ai_codes(self, ws: Any, player_id: Optional[str], payload: dict) -> None:
         """Owner mints one-time shop codes that unlock the AI for ONE account
         each (never admin). Handed out or sold manually; PayPal mints its own."""

@@ -57,6 +57,12 @@ async def ws_endpoint(ws: WebSocket) -> None:
             if mtype == "admin_set_ai":
                 await manager.admin_set_ai(ws, player_id, data)
                 continue
+            if mtype == "admin_rapporten":
+                await manager.admin_rapporten(ws, player_id, data)
+                continue
+            if mtype == "admin_rapport_sluit":
+                await manager.admin_rapport_sluit(ws, player_id, data)
+                continue
             if mtype == "admin_stats":
                 await manager.admin_stats(ws, player_id, data)
                 continue

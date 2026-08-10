@@ -460,6 +460,24 @@ CREATE TABLE IF NOT EXISTS meldingen (
     created_at REAL NOT NULL,
     gelezen INTEGER NOT NULL DEFAULT 0
 );
+-- ---- Rapporten --------------------------------------------------------------
+-- Wat spelers over elkaar melden. Blokkeren regelt het voor JOU; melden is hoe
+-- het bij ons terechtkomt. De MELDER staat erbij (anders kun je misbruik van
+-- het meldknopje niet zien) en de tekst van het gemelde bericht wordt
+-- OVERGESCHREVEN in plaats van gerefereerd: verwijdert de gemelde zijn bericht,
+-- dan is de melding anders leeg en niet meer te beoordelen.
+CREATE TABLE IF NOT EXISTS rapporten (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    melder TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    doel TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    soort TEXT NOT NULL,          -- speler | bericht | foto | naam
+    reden TEXT NOT NULL,          -- korte code, zie de client
+    tekst TEXT,                   -- kopie van wat er gemeld is
+    created_at REAL NOT NULL,
+    status TEXT NOT NULL DEFAULT 'open'
+);
+CREATE INDEX IF NOT EXISTS idx_rapporten_status ON rapporten(status, created_at DESC);
+
 -- ---- Ontdekken -------------------------------------------------------------
 -- Elk woord uit de curated lijsten wordt een verzamelkaart. `cards` is de
 -- catalogus en is voor iedereen gelijk; `user_cards` is wat een speler ervan
@@ -3277,6 +3295,53 @@ class Database:
     # De catalogus van soorten staat in app/meldingen.py. Hier alleen opslag.
 
     MELDING_MAX = 40   # ouder dan dit valt vanzelf weg; niemand scrolt zo ver
+
+    # ---- rapporten --------------------------------------------------------
+    def rapport_add(self, melder: str, doel: str, soort: str, reden: str,
+                    tekst: Optional[str], nu: float) -> Optional[int]:
+        """Een melding vastleggen. Geeft None als er al een OPEN melding van
+        deze speler over deze speler ligt: twintig keer op dezelfde knop tikken
+        hoort geen twintig regels in de wachtrij te zetten."""
+        if melder == doel:
+            return None
+        with self._lock:
+            bestaat = self._q(
+                "SELECT id FROM rapporten WHERE melder=? AND doel=? AND status='open'",
+                (melder, doel),
+            )
+            if bestaat:
+                return int(bestaat[0]["id"])
+            cur = self._conn.execute(
+                "INSERT INTO rapporten (melder, doel, soort, reden, tekst, created_at)"
+                " VALUES (?,?,?,?,?,?)",
+                (melder, doel, soort, reden, (tekst or "")[:500] or None, nu),
+            )
+            self._conn.commit()
+            return int(cur.lastrowid)
+
+    def rapporten_open(self, limit: int = 50) -> list[dict]:
+        """De wachtrij voor de admin, nieuwste eerst, met de namen erbij: een
+        lijst met alleen id's is geen wachtrij maar huiswerk."""
+        with self._lock:
+            rows = self._q(
+                "SELECT r.id, r.soort, r.reden, r.tekst, r.created_at, r.status,"
+                "       r.melder, r.doel, m.name AS melder_naam, d.name AS doel_naam"
+                "  FROM rapporten r"
+                "  JOIN users m ON m.id = r.melder"
+                "  JOIN users d ON d.id = r.doel"
+                " WHERE r.status='open'"
+                " ORDER BY r.created_at DESC LIMIT ?",
+                (limit,),
+            )
+        return [dict(r) for r in rows]
+
+    def rapport_sluit(self, rapport_id: int) -> None:
+        self._exec("UPDATE rapporten SET status='afgehandeld' WHERE id=?", (int(rapport_id),))
+
+    def rapporten_tellen(self) -> int:
+        with self._lock:
+            rows = self._q("SELECT COUNT(*) AS n FROM rapporten WHERE status='open'")
+        return int(rows[0]["n"]) if rows else 0
 
     def melding_add(self, user_id: str, m: dict, data: Optional[str] = None) -> dict:
         nu = time.time()

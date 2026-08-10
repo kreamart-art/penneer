@@ -21,7 +21,8 @@ from fastapi.staticfiles import StaticFiles
 
 from . import ai_referee, arena, daily, dagprijzen, discover, duel, game, missies_lang, missions, paypal, push
 from . import topo
-from .db import AVATAR_MAX_BYTES, get_db
+from . import backup
+from .db import AVATAR_MAX_BYTES, DB_PATH, get_db
 from .social import accounts, _level_of
 from .ws import manager, router as ws_router
 
@@ -130,6 +131,29 @@ async def _seed_kaarten() -> None:
             print(f"[ontdekken] catalogus bijgewerkt, {n} rijen")
     except Exception as e:  # noqa: BLE001
         print(f"[ontdekken] seeden overgeslagen: {e}")
+
+
+@app.on_event("startup")
+async def _start_backups() -> None:
+    """Elke nacht een kopie van de database. Zie app/backup.py voor waarom dit
+    met VACUUM INTO gaat en niet met een simpele kopie.
+
+    Zes uur tussen de rondes en een naam op datum: de kopie van vandaag wordt
+    dan hooguit overschreven door een verse van vandaag, en na een herstart
+    hoeft niemand te wachten tot middernacht voor er weer iets ligt.
+    """
+    async def lus() -> None:
+        await asyncio.sleep(90)      # eerst de app laten opstarten
+        while True:
+            try:
+                pad = backup.maak(DB_PATH)
+                staat = backup.laatste(DB_PATH)
+                print(f"[backup] {pad} ({staat['bytes'] // 1024} kB, {staat['aantal']} bewaard)", flush=True)
+            except Exception as exc:  # een mislukte kopie mag de app nooit raken
+                print(f"[backup] mislukt: {exc}", flush=True)
+            await asyncio.sleep(6 * 3600)
+
+    asyncio.create_task(lus())
 
 
 @app.on_event("startup")

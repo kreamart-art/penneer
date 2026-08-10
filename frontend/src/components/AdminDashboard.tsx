@@ -121,6 +121,60 @@ export function AdminDashboard({ game }: { game: GameApi }) {
         <Cijfer label="munten in omloop" waarde={stats.economie.coins.toLocaleString("nl-NL")} />
         <Cijfer label="cash in omloop" waarde={stats.economie.cash.toLocaleString("nl-NL")} />
       </div>
+
+      <Rapporten game={game} />
+    </div>
+  );
+}
+
+/** De wachtrij met meldingen van spelers over spelers.
+ *
+ *  Dit is de enige plek waar je ziet wat er gemeld wordt, dus hij staat in het
+ *  dashboard en niet ergens achter een extra knop. Afhandelen haalt de regel uit
+ *  de wachtrij maar niet uit de tabel: wie er drie keer in staat is een patroon,
+ *  en dat wil je later terug kunnen zien. */
+function Rapporten({ game }: { game: GameApi }) {
+  const items = game.state.rapporten;
+  useEffect(() => { game.adminRapporten(); }, []);
+  const REDEN: Record<string, string> = {
+    foto: "ongepaste foto",
+    beledigend: "beledigend of bedreigend",
+    spam: "spam of oplichting",
+    anders: "iets anders",
+  };
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <Kop>{`Meldingen${items.length ? ` (${items.length})` : ""}`}</Kop>
+      {items.length === 0 ? (
+        <span style={{ fontFamily: font.ui, fontSize: 11.5, color: colors.faint }}>Geen openstaande meldingen.</span>
+      ) : (
+        items.map((r) => (
+          <div
+            key={r.id}
+            style={{ display: "flex", alignItems: "flex-start", gap: 8, background: "rgba(255,255,255,.045)", border: "1px solid rgba(255,255,255,.09)", borderRadius: 10, padding: "8px 10px" }}
+          >
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.ink }}>
+                <b>{r.doel_naam}</b> gemeld door {r.melder_naam}
+              </div>
+              <div style={{ fontFamily: font.ui, fontSize: 11, color: colors.sub, marginTop: 1 }}>
+                {REDEN[r.reden] ?? r.reden} · {new Date(r.created_at * 1000).toLocaleString("nl-NL", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+              </div>
+              {r.tekst && (
+                <div style={{ fontFamily: font.ui, fontSize: 11.5, color: colors.faint, marginTop: 4, fontStyle: "italic", overflowWrap: "anywhere" }}>
+                  {r.tekst}
+                </div>
+              )}
+            </div>
+            <button
+              onClick={() => game.adminRapportSluit(r.id)}
+              style={{ flexShrink: 0, background: withAlpha(GOUD[3], 0.16), border: `1px solid ${withAlpha(GOUD[3], 0.4)}`, borderRadius: 999, padding: "4px 10px", cursor: "pointer", fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: GOUD[3] }}
+            >
+              Afgehandeld
+            </button>
+          </div>
+        ))
+      )}
     </div>
   );
 }

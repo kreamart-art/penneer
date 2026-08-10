@@ -6,7 +6,7 @@ import { InstelRij } from "../components/InstelRij";
 import { CloseIcon } from "../components/CloseIcon";
 import { KnopPlaat } from "../components/KnopPlaat";
 import { ReferralAd } from "../components/ReferralAd";
-import { ArrowLeft, BookOpen, CalendarDays, Camera, Check, ChevronDown, Copy, Crown, Flame, Gem, Lock, LogOut, Medal, MessageCircle, MoreVertical, Pencil, Percent, Plus, Rocket, Search, Settings as SettingsIcon, Share2, Shield, ShoppingCart, Smile, Sparkles, Star, Swords, Target, Trash2, Trophy, UserPlus, Users, X, Zap, ZoomIn, ZoomOut } from "lucide-react";
+import { ArrowLeft, BookOpen, CalendarDays, Camera, Check, ChevronDown, Copy, Crown, Flag, Flame, Gem, Lock, LogOut, Medal, MessageCircle, MoreVertical, Pencil, Percent, Plus, Rocket, Search, Settings as SettingsIcon, Share2, Shield, ShoppingCart, Smile, Sparkles, Star, Swords, Target, Trash2, Trophy, UserPlus, Users, X, Zap, ZoomIn, ZoomOut } from "lucide-react";
 import { Avatar, SCHILD_RAND } from "../components/Avatar";
 import { Plek } from "../components/ProfileShowcase";
 import { HexArt } from "../components/HexArt";
@@ -3318,6 +3318,10 @@ function FriendsTab({ game, onChallenge, onGaNaar }: { game: GameApi; onChalleng
   const [query, setQuery] = useState("");
   const [sent, setSent] = useState<Record<string, boolean>>({});
   const [menuFor, setMenuFor] = useState<string | null>(null);
+  // Wie je aan het melden bent. Een klein venster met vier redenen: zonder
+  // reden is een melding voor de admin niet te beoordelen, en een vrij tekstvak
+  // levert vooral scheldwoorden op.
+  const [meldVoor, setMeldVoor] = useState<{ id: string; naam: string } | null>(null);
   const [viewing, setViewing] = useState<string | null>(null);
 
   useEffect(() => {
@@ -3464,8 +3468,13 @@ function FriendsTab({ game, onChallenge, onGaNaar }: { game: GameApi; onChalleng
                   </div>
                 ), true)}
                 {menuFor === f.id && (
-                  <div style={{ display: "flex", gap: 8, padding: "0 0 8px", justifyContent: "flex-end" }}>
+                  <div style={{ display: "flex", gap: 8, padding: "0 0 8px", justifyContent: "flex-end", flexWrap: "wrap" }}>
                     {smallBtn(<><Trash2 size={13} /> {t("removeFriend")}</>, () => { game.friendRemove(f.id); setMenuFor(null); })}
+                    {/* MELDEN staat naast blokkeren en is niet hetzelfde:
+                        blokkeren regelt het voor jou, melden laat het ons zien.
+                        Vandaar allebei, en melden zonder dat je hoeft te
+                        blokkeren. */}
+                    {smallBtn(<><Flag size={13} /> {t("reportUser")}</>, () => { setMeldVoor({ id: f.id, naam: f.name }); setMenuFor(null); }, "red")}
                     {smallBtn(t("blockUser"), () => { game.friendBlock(f.id); setMenuFor(null); }, "red")}
                   </div>
                 )}
@@ -3501,7 +3510,73 @@ function FriendsTab({ game, onChallenge, onGaNaar }: { game: GameApi; onChalleng
 
 
       {viewing && <ProfileViewModal game={game} userId={viewing} onClose={() => setViewing(null)} />}
+      {meldVoor && (
+        <MeldVenster
+          naam={meldVoor.naam}
+          onKies={(reden) => game.rapporteer(meldVoor.id, reden)}
+          onSluit={() => setMeldVoor(null)}
+        />
+      )}
     </>
+  );
+}
+
+/** Melden, in vier redenen. Geen vrij tekstvak: dat levert vooral scheldwoorden
+ *  op en maakt de wachtrij onleesbaar, terwijl een reden precies genoeg is om
+ *  te weten waar je moet kijken. */
+function MeldVenster({ naam, onKies, onSluit }: {
+  naam: string;
+  onKies: (reden: string) => void;
+  onSluit: () => void;
+}) {
+  const { t } = useT();
+  const [klaar, setKlaar] = useState(false);
+  const redenen: { code: string; label: string }[] = [
+    { code: "foto", label: t("reportFoto") },
+    { code: "beledigend", label: t("reportBeledigend") },
+    { code: "spam", label: t("reportSpam") },
+    { code: "anders", label: t("reportAnders") },
+  ];
+  return (
+    <div
+      onClick={onSluit}
+      style={{ position: "fixed", inset: 0, zIndex: 96, background: "rgba(6,3,18,.82)", backdropFilter: "blur(5px)", WebkitBackdropFilter: "blur(5px)", display: "grid", placeItems: "center", padding: 22 }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="pop-in"
+        style={{ width: "min(340px, 92vw)", display: "flex", flexDirection: "column", gap: 10, background: "rgba(14,8,28,.96)", border: `1px solid ${withAlpha(colors.gold, 0.28)}`, borderRadius: 16, padding: 18 }}
+      >
+        {klaar ? (
+          <>
+            <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 16, color: colors.ink }}>{t("reportDankTitel")}</span>
+            <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13, lineHeight: 1.45, color: colors.sub }}>{t("reportDankBody")}</p>
+            <button
+              onClick={onSluit}
+              className="pressable"
+              style={{ alignSelf: "flex-end", marginTop: 4, border: "none", borderRadius: 999, padding: "8px 18px", cursor: "pointer", background: withAlpha(colors.gold, 0.9), color: "#2A1A05", fontFamily: font.ui, fontSize: 13, fontWeight: 700 }}
+            >
+              {t("close")}
+            </button>
+          </>
+        ) : (
+          <>
+            <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 16, color: colors.ink }}>{t("reportTitel", { naam })}</span>
+            <p style={{ margin: 0, fontFamily: font.ui, fontSize: 12.5, lineHeight: 1.45, color: colors.sub }}>{t("reportUitleg")}</p>
+            {redenen.map((r) => (
+              <button
+                key={r.code}
+                onClick={() => { sound.uiTap(); onKies(r.code); setKlaar(true); }}
+                className="pressable"
+                style={{ textAlign: "left", background: "rgba(255,255,255,.05)", border: `1px solid ${colors.hairline}`, borderRadius: 10, padding: "10px 12px", cursor: "pointer", fontFamily: font.ui, fontSize: 13.5, color: colors.ink }}
+              >
+                {r.label}
+              </button>
+            ))}
+          </>
+        )}
+      </div>
+    </div>
   );
 }
 
