@@ -18,7 +18,7 @@ import { BUTTON_RATIO, GoldButton } from "../components/GoldButton";
 import { DuelZoeken } from "./DuelZoeken";
 import { Arena } from "../components/Arena";
 import { Screen, Card } from "../components/Layout";
-import type { GameApi } from "../net/socket";
+import type { DuelKaart, GameApi } from "../net/socket";
 import { ArtIcoon } from "../components/ArtIcoon";
 import { GlasVeld } from "../components/GlasVeld";
 import { GOUD, KADER_LIJN_GOUD, KADER_LIJN_PAARS, KADER_LIJN_ROOD, NeonKader, Paneel, PlekWapen, RingFoto, RingPortret, SCHILD_KLEUREN, type SchildKleur } from "../components/ProfileHero";
@@ -139,6 +139,11 @@ export function Duel({ game, onBack, onProfile, openId, onGeopend }: {
   const [aanneemIdx, setAanneemIdx] = useState(0);
   const [herkansOpen, setHerkansOpen] = useState(false);
   const [herkansIdx, setHerkansIdx] = useState(0);
+  // Waar je om speelt in de wachtrij. Je kiest het VOORAF en niet achteraf:
+  // in een live duel is er geen uitdager die een voorstel doet, dus koppelt de
+  // server alleen mensen die om hetzelfde bedrag zoeken.
+  const [liveOpen, setLiveOpen] = useState(false);
+  const [liveIdx, setLiveIdx] = useState(0);
 
   const [note, setNote] = useState("");
   const deadline = useRef(0);
@@ -253,19 +258,27 @@ export function Duel({ game, onBack, onProfile, openId, onGeopend }: {
 
   useEffect(() => { if (view === "play" && round) input.current?.focus(); }, [view, round]);
 
-  // De wachtrij leverde een tegenstander: meteen naar binnen. Wachten op een
-  // tik zou de ander laten staan terwijl zijn klok al loopt, en dat is precies
-  // het verschil tussen een live duel en een gewoon duel.
+  // De wachtrij leverde een tegenstander. NIET meteen naar binnen: eerst laat
+  // het scherm zien tegen WIE je speelt, want anders sta je van het ene op het
+  // andere moment in een ronde met een lopende klok zonder te weten wie er aan
+  // de overkant zit. De klok van elke speler begint pas bij zijn eigen
+  // serve-verzoek, dus deze pauze kost niemand tijd.
   const zoekt = game.state.duelZoekt;
   const match = game.state.duelMatch;
+  const [gevonden, setGevonden] = useState<{ tegen: DuelKaart; inzet: number; id: string } | null>(null);
   useEffect(() => {
     if (!match) return;
     game.duelMatchGezien();
-    sound.uiTap();
-    void (async () => {
-      await refresh();
-      await openDuel({ id: match.duel_id } as DuelState);
-    })();
+    sound.invite();
+    setGevonden({ tegen: match.tegen, inzet: match.inzet, id: match.duel_id });
+    const id = window.setTimeout(() => {
+      void (async () => {
+        await refresh();
+        await openDuel({ id: match.duel_id } as DuelState);
+        setGevonden(null);
+      })();
+    }, ONTHUL_MS);
+    return () => window.clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [match]);
 
@@ -427,12 +440,20 @@ export function Duel({ game, onBack, onProfile, openId, onGeopend }: {
   }
 
   // ---- zoeken naar een tegenstander ---------------------------------------
-  if (view === "list" && zoekt !== null) {
+  if (view === "list" && (zoekt !== null || gevonden)) {
     return (
       <Screen top={header}>
         <DuelZoeken
-          aantal={zoekt}
+          aantal={zoekt?.aantal ?? 1}
+          inzet={gevonden?.inzet ?? zoekt?.inzet ?? 0}
           kleur={(account?.shield as SchildKleur) || "paars"}
+          mij={{
+            id: account.id, name: account.name, color: account.color,
+            has_avatar: account.has_avatar, avatar_ver: account.avatar_ver,
+            divisie: SCHILD_KLEUREN.indexOf((account.shield as SchildKleur) || "paars"),
+            level: account.level.level,
+          }}
+          gevonden={gevonden?.tegen ?? null}
           onStop={() => { sound.uiTap(); game.duelZoekStop(); }}
         />
       </Screen>
@@ -722,10 +743,10 @@ export function Duel({ game, onBack, onProfile, openId, onGeopend }: {
             het is het snelste wat je hier kunt doen (geen uitnodiging, geen
             wachten op een beurt), maar het vraagt wel dat er iemand anders is,
             dus het verdringt de uitdaagknop niet. */}
+        {/* Zoeken is een EIGEN scherm (zie DuelZoeken), dus deze kaart kent
+            maar een stand: de knop waarmee je begint. */}
         <LiveKaart
-          zoekt={zoekt}
-          onZoek={() => { sound.uiTap(); game.duelZoek(); }}
-          onStop={() => { sound.uiTap(); game.duelZoekStop(); }}
+          onZoek={() => { sound.uiTap(); setNote(""); setLiveIdx(0); setLiveOpen(true); }}
           t={t}
         />
 
@@ -796,6 +817,21 @@ export function Duel({ game, onBack, onProfile, openId, onGeopend }: {
           <p style={{ margin: 0, textAlign: "center", fontFamily: font.ui, fontSize: 13.5, color: colors.faint }}>{t("duelEmpty")}</p>
         )}
       </div>
+
+      {/* De inzet voor de wachtrij. Zelfde carrousel als bij een uitdaging,
+          want het is dezelfde keuze; alleen weet je hier nog niet tegen wie. */}
+      {liveOpen && (
+        <InzetPopup
+          titel={t("duelLiveTitle")}
+          uitleg={t("duelLiveInzetUitleg")}
+          waardes={DUEL_STAKES}
+          index={liveIdx}
+          onIndex={setLiveIdx}
+          coins={account?.coins ?? 0}
+          onKies={(n) => { setLiveOpen(false); game.duelZoek(n); }}
+          onClose={() => setLiveOpen(false)}
+        />
+      )}
 
       {pickOpen && (
         <FriendPicker
@@ -971,7 +1007,7 @@ function WordLine({ slot, mine }: { slot: Slot | null; mine: boolean }) {
  *  loopt, goud als je won, rood als je verloor. Bij de laatste potjes hoefde
  *  dat niet, want daar staat een plaatsnummer op het wapen; hier is er maar één
  *  tegenstander en dus maar één uitkomst. */
-/** De kaart waarmee je een tegenstander zoekt die NU ook zoekt.
+/** De kaart waarmee je een tegenstander gaat zoeken die NU ook zoekt.
  *
  *  DE MATEN ZIJN GEMETEN EN NIET GESCHAT. De paarse knopplaat is 1000x269 waar
  *  zijn lichte vlak 930x200 is, dus de art steekt boven het knopvak uit met
@@ -986,9 +1022,9 @@ function WordLine({ slot, mine }: { slot: Slot | null; mine: boolean }) {
  *  een scherm laat elke sectie los van de andere staan, en dit is er een van de
  *  drie op deze pagina.
  *
- *  Twee standen en niet meer: zoeken of niet. Met de teller erbij ("3 aan het
- *  zoeken"), want bij een kleine club spelers is het verschil tussen "niemand"
- *  en "twee anderen" precies wat bepaalt of je blijft wachten. */
+ *  EEN stand en niet meer: de knop waarmee je begint. Het zoeken zelf is een
+ *  eigen scherm met de radar (DuelZoeken), want het duurt en je kunt er niets
+ *  aan doen; dat hoort niet in een kaartje tussen twee lijsten. */
 // Het knopvak zelf, zonder de gloed. Bewust KLEINER dan de gouden "Nieuw
 // duel" erboven (die komt op ongeveer 205 uit): dat is de hoofdactie en deze
 // staat er een trede onder. Stond hij op 218, dan was de tweede knop de
@@ -997,58 +1033,44 @@ const LIVE_KNOP_BREED = 172;
 const LIVE_BLOED_BOVEN = Math.round((LIVE_KNOP_BREED / BUTTON_RATIO) * 0.15);
 const LIVE_BLOED_ONDER = Math.round((LIVE_KNOP_BREED / BUTTON_RATIO) * 0.20);
 
-function LiveKaart({ zoekt, onZoek, onStop, t }: {
-  zoekt: number | null;
+function LiveKaart({ onZoek, t }: {
   onZoek: () => void;
-  onStop: () => void;
   t: (k: string, v?: Record<string, string | number>) => string;
 }) {
-  const aan = zoekt !== null;
   return (
     // De vlakverdeling zit in een EIGEN laag binnen het kader. GoudKader zet de
     // meegegeven `style` op zijn buitenkant, niet op het vak met de inhoud;
     // een flex-kolom van buitenaf meegeven doet daar dus niets, en dan staan de
     // regels tegen elkaar aan en loopt de gloed van de knop over de tekst.
-    // GEEN `fade` hier. Dat dooft de lijn vanaf de linkerbovenhoek, en op een
-    // laag vak blijft daar een lichte hoek plus een los stukje lijn rechtsonder
-    // van over: dat leest als een fout en niet als stijl. De lange lijst
-    // eronder is hoog genoeg om het wel te dragen.
+    //
+    // GEEN `fade` op het kader. Dat dooft de lijn vanaf de linkerbovenhoek, en
+    // op een laag vak blijft daar een lichte hoek plus een los stukje lijn
+    // rechtsonder van over: dat leest als een fout en niet als stijl.
     <GoudKader hoek={13} gloed padding={12}>
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 7, marginLeft: 4 }}>
-          <span style={{ width: 7, height: 7, borderRadius: 999, background: aan ? colors.red : colors.faint,
-                         animation: aan ? "fill-pulse 1.4s ease-in-out infinite" : undefined, flexShrink: 0 }} />
+          <span style={{ width: 7, height: 7, borderRadius: 999, background: colors.faint, flexShrink: 0 }} />
           <span style={KOPREGEL}>{t("duelLiveTitle")}</span>
         </div>
         <span style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint, lineHeight: 1.45, marginLeft: 4 }}>
-          {aan ? t("duelLiveCalled") : t("duelLiveSub")}
+          {t("duelLiveSub")}
         </span>
-        {aan && (
-          // Stand en teller op twee regels. Achter elkaar werd het een zin die
-          // de hele breedte pakte, en dan leest de kaart als een alinea in
-          // plaats van als een ding dat op dit moment bezig is.
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1, marginTop: 2 }}>
-            <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: colors.ink }}>
-              {t("duelLiveSearching")}
-            </span>
-            <span style={{ fontFamily: font.ui, fontSize: 11.5, color: colors.faint }}>
-              {t("duelLiveQueue", { n: zoekt ?? 1 })}
-            </span>
-          </div>
-        )}
+        {/* De maten zijn gemeten en niet geschat. De paarse knopplaat is
+            1000x269 waar zijn lichte vlak 930x200 is, dus de art steekt boven
+            het knopvak uit met 14,5% van de hoogte en eronder met ongeveer 20%:
+            dat is de 3D-lip plus de gloed. Zet je zo'n knop met een gewone
+            `gap` in een vak, dan loopt die bloeding over de regel erboven en
+            door de onderrand van het vak heen. Daarom reserveert dit vak die
+            ruimte, en is de knop smaller dan de kaart. */}
         <div style={{
           width: `min(78%, ${LIVE_KNOP_BREED}px)`, alignSelf: "center",
-          marginTop: aan ? 2 : LIVE_BLOED_BOVEN, marginBottom: aan ? 0 : LIVE_BLOED_ONDER,
+          marginTop: LIVE_BLOED_BOVEN, marginBottom: LIVE_BLOED_ONDER,
         }}>
-          {aan ? (
-            <Button variant="ghost" full onClick={onStop}>{t("duelLiveStop")}</Button>
-          ) : (
-            <Button variant="primary" full onClick={onZoek}>
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 7, whiteSpace: "nowrap" }}>
-                <Swords size={15} /> {t("duelLiveSearch")}
-              </span>
-            </Button>
-          )}
+          <Button variant="primary" full onClick={onZoek}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 7, whiteSpace: "nowrap" }}>
+              <Swords size={15} /> {t("duelLiveSearch")}
+            </span>
+          </Button>
         </div>
       </div>
     </GoudKader>
@@ -1197,6 +1219,12 @@ const TOON_POTJES = 5;
  *  ruim 56 hoog; wat de schaal daarvan afhaalt is de marge die eronder weg mag. */
 const KNOP_SCHAAL = 0.82;
 const KNOP_GAT = Math.round(250 * (150 / 663) * (1 - KNOP_SCHAAL));
+
+/** Hoe lang je de twee ringen ziet voordat het duel begint. Lang genoeg om de
+ *  naam en het portret van je tegenstander te lezen, kort genoeg om niet in de
+ *  weg te gaan zitten. De klok van elke speler start pas bij zijn eigen
+ *  serve-verzoek, dus deze pauze kost niemand denktijd. */
+const ONTHUL_MS = 3600;
 
 /** De kopregel boven een lijst. Staat apart omdat de knop ernaast er precies
  *  hetzelfde uit moet zien: zelfde kleur, zelfde letter, zelfde maat. */

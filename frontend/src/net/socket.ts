@@ -40,6 +40,17 @@ export interface Toezicht {
   rem_aan: boolean;
 }
 
+/** Hoe een speler eruitziet op het duelscherm: genoeg om zijn ring te tekenen. */
+export interface DuelKaart {
+  id: string;
+  name: string;
+  color: string;
+  has_avatar: boolean;
+  avatar_ver: number;
+  divisie: number;
+  level: number;
+}
+
 export interface AdminStats {
   accounts: number;
   accounts_nieuw_7d: number;
@@ -436,10 +447,12 @@ export interface ClientState {
   adminStats: AdminStats | null; // dashboard-cijfers, alleen na admin_stats-verzoek
   rapporten: Rapport[];          // openstaande meldingen, alleen voor een admin
   toezicht: Toezicht | null;     // de staat van de server, alleen voor een admin
-  /** Hoeveel mensen er nu een live duel zoeken, of null als jij niet zoekt. */
-  duelZoekt: number | null;
-  /** Een verse koppeling uit de wachtrij. Het duelscherm opent hem en wist hem. */
-  duelMatch: { duel_id: string; tegen: string } | null;
+  /** De wachtrij: hoeveel mensen er om DEZELFDE inzet zoeken (jij meegerekend),
+   *  en waar jullie om spelen. Null als jij niet zoekt. */
+  duelZoekt: { aantal: number; inzet: number } | null;
+  /** Een verse koppeling uit de wachtrij, met het kaartje van je tegenstander:
+   *  het scherm laat de twee ringen naast elkaar zien voor het duel begint. */
+  duelMatch: { duel_id: string; tegen: DuelKaart; inzet: number } | null;
   /** Hoever de tegenstander is in het live duel dat nu open staat. */
   duelLive: { duel_id: string; gedaan: number; van: number } | null;
   adminAi: AdminAi | null;
@@ -546,8 +559,8 @@ type ServerMessage =
   | { type: "results_updated"; points: RoundView["points"]; scores: Record<string, number>; answers: RoundView["answers"] }
   | { type: "game_over"; scores: Record<string, number>; winner_id: string | null;
       team_scores?: Record<string, number>; winner_team?: number | null }
-  | { type: "duel_zoekt"; aantal: number; gestopt?: boolean }
-  | { type: "duel_match"; duel_id: string; tegen: string }
+  | { type: "duel_zoekt"; aantal: number; inzet?: number; gestopt?: boolean }
+  | { type: "duel_match"; duel_id: string; tegen: DuelKaart; inzet: number }
   | { type: "duel_live"; duel_id: string; gedaan: number; van: number }
   | { type: "admin_ok"; is_admin: boolean; ai: AdminAi; recovery_codes: RecoveryCode[]; ai_codes: AiCodeInfo; avatar_codes?: AiCodeInfo; buzzer_codes?: AiCodeInfo }
   | { type: "admin_stats"; stats: AdminStats }
@@ -802,10 +815,12 @@ function reducer(state: ClientState, action: Action): ClientState {
     case "toezicht":
       return { ...state, toezicht: msg.status };
     case "duel_zoekt":
-      return { ...state, duelZoekt: msg.gestopt ? null : msg.aantal };
+      return { ...state, duelZoekt: msg.gestopt ? null : { aantal: msg.aantal, inzet: msg.inzet ?? 0 } };
     case "duel_match":
-      // De rij is voorbij: het scherm springt hierop naar het duel.
-      return { ...state, duelZoekt: null, duelMatch: { duel_id: msg.duel_id, tegen: msg.tegen },
+      // De rij is voorbij. Het scherm laat eerst zien TEGEN WIE je speelt en
+      // begint pas daarna; zonder die tussenstap stond je ineens in een duel.
+      return { ...state, duelZoekt: null,
+               duelMatch: { duel_id: msg.duel_id, tegen: msg.tegen, inzet: msg.inzet ?? 0 },
                duelLive: { duel_id: msg.duel_id, gedaan: 0, van: 5 } };
     case "duel_live":
       return { ...state, duelLive: { duel_id: msg.duel_id, gedaan: msg.gedaan, van: msg.van } };
@@ -987,7 +1002,7 @@ export interface GameApi {
   /** De host laat de kampen opnieuw verdelen. */
   verdeelTeams: () => void;
   /** De wachtrij voor een live duel. */
-  duelZoek: () => void;
+  duelZoek: (inzet: number) => void;
   duelZoekStop: () => void;
   /** De koppeling is opgepakt; hem laten staan zou het scherm blijven openen. */
   duelMatchGezien: () => void;
@@ -1209,7 +1224,7 @@ export function useGame(): GameApi {
     updateSettings: (s) => send({ type: "update_settings", ...s }),
     setTeam: (team, playerId) => send({ type: "set_team", team, player_id: playerId }),
     verdeelTeams: () => send({ type: "set_team", verdeel: true }),
-    duelZoek: () => send({ type: "duel_zoek" }),
+    duelZoek: (inzet) => send({ type: "duel_zoek", inzet }),
     duelZoekStop: () => send({ type: "duel_zoek_stop" }),
     duelMatchGezien: () => dispatch({ type: "duel_match_gezien" } as never),
     startGame: () => send({ type: "start_game" }),

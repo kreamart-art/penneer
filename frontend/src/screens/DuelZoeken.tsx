@@ -20,9 +20,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "../components/Button";
 import { GoudKader } from "../components/GoudKader";
-import { RingPortret, type SchildKleur } from "../components/ProfileHero";
+import { RingFoto, RingPortret, SCHILD_KLEUREN, type SchildKleur } from "../components/ProfileHero";
 import { useT } from "../i18n/i18n";
-import { font, withAlpha } from "../theme/tokens";
+import type { DuelKaart } from "../net/socket";
+import { colors, font, withAlpha } from "../theme/tokens";
 
 /** De kleur van de radar. Violet als het accent van het duel, met een lichtere
  *  tint voor de koplijn van de bundel: die hoort het felst te zijn. */
@@ -41,13 +42,19 @@ const STIPPEN: [number, number][] = [
 ];
 
 export function DuelZoeken({
-  aantal, kleur, onStop,
+  aantal, inzet, kleur, mij, gevonden, onStop,
 }: {
-  /** Hoeveel spelers er nu zoeken, jij meegerekend. */
+  /** Hoeveel spelers er nu om DEZELFDE inzet zoeken, jij meegerekend. */
   aantal: number;
-  /** Het schild van de speler ZELF. De tegenstander is nog onbekend, dus zijn
-   *  divisie ook; jouw schild houdt het scherm bij jouw account horen. */
+  /** Waar jullie om spelen, per persoon. 0 = vriendschappelijk. */
+  inzet: number;
+  /** Het schild van de speler ZELF. Zolang er niemand gevonden is staat de ring
+   *  in jouw kleur, want het is jouw zoektocht. */
   kleur: SchildKleur;
+  /** Jij, voor de onthulling: dan staan jullie naast elkaar. */
+  mij: DuelKaart;
+  /** De tegenstander zodra hij er is. Vanaf dat moment gaat de ring in tweeen. */
+  gevonden: DuelKaart | null;
   onStop: () => void;
 }) {
   const { t } = useT();
@@ -80,24 +87,38 @@ export function DuelZoeken({
         display: "flex", flexDirection: "column", alignItems: "center",
         justifyContent: "space-between", gap: 10, padding: "4px 18px 14px",
       }}>
-        <Kop t={t} />
+        <Kop t={t} gevonden={!!gevonden} />
 
         {/* De radar pakt de ruimte die overblijft en blijft daarin gecentreerd,
             zodat hij op een grote telefoon groter staat en op een kleine
             netjes krimpt in plaats van de knop weg te duwen. */}
         <div style={{ flex: 1, display: "grid", placeItems: "center", width: "100%", minHeight: 0 }}>
-          <Radar kleur={kleur} />
+          <Radar kleur={kleur} mij={mij} gevonden={gevonden} />
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, width: "100%" }}>
+        {/* De pot als er om coins gespeeld wordt. Staat er ALTIJD als hij niet
+            nul is: je hoort tot de laatste tel te zien waar het om gaat. */}
+        {inzet > 0 && (
+          <span style={{
+            display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 13px", borderRadius: 999,
+            background: withAlpha(colors.gold, 0.14), border: `1px solid ${withAlpha(colors.gold, 0.42)}`,
+          }}>
+            <img src="/coin.webp" alt="" width={14} height={14} style={{ display: "block" }} />
+            <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 700, color: colors.gold }}>
+              {t("duelPot", { n: inzet * 2 })}
+            </span>
+          </span>
+        )}
         <span style={{ fontFamily: font.ui, fontSize: 12.5, color: withAlpha("#FFFFFF", 0.62), textAlign: "center" }}>
-          {t("duelLiveQueue", { n: Math.max(1, aantal) })}
+          {gevonden ? t("zoekStart") : t("duelLiveQueue", { n: Math.max(1, aantal) })}
         </span>
 
         {/* De tip onderaan, met ruimte eromheen. Op de mockup hing er een
             icoontje half over de bovenrand; dat is hier de kop IN de lijn, want
             een los zwevend icoon boven een vak leest als een fout zodra de tekst
             een regel langer wordt. */}
+        {!gevonden && (
         <GoudKader hoek={11} kleur="violet" gloed padding={0} style={{ width: "100%", maxWidth: 340 }}>
           <div style={{ padding: "11px 14px 12px", display: "flex", flexDirection: "column", gap: 5 }}>
             <span style={{
@@ -116,10 +137,15 @@ export function DuelZoeken({
             </span>
           </div>
         </GoudKader>
+        )}
 
-        <div style={{ width: "min(78%, 200px)" }}>
-          <Button variant="ghost" full onClick={onStop}>{t("duelLiveStop")}</Button>
-        </div>
+        {/* Stoppen kan zolang je zoekt. Zodra er iemand gevonden is niet meer:
+            zijn inzet staat dan al in de pot en het duel loopt. */}
+        {!gevonden && (
+          <div style={{ width: "min(78%, 200px)" }}>
+            <Button variant="ghost" full onClick={onStop}>{t("duelLiveStop")}</Button>
+          </div>
+        )}
         </div>
       </div>
     </div>
@@ -131,7 +157,7 @@ export function DuelZoeken({
  *  Bebas met een lichte schuinstand in plaats van de wordmark-letter: die is
  *  van PEN NEER alleen, en een tweede plek waar hij opduikt maakt hem minder
  *  bijzonder. De schuinstand komt van de mockup en geeft dezelfde vaart. */
-function Kop({ t }: { t: (k: string, v?: Record<string, string | number>) => string }) {
+function Kop({ t, gevonden }: { t: (k: string, v?: Record<string, string | number>) => string; gevonden: boolean }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, paddingTop: 2 }}>
       <span style={{
@@ -139,14 +165,14 @@ function Kop({ t }: { t: (k: string, v?: Record<string, string | number>) => str
         color: `rgb(${RADAR})`, transform: "skewX(-8deg)",
         textShadow: `0 0 18px rgba(${RADAR},.55)`,
       }}>
-        {t("zoekTitel1")}
+        {t(gevonden ? "zoekGevonden1" : "zoekTitel1")}
       </span>
       <span style={{
         fontFamily: font.wide, fontSize: 40, letterSpacing: 1.6, lineHeight: 1.05,
         color: "#FFFFFF", transform: "skewX(-8deg)",
         textShadow: `0 0 26px rgba(${RADAR},.75), 0 2px 0 rgba(0,0,0,.35)`,
       }}>
-        {t("zoekTitel2")}
+        {t(gevonden ? "zoekGevonden2" : "zoekTitel2")}
       </span>
       {/* De lijn met het pijltje eronder, als een SVG zodat de punt precies in
           het midden van de lijn valt en niet er net naast. */}
@@ -164,7 +190,7 @@ function Kop({ t }: { t: (k: string, v?: Record<string, string | number>) => str
         fontFamily: font.ui, fontSize: 13.5, color: withAlpha("#FFFFFF", 0.78),
         textAlign: "center", marginTop: 6, lineHeight: 1.4,
       }}>
-        {t("zoekSub")}
+        {t(gevonden ? "zoekGevondenSub" : "zoekSub")}
       </span>
     </div>
   );
@@ -177,7 +203,7 @@ function Kop({ t }: { t: (k: string, v?: Record<string, string | number>) => str
  *  hoogte ervan en een plafond. Zonder die hoogte-grens duwt de radar op een
  *  korte telefoon de tip en de knop van het scherm af, en juist die knop moet
  *  altijd bereikbaar blijven. */
-function Radar({ kleur }: { kleur: SchildKleur }) {
+function Radar({ kleur, mij, gevonden }: { kleur: SchildKleur; mij: DuelKaart; gevonden: DuelKaart | null }) {
   // De ring in het hart moet MEEGROEIEN met de radar, en de gouden ring rekent
   // in echte pixels (hij zet zijn schild op een gemeten plek). Daarom meten we
   // de doos op in plaats van percentages te gebruiken: dan klopt de verhouding
@@ -201,20 +227,31 @@ function Radar({ kleur }: { kleur: SchildKleur }) {
       width: "min(86vw, 40vh, 360px)", aspectRatio: "1", flexShrink: 0,
       display: "grid", placeItems: "center",
     }}>
-      {/* HET VLAK WAAR DE RADAR OP LIGT. Zonder dit hangen de ringen in het
-          niets en blijft het een tekening; met een eigen schijf eronder wordt
-          het een ding dat licht geeft. Twee lagen: een brede zachte gloed die
-          ver buiten de ringen uitloopt, en een dieper schijfje in het hart. */}
+      {/* ALLES WAT RADAR IS, IN EEN LAAG. Zodra er een tegenstander is heeft
+          het zoeken zijn werk gedaan en hoort het beeld te gaan over de twee
+          spelers; ringen die dan achter hun portretten door blijven draaien
+          zijn ruis. Uitdoven en niet meteen weg: de ring gaat op datzelfde
+          moment in tweeen, en twee dingen die tegelijk springen leest als een
+          hapering. De laag blijft staan (met opacity 0), want alleen dan loopt
+          de overgang; hem verwijderen zou hem laten knippen. */}
       <div aria-hidden style={{
-        position: "absolute", inset: "-6%", borderRadius: "50%",
-        background: `radial-gradient(circle,
-          rgba(${RADAR},.30) 0%,
-          rgba(${RADAR},.17) 34%,
-          rgba(${RADAR},.07) 58%,
-          rgba(${RADAR},.02) 72%,
-          rgba(${RADAR},0) 80%)`,
-      }} />
-
+        position: "absolute", inset: 0, pointerEvents: "none",
+        opacity: gevonden ? 0 : 1,
+        transition: "opacity .45s ease-out",
+      }}>
+      {/* HET VLAK WAAR DE RADAR OP LIGT. Zonder dit hangen de ringen in het
+            niets en blijft het een tekening; met een eigen schijf eronder wordt
+            het een ding dat licht geeft. Twee lagen: een brede zachte gloed die
+            ver buiten de ringen uitloopt, en een dieper schijfje in het hart. */}
+        <div aria-hidden style={{
+          position: "absolute", inset: "-6%", borderRadius: "50%",
+          background: `radial-gradient(circle,
+            rgba(${RADAR},.30) 0%,
+            rgba(${RADAR},.17) 34%,
+            rgba(${RADAR},.07) 58%,
+            rgba(${RADAR},.02) 72%,
+            rgba(${RADAR},0) 80%)`,
+        }} />
       {/* de ringen, de spaken en het kruis */}
       {/* `screen` laat de lagen OPTELLEN zoals echt licht: waar de bundel over
           een ring gaat wordt die ring lichter in plaats van dat de bundel hem
@@ -334,18 +371,86 @@ function Radar({ kleur }: { kleur: SchildKleur }) {
         />
       ))}
 
-      {/* het hart: de ring uit het profiel, met een vraagteken waar anders de
-          foto zit en op het schild in plaats van een level */}
-      <div style={{ position: "relative", zIndex: 1, display: "grid", placeItems: "center" }}>
-        <RingPortret maat={Math.round(px * 0.44)} level="?" kleur={kleur}>
-          <span style={{
-            fontFamily: font.display, fontWeight: 800, fontSize: Math.round(px * 0.17), lineHeight: 1,
-            color: `rgb(${RADAR_LICHT})`, textShadow: `0 0 22px rgba(${RADAR},.9)`,
-          }}>
-            ?
-          </span>
-        </RingPortret>
       </div>
+
+      {/* HET HART. Zolang er gezocht wordt staat er EEN ring met een vraagteken:
+          de tegenstander bestaat nog niet. Zodra hij er is gaat diezelfde ring
+          in tweeen en schuiven jullie uit elkaar, met je portretten erin. Dat
+          uit elkaar gaan is het hele punt: je ziet dat de plek van het
+          vraagteken nu door een echt iemand wordt ingenomen. */}
+      <div style={{ position: "relative", zIndex: 1, display: "grid", placeItems: "center", width: "100%" }}>
+        {gevonden ? (
+          <TweeRingen px={px} mij={mij} tegen={gevonden} />
+        ) : (
+          <RingPortret maat={Math.round(px * 0.44)} level="?" kleur={kleur}>
+            <span style={{
+              fontFamily: font.display, fontWeight: 800, fontSize: Math.round(px * 0.17), lineHeight: 1,
+              color: `rgb(${RADAR_LICHT})`, textShadow: `0 0 22px rgba(${RADAR},.9)`,
+            }}>
+              ?
+            </span>
+          </RingPortret>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** De twee ringen die uit het midden vandaan komen: jij links, hij rechts.
+ *
+ *  Ze BEGINNEN allebei op de plek van de ene ring die er stond en schuiven
+ *  daarna naar hun eigen kant. Zouden ze gewoon verschijnen, dan was het een
+ *  ander scherm; nu is het dezelfde ring die opengaat, en dat is precies wat er
+ *  gebeurt: de plek van het vraagteken wordt door iemand ingenomen.
+ *
+ *  De ringen zijn kleiner dan die ene: twee naast elkaar plus hun namen moeten
+ *  in dezelfde breedte passen als eerst, anders duwen ze de radar uit elkaar. */
+function TweeRingen({ px, mij, tegen }: { px: number; mij: DuelKaart; tegen: DuelKaart }) {
+  // Groter dan de ene ring die er stond: de radar is weg, dus die ruimte is nu
+  // van hen. Twee ringen plus de VS moeten wel binnen dezelfde breedte blijven,
+  // vandaar 0,37 en niet meer: 2x0,37 + de VS + de tussenruimte is net 1.
+  const maat = Math.round(px * 0.37);
+  return (
+    <div style={{
+      position: "relative",
+      display: "flex", alignItems: "flex-start", justifyContent: "center",
+      gap: Math.round(px * 0.045), width: "100%",
+    }}>
+      {/* Licht achter het paar. De gloed van de radar is net weggevallen en
+          zonder iets eronder staan de twee portretten op een kaal vlak; deze
+          houdt het onderwerp waar het licht is. */}
+      <div aria-hidden className="duel-paar-gloed" style={{
+        position: "absolute", left: "50%", top: "46%", width: px * 1.05, height: px * 0.62,
+        transform: "translate(-50%, -50%)", borderRadius: "50%", pointerEvents: "none",
+        background: `radial-gradient(closest-side, rgba(${RADAR},.30), rgba(${RADAR},.10) 55%, rgba(${RADAR},0) 78%)`,
+      }} />
+      <Kant kaart={mij} maat={maat} kant="links" />
+      {/* De VS ertussen, op de hoogte van de ringen en niet van de namen. */}
+      <span className="duel-vs" style={{
+        marginTop: maat * 0.34, fontFamily: font.wide, fontSize: Math.round(maat * 0.34),
+        letterSpacing: 1, color: "#FFFFFF", transform: "skewX(-8deg)",
+        textShadow: `0 0 18px rgba(${RADAR},.9)`,
+      }}>
+        VS
+      </span>
+      <Kant kaart={tegen} maat={maat} kant="rechts" />
+    </div>
+  );
+}
+
+function Kant({ kaart, maat, kant }: { kaart: DuelKaart; maat: number; kant: "links" | "rechts" }) {
+  return (
+    <div className={`duel-kant-${kant}`} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, minWidth: 0 }}>
+      <RingPortret maat={maat} level={kaart.level} kleur={SCHILD_KLEUREN[Math.max(0, Math.min(SCHILD_KLEUREN.length - 1, kaart.divisie))]}>
+        <RingFoto userId={kaart.id} versie={kaart.avatar_ver} heeftFoto={kaart.has_avatar} naam={kaart.name} kleur={kaart.color} />
+      </RingPortret>
+      <span style={{
+        fontFamily: font.ui, fontWeight: 700, fontSize: 13.5, color: "#FFFFFF",
+        maxWidth: maat + 16, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+        textShadow: "0 1px 4px rgba(0,0,0,.6)",
+      }}>
+        {kaart.name}
+      </span>
     </div>
   );
 }

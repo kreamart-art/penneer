@@ -1751,3 +1751,42 @@ body.ketenspel::after {
   .radar-bundel, .radar-ping, .radar-stip { animation: none; }
   .radar-ping { opacity: 0.25; }
 }
+
+/* ---- de onthulling van het live duel --------------------------------------
+   De ene ring gaat in tweeen. Allebei de helften beginnen op de plek van die
+   ene ring (dus over elkaar heen) en schuiven daarna naar hun eigen kant; de VS
+   komt er als laatste tussen. Zouden ze gewoon verschijnen, dan zag je twee
+   nieuwe dingen in plaats van EEN ring die opengaat.
+
+   De bocht overshoot licht (de laatste waarde in cubic-bezier gaat boven 1):
+   dat geeft het uit elkaar gaan gewicht, alsof er iets loskomt. */
+@keyframes duel-kant-links {
+  from { transform: translateX(62%) scale(0.82); opacity: 0.25; }
+  to   { transform: translateX(0) scale(1); opacity: 1; }
+}
+@keyframes duel-kant-rechts {
+  from { transform: translateX(-62%) scale(0.82); opacity: 0.25; }
+  to   { transform: translateX(0) scale(1); opacity: 1; }
+}
+@keyframes duel-vs {
+  0%   { transform: skewX(-8deg) scale(0.4); opacity: 0; }
+  70%  { transform: skewX(-8deg) scale(1.15); opacity: 1; }
+  100% { transform: skewX(-8deg) scale(1); opacity: 1; }
+}
+.duel-kant-links  { animation: duel-kant-links .62s cubic-bezier(.22,1.2,.36,1.06) both; }
+.duel-kant-rechts { animation: duel-kant-rechts .62s cubic-bezier(.22,1.2,.36,1.06) both; }
+.duel-vs          { animation: duel-vs .5s cubic-bezier(.2,1.4,.4,1) .42s both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .duel-kant-links, .duel-kant-rechts, .duel-vs { animation: none; }
+}
+
+/* Het licht achter de twee ringen komt NA de radar op: eerst dooft het zoeken
+   uit, dan licht het paar op. Tegelijk zou een kruising van twee gloeden zijn
+   en dan zie je een helderheidssprong in plaats van een wisseling. */
+@keyframes duel-paar-gloed {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.duel-paar-gloed { animation: duel-paar-gloed .5s ease-out .25s both; }
+@media (prefers-reduced-motion: reduce) { .duel-paar-gloed { animation: none; } }

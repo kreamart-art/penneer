@@ -2539,6 +2539,41 @@ class Database:
             )
         return did
 
+    def duel_create_live(self, a: str, b: str, rounds: list[dict], expires_at: float,
+                         stake: int = 0) -> Optional[str]:
+        """Een duel uit de WACHTRIJ: allebei tegelijk, allebei dezelfde inzet.
+
+        Waarom niet duel_create plus duel_stake_accept: dat zijn twee stappen,
+        en tussen die twee kan de tweede speler net te weinig coins blijken te
+        hebben. Dan staat de inzet van de eerste al in de pot en moet je gaan
+        terugdraaien. Hier gebeurt alles binnen EEN slot: kijken of ze het
+        allebei hebben, allebei afboeken, en het duel meteen als aangenomen
+        wegschrijven. Lukt het niet, dan is er niets gebeurd.
+        """
+        did = _new_id()
+        stake = int(stake)
+        if stake not in self.DUEL_STAKES:
+            return None
+        with self._lock:
+            if stake:
+                for wie in (a, b):
+                    rows = self._q("SELECT coins FROM users WHERE id=?", (wie,))
+                    if not rows or rows[0]["coins"] < stake:
+                        return None
+                self._exec("UPDATE users SET coins=coins-? WHERE id IN (?,?)", (stake, a, b))
+            self._exec(
+                "INSERT INTO duels (id, a, b, rounds, created_at, expires_at, stake, stake_accepted, live) "
+                "VALUES (?,?,?,?,?,?,?,1,1)",
+                (did, a, b, json.dumps(rounds), time.time(), expires_at, stake),
+            )
+        return did
+
+    def coins_of(self, user_id: str) -> int:
+        """Het saldo, zonder de rest van het account op te halen."""
+        with self._lock:
+            rows = self._q("SELECT coins FROM users WHERE id=?", (user_id,))
+        return int(rows[0]["coins"]) if rows else 0
+
     def duel_stake_accept(self, duel_id: str, user_id: str, stake: int) -> str:
         """De tegenstander neemt de inzet aan, of zet hem LAGER (dat is zijn
         recht; hoger niet, want dan wed je met andermans geld). Het verschil

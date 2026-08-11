@@ -73,7 +73,10 @@ class AccountManager:
         self.user_conns: dict[str, set[Any]] = {}
         # De wachtrij voor een LIVE duel: user_ids, oudste eerst. Zie
         # duel_zoek() voor waarom dit een rij is en geen bak.
+        # speler -> de inzet waarmee hij zoekt. Een woordenboek en geen lijst
+        # met paren: zo kun je er maar EEN keer in staan, met EEN inzet.
         self.duel_rij: list[str] = []
+        self.duel_inzet: dict[str, int] = {}
         self.duel_rij_sinds: dict[str, float] = {}
 
     # ---- presence -----------------------------------------------------------
@@ -1410,19 +1413,37 @@ class AccountManager:
     ROEP_NA_S = 25
 
     async def _rij_stand(self) -> None:
-        """Iedereen in de rij vertellen hoeveel er staan te wachten."""
+        """Iedereen in de rij vertellen hoeveel er om DEZELFDE inzet zoeken.
+
+        Niet het totaal: wie om duizend coins speelt heeft niets aan de vijf
+        mensen die gratis zoeken, want daar wordt hij nooit aan gekoppeld.
+        """
         for uid in list(self.duel_rij):
-            await self._push(uid, {"type": "duel_zoekt", "aantal": len(self.duel_rij)})
+            inzet = self.duel_inzet.get(uid, 0)
+            zelfde = sum(1 for w in self.duel_rij if self.duel_inzet.get(w, 0) == inzet)
+            await self._push(uid, {"type": "duel_zoekt", "aantal": zelfde, "inzet": inzet})
 
     async def duel_zoek(self, ws: Any, data: dict) -> None:
         uid = self.user_of(ws)
         if not uid:
             await self._send(ws, {"type": "error", "message": "Maak eerst een profiel aan."})
             return
+        try:
+            inzet = int(data.get("inzet") or 0)
+        except (TypeError, ValueError):
+            inzet = 0
+        if inzet not in self.db.DUEL_STAKES:
+            return
+        # De coins moeten er NU zijn. Pas bij het koppelen kijken zou betekenen
+        # dat je een minuut staat te wachten om dan te horen dat het niet kan.
+        if inzet and self.db.coins_of(uid) < inzet:
+            await self._send(ws, {"type": "error", "message": "Je hebt niet genoeg coins voor deze inzet."})
+            return
         if uid not in self.duel_rij:
             self.duel_rij.append(uid)
             self.duel_rij_sinds[uid] = time.time()
             asyncio.create_task(self._roep_vrienden_straks(uid))
+        self.duel_inzet[uid] = inzet
         await self._match_rij()
         await self._rij_stand()
 
@@ -1437,6 +1458,7 @@ class AccountManager:
         if uid in self.duel_rij:
             self.duel_rij.remove(uid)
         self.duel_rij_sinds.pop(uid, None)
+        self.duel_inzet.pop(uid, None)
 
     async def _match_rij(self) -> None:
         """Koppel wie er kan. Blijft doorgaan tot er niets meer past.
@@ -1450,6 +1472,11 @@ class AccountManager:
             paar = None
             for i, a in enumerate(self.duel_rij):
                 for b in self.duel_rij[i + 1:]:
+                    # Alleen wie om HETZELFDE speelt. Anders zou de een met zijn
+                    # inzet in een gratis potje belanden of andersom, en dat is
+                    # geen weddenschap meer maar een verrassing.
+                    if self.duel_inzet.get(a, 0) != self.duel_inzet.get(b, 0):
+                        continue
                     if self.db.is_blocked(a, b) or self.db.is_blocked(b, a):
                         continue
                     if self.db.duel_open_with(a, b):
@@ -1461,23 +1488,48 @@ class AccountManager:
             if not paar:
                 return
             a, b = paar
+            inzet = self.duel_inzet.get(a, 0)
             self._rij_weg(a)
             self._rij_weg(b)
-            await self._maak_live_duel(a, b)
+            await self._maak_live_duel(a, b, inzet)
 
-    async def _maak_live_duel(self, a: str, b: str) -> None:
+    async def _maak_live_duel(self, a: str, b: str, inzet: int = 0) -> None:
         from . import duel as duelregels
 
         used, combos = self.db.duel_pair_state(a, b)
         rondes, new_used, new_combos = duelregels.pick_rounds(used, combos)
-        did = self.db.duel_create(a, b, rondes, time.time() + duelregels.EXPIRY_H * 3600,
-                                  stake=0, live=True)
+        did = self.db.duel_create_live(a, b, rondes,
+                                       time.time() + duelregels.EXPIRY_H * 3600, stake=inzet)
         if did is None:
+            # Iemand had zijn coins net uitgegeven. Allebei terug de rij in zou
+            # een lus kunnen worden, dus ze horen het gewoon en beginnen opnieuw.
+            for wie in (a, b):
+                await self._push(wie, {"type": "error", "message": "De inzet lukte niet. Probeer het opnieuw."})
             return
         self.db.duel_pair_set(a, b, new_used, new_combos)
+        # Het KAARTJE van de tegenstander gaat mee, niet alleen zijn naam: het
+        # scherm laat voor de start de twee ringen naast elkaar zien, en dan
+        # moet het portret, het level en het schild er al zijn. Anders komt dat
+        # een halve seconde later binnendruppelen en springt het beeld.
         for wie, ander in ((a, b), (b, a)):
-            naam = (self.db.get_user(ander) or {}).get("name") or "?"
-            await self._push(wie, {"type": "duel_match", "duel_id": did, "tegen": naam})
+            await self._push(wie, {
+                "type": "duel_match", "duel_id": did, "inzet": inzet,
+                "tegen": self.kaartje(ander),
+            })
+            await self.push_account(wie)   # de coins staan nu in de pot
+
+    def kaartje(self, user_id: str) -> dict:
+        """Wie iemand is, zoals een ander hem op het scherm ziet."""
+        u = self.db.get_user(user_id) or {}
+        return {
+            "id": user_id,
+            "name": u.get("name") or "?",
+            "color": u.get("color") or "#FFC23D",
+            "has_avatar": bool(u.get("has_avatar")),
+            "avatar_ver": int(u.get("avatar_ver") or 0),
+            "divisie": int(u.get("divisie") or 0),
+            "level": _level_of(self.db.stats_of(user_id))["level"],
+        }
 
     async def _roep_vrienden_straks(self, uid: str) -> None:
         """Staat iemand na ROEP_NA_S nog te wachten, roep dan zijn vrienden.

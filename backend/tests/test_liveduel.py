@@ -48,7 +48,10 @@ def test_twee_zoekers_krijgen_hetzelfde_duel(tmp_path, monkeypatch):
         ma = _wacht_op(a, "duel_match")
         mb = _wacht_op(b, "duel_match")
         assert ma["duel_id"] == mb["duel_id"]
-        assert ma["tegen"] == "Beer" and mb["tegen"] == "Aap"
+        # Het KAARTJE van de tegenstander gaat mee, want het scherm laat de
+        # twee ringen naast elkaar zien voordat het duel begint.
+        assert ma["tegen"]["name"] == "Beer" and mb["tegen"]["name"] == "Aap"
+        assert "level" in ma["tegen"] and "divisie" in ma["tegen"]
 
 
 def test_in_je_eentje_zoeken_levert_geen_duel_op(tmp_path, monkeypatch):
@@ -115,6 +118,49 @@ def test_geblokkeerde_spelers_worden_niet_gekoppeld(tmp_path, monkeypatch):
         b.send_json({"type": "duel_zoek"})
         b.receive_json()
         assert len(accounts.duel_rij) == 2, "allebei blijven wachten, en niet op elkaar"
+
+
+def test_alleen_wie_om_hetzelfde_speelt_wordt_gekoppeld(tmp_path, monkeypatch):
+    """Anders belandt de een met zijn inzet in een gratis potje."""
+    client, accounts = _verse_app(tmp_path, monkeypatch)
+    with client.websocket_connect("/ws") as a, client.websocket_connect("/ws") as b:
+        _maak_account(a, "Aap")
+        _maak_account(b, "Beer")
+        a.send_json({"type": "duel_zoek", "inzet": 50})
+        a.receive_json()
+        b.send_json({"type": "duel_zoek", "inzet": 0})
+        b.receive_json()
+        assert len(accounts.duel_rij) == 2, "twee zoekers, maar niet op elkaar"
+
+
+def test_gelijke_inzet_koppelt_wel_en_zet_de_pot_klaar(tmp_path, monkeypatch):
+    client, accounts = _verse_app(tmp_path, monkeypatch)
+    with client.websocket_connect("/ws") as a, client.websocket_connect("/ws") as b:
+        uid_a = _maak_account(a, "Aap")
+        uid_b = _maak_account(b, "Beer")
+        voor = accounts.db.coins_of(uid_a)
+
+        a.send_json({"type": "duel_zoek", "inzet": 100})
+        a.receive_json()
+        b.send_json({"type": "duel_zoek", "inzet": 100})
+
+        ma = _wacht_op(a, "duel_match", 8)
+        assert ma["inzet"] == 100
+        # Allebei betaald: de pot staat vast voordat er een woord getypt is.
+        assert accounts.db.coins_of(uid_a) == voor - 100
+        assert accounts.db.coins_of(uid_b) == voor - 100
+        d = accounts.db.duel_get(ma["duel_id"])
+        assert d["stake"] == 100 and d["stake_accepted"] and d["live"]
+
+
+def test_zoeken_kan_niet_met_een_inzet_die_je_niet_hebt(tmp_path, monkeypatch):
+    client, accounts = _verse_app(tmp_path, monkeypatch)
+    with client.websocket_connect("/ws") as a:
+        uid = _maak_account(a, "Aap")
+        accounts.db._exec("UPDATE users SET coins=10 WHERE id=?", (uid,))
+        a.send_json({"type": "duel_zoek", "inzet": 1000})
+        assert a.receive_json()["type"] == "error"
+        assert accounts.duel_rij == [], "en je blijft dus ook niet in de rij hangen"
 
 
 def _wacht_op(ws, soort: str, max_berichten: int = 6) -> dict:
