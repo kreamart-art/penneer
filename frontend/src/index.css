@@ -1721,3 +1721,33 @@ body.ketenspel::after {
   .waag-val { animation-duration: 1ms; }
   .waag-machine, .waag-terug { animation: none; }
 }
+
+/* ---- de radar van het live duel ------------------------------------------
+   Drie bewegingen die samen "er wordt gezocht" zeggen: de bundel gaat rond, de
+   pings dijen uit vanuit het hart, en de stipjes knipperen alsof ze net
+   opgepikt zijn. Alle drie op een transform of opacity, dus ze draaien op de
+   grafische kaart en kosten niets; een radar die de telefoon warm maakt is een
+   radar die je uitzet.
+
+   Bij `prefers-reduced-motion` staat alles stil: dan blijft het beeld hetzelfde
+   maar draait er niets. */
+@keyframes radar-draai {
+  to { transform: rotate(360deg); }
+}
+@keyframes radar-ping {
+  0%   { transform: scale(0.16); opacity: 0; }
+  10%  { opacity: 0.9; }
+  100% { transform: scale(1); opacity: 0; }
+}
+@keyframes radar-stip {
+  0%, 100% { opacity: 0.25; }
+  50%      { opacity: 1; }
+}
+.radar-bundel { animation: radar-draai 3.6s linear infinite; }
+.radar-ping   { animation: radar-ping 3.6s ease-out infinite; }
+.radar-stip   { animation: radar-stip 2.4s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .radar-bundel, .radar-ping, .radar-stip { animation: none; }
+  .radar-ping { opacity: 0.25; }
+}

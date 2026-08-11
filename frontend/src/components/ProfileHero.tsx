@@ -157,7 +157,10 @@ export function RingPortret({
 }: {
   /** De breedte van de ring. De rest volgt daaruit. */
   maat: number;
-  level: number;
+  /** Wat er op het schild komt. Meestal het level, maar niet altijd: op het
+   *  zoekscherm van het live duel staat er een vraagteken, want daar is de
+   *  speler nog onbekend. */
+  level: number | string;
   kleur?: SchildKleur;
   /** Tikken op het schild: opent de kleurkiezer. Zonder deze is het geen knop. */
   onSchild?: () => void;

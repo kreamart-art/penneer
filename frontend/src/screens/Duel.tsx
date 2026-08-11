@@ -15,6 +15,7 @@ import { Avatar } from "../components/Avatar";
 import { NeonText } from "../components/NeonText";
 import { Button } from "../components/Button";
 import { BUTTON_RATIO, GoldButton } from "../components/GoldButton";
+import { DuelZoeken } from "./DuelZoeken";
 import { Arena } from "../components/Arena";
 import { Screen, Card } from "../components/Layout";
 import type { GameApi } from "../net/socket";
@@ -282,6 +283,11 @@ export function Duel({ game, onBack, onProfile, openId, onGeopend }: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openId, list]);
 
+  // ---- zoeken -------------------------------------------------------------
+  // Zoeken is geen stand van een kaartje maar een eigen scherm: het duurt en je
+  // kunt er niets aan doen, dus het krijgt de ruimte om iets te DOEN. Alleen
+  // vanaf de lijst; sta je al in een duel, dan gaat dat voor.
+
   // ---- uitdagen -----------------------------------------------------------
 
   const challenge = async (friend: Person, stake: number) => {
@@ -416,6 +422,19 @@ export function Duel({ game, onBack, onProfile, openId, onGeopend }: {
             {t("duelStakeSaldo", { n: account?.coins ?? 0 })}
           </p>
         </Card>
+      </Screen>
+    );
+  }
+
+  // ---- zoeken naar een tegenstander ---------------------------------------
+  if (view === "list" && zoekt !== null) {
+    return (
+      <Screen top={header}>
+        <DuelZoeken
+          aantal={zoekt}
+          kleur={(account?.shield as SchildKleur) || "paars"}
+          onStop={() => { sound.uiTap(); game.duelZoekStop(); }}
+        />
       </Screen>
     );
   }
