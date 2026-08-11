@@ -161,3 +161,22 @@ def test_accounts_aanmaken_stopt_na_tien_vanaf_hetzelfde_adres(tmp_path, monkeyp
             if ws.receive_json()["type"] == "account":
                 gelukt += 1
     assert gelukt == 10, f"tien mag, de rest niet ({gelukt} gelukt)"
+
+
+def test_een_lus_wordt_stilgezet_en_de_verbinding_gaat_dicht(tmp_path, monkeypatch):
+    """Een echte speler haalt dit nooit: 60 berichten mogen in een salvo en er
+    komen er 20 per seconde bij. Wie er honderden achter elkaar stuurt, krijgt
+    er een waarschuwing en daarna stilte, en op het laatst de deur."""
+    from starlette.websockets import WebSocketDisconnect
+
+    client, _ = _verse_app(tmp_path, monkeypatch)
+    gehoord = []
+    with pytest.raises(WebSocketDisconnect):
+        with client.websocket_connect("/ws") as ws:
+            for _ in range(400):
+                ws.send_json({"type": "nietbestaand"})
+            while True:
+                gehoord.append(ws.receive_json().get("message"))
+
+    assert gehoord.count("Te veel berichten tegelijk.") == 1, "een waarschuwing, daarna stilte"
+    assert len([m for m in gehoord if m == "Nog niet in een room."]) <= 80, "de emmer laat er 60 door"

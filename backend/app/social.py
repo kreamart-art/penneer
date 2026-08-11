@@ -18,7 +18,7 @@ import os
 import time
 from typing import Any, Optional
 
-from . import daily, divisies, meldingen, missions, push, rem, titles
+from . import daily, divisies, meldingen, missions, push, rem, titles, toezicht
 from .db import (get_db, LEVEL_BUZZERS, BUZZER_SKIN_IDS, LEVEL_FOR_BUZZER, LEVEL_FRAMES,
                  LEVEL_FOR_FRAME, REEL_SKIN_IDS, EMOTE_IDS, EMOTE_PACKS,
                  EMOTE_PACK_UNLOCK, PACK_FOR_EMOTE)
@@ -670,7 +670,7 @@ class AccountManager:
             import httpx
 
             async with httpx.AsyncClient(timeout=10) as client:
-                await client.post(
+                res = await client.post(
                     "https://api.resend.com/emails",
                     headers={"Authorization": f"Bearer {key}"},
                     json={
@@ -681,6 +681,13 @@ class AccountManager:
                                 f"{link}\n\nNiet zelf aangevraagd? Negeer deze mail dan.",
                     },
                 )
+            # Het antwoord van Resend NAKIJKEN. Dit stond er niet, en daardoor
+            # kon een mail geweigerd worden (afzenderdomein niet geverifieerd,
+            # adres buiten de proefopstelling) zonder dat er ook maar iets van
+            # te zien was: de speler wacht op een link die nooit vertrekt en
+            # hier lijkt alles goed te gaan.
+            if res.status_code >= 300:
+                toezicht.fout("mail", RuntimeError(f"Resend {res.status_code}: {res.text[:200]}"))
         except Exception as exc:
             print(f"[penneer] mail versturen mislukt: {exc}; link: {link}", flush=True)
 

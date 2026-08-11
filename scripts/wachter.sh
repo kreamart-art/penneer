@@ -27,8 +27,11 @@
 
 URL="${PENNEER_URL:-https://penneer.artnomad.nl/healthz}"
 APP="${PENNEER_APP:-fakp5903ljd5puk0303xccjl}"
-NAAR="${PENNEER_ALARM_NAAR:-kream.art@gmail.com}"
-VAN="${PENNEER_MAIL_FROM:-Pen Neer <penneer@artnomad.nl>}"
+# Waar het alarm heen gaat. Let op: zolang artnomad.nl niet geverifieerd is bij
+# Resend levert die alleen af op het adres van de Resend-rekening zelf, en gaat
+# alles naar een ander adres met een 403 de prullenbak in. Is het domein wel
+# geverifieerd, dan mag hier elk adres staan.
+NAAR="${PENNEER_ALARM_NAAR:-mindlockresidence@gmail.com}"
 STAAT="${PENNEER_STAAT:-/var/lib/penneer-wachter}"
 HERHAAL=24          # 24 x 5 minuten = elke twee uur nog een keer
 
@@ -37,27 +40,48 @@ TELLER="$STAAT/mislukt"
 [ -f "$TELLER" ] || echo 0 > "$TELLER"
 n=$(cat "$TELLER")
 
-sleutel() {
-  [ -n "$RESEND_API_KEY" ] && { printf '%s' "$RESEND_API_KEY"; return; }
+uit_container() {
   c=$(docker ps -a --filter "name=$APP" -q | head -1)
   [ -n "$c" ] || return
   docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' "$c" \
-    | sed -n 's/^RESEND_API_KEY=//p' | head -1
+    | sed -n "s/^$1=//p" | head -1
+}
+
+sleutel() {
+  [ -n "$RESEND_API_KEY" ] && { printf '%s' "$RESEND_API_KEY"; return; }
+  uit_container RESEND_API_KEY
+}
+
+# De afzender ook uit de container: staat daar iets anders dan het domein dat
+# bij Resend geverifieerd is, dan weigert Resend de mail met een 403 en zou de
+# wachter denken dat hij meldt terwijl er niets aankomt.
+afzender() {
+  [ -n "$PENNEER_MAIL_FROM" ] && { printf '%s' "$PENNEER_MAIL_FROM"; return; }
+  uit_container PENNEER_MAIL_FROM
 }
 
 mail() {
   onderwerp="$1"; tekst="$2"
   k=$(sleutel)
+  VAN=$(afzender)
+  [ -n "$VAN" ] || VAN="onboarding@resend.dev"
   if [ -z "$k" ]; then
     logger -t penneer-wachter "geen RESEND_API_KEY; $onderwerp: $tekst"
     return
   fi
-  curl -s -m 20 -X POST https://api.resend.com/emails \
+  # De code van Resend meelezen en meelogen. Een alarmmail die stilletjes
+  # mislukt is het ergste wat een wachter kan overkomen: dan denk je dat je
+  # bewaakt wordt terwijl er niets vertrekt.
+  code=$(curl -s -m 20 -o /tmp/penneer-wachter.antwoord -w '%{http_code}' \
+    -X POST https://api.resend.com/emails \
     -H "Authorization: Bearer $k" \
     -H "Content-Type: application/json" \
-    -d "$(printf '{"from":"%s","to":["%s"],"subject":"%s","text":"%s"}' "$VAN" "$NAAR" "$onderwerp" "$tekst")" \
-    > /dev/null
-  logger -t penneer-wachter "$onderwerp: $tekst"
+    -d "$(printf '{"from":"%s","to":["%s"],"subject":"%s","text":"%s"}' "$VAN" "$NAAR" "$onderwerp" "$tekst")")
+  if [ "$code" = "200" ]; then
+    logger -t penneer-wachter "$onderwerp: $tekst"
+  else
+    logger -t penneer-wachter "MAIL MISLUKT ($code): $(head -c 200 /tmp/penneer-wachter.antwoord)"
+  fi
 }
 
 if curl -fsS -m 15 "$URL" > /dev/null 2>&1; then
