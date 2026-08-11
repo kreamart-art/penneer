@@ -14,7 +14,7 @@ import { ArrowLeft, Check, ChevronDown, ChevronLeft, ChevronRight, Clock as Cloc
 import { Avatar } from "../components/Avatar";
 import { NeonText } from "../components/NeonText";
 import { Button } from "../components/Button";
-import { GoldButton } from "../components/GoldButton";
+import { BUTTON_RATIO, GoldButton } from "../components/GoldButton";
 import { Arena } from "../components/Arena";
 import { Screen, Card } from "../components/Layout";
 import type { GameApi } from "../net/socket";
@@ -954,11 +954,30 @@ function WordLine({ slot, mine }: { slot: Slot | null; mine: boolean }) {
  *  tegenstander en dus maar één uitkomst. */
 /** De kaart waarmee je een tegenstander zoekt die NU ook zoekt.
  *
- *  Twee standen en niet meer: zoeken of niet. Een teller met "3 aan het
- *  zoeken" erbij, want bij een kleine club spelers is het verschil tussen
- *  "niemand" en "twee anderen" precies wat bepaalt of je blijft wachten. En
- *  een regel die zegt dat je vrienden een seintje krijgen, zodat het wachten
- *  ergens toe leidt in plaats van dat je naar een draaiend wieltje kijkt. */
+ *  DE MATEN ZIJN GEMETEN EN NIET GESCHAT. De paarse knopplaat is 1000x269 waar
+ *  zijn lichte vlak 930x200 is, dus de art steekt boven het knopvak uit met
+ *  14,5% van de hoogte en eronder met ongeveer 20%: dat is de 3D-lip plus de
+ *  gloed. Zet je zo'n knop met een gewone `gap` in een vak, dan loopt die
+ *  bloeding over de regel erboven en door de onderrand van het vak heen; dat
+ *  gebeurde hier ook. Daarom staat de knop in een eigen vak dat die ruimte
+ *  RESERVEERT (marge boven en onder), en is hij smaller dan de kaart zodat de
+ *  gloed aan de zijkanten binnen de lijst blijft.
+ *
+ *  De kop is dezelfde kopregel als boven de duellijsten. Twee stijlen koppen op
+ *  een scherm laat elke sectie los van de andere staan, en dit is er een van de
+ *  drie op deze pagina.
+ *
+ *  Twee standen en niet meer: zoeken of niet. Met de teller erbij ("3 aan het
+ *  zoeken"), want bij een kleine club spelers is het verschil tussen "niemand"
+ *  en "twee anderen" precies wat bepaalt of je blijft wachten. */
+// Het knopvak zelf, zonder de gloed. Bewust KLEINER dan de gouden "Nieuw
+// duel" erboven (die komt op ongeveer 205 uit): dat is de hoofdactie en deze
+// staat er een trede onder. Stond hij op 218, dan was de tweede knop de
+// grootste van het scherm en las de pagina omgekeerd.
+const LIVE_KNOP_BREED = 172;
+const LIVE_BLOED_BOVEN = Math.round((LIVE_KNOP_BREED / BUTTON_RATIO) * 0.15);
+const LIVE_BLOED_ONDER = Math.round((LIVE_KNOP_BREED / BUTTON_RATIO) * 0.20);
+
 function LiveKaart({ zoekt, onZoek, onStop, t }: {
   zoekt: number | null;
   onZoek: () => void;
@@ -967,32 +986,52 @@ function LiveKaart({ zoekt, onZoek, onStop, t }: {
 }) {
   const aan = zoekt !== null;
   return (
-    <GoudKader hoek={13} fade gloed padding={13} kleur={aan ? "violet" : undefined}
-               style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <span style={{ width: 8, height: 8, borderRadius: 999, background: aan ? colors.red : colors.faint,
-                       animation: aan ? "fill-pulse 1.4s ease-in-out infinite" : undefined, flexShrink: 0 }} />
-        <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink }}>
-          {t("duelLiveTitle")}
-        </span>
-      </div>
-      <span style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint, lineHeight: 1.45 }}>
-        {aan ? t("duelLiveCalled") : t("duelLiveSub")}
-      </span>
-      {aan ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-          <span style={{ fontFamily: font.ui, fontSize: 13, color: colors.sub, textAlign: "center" }}>
-            {t("duelLiveSearching")} · {t("duelLiveQueue", { n: zoekt ?? 1 })}
-          </span>
-          <Button variant="ghost" full onClick={onStop}>{t("duelLiveStop")}</Button>
+    // De vlakverdeling zit in een EIGEN laag binnen het kader. GoudKader zet de
+    // meegegeven `style` op zijn buitenkant, niet op het vak met de inhoud;
+    // een flex-kolom van buitenaf meegeven doet daar dus niets, en dan staan de
+    // regels tegen elkaar aan en loopt de gloed van de knop over de tekst.
+    // GEEN `fade` hier. Dat dooft de lijn vanaf de linkerbovenhoek, en op een
+    // laag vak blijft daar een lichte hoek plus een los stukje lijn rechtsonder
+    // van over: dat leest als een fout en niet als stijl. De lange lijst
+    // eronder is hoog genoeg om het wel te dragen.
+    <GoudKader hoek={13} gloed padding={12}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 7, marginLeft: 4 }}>
+          <span style={{ width: 7, height: 7, borderRadius: 999, background: aan ? colors.red : colors.faint,
+                         animation: aan ? "fill-pulse 1.4s ease-in-out infinite" : undefined, flexShrink: 0 }} />
+          <span style={KOPREGEL}>{t("duelLiveTitle")}</span>
         </div>
-      ) : (
-        <Button variant="primary" full onClick={onZoek}>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
-            <Swords size={16} /> {t("duelLiveSearch")}
-          </span>
-        </Button>
-      )}
+        <span style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint, lineHeight: 1.45, marginLeft: 4 }}>
+          {aan ? t("duelLiveCalled") : t("duelLiveSub")}
+        </span>
+        {aan && (
+          // Stand en teller op twee regels. Achter elkaar werd het een zin die
+          // de hele breedte pakte, en dan leest de kaart als een alinea in
+          // plaats van als een ding dat op dit moment bezig is.
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1, marginTop: 2 }}>
+            <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: colors.ink }}>
+              {t("duelLiveSearching")}
+            </span>
+            <span style={{ fontFamily: font.ui, fontSize: 11.5, color: colors.faint }}>
+              {t("duelLiveQueue", { n: zoekt ?? 1 })}
+            </span>
+          </div>
+        )}
+        <div style={{
+          width: `min(78%, ${LIVE_KNOP_BREED}px)`, alignSelf: "center",
+          marginTop: aan ? 2 : LIVE_BLOED_BOVEN, marginBottom: aan ? 0 : LIVE_BLOED_ONDER,
+        }}>
+          {aan ? (
+            <Button variant="ghost" full onClick={onStop}>{t("duelLiveStop")}</Button>
+          ) : (
+            <Button variant="primary" full onClick={onZoek}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 7, whiteSpace: "nowrap" }}>
+                <Swords size={15} /> {t("duelLiveSearch")}
+              </span>
+            </Button>
+          )}
+        </div>
+      </div>
     </GoudKader>
   );
 }
