@@ -21,6 +21,25 @@ export interface Rapport {
   doel_naam: string;
 }
 
+/** De meterkast van de server: hoe de machine erbij staat, niet het spel. */
+export interface Toezicht {
+  versie: string;
+  op: number;                 // seconden sinds de laatste start
+  db_leeft: boolean;
+  schijf: { totaal?: number; vrij?: number; vrij_deel?: number };
+  geheugen: number;
+  db_maat: { db: number; wal: number };
+  kopie: { aantal: number; pad: string | null; bytes: number; uren_oud: number | null };
+  rooms: number;
+  spelers: number;
+  verbindingen: number;
+  fouten_totaal: number;
+  fouten_kwartier: number;
+  fouten: { t: number; bron: string; soort: string; tekst: string }[];
+  geweigerd: Record<string, number>;
+  rem_aan: boolean;
+}
+
 export interface AdminStats {
   accounts: number;
   accounts_nieuw_7d: number;
@@ -412,6 +431,7 @@ export interface ClientState {
   isAdmin: boolean;
   adminStats: AdminStats | null; // dashboard-cijfers, alleen na admin_stats-verzoek
   rapporten: Rapport[];          // openstaande meldingen, alleen voor een admin
+  toezicht: Toezicht | null;     // de staat van de server, alleen voor een admin
   adminAi: AdminAi | null;
   recoveryCodes: RecoveryCode[];
   aiCodes: AiCodeInfo | null; // AI-referee unlock-code stats + freshly generated codes
@@ -517,6 +537,7 @@ type ServerMessage =
   | { type: "admin_ok"; is_admin: boolean; ai: AdminAi; recovery_codes: RecoveryCode[]; ai_codes: AiCodeInfo; avatar_codes?: AiCodeInfo; buzzer_codes?: AiCodeInfo }
   | { type: "admin_stats"; stats: AdminStats }
   | { type: "rapporten"; items: Rapport[] }
+  | { type: "toezicht"; status: Toezicht }
   | { type: "rapport_ok" }
   | { type: "admin_categories"; categories: AdminCategory[]; note?: string }
   | { type: "shop_result"; ok: boolean; reason: string }
@@ -616,6 +637,7 @@ const initialState: ClientState = {
   isAdmin: false,
   adminStats: null,
   rapporten: [],
+  toezicht: null,
   adminAi: null,
   adminCategories: null,
   recoveryCodes: [],
@@ -756,6 +778,8 @@ function reducer(state: ClientState, action: Action): ClientState {
       return state; // room_state carries the authoritative snapshot
     case "rapporten":
       return { ...state, rapporten: msg.items };
+    case "toezicht":
+      return { ...state, toezicht: msg.status };
     case "rapport_ok":
       return state;
     case "admin_stats":
@@ -1019,6 +1043,7 @@ export interface GameApi {
    *  zodat de melding leesbaar blijft als de ander het weghaalt. */
   rapporteer: (doel: string, reden: string, soort?: string, tekst?: string) => void;
   adminRapporten: () => void;
+  adminToezicht: () => void;
   adminRapportSluit: (id: number) => void;
   gekochtGezien: () => void;
   setAvatarFrame: (frame: string | null) => void;
@@ -1291,6 +1316,7 @@ export function useGame(): GameApi {
     meldingenWissen: () => send({ type: "meldingen_wis" }),
     rapporteer: (doel, reden, soort = "speler", tekst) => send({ type: "rapport", doel, reden, soort, tekst }),
     adminRapporten: () => send({ type: "admin_rapporten" }),
+    adminToezicht: () => send({ type: "admin_toezicht" }),
     adminRapportSluit: (id) => send({ type: "admin_rapport_sluit", id }),
     gekochtGezien: () => dispatch({ type: "gekochtGezien" }),
     setAvatarFrame: (frame) => send({ type: "set_avatar_frame", frame }),

@@ -18,7 +18,7 @@ import os
 import time
 from typing import Any, Optional
 
-from . import daily, divisies, meldingen, missions, push, titles
+from . import daily, divisies, meldingen, missions, push, rem, titles
 from .db import (get_db, LEVEL_BUZZERS, BUZZER_SKIN_IDS, LEVEL_FOR_BUZZER, LEVEL_FRAMES,
                  LEVEL_FOR_FRAME, REEL_SKIN_IDS, EMOTE_IDS, EMOTE_PACKS,
                  EMOTE_PACK_UNLOCK, PACK_FOR_EMOTE)
@@ -165,6 +165,11 @@ class AccountManager:
         if not doel or not reden or doel == uid:
             return
         if not self.db.get_user(doel):
+            return
+        # Tien meldingen per uur. Wie echt last heeft van iemand meldt dat een
+        # keer; wie de meldingenlijst wil vullen kan dat nu niet meer.
+        if rem.RAPPORT.wacht(uid):
+            await self._send(ws, {"type": "rapport_ok"})
             return
         self.db.rapport_add(uid, doel, soort, reden, tekst if isinstance(tekst, str) else None, time.time())
         # Melden en blokkeren zijn twee dingen, maar wie meldt wil die persoon
@@ -511,6 +516,14 @@ class AccountManager:
     async def account_create(self, ws: Any, data: dict) -> None:
         name = (data.get("name") or "").strip()
         color = data.get("color") or PLAYER_COLORS[0]
+        # Tien nieuwe accounts per uur vanaf hetzelfde adres. Een huiskamer vol
+        # mensen die samen beginnen haalt dat nooit; een script wel, en dan zit
+        # de ranglijst vol met namen die nooit gespeeld hebben.
+        te_gaan = rem.NIEUW_IP.wacht(rem.ip_van(ws))
+        if te_gaan:
+            await self._send(ws, {"type": "error",
+                                  "message": "Er zijn net veel accounts vanaf dit adres gemaakt. Probeer het straks nog eens."})
+            return
         res = self.db.create_user(name, color)
         if res is None:
             reason = "Naam is bezet of ongeldig." if self.db.valid_name(name) else "Kies een naam van 2 tot 20 letters."
@@ -597,10 +610,23 @@ class AccountManager:
 
     async def account_password_login(self, ws: Any, data: dict) -> None:
         """Log in with e-mail + password (no magic link needed)."""
+        # Alleen MISSERS tellen mee, en een gelukte login wist de teller: wie
+        # zijn eigen wachtwoord goed intikt hoort nooit tegen een rem aan te
+        # lopen, ook niet als hij vanaf dezelfde wifi als tien anderen speelt.
+        adres = (data.get("email") or "").strip().lower()
+        ip = rem.ip_van(ws)
+        if rem.WW_ADRES.over(adres) or rem.WW_IP.over(ip):
+            rem.noteer(rem.WW_ADRES.naam)
+            await self._send(ws, {"type": "error",
+                                  "message": "Te vaak geprobeerd. Wacht een kwartier of gebruik 'wachtwoord vergeten'."})
+            return
         res = self.db.login_with_password(data.get("email") or "", data.get("password") or "")
         if res is None:
+            rem.WW_ADRES.tel(adres)
+            rem.WW_IP.tel(ip)
             await self._send(ws, {"type": "error", "message": "Onjuiste e-mail of wachtwoord."})
             return
+        rem.WW_ADRES.wis(adres)
         self.db.ensure_avatar(res["user_id"])
         self.bind(ws, res["user_id"])
         payload = await self._account_payload(ws, res["user_id"])
@@ -609,6 +635,19 @@ class AccountManager:
         await self._notify_friends_presence(res["user_id"])
 
     async def account_request_login(self, ws: Any, data: dict) -> None:
+        # De duurste knop van de app: elke druk stuurt een ECHTE mail. Zonder
+        # rem kan iemand hier een adres dat niet van hem is mee bestoken, op
+        # kosten van dit domein en zijn reputatie. Drie remmen over elkaar:
+        # kort per adres (tegen dubbelklikken en tegen bestoken), lang per adres
+        # (tegen de trage lus) en per adres van de afzender.
+        adres = (data.get("email") or "").strip().lower()
+        ip = rem.ip_van(ws)
+        if (rem.LINK_ADRES.wacht(adres) or rem.LINK_ADRES_UUR.wacht(adres)
+                or rem.LINK_IP.wacht(ip)):
+            # Hetzelfde antwoord als anders: of een adres bestaat en of het al
+            # een mail kreeg, hoort niemand van buiten te kunnen zien.
+            await self._send(ws, {"type": "login_link_sent"})
+            return
         res = self.db.start_login(data.get("email") or "")
         # Same reply whether the email exists or not (no account probing).
         await self._send(ws, {"type": "login_link_sent"})
@@ -726,6 +765,12 @@ class AccountManager:
                 return
         else:
             emote = None
+        # Dertig berichten per minuut. Een druk gesprek haalt dat niet, een lus
+        # wel, en aan de andere kant zit een telefoon die van elk bericht een
+        # melding krijgt.
+        if rem.DM.wacht(uid):
+            await self._send(ws, {"type": "error", "message": "Even rustig aan met berichten sturen."})
+            return
         msg = self.db.dm_send(
             uid, to, data.get("text") or "",
             voice_id=data.get("voice_id") or None,

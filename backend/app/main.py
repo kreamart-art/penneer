@@ -21,7 +21,7 @@ from fastapi.staticfiles import StaticFiles
 
 from . import ai_referee, arena, daily, dagprijzen, discover, duel, game, missies_lang, missions, paypal, push
 from . import topo
-from . import backup
+from . import backup, rem, toezicht
 from .db import AVATAR_MAX_BYTES, DB_PATH, get_db
 from .social import accounts, _level_of
 from .ws import manager, router as ws_router
@@ -40,8 +40,15 @@ app.include_router(ws_router)
 
 
 @app.get("/healthz")
-async def healthz() -> dict:
-    return {"ok": True}
+async def healthz() -> JSONResponse:
+    """De hartslag. Doet een echte lees op de database, niet alleen "ik leef".
+
+    Bij narigheid 503 en geen 200: een pinger van buiten kijkt naar de code, en
+    een server die wel antwoordt maar niets meer kan lezen is voor een speler
+    net zo stuk als een server die helemaal weg is.
+    """
+    uit = toezicht.gezondheid()
+    return JSONResponse(uit, status_code=200 if uit["ok"] else 503)
 
 
 @app.post("/api/debug/viewport")
@@ -157,6 +164,13 @@ async def _start_backups() -> None:
 
 
 @app.on_event("startup")
+async def _start_toezicht() -> None:
+    """De bewaaklus: schijf, kopie en fouten, met een melding bij narigheid."""
+    asyncio.create_task(toezicht.bewaak())
+    print(f"[penneer] versie {toezicht.versie()}, rem {'aan' if rem.AAN else 'UIT'}", flush=True)
+
+
+@app.on_event("startup")
 async def _start_herinneringen() -> None:
     """De lus die openstaande dingen aantikt: verzoeken en berichten die blijven
     liggen, en duels waar iemand op wacht.
@@ -206,6 +220,26 @@ def _bearer(request: Request) -> str:
     return auth[7:] if auth.lower().startswith("bearer ") else ""
 
 
+def _te_snel(sleutel: str, aantal_bytes: int) -> Response | None:
+    """De rem op uploads: hoeveel KEER en hoeveel MEGABYTE per uur.
+
+    Twee remmen over hetzelfde, want honderd kleine plaatjes zijn iets anders
+    dan honderd van drie megabyte, en het is die tweede die de schijf volzet
+    waar ook de database op staat. Geeft een 429 terug, of None als het mag.
+
+    De sleutel is het ACCOUNT waar er een is (avatar en privébericht: die
+    blijven op schijf staan) en anders de speler in de room (chat: die blobs
+    leven in het geheugen en zijn na 24 stuks weer weg). Bewust niet het IP:
+    een gezin op één wifi zou elkaar dan bij het eerste fotootje al remmen.
+    """
+    for r, gewicht in ((rem.UPLOAD, 1), (rem.UPLOAD_BYTES, max(1, aantal_bytes))):
+        te_gaan = r.wacht(sleutel, gewicht)
+        if te_gaan:
+            return Response("Even rustig aan met versturen.", status_code=429,
+                            headers={"Retry-After": str(int(te_gaan) + 1)})
+    return None
+
+
 @app.post("/api/avatar")
 async def upload_avatar(request: Request) -> Response:
     db = get_db()
@@ -216,6 +250,9 @@ async def upload_avatar(request: Request) -> Response:
     body = await request.body()
     if len(body) > AVATAR_MAX_BYTES:
         return Response("Foto is te groot.", status_code=413)
+    rood = _te_snel(uid, len(body))
+    if rood is not None:
+        return rood
     if not db.set_avatar(uid, body, mime):
         return Response("Ongeldig beeldformaat.", status_code=400)
     return Response(status_code=204)
@@ -241,6 +278,9 @@ async def upload_room_voice(code: str, request: Request):
     body = await request.body()
     if not body or len(body) > VOICE_MAX_BYTES:
         return Response("Opname is te groot.", status_code=413)
+    rood = _te_snel(f"speler:{player_id}", len(body))
+    if rood is not None:
+        return rood
     vid = uuid.uuid4().hex
     room.voice[vid] = (mime, body)
     while len(room.voice) > VOICE_KEEP_PER_ROOM:
@@ -270,6 +310,9 @@ async def upload_dm_voice(request: Request):
     body = await request.body()
     if not body or len(body) > VOICE_MAX_BYTES:
         return Response("Opname is te groot.", status_code=413)
+    rood = _te_snel(uid, len(body))
+    if rood is not None:
+        return rood
     return JSONResponse({"id": db.dm_voice_store(uid, mime, body)})
 
 
@@ -312,6 +355,9 @@ async def upload_room_image(code: str, request: Request):
     body = await request.body()
     if not body or len(body) > BEELD_MAX_BYTES:
         return Response("Afbeelding is te groot.", status_code=413)
+    rood = _te_snel(f"speler:{player_id}", len(body))
+    if rood is not None:
+        return rood
     iid = uuid.uuid4().hex
     room.beeld[iid] = (mime, body)
     while len(room.beeld) > BEELD_KEEP_PER_ROOM:
@@ -341,6 +387,9 @@ async def upload_dm_image(request: Request):
     body = await request.body()
     if not body or len(body) > BEELD_MAX_BYTES:
         return Response("Afbeelding is te groot.", status_code=413)
+    rood = _te_snel(uid, len(body))
+    if rood is not None:
+        return rood
     return JSONResponse({"id": db.dm_image_store(uid, mime, body)})
 
 

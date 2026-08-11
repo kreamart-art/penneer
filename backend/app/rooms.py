@@ -204,6 +204,17 @@ class RoomManager:
         except Exception:
             pass
 
+    async def admin_toezicht(self, ws: Any, player_id: Optional[str], payload: dict) -> None:
+        """De meterkast: schijf, kopie, geheugen, laatste fouten, wat de rem
+        geweigerd heeft. Alleen voor een ingelogde admin."""
+        if not self._is_admin_conn(ws):
+            return
+        from . import toezicht  # hier pas: toezicht kijkt zelf naar deze manager
+        try:
+            await ws.send_json({"type": "toezicht", "status": toezicht.status()})
+        except Exception:
+            pass
+
     async def admin_rapporten(self, ws: Any, player_id: Optional[str], payload: dict) -> None:
         """De meldingen die nog open staan. Alleen voor een ingelogde admin,
         want hier staan namen van spelers in en wat ze naar elkaar sturen."""

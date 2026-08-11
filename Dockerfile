@@ -7,6 +7,9 @@ COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 COPY frontend/ ./
 RUN npm run build
+# Het versienummer naast de SPA. Zo kan /healthz zeggen WELKE uitrol er draait,
+# en hoef je na een deploy niet meer de hash van de js-bundel te vergelijken.
+RUN node -e "const fs=require('fs');const m=fs.readFileSync('src/version.ts','utf8').match(/\"([^\"]+)\"/);fs.writeFileSync('dist/versie.txt',m?m[1]:'?')"
 
 # --- stage 2: backend runtime ---
 FROM python:3.12-slim AS runtime

@@ -123,6 +123,106 @@ export function AdminDashboard({ game }: { game: GameApi }) {
       </div>
 
       <Rapporten game={game} />
+      <Systeem game={game} />
+    </div>
+  );
+}
+
+/** De meterkast: hoe de MACHINE erbij staat, niet het spel.
+ *
+ *  De bewaaklus op de server meldt zichzelf als er iets mis is, dus dit blok is
+ *  voor als je toch wilt kijken: staat de kopie van vannacht er, hoeveel schijf
+ *  is er nog, gaan er fouten om, en heeft de rem iets geweigerd. Een rode stip
+ *  bij een regel betekent dat de bewaker daar ook op zou aanslaan. */
+function Systeem({ game }: { game: GameApi }) {
+  const t = game.state.toezicht;
+  useEffect(() => { game.adminToezicht(); }, []);
+
+  if (!t) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <Kop>Server</Kop>
+        <span style={{ fontFamily: font.ui, fontSize: 11.5, color: colors.faint }}>Meterkast laden...</span>
+      </div>
+    );
+  }
+
+  const mb = (n: number) => `${Math.round(n / 1_000_000)} MB`;
+  const duur = (s: number) => {
+    const d = Math.floor(s / 86400), u = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
+    return d ? `${d}d ${u}u` : u ? `${u}u ${m}m` : `${m}m`;
+  };
+  const vrijDeel = t.schijf.vrij_deel ?? 1;
+  const kopieUren = t.kopie.uren_oud;
+
+  const regels: { label: string; waarde: string; slecht: boolean }[] = [
+    { label: "versie", waarde: t.versie, slecht: false },
+    { label: "draait", waarde: duur(t.op), slecht: false },
+    { label: "database", waarde: t.db_leeft ? "leest" : "ANTWOORDT NIET", slecht: !t.db_leeft },
+    { label: "schijf vrij", waarde: t.schijf.vrij ? `${mb(t.schijf.vrij)} (${Math.round(vrijDeel * 100)}%)` : "?", slecht: vrijDeel < 0.1 },
+    { label: "geheugen", waarde: t.geheugen ? mb(t.geheugen) : "?", slecht: false },
+    { label: "database groot", waarde: mb(t.db_maat.db + t.db_maat.wal), slecht: false },
+    {
+      label: "laatste kopie",
+      waarde: t.kopie.aantal === 0 ? "GEEN" : `${kopieUren ?? "?"} uur oud (${t.kopie.aantal} bewaard)`,
+      slecht: t.kopie.aantal === 0 || (kopieUren ?? 0) > 30,
+    },
+    { label: "nu binnen", waarde: `${t.spelers} in ${t.rooms} rooms, ${t.verbindingen} verbindingen`, slecht: false },
+    { label: "fouten", waarde: `${t.fouten_kwartier} dit kwartier, ${t.fouten_totaal} sinds de start`, slecht: t.fouten_kwartier >= 25 },
+    { label: "rem", waarde: t.rem_aan ? "aan" : "UIT", slecht: !t.rem_aan },
+  ];
+
+  const geweigerd = Object.entries(t.geweigerd);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <Kop>Server</Kop>
+        <button
+          onClick={() => game.adminToezicht()}
+          className="pressable"
+          style={{ background: "transparent", border: `1px solid ${colors.panelBorder}`, borderRadius: 999, padding: "3px 10px", cursor: "pointer", fontFamily: font.ui, fontSize: 10.5, color: colors.sub }}
+        >
+          Ververs
+        </button>
+      </div>
+
+      <div style={{ background: "rgba(255,255,255,.045)", border: "1px solid rgba(255,255,255,.09)", borderRadius: 10, padding: "8px 10px", display: "flex", flexDirection: "column", gap: 3 }}>
+        {regels.map((r) => (
+          <div key={r.label} style={{ display: "flex", alignItems: "baseline", gap: 8, fontFamily: font.ui, fontSize: 11.5 }}>
+            <span style={{ width: 96, flexShrink: 0, color: colors.faint }}>{r.label}</span>
+            <span style={{ flex: 1, color: r.slecht ? "#FF7B6B" : colors.ink, fontWeight: r.slecht ? 700 : 400, overflowWrap: "anywhere" }}>
+              {r.waarde}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {geweigerd.length > 0 && (
+        <div style={{ background: "rgba(255,255,255,.045)", border: "1px solid rgba(255,255,255,.09)", borderRadius: 10, padding: "8px 10px", display: "flex", flexDirection: "column", gap: 3 }}>
+          <span style={{ fontFamily: font.ui, fontSize: 10.5, color: colors.faint }}>Geweigerd door de rem</span>
+          {geweigerd.map(([naam, n]) => (
+            <div key={naam} style={{ display: "flex", justifyContent: "space-between", fontFamily: font.ui, fontSize: 11.5, color: colors.ink }}>
+              <span>{naam}</span>
+              <span style={{ fontWeight: 700, color: GOUD[3], fontVariantNumeric: "tabular-nums" }}>{n}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {t.fouten.length > 0 && (
+        <div style={{ background: "rgba(255,255,255,.045)", border: "1px solid rgba(255,255,255,.09)", borderRadius: 10, padding: "8px 10px", display: "flex", flexDirection: "column", gap: 4 }}>
+          <span style={{ fontFamily: font.ui, fontSize: 10.5, color: colors.faint }}>Laatste fouten</span>
+          {t.fouten.map((f, i) => (
+            <div key={i} style={{ fontFamily: font.ui, fontSize: 11, color: colors.sub, overflowWrap: "anywhere" }}>
+              <span style={{ color: colors.faint }}>
+                {new Date(f.t * 1000).toLocaleString("nl-NL", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+              </span>{" "}
+              <b style={{ color: "#FF9E90" }}>{f.bron}</b> {f.soort}: {f.tekst}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

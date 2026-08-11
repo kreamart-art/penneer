@@ -1110,6 +1110,21 @@ class Database:
             )
         return dict(rows[0]) if rows else None
 
+    def user_id_by_name(self, name: str) -> Optional[str]:
+        """Het id achter een naam. Voor het toezicht: de baas krijgt het alarm."""
+        with self._lock:
+            rows = self._q("SELECT id FROM users WHERE name_lower=?", ((name or "").strip().lower(),))
+        return rows[0]["id"] if rows else None
+
+    def leeft(self) -> bool:
+        """Kan er nog gelezen worden? De hartslag onder /healthz."""
+        try:
+            with self._lock:
+                self._q("SELECT 1")
+            return True
+        except Exception:
+            return False
+
     def set_lenient(self, user_id: str, on: bool) -> None:
         self._exec("UPDATE users SET lenient_spelling=? WHERE id=?", (int(on), user_id))
 

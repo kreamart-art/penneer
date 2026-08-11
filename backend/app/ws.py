@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
+from . import rem, toezicht
 from .rooms import RoomManager
 from .social import accounts
 
@@ -24,10 +25,27 @@ def _account_of(ws: WebSocket) -> dict | None:
 async def ws_endpoint(ws: WebSocket) -> None:
     await ws.accept()
     player_id: str | None = None
+    # De rem op de socket zelf. Een emmer en geen venster: tijdens het invullen
+    # komt er elke 300 ms een bericht en na een ronde een klein salvo, en dat
+    # moet gewoon door. Blijft het aanhouden, dan is het geen speler meer maar
+    # een lus, en na WS_GEDULD geweigerde berichten gaat de verbinding dicht.
+    emmer = rem.Emmer(rem.WS_DAK, rem.WS_VUL)
+    te_druk = 0
     try:
         while True:
             data = await ws.receive_json()
             mtype = data.get("type")
+
+            if not emmer.pak():
+                te_druk += 1
+                if te_druk == 1:
+                    rem.noteer("socket")
+                    await ws.send_json({"type": "error", "message": "Te veel berichten tegelijk."})
+                if te_druk > rem.WS_GEDULD:
+                    await ws.close(code=1008)
+                    break
+                continue
+            te_druk = 0
 
             # --- accounts + social: connection-scoped, works outside rooms ---
             if await accounts.handle(ws, mtype, data):
@@ -56,6 +74,9 @@ async def ws_endpoint(ws: WebSocket) -> None:
                 continue
             if mtype == "admin_set_ai":
                 await manager.admin_set_ai(ws, player_id, data)
+                continue
+            if mtype == "admin_toezicht":
+                await manager.admin_toezicht(ws, player_id, data)
                 continue
             if mtype == "admin_rapporten":
                 await manager.admin_rapporten(ws, player_id, data)
@@ -144,7 +165,11 @@ async def ws_endpoint(ws: WebSocket) -> None:
         await accounts.dropped(ws)
         if player_id is not None:
             await manager.disconnect(player_id)
-    except Exception:
+    except Exception as exc:
+        # Deze vangst gooide de fout stilzwijgend weg: geen regel in het log,
+        # geen teller, dus een stukje dat voor iedereen kapot was viel pas op
+        # als een speler het zei. Nu telt hij mee en staat hij in de meterkast.
+        toezicht.fout("ws", exc)
         manager.drop_connection(ws)
         await accounts.dropped(ws)
         if player_id is not None:
