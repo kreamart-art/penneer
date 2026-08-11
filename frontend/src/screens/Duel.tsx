@@ -14,7 +14,7 @@ import { ArrowLeft, Check, ChevronDown, ChevronLeft, ChevronRight, Clock as Cloc
 import { Avatar } from "../components/Avatar";
 import { NeonText } from "../components/NeonText";
 import { Button } from "../components/Button";
-import { BUTTON_RATIO, GoldButton } from "../components/GoldButton";
+import { GoldButton } from "../components/GoldButton";
 import { DuelZoeken } from "./DuelZoeken";
 import { Arena } from "../components/Arena";
 import { Screen, Card } from "../components/Layout";
@@ -739,16 +739,31 @@ export function Duel({ game, onBack, onProfile, openId, onGeopend }: {
           </div>
         </div>
 
-        {/* Live duel. Staat BOVEN de lopende duels en onder de uitdaagknop:
-            het is het snelste wat je hier kunt doen (geen uitnodiging, geen
-            wachten op een beurt), maar het vraagt wel dat er iemand anders is,
-            dus het verdringt de uitdaagknop niet. */}
-        {/* Zoeken is een EIGEN scherm (zie DuelZoeken), dus deze kaart kent
-            maar een stand: de knop waarmee je begint. */}
-        <LiveKaart
-          onZoek={() => { sound.uiTap(); setNote(""); setLiveIdx(0); setLiveOpen(true); }}
-          t={t}
-        />
+        {/* Live duel: de tweede weg naar hetzelfde duel, dus hij staat direct
+            onder de gouden knop en niet in een eigen vak. Geen uitleg erbij:
+            wat er gebeurt zie je op het scherm dat erop volgt, en een kaart met
+            een kop en een zin eromheen maakte er een sectie van terwijl het een
+            KNOP is.
+
+            Dezelfde behandeling als de gouden knop erboven (vaste breedte,
+            schaal, negatieve marge om de ruimte terug te pakken), alleen een
+            slag kleiner: dit is de tweede keuze en dat hoor je te zien. */}
+        {/* Vijf pixels lucht en niet minder: de gouden plaat heeft onderaan een
+            3D-lip met gloed die tot 348 doorloopt, en zonder deze marge raakt
+            die de bovenkant van de paarse. Gemeten, niet geschat. */}
+        <div style={{ display: "flex", justifyContent: "center", marginTop: 4 }}>
+          <div style={{
+            width: "58%", maxWidth: 205,
+            transform: `scale(${KNOP_SCHAAL})`, transformOrigin: "center top",
+            marginBottom: -Math.round(205 * (150 / 663) * (1 - KNOP_SCHAAL)),
+          }}>
+            <Button variant="primary" full onClick={() => { sound.uiTap(); setNote(""); setLiveIdx(0); setLiveOpen(true); }}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 19, letterSpacing: 0.3, whiteSpace: "nowrap" }}>
+                <Swords size={17} /> {t("duelLiveTitle")}
+              </span>
+            </Button>
+          </div>
+        </div>
 
         {!!note && <p style={{ margin: 0, textAlign: "center", fontFamily: font.ui, fontSize: 13, color: colors.orange }}>{note}</p>}
 
@@ -1007,76 +1022,6 @@ function WordLine({ slot, mine }: { slot: Slot | null; mine: boolean }) {
  *  loopt, goud als je won, rood als je verloor. Bij de laatste potjes hoefde
  *  dat niet, want daar staat een plaatsnummer op het wapen; hier is er maar één
  *  tegenstander en dus maar één uitkomst. */
-/** De kaart waarmee je een tegenstander gaat zoeken die NU ook zoekt.
- *
- *  DE MATEN ZIJN GEMETEN EN NIET GESCHAT. De paarse knopplaat is 1000x269 waar
- *  zijn lichte vlak 930x200 is, dus de art steekt boven het knopvak uit met
- *  14,5% van de hoogte en eronder met ongeveer 20%: dat is de 3D-lip plus de
- *  gloed. Zet je zo'n knop met een gewone `gap` in een vak, dan loopt die
- *  bloeding over de regel erboven en door de onderrand van het vak heen; dat
- *  gebeurde hier ook. Daarom staat de knop in een eigen vak dat die ruimte
- *  RESERVEERT (marge boven en onder), en is hij smaller dan de kaart zodat de
- *  gloed aan de zijkanten binnen de lijst blijft.
- *
- *  De kop is dezelfde kopregel als boven de duellijsten. Twee stijlen koppen op
- *  een scherm laat elke sectie los van de andere staan, en dit is er een van de
- *  drie op deze pagina.
- *
- *  EEN stand en niet meer: de knop waarmee je begint. Het zoeken zelf is een
- *  eigen scherm met de radar (DuelZoeken), want het duurt en je kunt er niets
- *  aan doen; dat hoort niet in een kaartje tussen twee lijsten. */
-// Het knopvak zelf, zonder de gloed. Bewust KLEINER dan de gouden "Nieuw
-// duel" erboven (die komt op ongeveer 205 uit): dat is de hoofdactie en deze
-// staat er een trede onder. Stond hij op 218, dan was de tweede knop de
-// grootste van het scherm en las de pagina omgekeerd.
-const LIVE_KNOP_BREED = 172;
-const LIVE_BLOED_BOVEN = Math.round((LIVE_KNOP_BREED / BUTTON_RATIO) * 0.15);
-const LIVE_BLOED_ONDER = Math.round((LIVE_KNOP_BREED / BUTTON_RATIO) * 0.20);
-
-function LiveKaart({ onZoek, t }: {
-  onZoek: () => void;
-  t: (k: string, v?: Record<string, string | number>) => string;
-}) {
-  return (
-    // De vlakverdeling zit in een EIGEN laag binnen het kader. GoudKader zet de
-    // meegegeven `style` op zijn buitenkant, niet op het vak met de inhoud;
-    // een flex-kolom van buitenaf meegeven doet daar dus niets, en dan staan de
-    // regels tegen elkaar aan en loopt de gloed van de knop over de tekst.
-    //
-    // GEEN `fade` op het kader. Dat dooft de lijn vanaf de linkerbovenhoek, en
-    // op een laag vak blijft daar een lichte hoek plus een los stukje lijn
-    // rechtsonder van over: dat leest als een fout en niet als stijl.
-    <GoudKader hoek={13} gloed padding={12}>
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 7, marginLeft: 4 }}>
-          <span style={{ width: 7, height: 7, borderRadius: 999, background: colors.faint, flexShrink: 0 }} />
-          <span style={KOPREGEL}>{t("duelLiveTitle")}</span>
-        </div>
-        <span style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint, lineHeight: 1.45, marginLeft: 4 }}>
-          {t("duelLiveSub")}
-        </span>
-        {/* De maten zijn gemeten en niet geschat. De paarse knopplaat is
-            1000x269 waar zijn lichte vlak 930x200 is, dus de art steekt boven
-            het knopvak uit met 14,5% van de hoogte en eronder met ongeveer 20%:
-            dat is de 3D-lip plus de gloed. Zet je zo'n knop met een gewone
-            `gap` in een vak, dan loopt die bloeding over de regel erboven en
-            door de onderrand van het vak heen. Daarom reserveert dit vak die
-            ruimte, en is de knop smaller dan de kaart. */}
-        <div style={{
-          width: `min(78%, ${LIVE_KNOP_BREED}px)`, alignSelf: "center",
-          marginTop: LIVE_BLOED_BOVEN, marginBottom: LIVE_BLOED_ONDER,
-        }}>
-          <Button variant="primary" full onClick={onZoek}>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 7, whiteSpace: "nowrap" }}>
-              <Swords size={15} /> {t("duelLiveSearch")}
-            </span>
-          </Button>
-        </div>
-      </div>
-    </GoudKader>
-  );
-}
-
 function DuelRij({ d, i, eerste, onOpen, t, mij }: {
   d: DuelState;
   i: number;
