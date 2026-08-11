@@ -28,6 +28,10 @@ import { font, withAlpha } from "../theme/tokens";
  *  tint voor de koplijn van de bundel: die hoort het felst te zijn. */
 const RADAR = "139,123,255";
 const RADAR_LICHT = "205,190,255";
+/** De donkere kant van de reeks. Een ring die aan de schaduwkant naar NEUTRAAL
+ *  trekt wordt daar grijs; door de verzadiging vast te houden en alleen de
+ *  helderheid te laten zakken blijft hij van hetzelfde materiaal gemaakt. */
+const RADAR_DIEP = "74,54,168";
 
 /** De stipjes op de radar: hoek in graden, afstand in delen van de straal.
  *  Vaste plekken en geen toeval, want twee keer laden hoort hetzelfde beeld te
@@ -197,14 +201,73 @@ function Radar({ kleur }: { kleur: SchildKleur }) {
       width: "min(86vw, 40vh, 360px)", aspectRatio: "1", flexShrink: 0,
       display: "grid", placeItems: "center",
     }}>
-      {/* de vaste ringen + het kruis */}
-      <svg viewBox="0 0 100 100" style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }} aria-hidden>
-        {[49, 39.5, 30, 20.5, 11].map((r, i) => (
-          <circle key={r} cx="50" cy="50" r={r} fill="none"
-                  stroke={`rgba(${RADAR},${0.36 - i * 0.045})`} strokeWidth={i === 0 ? 0.55 : 0.4} />
+      {/* HET VLAK WAAR DE RADAR OP LIGT. Zonder dit hangen de ringen in het
+          niets en blijft het een tekening; met een eigen schijf eronder wordt
+          het een ding dat licht geeft. Twee lagen: een brede zachte gloed die
+          ver buiten de ringen uitloopt, en een dieper schijfje in het hart. */}
+      <div aria-hidden style={{
+        position: "absolute", inset: "-6%", borderRadius: "50%",
+        background: `radial-gradient(circle,
+          rgba(${RADAR},.30) 0%,
+          rgba(${RADAR},.17) 34%,
+          rgba(${RADAR},.07) 58%,
+          rgba(${RADAR},.02) 72%,
+          rgba(${RADAR},0) 80%)`,
+      }} />
+
+      {/* de ringen, de spaken en het kruis */}
+      {/* `screen` laat de lagen OPTELLEN zoals echt licht: waar de bundel over
+          een ring gaat wordt die ring lichter in plaats van dat de bundel hem
+          afdekt. Op een donkere ondergrond is dat precies het verschil tussen
+          een tekening van een radar en een radar die aan staat. */}
+      <svg viewBox="0 0 100 100" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", mixBlendMode: "screen" }} aria-hidden>
+        <defs>
+          {/* HET LICHT KOMT LINKSBOVEN VANDAAN, net als overal in deze app. Een
+              ring met overal dezelfde helderheid leest als een getekende cirkel;
+              een ring die aan de ene kant oplicht en aan de andere kant wegzakt
+              leest als een ring van licht. */}
+          <linearGradient id="radar-ring" x1="0.15" y1="0" x2="0.85" y2="1">
+            <stop offset="0" stopColor="#FFFFFF" stopOpacity="1" />
+            <stop offset="0.22" stopColor={`rgb(${RADAR_LICHT})`} stopOpacity="1" />
+            <stop offset="0.62" stopColor={`rgb(${RADAR})`} stopOpacity="0.85" />
+            <stop offset="1" stopColor={`rgb(${RADAR_DIEP})`} stopOpacity="0.45" />
+          </linearGradient>
+          <linearGradient id="radar-spaak" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor={`rgb(${RADAR})`} stopOpacity="0.42" />
+            <stop offset="1" stopColor={`rgb(${RADAR})`} stopOpacity="0.04" />
+          </linearGradient>
+        </defs>
+
+        {/* de spaken: twaalf, vanaf de binnenste ring naar de buitenste. Ze
+            geven het vlak zijn diepte; zonder spaken zijn het losse cirkels. */}
+        {Array.from({ length: 12 }, (_, i) => i * 30).map((hoek) => (
+          <line key={hoek} x1="50" y1="39" x2="50" y2="1.5"
+                stroke="url(#radar-spaak)" strokeWidth="0.35"
+                transform={`rotate(${hoek} 50 50)`} />
         ))}
-        <line x1="50" y1="1" x2="50" y2="99" stroke={`rgba(${RADAR},.16)`} strokeWidth="0.35" />
-        <line x1="1" y1="50" x2="99" y2="50" stroke={`rgba(${RADAR},.16)`} strokeWidth="0.35" />
+
+        {/* Elke ring is DRIE strepen over elkaar: een brede met bijna geen
+            dekking (dat is de bloom), een middelste, en een dunne felle bovenop.
+            Zo gloeit hij zonder ook maar een filter, en dat is precies wat er op
+            iOS nodig is: `filter: drop-shadow` rastert daar apart en zet een
+            rechthoek over je element heen. */}
+        {[49, 39.5, 30, 20.5, 11].map((r, i) => {
+          const sterkte = 1 - i * 0.16;
+          return (
+            <g key={r}>
+              <circle cx="50" cy="50" r={r} fill="none" stroke={`rgb(${RADAR})`}
+                      strokeOpacity={0.07 * sterkte} strokeWidth={1.9} />
+              <circle cx="50" cy="50" r={r} fill="none" stroke={`rgb(${RADAR})`}
+                      strokeOpacity={0.16 * sterkte} strokeWidth={0.85} />
+              <circle cx="50" cy="50" r={r} fill="none" stroke="url(#radar-ring)"
+                      strokeOpacity={sterkte} strokeWidth={i === 0 ? 0.46 : 0.34} />
+            </g>
+          );
+        })}
+
+        {/* het kruis, zwakker dan de spaken zodat het de ringen niet overstemt */}
+        <line x1="50" y1="1" x2="50" y2="99" stroke={`rgba(${RADAR},.14)`} strokeWidth="0.3" />
+        <line x1="1" y1="50" x2="99" y2="50" stroke={`rgba(${RADAR},.14)`} strokeWidth="0.3" />
       </svg>
 
       {/* de bundel die rondgaat: een taartpunt die met de klok mee draait en
@@ -213,16 +276,19 @@ function Radar({ kleur }: { kleur: SchildKleur }) {
         aria-hidden
         className="radar-bundel"
         style={{
-          position: "absolute", inset: 0, borderRadius: "50%",
+          position: "absolute", inset: 0, borderRadius: "50%", mixBlendMode: "screen",
           // De KOPLIJN is de felle kant: op nul graden staat de bundel het
           // helderst en daarachter dooft hij uit. Andersom (dof vooraan, fel
-          // achteraan) draait hij optisch de verkeerde kant op.
+          // achteraan) draait hij optisch de verkeerde kant op. De eerste twee
+          // graden zijn bijna vol: dat is de scherpe rand die het licht maakt,
+          // de rest is de staart.
           background: `conic-gradient(from 0deg,
-            rgba(${RADAR_LICHT},.72) 0deg,
-            rgba(${RADAR},.34) 7deg,
-            rgba(${RADAR},.15) 26deg,
-            rgba(${RADAR},.04) 58deg,
-            rgba(${RADAR},0) 88deg,
+            rgba(${RADAR_LICHT},.95) 0deg,
+            rgba(${RADAR_LICHT},.62) 2.5deg,
+            rgba(${RADAR},.40) 9deg,
+            rgba(${RADAR},.20) 28deg,
+            rgba(${RADAR},.07) 60deg,
+            rgba(${RADAR},0) 92deg,
             rgba(${RADAR},0) 360deg)`,
           WebkitMaskImage: "radial-gradient(circle, #000 0 97%, transparent 100%)",
           maskImage: "radial-gradient(circle, #000 0 97%, transparent 100%)",
@@ -237,7 +303,11 @@ function Radar({ kleur }: { kleur: SchildKleur }) {
           className="radar-ping"
           style={{
             position: "absolute", inset: 0, borderRadius: "50%",
-            border: `1px solid rgba(${RADAR_LICHT},.7)`,
+            border: `1px solid rgba(${RADAR_LICHT},.85)`,
+            // De gloed hoort BIJ de ring en niet eromheen getekend: een
+            // box-shadow naar buiten en naar binnen geeft precies de zachte
+            // rand die een filter ook zou geven, maar dan zonder de iOS-val.
+            boxShadow: `0 0 14px rgba(${RADAR},.55), inset 0 0 14px rgba(${RADAR},.35)`,
             animationDelay: `${i * 1.2}s`,
           }}
         />
@@ -250,11 +320,15 @@ function Radar({ kleur }: { kleur: SchildKleur }) {
           aria-hidden
           className="radar-stip"
           style={{
-            position: "absolute", left: "50%", top: "50%", width: 5, height: 5, borderRadius: 999,
-            background: `rgb(${RADAR_LICHT})`,
-            boxShadow: `0 0 8px rgba(${RADAR_LICHT},.9)`,
-            transform: `rotate(${hoek}deg) translateY(${-ver * 46}%) rotate(${-hoek}deg) translate(-50%, -50%)`,
-            transformOrigin: "0 0",
+            position: "absolute", left: "50%", top: "50%", width: 6, height: 6, borderRadius: 999,
+            background: "#FFFFFF",
+            boxShadow: `0 0 6px rgba(${RADAR_LICHT},1), 0 0 16px rgba(${RADAR},.85)`,
+            // De afstand in PIXELS en niet in procenten. Een percentage in
+            // `translate` rekent met de maat van het STIPJE (zes pixels), niet
+            // met die van de radar, dus stonden ze allemaal op een haar van het
+            // midden en verdwenen ze achter de gouden ring. De 0,49 is de
+            // buitenste ring uit het raster hierboven.
+            transform: `translate(-50%, -50%) rotate(${hoek}deg) translateY(${-Math.round(px * 0.49 * ver)}px)`,
             animationDelay: `${i * 0.55}s`,
           }}
         />
