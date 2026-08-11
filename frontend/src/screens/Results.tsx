@@ -6,6 +6,7 @@ import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { Scoreboard } from "../components/Scoreboard";
 import { Screen, Card } from "../components/Layout";
+import { TeamStand } from "../components/Teams";
 import { TopBar } from "../components/TopBar";
 import { Tv } from "../components/Tv";
 import type { GameApi } from "../net/socket";
@@ -81,6 +82,13 @@ export function Results({ game }: { game: GameApi }) {
             wat een formulier doet; dit is de uitslag van een ronde. */}
         <Card>
           <SierKop label={t("scoreboard")} />
+          {/* In teams is de stand van de KAMPEN de uitslag, en is de rij
+              eronder de onderbouwing. Daarom staat hij erboven. */}
+          {!!room.settings.teams && (
+            <div style={{ marginTop: 10 }}>
+              <TeamStand stand={room.team_scores ?? {}} labelVoor={(n) => t("teamName", { n })} />
+            </div>
+          )}
           <div style={{ marginTop: 10 }}>
             <Scoreboard players={room.players} scores={room.scores} meId={game.me?.id ?? null} />
           </div>

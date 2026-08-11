@@ -190,7 +190,7 @@ export function MeldingRij({
   // dan geen knop.
   let data: Record<string, string> = {};
   try { data = melding.data ? JSON.parse(melding.data) : {}; } catch { /* rommel is geen reden om niets te tonen */ }
-  const heeftDoel = !!data.user_id || melding.naar === "duel" || melding.naar === "dagronde" || melding.naar === "profiel";
+  const heeftDoel = !!data.user_id || melding.naar === "duel" || melding.naar === "duel_live" || melding.naar === "dagronde" || melding.naar === "profiel";
 
   const raakStart = (e: React.PointerEvent) => {
     if (!onWeg) return;

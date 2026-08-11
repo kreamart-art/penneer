@@ -553,6 +553,7 @@ class RoomManager:
         player = Player(id=pid, name=name.strip() or "Speler", color=color, is_spectator=spectator)
         self._apply_account(player, account)
         room.players.append(player)
+        self._plaats_in_team(room, player)
         room.scores[pid] = 0
         self.connections[pid] = ws
 
@@ -704,7 +705,105 @@ class RoomManager:
             s.allow_spectators = payload["allow_spectators"]
         if "lenient_spelling" in payload and isinstance(payload["lenient_spelling"], bool):
             s.lenient_spelling = payload["lenient_spelling"]
+        if "teams" in payload and payload["teams"] in (0, 2, 3):
+            if payload["teams"] != s.teams:
+                s.teams = payload["teams"]
+                self._verdeel_teams(room)
         await self.send_state(room)
+
+    # ---- samen tegen samen --------------------------------------------------
+
+    def _verdeel_teams(self, room: Room) -> None:
+        """Deel iedereen opnieuw in, zo gelijk mogelijk.
+
+        Om en om in zitvolgorde en niet willekeurig: wie naast elkaar in de
+        lijst staat kwam meestal samen binnen, en dan is "om en om" precies de
+        verdeling die die twee NIET bij elkaar zet. Wie dat anders wil, tikt
+        zichzelf naar het andere kamp; dat mag hier vrij, want een potje met
+        vrienden regelt zulke dingen zelf beter dan een regel dat kan.
+        """
+        n = room.settings.teams
+        if not n:
+            for p in room.players:
+                p.team = 0
+            return
+        for i, p in enumerate(self.playing_players(room)):
+            p.team = (i % n) + 1
+        for p in room.players:
+            if p.is_spectator:
+                p.team = 0
+
+    def _plaats_in_team(self, room: Room, speler: Player) -> None:
+        """Een nieuwkomer in het KLEINSTE kamp. Zonder dit zou wie later
+        binnenkomt altijd in kamp 1 belanden en scheef het potje in gaan."""
+        n = room.settings.teams
+        if not n or speler.is_spectator:
+            speler.team = 0
+            return
+        tel = {k: 0 for k in range(1, n + 1)}
+        for p in self.playing_players(room):
+            if p.id != speler.id and p.team in tel:
+                tel[p.team] += 1
+        speler.team = min(tel, key=lambda k: (tel[k], k))
+
+    async def set_team(self, player_id: str, payload: dict) -> None:
+        """Zelf van kamp wisselen. Alleen in de lobby: halverwege een potje van
+        team wisselen zou de al gescoorde punten van kamp laten veranderen."""
+        room = self.room_of_player(player_id)
+        if room is None or room.phase != "lobby" or not room.settings.teams:
+            return
+        speler = room.get_player(player_id)
+        if speler is None or speler.is_spectator:
+            return
+        # De host kan de hele indeling opnieuw laten trekken. Zelfde bericht,
+        # want het gaat over hetzelfde: wie in welk kamp zit.
+        if payload.get("verdeel"):
+            if room.host_id != player_id:
+                return
+            self._verdeel_teams(room)
+            await self.send_state(room)
+            return
+        try:
+            team = int(payload.get("team") or 0)
+        except (TypeError, ValueError):
+            return
+        # De host mag ook iemand anders verzetten (bots kunnen zichzelf niet
+        # verplaatsen, en iemand die zit te wachten wil je soms indelen).
+        doel = speler
+        wie = payload.get("player_id")
+        if wie and room.host_id == player_id:
+            ander = room.get_player(str(wie))
+            if ander is None or ander.is_spectator:
+                return
+            doel = ander
+        if not 1 <= team <= room.settings.teams:
+            return
+        doel.team = team
+        await self.send_state(room)
+
+    def _team_klaar(self, room: Room) -> bool:
+        """Mag er gestart worden? In teams moet elk kamp bezet zijn, anders
+        speelt een team in zijn eentje tegen niemand."""
+        n = room.settings.teams
+        if not n:
+            return True
+        bezet = {p.team for p in self.playing_players(room)}
+        return all(k in bezet for k in range(1, n + 1))
+
+    def _hertel(self, room: Room) -> None:
+        """Punten en stand opnieuw uitrekenen voor de HUIDIGE ronde.
+
+        Staat hier één keer omdat het op drie plekken nodig is (na het scoren,
+        na een aanvechting en na een handmatige koppeling) en het in teams een
+        extra argument nodig heeft. Vergeet je dat op een van die plekken, dan
+        telt dezelfde ronde ineens anders.
+        """
+        rnd = room.current_round
+        if rnd is None:
+            return
+        player_ids = [p.id for p in self.playing_players(room)]
+        rnd.points = game.score_round(rnd, player_ids, room.settings.categories, room.team_map())
+        room.scores = game.total_scores(room.history, player_ids)
 
     def _init_turn_order(self, room: Room) -> None:
         """Freeze the spelleider rotation at game start, in seat order."""
@@ -748,6 +847,9 @@ class RoomManager:
             return
         # Need at least one player who actually plays.
         if not self.playing_players(room):
+            return
+        if not self._team_klaar(room):
+            await self.error(player_id, "Elk team heeft minstens een speler nodig.")
             return
         if room.phase == "lobby":
             room.phase = "rules"
@@ -1038,8 +1140,7 @@ class RoomManager:
         lenient = room.settings.lenient_spelling
         rnd.answers = game.build_answers(raw, rnd.letter, player_ids, cats, lenient=lenient)
         await self._ai_resolve(room, rnd, lenient=lenient)  # hybrid: AI scheidsrechter on the "?"
-        rnd.points = game.score_round(rnd, player_ids, cats)
-        room.scores = game.total_scores(room.history, player_ids)
+        self._hertel(room)
         await self.broadcast(
             room,
             {
@@ -1077,9 +1178,7 @@ class RoomManager:
             ans.valid = payload["valid"]
         else:
             ans.valid = not ans.valid
-        player_ids = [p.id for p in self.playing_players(room)]
-        rnd.points = game.score_round(rnd, player_ids, room.settings.categories)
-        room.scores = game.total_scores(room.history, player_ids)
+        self._hertel(room)
         await self.broadcast(
             room,
             {
@@ -1119,9 +1218,7 @@ class RoomManager:
             ans.valid = True
         else:
             ans.canon = game.normalize(ans.text)  # unpair: back to its own word
-        player_ids = [p.id for p in self.playing_players(room)]
-        rnd.points = game.score_round(rnd, player_ids, room.settings.categories)
-        room.scores = game.total_scores(room.history, player_ids)
+        self._hertel(room)
         await self.broadcast(
             room,
             {
@@ -1187,9 +1284,17 @@ class RoomManager:
         winner_id = None
         if room.scores:
             winner_id = max(room.scores, key=lambda pid: room.scores[pid])
+        # In teams wint een KAMP en niet een persoon. winner_id blijft wel staan
+        # (dat is de topscorer, en die mag genoemd worden), maar het eindscherm
+        # kijkt naar winner_team zodra er in teams gespeeld is.
+        team_scores = room.team_scores()
+        winner_team = max(team_scores, key=lambda k: team_scores[k]) if team_scores else None
+        if winner_team is not None and list(team_scores.values()).count(team_scores[winner_team]) > 1:
+            winner_team = None      # gelijkspel tussen kampen
         await self.broadcast(
             room,
-            {"type": "game_over", "scores": dict(room.scores), "winner_id": winner_id},
+            {"type": "game_over", "scores": dict(room.scores), "winner_id": winner_id,
+             "team_scores": team_scores, "winner_team": winner_team},
         )
         await self.send_state(room)
         # Persist the result for account players + evaluate badges. The social
@@ -1310,6 +1415,7 @@ class RoomManager:
         color = PLAYER_COLORS[len(room.players) % len(PLAYER_COLORS)]
         bot = Player(id=pid, name=name, color=color, is_bot=True, connected=True)
         room.players.append(bot)
+        self._plaats_in_team(room, bot)
         room.scores[pid] = 0
         await self.broadcast(room, {"type": "player_joined", "player": bot.public()})
         await self.send_state(room)

@@ -9,6 +9,7 @@ import { Avatar, RANK_RING } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { Scoreboard } from "../components/Scoreboard";
 import { Screen, Card } from "../components/Layout";
+import { TeamStand } from "../components/Teams";
 import { TopBar } from "../components/TopBar";
 import type { GameApi, MatchSummary } from "../net/socket";
 import { subLabelKey, useT } from "../i18n/i18n";
@@ -65,7 +66,15 @@ export function Final({ game }: { game: GameApi }) {
     }
   };
 
-  const iWon = !!(game.me && winners.some((w) => w.id === game.me!.id));
+  // Het winnende kamp uit de stand halen en niet uit het game_over-bericht:
+  // wie het scherm herlaadt heeft dat bericht niet meer, de stand wel.
+  const teamStand = room.team_scores ?? {};
+  const teamTop = Math.max(0, ...Object.values(teamStand));
+  const teamKoplopers = Object.entries(teamStand).filter(([, v]) => v === teamTop);
+  const winnerTeam = room.settings.teams && teamKoplopers.length === 1 ? Number(teamKoplopers[0][0]) : 0;
+  const iWon = room.settings.teams
+    ? !!(winnerTeam && game.me && (room.players.find((p) => p.id === game.me!.id)?.team ?? 0) === winnerTeam)
+    : !!(game.me && winners.some((w) => w.id === game.me!.id));
   const summary = game.state.matchSummary;
 
   return (
@@ -80,7 +89,12 @@ export function Final({ game }: { game: GameApi }) {
         <Paneel>
           <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, paddingInline: 10 }}>
             <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 700, letterSpacing: 1.2, textTransform: "uppercase", color: colors.faint }}>
-              {shared ? t("sharedLead") : t("winner")}
+              {/* In teams wint een KAMP. De topscorer staat er nog gewoon
+                  onder met zijn portret, want die verdient zijn moment ook,
+                  maar de regel erboven zegt wie er gewonnen heeft. */}
+              {room.settings.teams
+                ? (winnerTeam ? t("teamWins", { n: winnerTeam }) : t("teamDraw"))
+                : shared ? t("sharedLead") : t("winner")}
             </span>
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
               {winners.map((w) => (
@@ -104,6 +118,11 @@ export function Final({ game }: { game: GameApi }) {
 
         <Card style={{ padding: "13px 7px 14px" }}>
           <SierKop label={t("scoreboard")} />
+          {!!room.settings.teams && (
+            <div style={{ marginTop: 8, paddingInline: 6 }}>
+              <TeamStand stand={room.team_scores ?? {}} labelVoor={(n) => t("teamName", { n })} />
+            </div>
+          )}
           <div style={{ marginTop: 8 }}>
             <Scoreboard players={room.players} scores={room.scores} meId={game.me?.id ?? null} />
           </div>

@@ -371,7 +371,8 @@ def classify(text: str, letter: str, category: str) -> tuple[bool, bool]:
     return (True, in_wordlist(t, category))
 
 
-def score_round(rnd: Round, player_ids: list[str], categories: list[str]) -> dict[str, dict[str, int]]:
+def score_round(rnd: Round, player_ids: list[str], categories: list[str],
+                teams: dict[str, int] | None = None) -> dict[str, dict[str, int]]:
     """Compute points[player_id][category] for a round.
 
     For each category, gather valid answers across all players (by normalized
@@ -379,12 +380,19 @@ def score_round(rnd: Round, player_ids: list[str], categories: list[str]) -> dic
 
     Challenges set Answer.valid = False before this runs; invalid answers are
     excluded from the duplicate count entirely.
+
+    IN TEAMS telt dubbel alleen BINNEN je eigen kamp. Dat is wat de modus een
+    modus maakt in plaats van een optelling: je hoeft niet te raden wat de
+    overkant schrijft (daar kun je toch niets aan doen), maar wel te vermijden
+    wat je eigen teamgenoot schrijft. Wie overlegt, dekt meer af. Technisch is
+    het één regel: het emmertje krijgt het team erbij als sleutel, zodat
+    dezelfde 'Nederland' in twee kampen twee keer uniek is.
     """
     points: dict[str, dict[str, int]] = {pid: {} for pid in player_ids}
 
     for cat in categories:
         # Map normalized key -> list of player_ids who gave a valid answer.
-        buckets: dict[str, list[str]] = {}
+        buckets: dict[tuple[int, str], list[str]] = {}
         for pid in player_ids:
             ans = rnd.answers.get(pid, {}).get(cat)
             if ans is None or not ans.valid:
@@ -396,9 +404,9 @@ def score_round(rnd: Round, player_ids: list[str], categories: list[str]) -> dic
             if not key:
                 points[pid][cat] = 0
                 continue
-            buckets.setdefault(key, []).append(pid)
+            buckets.setdefault(((teams or {}).get(pid, 0), key), []).append(pid)
 
-        for key, pids in buckets.items():
+        for _, pids in buckets.items():
             value = PT_FULL if len(pids) == 1 else PT_HALF
             for pid in pids:
                 points[pid][cat] = value

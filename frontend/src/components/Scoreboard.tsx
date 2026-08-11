@@ -3,6 +3,7 @@
 import { Avatar } from "./Avatar";
 import type { Player } from "../net/socket";
 import { useT } from "../i18n/i18n";
+import { TeamPunt } from "./Teams";
 import { colors, font, withAlpha } from "../theme/tokens";
 
 interface Props {
@@ -56,6 +57,10 @@ export function Scoreboard({ players, scores, meId }: Props) {
               {i + 1}
             </span>
             <Avatar name={p.name} color={p.color} size={34} crown={leader} dim={!p.connected} userId={p.user_id} hasAvatar={p.has_avatar} avatarVer={p.avatar_ver} frame={p.frame} />
+            {/* In teams staat het kamp naast de naam. Zonder dat moet je bij
+                elke regel bedenken bij wie hij hoort, en dan leest een
+                teamstand als een willekeurige lijst. */}
+            {!!p.team && <TeamPunt team={p.team} maat={18} />}
             <span
               style={{
                 flex: 1,

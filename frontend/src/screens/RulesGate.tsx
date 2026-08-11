@@ -4,7 +4,8 @@
 import { Check } from "lucide-react";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
-import { Screen } from "../components/Layout";
+import { Screen, Card } from "../components/Layout";
+import { TeamPunt } from "../components/Teams";
 import { TopBar } from "../components/TopBar";
 import { RulesContent } from "./Rules";
 import type { GameApi } from "../net/socket";
@@ -32,6 +33,23 @@ export function RulesGate({ game }: { game: GameApi }) {
             {t("rulesGateHint")}
           </p>
         </div>
+
+        {/* De teamregel hoort HIER en niet alleen in de lobby: wie later
+            binnenkomt heeft die instelling nooit gezien, en dit is het scherm
+            dat iedereen langs moet voor er gespeeld wordt. */}
+        {!!room.settings.teams && (
+          <Card style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <TeamPunt team={room.players.find((p) => p.id === game.me?.id)?.team || 1} maat={26} />
+            <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+              <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15, color: colors.ink }}>
+                {t("teamName", { n: room.players.find((p) => p.id === game.me?.id)?.team || 1 })}
+              </span>
+              <span style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint, lineHeight: 1.45 }}>
+                {t("teamsHint")}
+              </span>
+            </div>
+          </Card>
+        )}
 
         <RulesContent zonderRoom />
 

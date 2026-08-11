@@ -205,6 +205,9 @@ UPLOAD_BYTES = Rem("upload-bytes/account", 80 * MB, 3600)
 
 #: Berichten. Een gesprek is snel, maar niet dertig berichten in een minuut.
 DM = Rem("dm/account", 30, 60)
+#: De roep om een tegenstander voor een live duel. Eens per tien minuten: vaker
+#: is het geen oproep meer maar gezeur bij je vrienden.
+DUEL_ROEP = Rem("duel-roep/account", 1, 600)
 RAPPORT = Rem("rapport/account", 10, 3600)
 
 #: De socket zelf. De client knijpt zijn invulberichten al af tot ~3 per

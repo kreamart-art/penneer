@@ -107,6 +107,8 @@ async def ws_endpoint(ws: WebSocket) -> None:
 
             if mtype == "update_settings":
                 await manager.update_settings(player_id, data)
+            elif mtype == "set_team":
+                await manager.set_team(player_id, data)
             elif mtype == "start_game":
                 await manager.start_game(player_id)
             elif mtype == "spin_start":

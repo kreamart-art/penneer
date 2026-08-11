@@ -989,6 +989,13 @@ class Database:
         # heeft aangenomen. De coins staan vanaf dat moment in de pot (van beide
         # saldi af), zodat niemand zijn inzet kan uitgeven terwijl het duel loopt.
         dl = {r["name"] for r in self._conn.execute("PRAGMA table_info(duels)").fetchall()}
+        if "live" not in dl:
+            # Een LIVE duel is hetzelfde duel, alleen ontstaan uit de wachtrij
+            # in plaats van uit een uitdaging, en met allebei de spelers erbij.
+            # Loopt er een weg, dan is het gewoon weer een beurtduel: daarom is
+            # dit een vlag en geen apart soort wedstrijd.
+            self._conn.execute("ALTER TABLE duels ADD COLUMN live INTEGER NOT NULL DEFAULT 0")
+            self._conn.commit()
         if "stake" not in dl:
             self._conn.execute("ALTER TABLE duels ADD COLUMN stake INTEGER NOT NULL DEFAULT 0")
             self._conn.execute("ALTER TABLE duels ADD COLUMN stake_accepted INTEGER NOT NULL DEFAULT 0")
@@ -2509,7 +2516,7 @@ class Database:
     DUEL_STAKES = (0, 50, 100, 250, 500, 1000)
 
     def duel_create(self, challenger: str, opponent: str, rounds: list[dict], expires_at: float,
-                    stake: int = 0) -> Optional[str]:
+                    stake: int = 0, live: bool = False) -> Optional[str]:
         """Maakt het duel en zet de inzet van de uitdager METEEN in de pot, in
         dezelfde transactie. Geeft None als de uitdager de inzet niet heeft."""
         did = _new_id()
@@ -2523,11 +2530,12 @@ class Database:
                     return None
                 self._exec("UPDATE users SET coins=coins-? WHERE id=?", (stake, challenger))
             self._exec(
-                "INSERT INTO duels (id, a, b, rounds, created_at, expires_at, stake, stake_accepted) "
-                "VALUES (?,?,?,?,?,?,?,?)",
+                "INSERT INTO duels (id, a, b, rounds, created_at, expires_at, stake, stake_accepted, live) "
+                "VALUES (?,?,?,?,?,?,?,?,?)",
                 # Zonder inzet valt er niets aan te nemen, dus dan staat hij
                 # meteen op aangenomen en speelt de tegenstander direct.
-                (did, challenger, opponent, json.dumps(rounds), time.time(), expires_at, stake, 0 if stake else 1),
+                (did, challenger, opponent, json.dumps(rounds), time.time(), expires_at, stake,
+                 0 if stake else 1, 1 if live else 0),
             )
         return did
 

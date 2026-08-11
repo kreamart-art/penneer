@@ -67,6 +67,9 @@ class Player:
     divisie: int = 0
     has_avatar: bool = False
     avatar_ver: int = 0
+    # In welk kamp deze speler zit als de room in teams speelt. 0 = geen team
+    # (en dus ook: de hele room speelt ieder voor zich). Kijkers houden 0.
+    team: int = 0
 
     def public(self) -> dict:
         return {
@@ -86,6 +89,7 @@ class Player:
             "has_avatar": self.has_avatar,
             "avatar_ver": self.avatar_ver,
             "divisie": self.divisie,
+            "team": self.team,
         }
 
 
@@ -99,6 +103,10 @@ class Settings:
     allow_spectators: bool = True              # admit late joiners as spectators
     lenient_spelling: bool = False             # soepele spelling (dyslexie): near-miss spellings count
     cpu_game: bool = False                     # started from "tegen de computer": only then may the host add CPU players
+    # Samen tegen samen. 0 = uit (ieder voor zich, zoals het altijd was), 2 of 3
+    # = zoveel kampen. Waarom dit een GETAL is en geen schakelaar: met drie
+    # kampen kun je met zes man spelen zonder dat er een team van vier ontstaat.
+    teams: int = 0
 
     def public(self) -> dict:
         return {
@@ -110,6 +118,7 @@ class Settings:
             "allow_spectators": self.allow_spectators,
             "lenient_spelling": self.lenient_spelling,
             "cpu_game": self.cpu_game,
+            "teams": self.teams,
         }
 
 
@@ -204,6 +213,28 @@ class Room:
     def connected_players(self) -> list[Player]:
         return [p for p in self.players if p.connected]
 
+    def team_map(self) -> Optional[dict[str, int]]:
+        """speler-id -> kamp, of None als deze room niet in teams speelt.
+
+        Bewust None en geen lege dict: de puntentelling gebruikt dit als
+        schakelaar, en "geen teams" moet daar hetzelfde blijven doen als voor
+        deze modus bestond.
+        """
+        if not self.settings.teams:
+            return None
+        return {p.id: p.team for p in self.players if not p.is_spectator}
+
+    def team_scores(self) -> dict[int, int]:
+        """De stand per kamp. Leeg als er niet in teams gespeeld wordt."""
+        if not self.settings.teams:
+            return {}
+        uit = {n: 0 for n in range(1, self.settings.teams + 1)}
+        for p in self.players:
+            if p.is_spectator or not p.team:
+                continue
+            uit[p.team] = uit.get(p.team, 0) + self.scores.get(p.id, 0)
+        return uit
+
     @property
     def current_round(self) -> Optional[Round]:
         if self.history:
@@ -222,6 +253,7 @@ class Room:
             "active_player_id": self.active_player_id,
             "timer": self.timer.public(),
             "scores": dict(self.scores),
+            "team_scores": self.team_scores(),
             "ready_ids": list(self.ready_ids),
             "ready_kreten": dict(self.ready_kreten),
             "sat_out": list(self.sat_out),

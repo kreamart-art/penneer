@@ -71,6 +71,7 @@ export interface Player {
   frame?: string | null; // chosen avatar-frame id (level reward), drawn around the avatar
   reel_skin?: string | null; // chosen reel theme; the room sees it on their spin turn
   divisie?: number; // trede op de divisieladder; kleurt de rand om de avatar
+  team?: number; // 1..n als de room in teams speelt, 0 = ieder voor zich
 }
 
 // ---- accounts + social ------------------------------------------------------
@@ -341,6 +342,7 @@ export interface Settings {
   allow_spectators: boolean;
   lenient_spelling: boolean; // soepele spelling (dyslexie): near-miss spellings count
   cpu_game: boolean; // started from "tegen de computer": only then may the host add CPU players
+  teams: number; // 0 = uit (ieder voor zich), 2 of 3 = zoveel kampen
 }
 
 export interface AnswerView {
@@ -369,6 +371,8 @@ export interface RoomState {
   active_player_id: string | null;
   timer: { ends_at: number | null; duration: number | null };
   scores: Record<string, number>;
+  /** De stand per kamp. Leeg als de room niet in teams speelt. */
+  team_scores?: Record<string, number>;
   ready_ids: string[];
   /** Wie er met een kreet klaar ging: speler-id -> sleutel uit KREET_PAKKETTEN.
    *  Alleen de sleutel, want de uitzending vertaalt hem naar de taal van wie
@@ -432,6 +436,12 @@ export interface ClientState {
   adminStats: AdminStats | null; // dashboard-cijfers, alleen na admin_stats-verzoek
   rapporten: Rapport[];          // openstaande meldingen, alleen voor een admin
   toezicht: Toezicht | null;     // de staat van de server, alleen voor een admin
+  /** Hoeveel mensen er nu een live duel zoeken, of null als jij niet zoekt. */
+  duelZoekt: number | null;
+  /** Een verse koppeling uit de wachtrij. Het duelscherm opent hem en wist hem. */
+  duelMatch: { duel_id: string; tegen: string } | null;
+  /** Hoever de tegenstander is in het live duel dat nu open staat. */
+  duelLive: { duel_id: string; gedaan: number; van: number } | null;
   adminAi: AdminAi | null;
   recoveryCodes: RecoveryCode[];
   aiCodes: AiCodeInfo | null; // AI-referee unlock-code stats + freshly generated codes
@@ -512,6 +522,7 @@ type Action =
   | { type: "clearLoginSent" }
   | { type: "clearShopResult" }
   | { type: "gekochtGezien" }
+  | { type: "duel_match_gezien" }
   | { type: "clearDmBanner" }
   | { type: "dmClose" }
   | { type: "msg"; msg: ServerMessage };
@@ -533,7 +544,11 @@ type ServerMessage =
   | { type: "kreet"; player_id: string; kreet?: string; emote?: string }
   | { type: "results"; round_no: number; answers: RoundView["answers"]; points: RoundView["points"]; scores: Record<string, number> }
   | { type: "results_updated"; points: RoundView["points"]; scores: Record<string, number>; answers: RoundView["answers"] }
-  | { type: "game_over"; scores: Record<string, number>; winner_id: string | null }
+  | { type: "game_over"; scores: Record<string, number>; winner_id: string | null;
+      team_scores?: Record<string, number>; winner_team?: number | null }
+  | { type: "duel_zoekt"; aantal: number; gestopt?: boolean }
+  | { type: "duel_match"; duel_id: string; tegen: string }
+  | { type: "duel_live"; duel_id: string; gedaan: number; van: number }
   | { type: "admin_ok"; is_admin: boolean; ai: AdminAi; recovery_codes: RecoveryCode[]; ai_codes: AiCodeInfo; avatar_codes?: AiCodeInfo; buzzer_codes?: AiCodeInfo }
   | { type: "admin_stats"; stats: AdminStats }
   | { type: "rapporten"; items: Rapport[] }
@@ -638,6 +653,9 @@ const initialState: ClientState = {
   adminStats: null,
   rapporten: [],
   toezicht: null,
+  duelZoekt: null,
+  duelMatch: null,
+  duelLive: null,
   adminAi: null,
   adminCategories: null,
   recoveryCodes: [],
@@ -695,6 +713,9 @@ function reducer(state: ClientState, action: Action): ClientState {
       avatarCodes: state.avatarCodes,
       buzzerCodes: state.buzzerCodes,
     };
+  }
+  if (action.type === "duel_match_gezien") {
+    return { ...state, duelMatch: null };
   }
   if (action.type === "clearError") {
     return { ...state, error: null };
@@ -780,6 +801,14 @@ function reducer(state: ClientState, action: Action): ClientState {
       return { ...state, rapporten: msg.items };
     case "toezicht":
       return { ...state, toezicht: msg.status };
+    case "duel_zoekt":
+      return { ...state, duelZoekt: msg.gestopt ? null : msg.aantal };
+    case "duel_match":
+      // De rij is voorbij: het scherm springt hierop naar het duel.
+      return { ...state, duelZoekt: null, duelMatch: { duel_id: msg.duel_id, tegen: msg.tegen },
+               duelLive: { duel_id: msg.duel_id, gedaan: 0, van: 5 } };
+    case "duel_live":
+      return { ...state, duelLive: { duel_id: msg.duel_id, gedaan: msg.gedaan, van: msg.van } };
     case "rapport_ok":
       return state;
     case "admin_stats":
@@ -953,6 +982,15 @@ export interface GameApi {
   createRoom: (name: string, cpu?: boolean) => void;
   joinRoom: (code: string, name: string) => void;
   updateSettings: (s: Partial<Settings>) => void;
+  /** Zelf van kamp wisselen (de host mag ook iemand anders verzetten). */
+  setTeam: (team: number, playerId?: string) => void;
+  /** De host laat de kampen opnieuw verdelen. */
+  verdeelTeams: () => void;
+  /** De wachtrij voor een live duel. */
+  duelZoek: () => void;
+  duelZoekStop: () => void;
+  /** De koppeling is opgepakt; hem laten staan zou het scherm blijven openen. */
+  duelMatchGezien: () => void;
   startGame: () => void;
   spinStart: () => void;
   spinStop: () => void;
@@ -1169,6 +1207,11 @@ export function useGame(): GameApi {
     createRoom: (name, cpu) => send({ type: "create_room", name, cpu: !!cpu }),
     joinRoom: (code, name) => send({ type: "join_room", code, name }),
     updateSettings: (s) => send({ type: "update_settings", ...s }),
+    setTeam: (team, playerId) => send({ type: "set_team", team, player_id: playerId }),
+    verdeelTeams: () => send({ type: "set_team", verdeel: true }),
+    duelZoek: () => send({ type: "duel_zoek" }),
+    duelZoekStop: () => send({ type: "duel_zoek_stop" }),
+    duelMatchGezien: () => dispatch({ type: "duel_match_gezien" } as never),
     startGame: () => send({ type: "start_game" }),
     spinStart: () => send({ type: "spin_start" }),
     spinStop: () => send({ type: "spin_stop" }),

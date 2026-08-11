@@ -104,6 +104,17 @@ SOORTEN: dict[str, dict] = {
         "naar": "duel",
         "push": True,
     },
+    "duel_zoekt": {
+        "titel": "Wie neemt het op?",
+        # Geen push: dit is een oproep van het moment. Wie de app niet open
+        # heeft, staat toch niet binnen een halve minuut aan de start, en dan
+        # is een pushbericht over iets dat al voorbij is erger dan geen bericht.
+        "body": "{naam} zoekt een tegenstander voor een live duel.",
+        "tag": "duel",
+        "icoon": "vlam",
+        "naar": "duel_live",
+        "push": False,
+    },
     "duel_beurt": {
         "titel": "Jij bent aan de beurt",
         "body": "{naam} heeft gespeeld in jullie duel.",

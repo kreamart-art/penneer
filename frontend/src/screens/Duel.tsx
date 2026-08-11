@@ -57,6 +57,7 @@ interface DuelState {
   stake: number;           // inzet per persoon in coins, 0 = vriendschappelijk
   stake_accepted: boolean; // pas dan mag de tegenstander spelen
   stakes: number[];        // de ladder die de server accepteert
+  live?: boolean;          // uit de wachtrij: allebei tegelijk begonnen
 }
 interface ListPayload {
   duels: DuelState[];
@@ -251,6 +252,26 @@ export function Duel({ game, onBack, onProfile, openId, onGeopend }: {
 
   useEffect(() => { if (view === "play" && round) input.current?.focus(); }, [view, round]);
 
+  // De wachtrij leverde een tegenstander: meteen naar binnen. Wachten op een
+  // tik zou de ander laten staan terwijl zijn klok al loopt, en dat is precies
+  // het verschil tussen een live duel en een gewoon duel.
+  const zoekt = game.state.duelZoekt;
+  const match = game.state.duelMatch;
+  useEffect(() => {
+    if (!match) return;
+    game.duelMatchGezien();
+    sound.uiTap();
+    void (async () => {
+      await refresh();
+      await openDuel({ id: match.duel_id } as DuelState);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [match]);
+
+  // Wie het scherm verlaat, hoort niet in de rij te blijven staan: dan word je
+  // gekoppeld aan iemand die op een leeg scherm zit te wachten.
+  useEffect(() => () => { game.duelZoekStop(); }, []);   // eslint-disable-line react-hooks/exhaustive-deps
+
   // Een melding wees naar EEN duel: zodra de lijst binnen is dat duel openen en
   // de wens meteen wissen, anders springt hij er bij elke verversing weer heen.
   useEffect(() => {
@@ -410,6 +431,25 @@ export function Duel({ game, onBack, onProfile, openId, onGeopend }: {
         <Arena src="/duel-bg.webp" podium={PODIUM_Y} at="46%" width="205%" plate={false} onderkleur={CANVAS.duel} />
         <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", gap: 16 }}>
           <RoundDots total={total} idx={idx} />
+          {/* Live: hoever de ander is. Alleen het AANTAL, nooit zijn woorden.
+              Zou dat wel zo zijn, dan wint de snelste lezer in plaats van de
+              beste speller. */}
+          {duel.live && (
+            <div style={{ display: "flex", justifyContent: "center", marginTop: -8 }}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "3px 11px", borderRadius: 999, background: withAlpha(colors.red, 0.14), border: `1px solid ${withAlpha(colors.red, 0.4)}` }}>
+                <span style={{ width: 7, height: 7, borderRadius: 999, background: colors.red, animation: "fill-pulse 1.4s ease-in-out infinite" }} />
+                <span style={{ fontFamily: font.ui, fontSize: 11.5, fontWeight: 700, color: colors.red, letterSpacing: 0.6 }}>
+                  {t("duelLiveBadge")}
+                </span>
+                <span style={{ fontFamily: font.ui, fontSize: 11.5, color: colors.sub }}>
+                  {t("duelLiveProgress", {
+                    gedaan: game.state.duelLive?.duel_id === duel.id ? game.state.duelLive.gedaan : duel.their_done,
+                    van: total,
+                  })}
+                </span>
+              </span>
+            </div>
+          )}
           {duel.stake > 0 && duel.stake_accepted && (
             <div style={{ display: "flex", justifyContent: "center", marginTop: -8 }}>
               <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "3px 11px", borderRadius: 999, background: withAlpha(colors.gold, 0.14), border: `1px solid ${withAlpha(colors.gold, 0.4)}` }}>
@@ -659,6 +699,17 @@ export function Duel({ game, onBack, onProfile, openId, onGeopend }: {
           </div>
         </div>
 
+        {/* Live duel. Staat BOVEN de lopende duels en onder de uitdaagknop:
+            het is het snelste wat je hier kunt doen (geen uitnodiging, geen
+            wachten op een beurt), maar het vraagt wel dat er iemand anders is,
+            dus het verdringt de uitdaagknop niet. */}
+        <LiveKaart
+          zoekt={zoekt}
+          onZoek={() => { sound.uiTap(); game.duelZoek(); }}
+          onStop={() => { sound.uiTap(); game.duelZoekStop(); }}
+          t={t}
+        />
+
         {!!note && <p style={{ margin: 0, textAlign: "center", fontFamily: font.ui, fontSize: 13, color: colors.orange }}>{note}</p>}
 
         {mine.length > 0 && <Section title={t("duelYourTurn")} items={mine} onOpen={openDuel} t={t} mij={{ ...account, level: account.level.level }} />}
@@ -901,6 +952,51 @@ function WordLine({ slot, mine }: { slot: Slot | null; mine: boolean }) {
  *  loopt, goud als je won, rood als je verloor. Bij de laatste potjes hoefde
  *  dat niet, want daar staat een plaatsnummer op het wapen; hier is er maar één
  *  tegenstander en dus maar één uitkomst. */
+/** De kaart waarmee je een tegenstander zoekt die NU ook zoekt.
+ *
+ *  Twee standen en niet meer: zoeken of niet. Een teller met "3 aan het
+ *  zoeken" erbij, want bij een kleine club spelers is het verschil tussen
+ *  "niemand" en "twee anderen" precies wat bepaalt of je blijft wachten. En
+ *  een regel die zegt dat je vrienden een seintje krijgen, zodat het wachten
+ *  ergens toe leidt in plaats van dat je naar een draaiend wieltje kijkt. */
+function LiveKaart({ zoekt, onZoek, onStop, t }: {
+  zoekt: number | null;
+  onZoek: () => void;
+  onStop: () => void;
+  t: (k: string, v?: Record<string, string | number>) => string;
+}) {
+  const aan = zoekt !== null;
+  return (
+    <GoudKader hoek={13} fade gloed padding={13} kleur={aan ? "violet" : undefined}
+               style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ width: 8, height: 8, borderRadius: 999, background: aan ? colors.red : colors.faint,
+                       animation: aan ? "fill-pulse 1.4s ease-in-out infinite" : undefined, flexShrink: 0 }} />
+        <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16, color: colors.ink }}>
+          {t("duelLiveTitle")}
+        </span>
+      </div>
+      <span style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint, lineHeight: 1.45 }}>
+        {aan ? t("duelLiveCalled") : t("duelLiveSub")}
+      </span>
+      {aan ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+          <span style={{ fontFamily: font.ui, fontSize: 13, color: colors.sub, textAlign: "center" }}>
+            {t("duelLiveSearching")} · {t("duelLiveQueue", { n: zoekt ?? 1 })}
+          </span>
+          <Button variant="ghost" full onClick={onStop}>{t("duelLiveStop")}</Button>
+        </div>
+      ) : (
+        <Button variant="primary" full onClick={onZoek}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
+            <Swords size={16} /> {t("duelLiveSearch")}
+          </span>
+        </Button>
+      )}
+    </GoudKader>
+  );
+}
+
 function DuelRij({ d, i, eerste, onOpen, t, mij }: {
   d: DuelState;
   i: number;

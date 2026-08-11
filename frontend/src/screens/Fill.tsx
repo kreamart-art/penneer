@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown } from "lucide-react";
 import { Avatar } from "../components/Avatar";
+import { TeamPunt } from "../components/Teams";
 import { Button } from "../components/Button";
 import { Tv } from "../components/Tv";
 import { Timer } from "../components/Timer";
@@ -87,6 +88,11 @@ export function Fill({ game }: { game: GameApi }) {
   const showStop = mag && game.isActive && noTimer;
   const showKlaar = mag && !(game.isActive && noTimer);
 
+  const mijnTeam = room.players.find((p) => p.id === game.me?.id)?.team ?? 0;
+  const maten = room.settings.teams && mijnTeam
+    ? room.players.filter((p) => p.team === mijnTeam && p.id !== game.me?.id && !p.is_spectator)
+    : [];
+
   return (
     <Screen top={<TopBar code={room.code} roundNo={room.round_no} totalRounds={room.settings.rounds} connected={game.state.status === "open"} onLeave={game.leaveRoom} game={game} />}>
       {/* De kreet van wie klaar gaat, als ballon links in beeld. Zonder dit las
@@ -115,6 +121,22 @@ export function Fill({ game }: { game: GameApi }) {
             )}
           </div>
         </div>
+
+        {/* In teams: WIE is mijn maat. Zonder dit is de regel ("een woord dat
+            je teamgenoot ook heeft telt half") onzichtbaar op precies het
+            moment dat je hem nodig hebt, namelijk terwijl je typt. De overkant
+            staat er niet bij: die doet er voor jouw keuze niet toe. */}
+        {!!room.settings.teams && !!mijnTeam && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+            <TeamPunt team={mijnTeam} maat={20} />
+            <span style={{ fontFamily: font.ui, fontSize: 12.5, color: colors.faint }}>
+              {t("teamName", { n: mijnTeam })}
+            </span>
+            {maten.map((p) => (
+              <Avatar key={p.id} name={p.name} color={p.color} size={24} dim={!p.connected} userId={p.user_id} hasAvatar={p.has_avatar} avatarVer={p.avatar_ver} />
+            ))}
+          </div>
+        )}
 
         {/* other players + ready state */}
         {others.length > 0 && (

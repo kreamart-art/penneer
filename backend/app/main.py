@@ -1570,6 +1570,9 @@ def _duel_payload(db, uid: str, d: dict) -> dict:
         # spelen; de uitdager wacht gewoon.
         "stake": int(d.get("stake") or 0),
         "stake_accepted": bool(d.get("stake_accepted")),
+        # Live betekent: uit de wachtrij, allebei tegelijk begonnen. Het scherm
+        # laat de vorderingen van de ander dan meelopen.
+        "live": bool(d.get("live")),
         "stakes": list(db.DUEL_STAKES),
     }
 
@@ -1906,6 +1909,13 @@ async def duel_answer(duel_id: str, request: Request) -> JSONResponse:
     # Last round: if the opponent already finished, the duel settles right here.
     my_done = sum(1 for r in db.duel_answers_of(duel_id, uid) if r["answered_at"] is not None)
     finished = False
+    if d.get("live"):
+        # In een live duel kijkt de ander mee. Alleen HOEVER je bent, nooit WAT
+        # je schreef: dat laatste zou overschrijven mogelijk maken, en dan is de
+        # snelste lezer de winnaar in plaats van de beste speller.
+        await accounts.push_naar(d["b"] if d["a"] == uid else d["a"],
+                                 {"type": "duel_live", "duel_id": duel_id, "gedaan": my_done,
+                                  "van": len(d["rounds"])})
     if my_done >= len(d["rounds"]):
         other = d["b"] if d["a"] == uid else d["a"]
         their_done = sum(1 for r in db.duel_answers_of(duel_id, other) if r["answered_at"] is not None)

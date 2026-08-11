@@ -350,6 +350,12 @@ export default function App() {
       // doen. Het duel-id reist mee in de data van de melding.
       setDuelOpen(d.duel_id || null);
       setShowDuel(true);
+    } else if (naar === "duel_live") {
+      // Iemand zoekt een tegenstander. Naar het duelscherm, en daar staat de
+      // knop klaar; zelf meteen in de rij zetten zou een tik uit handen nemen
+      // die over een wedstrijd gaat.
+      setShowHub(null);
+      setShowDuel(true);
     } else if (naar === "dagronde") {
       setShowHub(null);
       setShowDaily(true);
@@ -641,7 +647,7 @@ export default function App() {
         onGaNaar={(naar) => {
           // Dezelfde sprong als vanuit de meldingsbalk, alleen komt hij nu uit
           // de lijst in de inbox.
-          if (naar === "duel") { setShowHub(null); setShowDuel(true); }
+          if (naar === "duel" || naar === "duel_live") { setShowHub(null); setShowDuel(true); }
           else if (naar === "dagronde") { setShowHub(null); setShowDaily(true); }
           else if (naar === "profiel") setShowHub("profile");
         }}

@@ -9,6 +9,7 @@ import { BredeKnop } from "../components/BredeKnop";
 import { Chip } from "../components/Chip";
 import { InfoDot } from "../components/InfoDot";
 import { Toggle } from "../components/Toggle";
+import { TeamKnop } from "../components/Teams";
 import { Screen, Card } from "../components/Layout";
 import { TopBar } from "../components/TopBar";
 import { GlasRij, ProfileViewModal, ZoekKnop } from "./Hub";
@@ -391,6 +392,14 @@ export function Lobby({ game }: { game: GameApi }) {
                 </div>
                 </button>
                 <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
+                  {!!(settings.teams ?? 0) && !p.is_spectator && (
+                    <TeamKnop
+                      team={p.team ?? 0}
+                      aantal={settings.teams ?? 0}
+                      mag={p.id === game.me?.id || isHost}
+                      onWissel={(next) => game.setTeam(next, p.id === game.me?.id ? undefined : p.id)}
+                    />
+                  )}
                   {p.is_bot && <Badge text="bot" color={colors.violet} />}
                   {p.is_spectator && <Badge text={t("watching")} color={colors.faint} />}
                   {p.is_host && <Badge text={t("host")} color={colors.gold} />}
@@ -489,6 +498,28 @@ export function Lobby({ game }: { game: GameApi }) {
             <Row label={t("hardLetters")}>
               <Toggle on={settings.hard_letters} disabled={!isHost} onChange={(v) => game.updateSettings({ hard_letters: v })} />
             </Row>
+            {/* Samen tegen samen. Staat bij de schakelaars en niet bij de
+                categorieen, want het verandert niet WAT je speelt maar tegen
+                WIE. Een getal en geen aan/uit: met zes man wil je soms drie
+                kampen in plaats van twee van drie. */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontFamily: font.ui, fontSize: 14, color: colors.ink }}>
+                {t("teamsLabel")}
+                <InfoDot title={t("teamsLabel")} text={t("teamsHint")} />
+              </span>
+              <div style={{ display: "flex", gap: 6 }}>
+                {[0, 2, 3].map((n) => (
+                  <Chip key={n} active={(settings.teams ?? 0) === n} disabled={!isHost} onClick={() => game.updateSettings({ teams: n })}>
+                    {n === 0 ? t("teamsOff") : String(n)}
+                  </Chip>
+                ))}
+              </div>
+            </div>
+            {isHost && (settings.teams ?? 0) > 0 && (
+              <Button variant="ghost" onClick={() => { sound.uiTap(); game.verdeelTeams(); }}>
+                {t("teamShuffle")}
+              </Button>
+            )}
             <Row label={t("allowSpectators")}>
               <Toggle on={settings.allow_spectators} disabled={!isHost} onChange={(v) => game.updateSettings({ allow_spectators: v })} />
             </Row>

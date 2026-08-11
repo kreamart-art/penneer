@@ -71,6 +71,10 @@ class AccountManager:
         # Presence: ws-id -> user_id and user_id -> set of ws objects.
         self.ws_users: dict[int, str] = {}
         self.user_conns: dict[str, set[Any]] = {}
+        # De wachtrij voor een LIVE duel: user_ids, oudste eerst. Zie
+        # duel_zoek() voor waarom dit een rij is en geen bak.
+        self.duel_rij: list[str] = []
+        self.duel_rij_sinds: dict[str, float] = {}
 
     # ---- presence -----------------------------------------------------------
 
@@ -490,6 +494,8 @@ class AccountManager:
             "club_regels": self.club_regels,
             "club_kick": self.club_kick,
             "club_overdragen": self.club_overdragen,
+            "duel_zoek": self.duel_zoek,
+            "duel_zoek_stop": self.duel_zoek_stop,
             "set_lenient": self.set_lenient,
             "set_buzzer_skin": self.set_buzzer_skin,
             "set_reel_skin": self.set_reel_skin,
@@ -1356,6 +1362,14 @@ class AccountManager:
         (e.g. after an out-of-game badge grant)."""
         await self._push(user_id, await self._account_payload(None, user_id))
 
+    async def push_naar(self, user_id: str, message: dict) -> None:
+        """Iets rechtstreeks naar de open schermen van een speler duwen.
+
+        Voor de HTTP-kant van een live duel: die weet wel wat er gebeurde maar
+        heeft geen socket bij de hand.
+        """
+        await self._push(user_id, message)
+
     async def push_account(self, user_id: str) -> None:
         """Public alias: HTTP routes (duel XP) refresh a live client this way."""
         await self._push_account(user_id)
@@ -1370,7 +1384,121 @@ class AccountManager:
         uid = self.user_of(ws)
         self.unbind(ws)
         if uid and not self.online(uid):
+            # Weg is weg: wie de app sluit terwijl hij zoekt, hoort niet een
+            # minuut later alsnog aan een duel vast te zitten.
+            self._rij_weg(uid)
+            await self._rij_stand()
             await self._notify_friends_presence(uid)
+
+    # ---- live duel: de wachtrij ---------------------------------------------
+    #
+    # Een live duel is GEEN nieuw soort wedstrijd. Het is hetzelfde duel als
+    # altijd (dezelfde vijf rondes, dezelfde zeldzaamheidstelling, dezelfde
+    # tabel), alleen ontstaan uit een wachtrij in plaats van uit een uitdaging,
+    # met allebei de spelers tegelijk aan zet. Dat is met opzet: loopt er een
+    # weg of valt zijn telefoon in slaap, dan blijft het duel gewoon staan als
+    # beurtduel en kan de ander het later afmaken. Een aparte live-machinerie
+    # zou bij de eerste tunnel stukgaan; deze degradeert netjes.
+    #
+    # De rij is een RIJ en geen bak: wie het langst wacht is als eerste aan de
+    # beurt. Bij twee mensen maakt dat niets uit, bij tien wel, en dan is
+    # "eerlijk" het enige antwoord dat je niet hoeft uit te leggen.
+
+    #: Na zoveel seconden zonder tegenstander roepen we de vrienden die online
+    #: zijn. Kort genoeg om nog te wachten, lang genoeg om niet te roepen voor
+    #: iemand die twee tellen later toch al een match had.
+    ROEP_NA_S = 25
+
+    async def _rij_stand(self) -> None:
+        """Iedereen in de rij vertellen hoeveel er staan te wachten."""
+        for uid in list(self.duel_rij):
+            await self._push(uid, {"type": "duel_zoekt", "aantal": len(self.duel_rij)})
+
+    async def duel_zoek(self, ws: Any, data: dict) -> None:
+        uid = self.user_of(ws)
+        if not uid:
+            await self._send(ws, {"type": "error", "message": "Maak eerst een profiel aan."})
+            return
+        if uid not in self.duel_rij:
+            self.duel_rij.append(uid)
+            self.duel_rij_sinds[uid] = time.time()
+            asyncio.create_task(self._roep_vrienden_straks(uid))
+        await self._match_rij()
+        await self._rij_stand()
+
+    async def duel_zoek_stop(self, ws: Any, data: dict) -> None:
+        uid = self.user_of(ws)
+        if uid:
+            self._rij_weg(uid)
+            await self._send(ws, {"type": "duel_zoekt", "aantal": 0, "gestopt": True})
+        await self._rij_stand()
+
+    def _rij_weg(self, uid: str) -> None:
+        if uid in self.duel_rij:
+            self.duel_rij.remove(uid)
+        self.duel_rij_sinds.pop(uid, None)
+
+    async def _match_rij(self) -> None:
+        """Koppel wie er kan. Blijft doorgaan tot er niets meer past.
+
+        Niet zomaar de eerste twee: wie elkaar geblokkeerd heeft hoort niet
+        tegen elkaar te spelen, en wie al een open duel met elkaar heeft ook
+        niet (dat is dezelfde regel als bij uitdagen, anders lopen er twee
+        wedstrijden tussen hetzelfde koppel).
+        """
+        while True:
+            paar = None
+            for i, a in enumerate(self.duel_rij):
+                for b in self.duel_rij[i + 1:]:
+                    if self.db.is_blocked(a, b) or self.db.is_blocked(b, a):
+                        continue
+                    if self.db.duel_open_with(a, b):
+                        continue
+                    paar = (a, b)
+                    break
+                if paar:
+                    break
+            if not paar:
+                return
+            a, b = paar
+            self._rij_weg(a)
+            self._rij_weg(b)
+            await self._maak_live_duel(a, b)
+
+    async def _maak_live_duel(self, a: str, b: str) -> None:
+        from . import duel as duelregels
+
+        used, combos = self.db.duel_pair_state(a, b)
+        rondes, new_used, new_combos = duelregels.pick_rounds(used, combos)
+        did = self.db.duel_create(a, b, rondes, time.time() + duelregels.EXPIRY_H * 3600,
+                                  stake=0, live=True)
+        if did is None:
+            return
+        self.db.duel_pair_set(a, b, new_used, new_combos)
+        for wie, ander in ((a, b), (b, a)):
+            naam = (self.db.get_user(ander) or {}).get("name") or "?"
+            await self._push(wie, {"type": "duel_match", "duel_id": did, "tegen": naam})
+
+    async def _roep_vrienden_straks(self, uid: str) -> None:
+        """Staat iemand na ROEP_NA_S nog te wachten, roep dan zijn vrienden.
+
+        Dit is het enige dat een wachtrij bij een kleine club spelers laat
+        werken: er is bijna nooit toevallig iemand anders aan het zoeken, maar
+        er is vaak wel iemand die de app open heeft staan. Hooguit een keer per
+        tien minuten per persoon (de rem let daarop), anders is het gezeur.
+        """
+        await asyncio.sleep(self.ROEP_NA_S)
+        if uid not in self.duel_rij:
+            return
+        if rem.DUEL_ROEP.wacht(uid):
+            return
+        naam = (self.db.get_user(uid) or {}).get("name") or "?"
+        for f in self.db.friends_of(uid):
+            if f["status"] != "accepted" or not self.online(f["id"]):
+                continue
+            if f["id"] in self.duel_rij:
+                continue
+            await self.stuur(f["id"], "duel_zoekt", naam=naam)
 
     # ---- game recording + badges ---------------------------------------------
 
@@ -1387,6 +1515,14 @@ class AccountManager:
         if any(getattr(p, "is_bot", False) for p in room.players):
             return
         top = max(scores.values())
+        # In teams telt de stand van het KAMP voor de winst. Gelijkspel tussen
+        # kampen betekent: niemand wint, net als bij een gelijke score.
+        team_stand = room.team_scores() if getattr(room.settings, "teams", 0) else {}
+        team_top = None
+        if team_stand:
+            hoogste = max(team_stand.values())
+            if list(team_stand.values()).count(hoogste) == 1:
+                team_top = max(team_stand, key=lambda k: team_stand[k])
 
         # Halfway standings across ALL playing players (guests included), for
         # the comeback badge: last at the half, winner at the end.
@@ -1416,6 +1552,10 @@ class AccountManager:
                 if vals and all(v == 10 for v in vals):
                     perfect = True
             is_winner = scores.get(p.id, 0) == top
+            if team_top is not None:
+                # In teams wint iedereen in het winnende kamp, ook wie zelf
+                # weinig scoorde: dat is precies het punt van samen spelen.
+                is_winner = getattr(p, "team", 0) == team_top
             players.append({
                 "user_id": uid, "score": scores.get(p.id, 0),
                 "is_winner": is_winner,
