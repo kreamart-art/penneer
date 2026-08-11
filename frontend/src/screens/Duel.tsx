@@ -266,17 +266,42 @@ export function Duel({ game, onBack, onProfile, openId, onGeopend }: {
   const zoekt = game.state.duelZoekt;
   const match = game.state.duelMatch;
   const [gevonden, setGevonden] = useState<{ tegen: DuelKaart; inzet: number; id: string } | null>(null);
+  // Welke koppeling we al hebben opgepakt. Nodig omdat het WISSEN van de
+  // koppeling niet meer in dit effect gebeurt (zie hieronder); zonder deze ref
+  // zou een gewone hertekening de onthulling opnieuw laten beginnen.
+  const onthuld = useRef<string | null>(null);
+  // Of het starten al loopt. De klok en een tik op het scherm gaan naar
+  // dezelfde plek, en twee keer openen zou twee keer serveren betekenen.
+  const startBezig = useRef(false);
+  const startNu = useCallback(async (duelId: string) => {
+    if (startBezig.current) return;
+    startBezig.current = true;
+    try {
+      await refresh();
+      await openDuel({ id: duelId } as DuelState);
+      setGevonden(null);
+      game.duelMatchGezien();
+    } finally {
+      startBezig.current = false;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refresh]);
+
   useEffect(() => {
-    if (!match) return;
-    game.duelMatchGezien();
+    if (!match || onthuld.current === match.duel_id) return;
+    onthuld.current = match.duel_id;
     sound.invite();
     setGevonden({ tegen: match.tegen, inzet: match.inzet, id: match.duel_id });
     const id = window.setTimeout(() => {
       void (async () => {
-        await refresh();
-        await openDuel({ id: match.duel_id } as DuelState);
-        setGevonden(null);
+        await startNu(match.duel_id);
       })();
+      // De koppeling wordt PAS in startNu gewist, en niet hier aan het begin.
+      // Stond dat bovenaan dit effect, dan werd `match` meteen null, veranderde
+      // de afhankelijkheid van het effect, draaide React de opruiming en wiste
+      // die de timer die net gezet was. Het scherm bleef dan op "Het duel
+      // begint..." staan en er gebeurde niets meer. Een effect hoort zijn eigen
+      // afhankelijkheid niet halverwege te veranderen.
     }, ONTHUL_MS);
     return () => window.clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -443,6 +468,10 @@ export function Duel({ game, onBack, onProfile, openId, onGeopend }: {
   if (view === "list" && (zoekt !== null || gevonden)) {
     return (
       <Screen top={header}>
+        {/* Een tik start hem meteen. Dat is voor de ongeduldige speler, en het
+            is het vangnet: gaat er ooit iets mis met de klok hierboven, dan
+            blijf je niet op dit scherm hangen. */}
+        <div onClick={gevonden ? () => void startNu(gevonden.id) : undefined} style={{ display: "contents" }}>
         <DuelZoeken
           aantal={zoekt?.aantal ?? 1}
           inzet={gevonden?.inzet ?? zoekt?.inzet ?? 0}
@@ -456,6 +485,7 @@ export function Duel({ game, onBack, onProfile, openId, onGeopend }: {
           gevonden={gevonden?.tegen ?? null}
           onStop={() => { sound.uiTap(); game.duelZoekStop(); }}
         />
+        </div>
       </Screen>
     );
   }
