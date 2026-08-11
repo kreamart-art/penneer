@@ -12,3 +12,7 @@ node_modules/
 # OS / editor
 .DS_Store
 *.log
+
+# De lokale database en de kopieen ervan (dev). Prod schrijft naar /data.
+backend/penneer.db*
+backend/backups/
