@@ -23,25 +23,71 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { colors, font, withAlpha } from "../theme/tokens";
 
-/** Breedte gedeeld door hoogte van het vel. */
-const VERHOUDING = 2.283;
+/** Een plaat met zijn opgemeten maten. Twee stuks: de zwaarden bovenaan en de
+ *  wereldbol van de live duels. Ze delen alles behalve deze getallen, dus ze
+ *  delen ook de component eronder; twee kopieen zouden na de eerste wijziging
+ *  uit elkaar lopen. */
+interface Plaat {
+  art: string;
+  /** Breedte gedeeld door hoogte van het vel. */
+  verhouding: number;
+  /** De drie vakjes rechtsonder. */
+  vakken: readonly { l: number; r: number }[];
+  vakT: number;
+  vakB: number;
+  /** Waar de kop en de uitleg staan: links, rechts, boven en hoog. */
+  tekst: { l: number; r: number; t: number; h: number };
+}
 
-/** De drie vakjes rechtsonder, opgemeten in de art. */
-const VAKKEN = [
-  { l: 0.4303, r: 0.6040 },
-  { l: 0.6233, r: 0.7800 },
-  { l: 0.7996, r: 0.9570 },
-] as const;
-const VAK_T = 0.7229;
-const VAK_B = 0.9040;
+const ZWAARDEN: Plaat = {
+  art: "/ui/duel/kop.webp",
+  verhouding: 2.283,
+  vakken: [
+    { l: 0.4303, r: 0.6040 },
+    { l: 0.6233, r: 0.7800 },
+    { l: 0.7996, r: 0.9570 },
+  ],
+  vakT: 0.7229,
+  vakB: 0.9040,
+  tekst: { l: 0.4000, r: 0.9700, t: 0.0900, h: 0.6100 },
+};
+
+/** De wereldbol van de live duels. Op dezelfde manier opgemeten: de vakjes zijn
+ *  hier alle drie even breed (0,159) en de lijn eromheen zit op
+ *
+ *    boven 0,7061   onder 0,9034
+ *    vak 1  x 0,4142 .. 0,5731
+ *    vak 2  x 0,5924 .. 0,7522
+ *    vak 3  x 0,7712 .. 0,9311
+ *
+ *  De tekst begint links precies boven het eerste vakje: op de mockup staat de
+ *  kop op die lijn, en dat is ook waarom het niet dezelfde getallen als de
+ *  zwaardenplaat zijn. */
+const WERELD: Plaat = {
+  art: "/ui/duel/live.webp",
+  verhouding: 2.7714,
+  vakken: [
+    { l: 0.4142, r: 0.5731 },
+    { l: 0.5924, r: 0.7522 },
+    { l: 0.7712, r: 0.9311 },
+  ],
+  vakT: 0.7061,
+  vakB: 0.9034,
+  // Het blok staat LAGER dan bij de zwaardenplaat en is minder hoog: hier
+  // staan maar twee regels onder de kop, en die zweefden bovenin terwijl er
+  // onder de tekst een gat bleef tot aan de vakjes. De inhoud staat verticaal
+  // in het midden van dit vak, dus door het vak zelf te laten zakken zakt het
+  // geheel mee.
+  tekst: { l: 0.4142, r: 0.9311, t: 0.1800, h: 0.4400 },
+};
 
 const pct = (v: number) => `${(v * 100).toFixed(3)}%`;
 
 /** Een vakje met een teken, een groot getal en een klein bijschrift eronder. */
 function Vak({
-  x, breedte, icoon, waarde, label, b,
+  x, breedte, t, h, icoon, waarde, label, b,
 }: {
-  x: number; breedte: number;
+  x: number; breedte: number; t: number; h: number;
   icoon: React.ReactNode; waarde: string; label: string; b: number;
 }) {
   const doos = useRef<HTMLSpanElement | null>(null);
@@ -71,7 +117,7 @@ function Vak({
       style={{
         position: "absolute",
         left: pct(x), width: pct(breedte),
-        top: pct(VAK_T), height: pct(VAK_B - VAK_T),
+        top: pct(t), height: pct(h),
         display: "flex", alignItems: "center", justifyContent: "center",
         overflow: "hidden", pointerEvents: "none",
       }}
@@ -98,9 +144,10 @@ function Vak({
   );
 }
 
-export function DuelKop({
-  titel, uitleg, winsten, winstenLabel, winrate, winrateLabel, reeks, reeksLabel,
+function KopPlaat({
+  plaat, titel, uitleg, winsten, winstenLabel, winrate, winrateLabel, reeks, reeksLabel,
 }: {
+  plaat: Plaat;
   titel: string;
   uitleg: string;
   winsten: string;
@@ -127,14 +174,14 @@ export function DuelKop({
   const tekenMaat = Math.max(11, b * 0.038);
 
   return (
-    <div ref={doos} style={{ position: "relative", width: "100%", aspectRatio: `${VERHOUDING}` }}>
+    <div ref={doos} style={{ position: "relative", width: "100%", aspectRatio: `${plaat.verhouding}` }}>
       {/* De schaduw als tweede kopie van dezelfde art: een drop-shadow-filter
           rastert Safari apart en dan zie je de doos van de laag over de plaat. */}
       <img
-        src="/ui/duel/kop.webp" alt="" aria-hidden draggable={false}
+        src={plaat.art} alt="" aria-hidden draggable={false}
         style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block", filter: "brightness(0) blur(10px)", opacity: 0.5, transform: "translateY(7px)", pointerEvents: "none" }}
       />
-      <img src="/ui/duel/kop.webp" alt="" aria-hidden draggable={false} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} />
+      <img src={plaat.art} alt="" aria-hidden draggable={false} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} />
 
       {/* De kop en de uitleg vullen het vlak rechts van de zwaarden, boven de
           vakjes. De regelafbreking staat in de tekst zelf: bij een vaste
@@ -142,8 +189,8 @@ export function DuelKop({
       <span
         style={{
           position: "absolute",
-          left: pct(0.4000), width: pct(0.9700 - 0.4000),
-          top: pct(0.0900), height: pct(0.6100),
+          left: pct(plaat.tekst.l), width: pct(plaat.tekst.r - plaat.tekst.l),
+          top: pct(plaat.tekst.t), height: pct(plaat.tekst.h),
           display: "flex", flexDirection: "column", justifyContent: "center", gap: b * 0.014,
           pointerEvents: "none",
         }}
@@ -164,12 +211,14 @@ export function DuelKop({
       </span>
 
       <Vak
-        x={VAKKEN[0].l} breedte={VAKKEN[0].r - VAKKEN[0].l} b={b}
+        x={plaat.vakken[0].l} breedte={plaat.vakken[0].r - plaat.vakken[0].l}
+        t={plaat.vakT} h={plaat.vakB - plaat.vakT} b={b}
         icoon={<img src="/ui/stat/winsten.webp" alt="" aria-hidden draggable={false} style={{ height: tekenMaat, width: "auto", display: "block" }} />}
         waarde={winsten} label={winstenLabel}
       />
       <Vak
-        x={VAKKEN[1].l} breedte={VAKKEN[1].r - VAKKEN[1].l} b={b}
+        x={plaat.vakken[1].l} breedte={plaat.vakken[1].r - plaat.vakken[1].l}
+        t={plaat.vakT} h={plaat.vakB - plaat.vakT} b={b}
         icoon={
           <svg width={tekenMaat} height={tekenMaat} viewBox="0 0 24 24" fill="none" stroke={colors.gold} strokeWidth="2.2" strokeLinecap="round" aria-hidden>
             <path d="M19 5L5 19" /><circle cx="7.5" cy="7.5" r="2.6" /><circle cx="16.5" cy="16.5" r="2.6" />
@@ -178,10 +227,21 @@ export function DuelKop({
         waarde={winrate} label={winrateLabel}
       />
       <Vak
-        x={VAKKEN[2].l} breedte={VAKKEN[2].r - VAKKEN[2].l} b={b}
+        x={plaat.vakken[2].l} breedte={plaat.vakken[2].r - plaat.vakken[2].l}
+        t={plaat.vakT} h={plaat.vakB - plaat.vakT} b={b}
         icoon={<img src="/ui/stat/kroon.webp" alt="" aria-hidden draggable={false} style={{ height: tekenMaat, width: "auto", display: "block" }} />}
         waarde={reeks} label={reeksLabel}
       />
     </div>
   );
+}
+
+/** De kop van het duelscherm: de zwaarden. */
+export function DuelKop(props: Omit<React.ComponentProps<typeof KopPlaat>, "plaat">) {
+  return <KopPlaat plaat={ZWAARDEN} {...props} />;
+}
+
+/** De sectie van de live duels: de wereldbol. Zelfde opbouw, andere plaat. */
+export function DuelLiveKop(props: Omit<React.ComponentProps<typeof KopPlaat>, "plaat">) {
+  return <KopPlaat plaat={WERELD} {...props} />;
 }

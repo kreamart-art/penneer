@@ -24,7 +24,7 @@ import { GlasVeld } from "../components/GlasVeld";
 import { GOUD, KADER_LIJN_GOUD, KADER_LIJN_PAARS, KADER_LIJN_ROOD, NeonKader, Paneel, PlekWapen, RingFoto, RingPortret, SCHILD_KLEUREN, type SchildKleur } from "../components/ProfileHero";
 import { GlasRij } from "./Hub";
 import { SchermTip } from "../components/SchermTip";
-import { DuelKop } from "../components/DuelKop";
+import { DuelKop, DuelLiveKop } from "../components/DuelKop";
 import { GoudKader } from "../components/GoudKader";
 import { Tv, LetterTeken } from "../components/Tv";
 import { CANVAS } from "../lib/canvaskleur";
@@ -701,69 +701,63 @@ export function Duel({ game, onBack, onProfile, openId, onGeopend }: {
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <SchermTip id="duel" tekst={t("tipDuel")} />
 
-        {/* De kop op zijn eigen plaat. Zie components/DuelKop.tsx: de zwaarden
-            en de drie statvakjes zitten in de art, de tekst komt er alleen
-            overheen. */}
-        <DuelKop
-          titel={t("duelKopTitel")}
-          uitleg={t("duelKopUitleg")}
-          winsten={`${rec?.wins ?? 0}W`}
-          winstenLabel={t("duelKopWinsten")}
-          winrate={rec && rec.played > 0 ? `${Math.round((rec.wins / rec.played) * 100)}%` : "-"}
-          winrateLabel={t("duelKopWinrate")}
-          reeks={`${rec?.best ?? 0}G`}
-          reeksLabel={t("duelKopReeks")}
-        />
+        {/* DE TWEE SECTIES ZIJN DE KNOPPEN. Er stond een gouden en een paarse
+            knop onder deze platen, maar dan zeg je twee keer hetzelfde: de
+            plaat legt uit wat het is en de knop eronder doet het. Nu is de
+            plaat zelf de knop, en dat scheelt bovendien twee knoppen op een
+            scherm waar de duels de inhoud zijn.
 
-        {/* Niet over de volle breedte: een knop die het halve scherm beslaat
-            schreeuwt harder dan de duels eronder, terwijl die de inhoud zijn.
-            Hij blijft de enige gouden knop op dit scherm, dus hij valt genoeg
-            op zonder de rij op te eten. */}
-        <div style={{ display: "flex", justifyContent: "center" }}>
-          {/* KLEINER ALS GEHEEL, met een schaal over de hele knop heen. De knop
-              alleen maar smaller maken werkt niet: de opvulling binnen de plaat
-              staat in vaste pixels, dus er blijft dan naar verhouding minder
-              ruimte voor de tekst over en die valt op een tweede regel. Een
-              schaal pakt de plaat, de letter en die opvulling in een keer, dus
-              de verhoudingen blijven precies zoals ze waren.
+            Een kale <button> eromheen en geen div met een onClick: dan werkt
+            hij ook met een toetsenbord en leest een schermlezer hem als knop.
+            `pressable` geeft dezelfde indruk-beweging als elders in de app. */}
+        <button
+          type="button"
+          className="pressable"
+          aria-label={t("duelNew")}
+          disabled={busy}
+          onClick={() => { sound.uiTap(); setNote(""); setPickOpen(true); }}
+          // `textAlign` moet er expliciet bij: een knop krijgt van de browser
+          // zelf `text-align: center` mee, en die erft de tekst op de plaat.
+          // Zonder deze regel schoof de uitleg van EEN TEGEN EEN ineens naar
+          // het midden, alleen omdat er een knop omheen kwam.
+          style={{ display: "block", width: "100%", padding: 0, border: "none", background: "transparent", cursor: "pointer", textAlign: "left" }}
+        >
+          <DuelKop
+            titel={t("duelKopTitel")}
+            uitleg={t("duelKopUitleg")}
+            winsten={`${rec?.wins ?? 0}W`}
+            winstenLabel={t("duelKopWinsten")}
+            winrate={rec && rec.played > 0 ? `${Math.round((rec.wins / rec.played) * 100)}%` : "-"}
+            winrateLabel={t("duelKopWinrate")}
+            reeks={`${rec?.best ?? 0}G`}
+            reeksLabel={t("duelKopReeks")}
+          />
+        </button>
 
-              De negatieve marge haalt de ruimte weg die de schaal overlaat: een
-              transform verandert wel wat je ziet maar niet hoeveel plek het
-              inneemt. */}
-          <div style={{ width: "68%", maxWidth: 250, transform: `scale(${KNOP_SCHAAL})`, transformOrigin: "center top", marginBottom: -KNOP_GAT }}>
-            <Button variant="gold" full disabled={busy} onClick={() => { sound.uiTap(); setNote(""); setPickOpen(true); }}>
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 23, letterSpacing: 0.4, whiteSpace: "nowrap" }}>
-                <Swords size={21} /> {t("duelNew")}
-              </span>
-            </Button>
-          </div>
-        </div>
-
-        {/* Live duel: de tweede weg naar hetzelfde duel, dus hij staat direct
-            onder de gouden knop en niet in een eigen vak. Geen uitleg erbij:
-            wat er gebeurt zie je op het scherm dat erop volgt, en een kaart met
-            een kop en een zin eromheen maakte er een sectie van terwijl het een
-            KNOP is.
-
-            Dezelfde behandeling als de gouden knop erboven (vaste breedte,
-            schaal, negatieve marge om de ruimte terug te pakken), alleen een
-            slag kleiner: dit is de tweede keuze en dat hoor je te zien. */}
-        {/* Vijf pixels lucht en niet minder: de gouden plaat heeft onderaan een
-            3D-lip met gloed die tot 348 doorloopt, en zonder deze marge raakt
-            die de bovenkant van de paarse. Gemeten, niet geschat. */}
-        <div style={{ display: "flex", justifyContent: "center", marginTop: 4 }}>
-          <div style={{
-            width: "58%", maxWidth: 205,
-            transform: `scale(${KNOP_SCHAAL})`, transformOrigin: "center top",
-            marginBottom: -Math.round(205 * (150 / 663) * (1 - KNOP_SCHAAL)),
-          }}>
-            <Button variant="primary" full onClick={() => { sound.uiTap(); setNote(""); setLiveIdx(0); setLiveOpen(true); }}>
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 19, letterSpacing: 0.3, whiteSpace: "nowrap" }}>
-                <Swords size={17} /> {t("duelLiveTitle")}
-              </span>
-            </Button>
-          </div>
-        </div>
+        {/* Live duels: dezelfde opbouw, andere plaat, en hij leidt naar de
+            wachtrij in plaats van naar de vriendenkiezer. */}
+        <button
+          type="button"
+          className="pressable"
+          aria-label={t("duelLiveTitle")}
+          onClick={() => { sound.uiTap(); setNote(""); setLiveIdx(0); setLiveOpen(true); }}
+          // `textAlign` moet er expliciet bij: een knop krijgt van de browser
+          // zelf `text-align: center` mee, en die erft de tekst op de plaat.
+          // Zonder deze regel schoof de uitleg van EEN TEGEN EEN ineens naar
+          // het midden, alleen omdat er een knop omheen kwam.
+          style={{ display: "block", width: "100%", padding: 0, border: "none", background: "transparent", cursor: "pointer", textAlign: "left" }}
+        >
+          <DuelLiveKop
+            titel={t("duelLiveKopTitel")}
+            uitleg={t("duelLiveKopUitleg")}
+            winsten={`${rec?.wins ?? 0}W`}
+            winstenLabel={t("duelKopWinsten")}
+            winrate={rec && rec.played > 0 ? `${Math.round((rec.wins / rec.played) * 100)}%` : "-"}
+            winrateLabel={t("duelKopWinrate")}
+            reeks={`${rec?.best ?? 0}G`}
+            reeksLabel={t("duelKopReeks")}
+          />
+        </button>
 
         {!!note && <p style={{ margin: 0, textAlign: "center", fontFamily: font.ui, fontSize: 13, color: colors.orange }}>{note}</p>}
 
@@ -1159,11 +1153,6 @@ function Section({ title, items, onOpen, t, mij, rechts }: { title: string; item
  *  meegroeit is na een week niet meer te scrollen. */
 const TOON_POTJES = 5;
 
-/** Hoeveel kleiner de gouden knop staat dan zijn eigen maat, en hoeveel ruimte
- *  dat onder hem overlaat. De plaat is 663 bij 150, dus op 250 breed is hij
- *  ruim 56 hoog; wat de schaal daarvan afhaalt is de marge die eronder weg mag. */
-const KNOP_SCHAAL = 0.82;
-const KNOP_GAT = Math.round(250 * (150 / 663) * (1 - KNOP_SCHAAL));
 
 /** Hoe lang je de twee ringen ziet voordat het duel begint. Lang genoeg om de
  *  naam en het portret van je tegenstander te lezen, kort genoeg om niet in de
