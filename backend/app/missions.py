@@ -143,6 +143,8 @@ def spec(key: str) -> tuple[int, int, int]:
 
 def bump_all(db, user_id: str, day: str, pairs) -> list[dict]:
     """Apply progress for today's active missions only; return the completed ones."""
+    import time
+
     vandaag = {m["key"]: m for m in missions_for(day)}
     done: list[dict] = []
     for key, inc in pairs:
@@ -151,4 +153,15 @@ def bump_all(db, user_id: str, day: str, pairs) -> list[dict]:
             continue
         if db.mission_bump(user_id, day, key, inc, m["target"], m["reward"], m["coins"], cash=m["cash"]):
             done.append({"key": key, "reward": m["reward"], "coins": m["coins"], "cash": m["cash"]})
+    # DRIE OP DRIE levert een kist op. Alleen kijken als er zojuist iets af
+    # kwam, anders telt elk potje de hele dag door de stand na; en de kist
+    # zelf is eenmalig, dat bewaakt missie_dagkist.
+    if done and alles_af(db, user_id, day):
+        db.missie_dagkist(user_id, day, time.time())
     return done
+
+
+def alles_af(db, user_id: str, day: str) -> bool:
+    """Staan alle dagmissies van vandaag op af voor deze speler?"""
+    stand = db.mission_state(user_id, day)
+    return all(stand.get(m["key"], {}).get("done") for m in missions_for(day))

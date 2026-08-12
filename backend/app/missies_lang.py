@@ -79,6 +79,18 @@ def seizoen_id(nu: datetime.datetime | None = None) -> str:
     return f"{nu.year}-{nu.month:02d}"
 
 
+# Het eerste seizoen was juli 2026: de maand waarin de maandranglijst live ging
+# (de app zelf staat sinds eind juni 2026 online). Het nummer is dus het aantal
+# maanden daarna, plus een.
+SEIZOEN_EEN = (2026, 7)
+
+
+def seizoen_nummer(nu: datetime.datetime | None = None) -> int:
+    nu = nu or datetime.datetime.now()
+    jaar, maand = SEIZOEN_EEN
+    return max(1, (nu.year - jaar) * 12 + (nu.month - maand) + 1)
+
+
 def week_venster(nu: datetime.datetime | None = None) -> tuple[datetime.datetime, datetime.datetime]:
     nu = nu or datetime.datetime.now()
     start = datetime.datetime.combine(nu.date() - datetime.timedelta(days=nu.weekday()), datetime.time.min)
@@ -141,6 +153,7 @@ def seizoen_missies(db: Any, uid: str | None, nu: datetime.datetime | None = Non
     geclaimd = db.missie_claims(uid, periode) if uid else set()
     return {
         "periode": periode,
+        "nummer": seizoen_nummer(nu),
         "seconds_left": int((tot - nu).total_seconds()),
         "missions": _lijst(db, uid, SEIZOEN_POOL, keys, periode, van, tot, geclaimd),
     }

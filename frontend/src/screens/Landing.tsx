@@ -7,7 +7,7 @@ import { Logo } from "../components/Logo";
 import { Button } from "../components/Button";
 import { NotifyNudge } from "../components/NotifyNudge";
 import { DagUitslagPopup } from "../components/DagUitslagPopup";
-import { MissiesPopup } from "../components/MissiesPopup";
+import { MissieBord } from "../components/MissieBord";
 import { ProfilePrompt, profilePromptSeen } from "../components/ProfilePrompt";
 import { InstallPrompt, installPromptSeen, type InstallVariant } from "../components/InstallPrompt";
 import { canInstall, isIos, isIosChrome, isIosInAppBrowser, isStandalone, onInstallChange } from "../pwa/install";
@@ -731,9 +731,10 @@ export function Landing({
       {uitslagOpen && <DagUitslagPopup game={game} onClose={() => setUitslagOpen(false)} />}
       {toonGids && account && <ProfielGids account={account} onNaarProfiel={() => { setToonGids(false); onShowProfile(); }} onLater={() => setToonGids(false)} />}
       {installVariant && !showPrompt && <InstallPrompt variant={installVariant} onClose={() => setInstallVariant(null)} />}
-      {/* De missies hebben nu drie lagen (dag, week, seizoen) en een eigen
-          popup met de sectie-art. MissionsSheet toonde alleen de dag. */}
-      {showMissions && <MissiesPopup onClose={() => { setShowMissions(false); fetchMissions(); }} />}
+      {/* De missies staan op hun eigen BORD: vier tabbladen (dag, week,
+          prestaties, seizoen) op de plaat met het pen-embleem, met je reeks,
+          je seizoen en je pen-level erbij. */}
+      {showMissions && <MissieBord account={account} onClose={() => { setShowMissions(false); fetchMissions(); }} />}
     </Screen>
   );
 }

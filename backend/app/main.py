@@ -2016,7 +2016,19 @@ async def missions_all(request: Request) -> JSONResponse:
     ]
     return JSONResponse({
         "authed": bool(uid),
-        "dag": {"periode": day, "seconds_left": daily.seconds_to_next_day(), "missions": dag},
+        "dag": {
+            "periode": day,
+            "seconds_left": daily.seconds_to_next_day(),
+            "missions": dag,
+            # De kist voor drie op drie. Het bord laat hem zien als het doel van
+            # de dag, dus de soort en de inhoud staan erbij; `gehaald` zegt of
+            # hij vandaag al is uitgedeeld.
+            "kist": {
+                "soort": db.DAG_KIST,
+                "coins": db.KIST_INHOUD[db.DAG_KIST],
+                "gehaald": bool(uid) and bool(state.get(db.DAG_KIST_KEY)),
+            },
+        },
         "week": missies_lang.week_missies(db, uid),
         "seizoen": missies_lang.seizoen_missies(db, uid),
     })

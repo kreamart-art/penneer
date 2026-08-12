@@ -1930,6 +1930,27 @@ class Database:
         self._exec("INSERT INTO kisten (user_id, kist, bron, created_at) VALUES (?,?,?,?)",
                    (user_id, kist, bron, now))
 
+    # De kist die je krijgt als je ALLE dagmissies afmaakt. Bescheiden met
+    # opzet: de missies zelf betalen al munten, dit is het slotje op de dag.
+    DAG_KIST = "kist2"
+    # Als sleutel in mission_progress, naast de echte missies. De onderstreep
+    # kan nooit botsen met een missiesleutel, en de rij is meteen het slot: de
+    # tabel heeft (dag, gebruiker, sleutel) als primaire sleutel, dus twee
+    # potjes die tegelijk aflopen kunnen niet allebei een kist geven.
+    DAG_KIST_KEY = "_dagkist"
+
+    def missie_dagkist(self, user_id: str, day: str, now: float) -> bool:
+        """Geef eenmalig de kist voor alle dagmissies. False als hij er al was."""
+        with self._lock:
+            cur = self._exec(
+                "INSERT OR IGNORE INTO mission_progress (day, user_id, key, progress, done) VALUES (?,?,?,1,1)",
+                (day, user_id, self.DAG_KIST_KEY),
+            )
+            if not cur.rowcount:
+                return False
+            self.kist_geef(user_id, self.DAG_KIST, "missies", now)
+        return True
+
     def kist_dicht(self, user_id: str) -> Optional[dict]:
         """De oudste ongeopende kist, of None. Een voor een: het openen is het
         moment, en drie kisten tegelijk maken er een klusje van."""
