@@ -18,7 +18,7 @@ import os
 import time
 from typing import Any, Optional
 
-from . import daily, divisies, meldingen, missions, push, rem, titles, toezicht
+from . import daily, divisies, meldingen, missions, prestaties, push, rem, titles, toezicht
 from .db import (get_db, LEVEL_BUZZERS, BUZZER_SKIN_IDS, LEVEL_FOR_BUZZER, LEVEL_FRAMES,
                  LEVEL_FOR_FRAME, REEL_SKIN_IDS, EMOTE_IDS, EMOTE_PACKS,
                  EMOTE_PACK_UNLOCK, PACK_FOR_EMOTE)
@@ -376,6 +376,17 @@ class AccountManager:
         # er een te veel.
         cash = self.db.credit_level_cash(user_id, level["level"])
         cash_pending = self.db.cash_owed(level["level"]) - self.db.cash_owed(user.get("coins_seen_level", 0))
+        # DE KAST WORDT HIER HERTELD. Prestaties zijn een telling (zie
+        # app/prestaties.py), dus ze kunnen op elk moment worden nagerekend, en
+        # dit is het moment waarop het account toch al wordt opgebouwd: bij
+        # binnenkomst, na een potje, na elke munt. Alleen wat je nog NIET hebt
+        # wordt geteld, dus wie zijn kast vol heeft doet hier één vraag.
+        #
+        # Zonder melding met opzet: bij de eerste keer kunnen er een handvol
+        # tegelijk binnenkomen (ze tellen met terugwerkende kracht) en dan is
+        # een rij pushberichten geen feest maar lawaai. In een potje gaat het
+        # anders: daar rijdt de penning mee in de ceremonie.
+        prestaties.herzie(self.db, user_id)
         badges = self.db.badges_of(user_id)
         unlocked = set(titles.unlocked_for(stats, badges, level["level"]))
         chosen = user.get("title")
@@ -1648,6 +1659,11 @@ class AccountManager:
             maybe("comeback", p["_comeback"])
             maybe("durfal", p["is_winner"] and room.settings.hard_letters)
             maybe("perfecte_ronde", p["_perfect"])
+            # En de getelde kast erachteraan, zodat een penning die je met dit
+            # potje haalde (het vijftigste, de honderdste winst, het eerste
+            # potje zonder een enkel dubbel woord) meteen in beeld springt in
+            # plaats van pas bij je volgende bezoek.
+            earned.extend(prestaties.herzie(self.db, uid))
             for badge in earned:
                 await notify(uid, badge)
             # Missions: only today's active three ever get progress.

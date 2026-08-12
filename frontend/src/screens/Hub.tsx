@@ -6,7 +6,7 @@ import { InstelRij } from "../components/InstelRij";
 import { CloseIcon } from "../components/CloseIcon";
 import { KnopPlaat } from "../components/KnopPlaat";
 import { ReferralAd } from "../components/ReferralAd";
-import { ArrowLeft, BookOpen, CalendarDays, Camera, Check, ChevronDown, Copy, Crown, Flag, Flame, Gem, Lock, LogOut, Medal, MessageCircle, MoreVertical, Pencil, Percent, Plus, Rocket, Search, Settings as SettingsIcon, Share2, Shield, ShoppingCart, Smile, Sparkles, Star, Swords, Target, Trash2, Trophy, UserPlus, Users, X, Zap, ZoomIn, ZoomOut } from "lucide-react";
+import { ArrowLeft, CalendarDays, Camera, Check, ChevronDown, Copy, Crown, Flag, Flame, Gem, Lock, LogOut, MoreVertical, Pencil, Percent, Plus, Search, Settings as SettingsIcon, Share2, ShoppingCart, Smile, Sparkles, Star, Swords, Target, Trash2, UserPlus, Users, X, ZoomIn, ZoomOut } from "lucide-react";
 import { Avatar, SCHILD_RAND } from "../components/Avatar";
 import { Plek } from "../components/ProfileShowcase";
 import { HexArt } from "../components/HexArt";
@@ -35,6 +35,7 @@ import { Toggle } from "../components/Toggle";
 import { Screen, Card } from "../components/Layout";
 import type { AccountStats, DmMessage, Friend, GameApi, InboxItem, LeaderboardRow, LevelInfo } from "../net/socket";
 import { LANDEN, landNaam } from "../util/landen";
+import { VOLGORDE, badgeArt, teken, usePrestaties, voortgang } from "../data/prestaties";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { makeClubCard, makeProfileCard, shareOrDownload } from "../util/shareCard";
@@ -418,35 +419,14 @@ function XpRij({ level }: { level: LevelInfo }) {
 // verzameling is precies wat je wilt opvullen, dus de nog niet behaalde
 // penningen staan er grijs bij, met een teller als er iets te tellen valt.
 //
-// `nu` rekent hier in de frontend, uit dezelfde statistieken die de server ook
-// gebruikt om de badge toe te kennen. Prestaties die aan een gebeurtenis hangen
-// (een comeback, een perfecte ronde) hebben geen teller: die krijgen een slot.
+// De lijst, de grenzen en de tellingen komen van de SERVER (/api/prestaties,
+// backend/app/prestaties.py): die kent de penningen toe, dus die hoort ook te
+// zeggen waar de balk naartoe loopt. Ze stonden hier ooit als tweede kopie, en
+// twee lijsten die hetzelfde zeggen lopen uiteen zodra er een verandert.
+// Prestaties die aan een gebeurtenis hangen (een comeback, een perfecte ronde)
+// hebben geen teller: die krijgen een slot.
 //
-// Elke penning heeft eigen art in `public/ui/badges/<sleutel>.webp`, uit het
-// vel dat in de UI-map staat. Staat er ooit een sleutel bij zonder art, dan
-// haal je hem hier weg en valt hij terug op het getekende teken.
-const BADGE_ART = new Set<string>([
-  "eerste_game", "eerste_winst", "tien_games", "vijf_winsten", "hattrick", "woordenaar",
-  "vijfentwintig_games", "tien_winsten", "perfecte_ronde", "comeback", "durfal",
-  "eerste_vriend", "eerste_bericht", "seizoenswinnaar",
-]);
-
-const PRESTATIES: { key: string; icoon: typeof Crown; nu?: (s: AccountStats) => number; doel?: number }[] = [
-  { key: "eerste_game", icoon: Swords },
-  { key: "eerste_winst", icoon: Crown },
-  { key: "tien_games", icoon: Swords, nu: (s) => s.games, doel: 10 },
-  { key: "vijf_winsten", icoon: Trophy, nu: (s) => s.wins, doel: 5 },
-  { key: "hattrick", icoon: Flame, nu: (s) => s.streak, doel: 3 },
-  { key: "woordenaar", icoon: BookOpen, nu: (s) => s.uniques, doel: 50 },
-  { key: "vijfentwintig_games", icoon: Shield, nu: (s) => s.games, doel: 25 },
-  { key: "tien_winsten", icoon: Medal, nu: (s) => s.wins, doel: 10 },
-  { key: "perfecte_ronde", icoon: Sparkles },
-  { key: "comeback", icoon: Rocket },
-  { key: "durfal", icoon: Zap },
-  { key: "eerste_vriend", icoon: UserPlus },
-  { key: "eerste_bericht", icoon: MessageCircle },
-  { key: "seizoenswinnaar", icoon: Star },
-];
+// Elke penning heeft eigen art in `public/ui/badges/<sleutel>.webp`.
 
 // ---- Inklapbare profielsectie ----------------------------------------------
 // Prestaties en Laatste potjes groeien mee met hoe lang je speelt en duwden het
@@ -1118,6 +1098,10 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [prestatiesUit, setPrestatiesUit] = useState(false);
+  // De medaillekast komt van de server: die kent de penningen toe, dus die
+  // hoort ook te zeggen waar elke balk naartoe loopt (zie data/prestaties.ts).
+  const kast = usePrestaties(true);
+  const kastVolgorde = kast?.volgorde?.length ? kast.volgorde : VOLGORDE;
   const [schildOpen, setSchildOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const colorInputRef = useRef<HTMLInputElement | null>(null);
@@ -1581,7 +1565,7 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
               <span style={{ fontFamily: font.ui, fontSize: 12, color: colors.ink, whiteSpace: "nowrap" }}>
                 {account.title
                   ? t(`title_${account.title}`)
-                  : t("badgesOf", { n: account.badges.length, m: PRESTATIES.length })}
+                  : t("badgesOf", { n: account.badges.length, m: kastVolgorde.length })}
               </span>
             </NeonKader>
           </div>
@@ -1664,8 +1648,8 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
           onActie={() => { sound.uiTap(); setPrestatiesUit((v) => !v); }}
         />
         {(() => {
-          const behaald = new Set(account.badges.map((b) => b.badge));
-          const lijst = [...PRESTATIES].sort((a, b) => Number(behaald.has(b.key)) - Number(behaald.has(a.key)));
+          const behaald = new Set(kast?.behaald ?? account.badges.map((b) => b.badge));
+          const lijst = [...kastVolgorde].sort((a, b) => Number(behaald.has(b)) - Number(behaald.has(a)));
           const zicht = prestatiesUit ? lijst : lijst.slice(0, 5);
           return (
             <div
@@ -1676,17 +1660,21 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
                   : { display: "flex", gap: 4, overflowX: "auto", paddingBottom: 2 }
               }
             >
-              {zicht.map((p) => (
-                <Prestatie
-                  key={p.key}
-                  icoon={<p.icoon size={24} />}
-                  art={BADGE_ART.has(p.key) ? `/ui/badges/${p.key}.webp` : undefined}
-                  naam={t(`badgeshort_${p.key}`)}
-                  behaald={behaald.has(p.key)}
-                  nu={p.nu ? p.nu(account.stats) : undefined}
-                  doel={p.doel}
-                />
-              ))}
+              {zicht.map((sleutel) => {
+                const Teken = teken(sleutel);
+                const { nu, doel } = voortgang(kast, sleutel);
+                return (
+                  <Prestatie
+                    key={sleutel}
+                    icoon={<Teken size={24} />}
+                    art={badgeArt(sleutel)}
+                    naam={t(`badgeshort_${sleutel}`)}
+                    behaald={behaald.has(sleutel)}
+                    nu={nu}
+                    doel={doel}
+                  />
+                );
+              })}
             </div>
           );
         })()}

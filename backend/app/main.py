@@ -19,7 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import ai_referee, arena, daily, dagprijzen, discover, duel, game, missies_lang, missions, paypal, push
+from . import ai_referee, arena, daily, dagprijzen, discover, duel, game, missies_lang, missions, paypal, prestaties, push
 from . import topo
 from . import backup, rem, toezicht
 from .db import AVATAR_MAX_BYTES, DB_PATH, get_db
@@ -1969,6 +1969,34 @@ async def duel_rematch(duel_id: str, request: Request) -> JSONResponse:
     await accounts.stuur(other, "duel_herkansing", data={"duel_id": did}, naam=name)
     await accounts.push_account(uid)
     return JSONResponse(_duel_payload(db, uid, db.duel_get(did)))
+
+
+# ---- prestaties --------------------------------------------------------------
+
+@app.get("/api/prestaties")
+async def prestaties_get(request: Request) -> JSONResponse:
+    """De medaillekast: wat je hebt, waar elke penning aan hangt en hoe ver je
+    staat.
+
+    De DOELEN staan hier en niet in de app: een grens die op twee plekken staat
+    loopt uiteen zodra er een verandert, en dan wijst de balk iets anders aan
+    dan de penning die je krijgt.
+    """
+    db = get_db()
+    uid = db.auth(_bearer(request))
+    if not uid:
+        return JSONResponse({"authed": False, "volgorde": prestaties.VOLGORDE, "doelen": prestaties.doelen(),
+                             "stand": {}, "behaald": []})
+    # Eerst herzien, dan opsturen: anders zie je een balk die vol staat naast
+    # een penning die nog niet van jou is.
+    prestaties.herzie(db, uid)
+    return JSONResponse({
+        "authed": True,
+        "volgorde": prestaties.VOLGORDE,
+        "doelen": prestaties.doelen(),
+        "stand": prestaties.stand(db, uid),
+        "behaald": [b["badge"] for b in db.badges_of(uid)],
+    })
 
 
 # ---- dagelijkse missies ------------------------------------------------------

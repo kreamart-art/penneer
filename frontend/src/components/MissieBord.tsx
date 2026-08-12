@@ -29,6 +29,7 @@ import {
 import { CloseIcon } from "./CloseIcon";
 import { Schild, divisieNaam } from "./Divisie";
 import { GOUD, Prestatie, SCHILD_KLEUREN } from "./ProfileHero";
+import { VOLGORDE, badgeArt, teken, usePrestaties, voortgang } from "../data/prestaties";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import type { Account } from "../net/socket";
@@ -1032,65 +1033,51 @@ function KistPrijs({ kist, klaar }: { kist?: { soort: string; coins: number; geh
 }
 
 /** Het derde tabblad: de medaillekast. Dezelfde penningen als op je profiel,
- *  want het is dezelfde verzameling; hier staan ze alleen compleet. */
+ *  want het is dezelfde verzameling; hier staan ze alleen compleet.
+ *
+ *  De grenzen komen van de SERVER (/api/prestaties): die kent ze toe, dus die
+ *  hoort ook te zeggen waar de balk naartoe loopt. */
 function PrestatieTab({ account }: { account: Account | null }) {
   const { t } = useT();
   const k = useK();
-  const behaald = new Set((account?.badges ?? []).map((b) => b.badge));
-  const lijst = [...PRESTATIES].sort((a, b) => Number(behaald.has(b.key)) - Number(behaald.has(a.key)));
+  const kast = usePrestaties(true);
+  const volgorde = kast?.volgorde?.length ? kast.volgorde : VOLGORDE;
+  const behaald = new Set(kast?.behaald ?? (account?.badges ?? []).map((b) => b.badge));
+  const lijst = [...volgorde].sort((a, b) => Number(behaald.has(b)) - Number(behaald.has(a)));
+  const deel = volgorde.length ? behaald.size / volgorde.length : 0;
   return (
     <>
       <Kaart>
         <KaartKop
           kop={t("badgesTitle")}
-          sub={t("badgesOf", { n: behaald.size, m: PRESTATIES.length })}
+          sub={t("badgesOf", { n: behaald.size, m: volgorde.length })}
           rechts={
             <span style={{ fontFamily: font.wide, fontWeight: 700, fontSize: 17 * k, lineHeight: 1, color: GOUD[3] }}>
-              {Math.round((behaald.size / PRESTATIES.length) * 100)}%
+              {Math.round(deel * 100)}%
             </span>
           }
         />
-        <Balk deel={behaald.size / PRESTATIES.length} />
+        <Balk deel={deel} />
       </Kaart>
       <Kaart style={{ gap: 12 * k }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: `${14 * k}px ${2 * k}px`, justifyItems: "center" }}>
-          {lijst.map((p) => (
-            <Prestatie
-              key={p.key}
-              icoon={<p.icoon size={22} />}
-              art={`/ui/badges/${p.key}.webp`}
-              naam={t(`badgeshort_${p.key}`)}
-              behaald={behaald.has(p.key)}
-              nu={p.nu && account ? p.nu(account.stats) : undefined}
-              doel={p.doel}
-            />
-          ))}
+          {lijst.map((sleutel) => {
+            const Teken = teken(sleutel);
+            const { nu, doel } = voortgang(kast, sleutel);
+            return (
+              <Prestatie
+                key={sleutel}
+                icoon={<Teken size={22} />}
+                art={badgeArt(sleutel)}
+                naam={t(`badgeshort_${sleutel}`)}
+                behaald={behaald.has(sleutel)}
+                nu={nu}
+                doel={doel}
+              />
+            );
+          })}
         </div>
       </Kaart>
     </>
   );
 }
-
-// De kast zelf. Dezelfde sleutels en dezelfde tellers als op het profiel; de
-// art staat in `ui/badges/<sleutel>.webp`.
-const PRESTATIES: {
-  key: string;
-  icoon: typeof Swords;
-  nu?: (s: Account["stats"]) => number;
-  doel?: number;
-}[] = [
-  { key: "eerste_game", icoon: Swords },
-  { key: "eerste_winst", icoon: Trophy },
-  { key: "tien_games", icoon: Swords, nu: (s) => s.games, doel: 10 },
-  { key: "vijf_winsten", icoon: Trophy, nu: (s) => s.wins, doel: 5 },
-  { key: "hattrick", icoon: Star, nu: (s) => s.streak, doel: 3 },
-  { key: "woordenaar", icoon: BookOpen, nu: (s) => s.uniques, doel: 50 },
-  { key: "vijfentwintig_games", icoon: Swords, nu: (s) => s.games, doel: 25 },
-  { key: "tien_winsten", icoon: Trophy, nu: (s) => s.wins, doel: 10 },
-  { key: "perfecte_ronde", icoon: Star },
-  { key: "comeback", icoon: Star },
-  { key: "durfal", icoon: Star },
-  { key: "eerste_vriend", icoon: Star },
-  { key: "eerste_bericht", icoon: MessageCircle },
-  { key: "seizoenswinnaar", icoon: Trophy },
-];
