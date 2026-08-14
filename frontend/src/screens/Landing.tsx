@@ -558,7 +558,11 @@ export function Landing({
                 fontFamily: font.wide,
                 fontWeight: 400,
                 fontSize: 16.5,
-                lineHeight: 1.2,
+                // Twee regels: de breuk zit in de tekst (zie de i18n-sleutel
+                // `tagline`), niet in een vaste breedte. Op een vaste breedte
+                // breekt hij per taal en per telefoon net ergens anders.
+                whiteSpace: "pre-line",
+                lineHeight: 1.15,
                 letterSpacing: 0.9,
                 color: "#CFC6E8",
                 maxWidth: 320,
