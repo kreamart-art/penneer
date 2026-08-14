@@ -878,31 +878,59 @@ export function MissieBord({ account, onClose }: { account: Account | null; onCl
                   >
                     {t(tab.label)}
                   </span>
-                  {badges[tab.key] > 0 && (
-                    <span
-                      style={{
-                        position: "absolute",
-                        right: `-${breedte * 0.012}px`,
-                        top: `-${breedte * 0.024}px`,
-                        minWidth: breedte * 0.042,
-                        height: breedte * 0.042,
-                        padding: `0 ${breedte * 0.008}px`,
-                        borderRadius: 999,
-                        display: "grid",
-                        placeItems: "center",
-                        background: "linear-gradient(180deg, #FF6B5A, #C41F12)",
-                        border: "1px solid rgba(255,190,180,.6)",
-                        color: "#FFF",
-                        fontFamily: font.ui,
-                        fontSize: breedte * 0.026,
-                        fontWeight: 800,
-                        lineHeight: 1,
-                      }}
-                    >
-                      {badges[tab.key]}
-                    </span>
-                  )}
                 </button>
+              );
+            })}
+
+            {/* DE TELLERTJES STAAN BUITEN DE VAKJES, en niet erin. Een vakje is
+                een achthoek en dus geknipt met clip-path, en clip-path knipt
+                ALLES wat erin zit: een bolletje in de hoek verloor daardoor
+                precies het stuk dat buiten de achthoek stak. Hier hangen ze aan
+                dezelfde doos als de vakjes zelf, op de rechterbovenhoek van hun
+                vakje, zodat ze heel blijven.
+
+                Niet precies op de hoek maar een stuk naar binnen (0,075 van
+                de plaat): op de hoek zelf botst het laatste bolletje tegen het
+                kruis rechtsboven, gemeten zes pixels overlap. Nu ligt elk
+                bolletje op de bovenrand van zijn eigen vakje, ruim binnen de
+                lijst. */}
+            {TABS.map((tab, i) => {
+              const n = badges[tab.key];
+              if (!n) return null;
+              const maat = Math.max(14, breedte * 0.046);
+              return (
+                <span
+                  key={`teller-${tab.key}`}
+                  aria-hidden
+                  style={{
+                    position: "absolute",
+                    left: pct(TAB_X[i][1] - 0.075),
+                    top: pct(TAB_T / SNEE_BOVEN),
+                    transform: "translate(-50%, -50%)",
+                    zIndex: 3,
+                    minWidth: maat,
+                    height: maat,
+                    padding: `0 ${maat * 0.2}px`,
+                    boxSizing: "border-box",
+                    borderRadius: 999,
+                    display: "grid",
+                    placeItems: "center",
+                    background: "linear-gradient(180deg, #FF6B5A, #C41F12)",
+                    border: `1px solid rgba(255,190,180,.65)`,
+                    boxShadow: "0 2px 6px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.35)",
+                    color: "#FFF",
+                    fontFamily: font.ui,
+                    fontSize: maat * 0.62,
+                    fontWeight: 800,
+                    lineHeight: 1,
+                    fontVariantNumeric: "tabular-nums",
+                    // Het bolletje meldt iets, het vangt geen tik: die hoort bij
+                    // het vakje eronder.
+                    pointerEvents: "none",
+                  }}
+                >
+                  {n > 99 ? "99+" : n}
+                </span>
               );
             })}
           </div>
