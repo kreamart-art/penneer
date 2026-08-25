@@ -564,6 +564,7 @@ type ServerMessage =
   | { type: "duel_live"; duel_id: string; gedaan: number; van: number }
   | { type: "admin_ok"; is_admin: boolean; ai: AdminAi; recovery_codes: RecoveryCode[]; ai_codes: AiCodeInfo; avatar_codes?: AiCodeInfo; buzzer_codes?: AiCodeInfo }
   | { type: "admin_stats"; stats: AdminStats }
+  | { type: "admin_afgewezen" }
   | { type: "rapporten"; items: Rapport[] }
   | { type: "toezicht"; status: Toezicht }
   | { type: "rapport_ok" }
@@ -828,6 +829,12 @@ function reducer(state: ClientState, action: Action): ClientState {
       return state;
     case "admin_stats":
       return { ...state, adminStats: msg.stats };
+    case "admin_afgewezen":
+      // De bewaarde code klopt niet (meer): weggooien, anders blijft elke
+      // herverbinding hem herhalen. De rode foutbalk komt apart, en alleen
+      // als de poging met de hand was.
+      try { localStorage.removeItem(ADMIN_KEY); } catch { /* prima */ }
+      return { ...state, isAdmin: false };
     case "admin_ok":
       return { ...state, isAdmin: msg.is_admin, adminAi: msg.ai, recoveryCodes: msg.recovery_codes, aiCodes: msg.ai_codes, avatarCodes: msg.avatar_codes ?? state.avatarCodes, buzzerCodes: msg.buzzer_codes ?? state.buzzerCodes };
     case "admin_categories":
@@ -1149,7 +1156,11 @@ export function useGame(): GameApi {
         // Re-establish admin login if a secret is stored on this device.
         const adminSecret = loadAdminSecret();
         if (adminSecret) {
-          ws.send(JSON.stringify({ type: "admin_login", secret: adminSecret }));
+          // STIL: de server zwijgt als deze code niet (meer) klopt. Zonder die
+          // vlag kreeg iedereen die ooit iets verkeerds in het admin-vakje
+          // tikte bij ELKE herverbinding een rode "Onjuiste admincode." op de
+          // main page, want de code werd bewaard voordat hij gecontroleerd was.
+          ws.send(JSON.stringify({ type: "admin_login", secret: adminSecret, stil: true }));
         }
         // Account: redeem a magic-link code from the URL once, else log in
         // with the stored device token.

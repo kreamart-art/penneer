@@ -175,8 +175,15 @@ class RoomManager:
             if room:
                 await self.send_state(room)
         else:
+            # ALTIJD een eigen afwijsbericht, zodat de client zijn bewaarde code
+            # kan weggooien. De rode foutbalk komt er alleen bij als iemand de
+            # code net ZELF intikte: de client herhaalt zijn bewaarde code ook
+            # bij elke herverbinding (met stil erbij), en een foutbalk over een
+            # poging die je niet deed leest als een spookmelding op de main page.
             try:
-                await ws.send_json({"type": "error", "message": "Onjuiste admincode."})
+                await ws.send_json({"type": "admin_afgewezen"})
+                if not payload.get("stil"):
+                    await ws.send_json({"type": "error", "message": "Onjuiste admincode."})
             except Exception:
                 pass
 
@@ -512,6 +519,7 @@ class RoomManager:
             existing = next((p for p in room.players if p.user_id == account["id"]), None)
             if existing:
                 self._cancel_room_cleanup(code)
+                self._terug_gelukt(room, existing)
                 old_ws = self.connections.get(existing.id)
                 if old_ws is not None and old_ws is not ws:
                     try:
@@ -577,6 +585,7 @@ class RoomManager:
 
         # Someone's back — cancel any pending room teardown.
         self._cancel_room_cleanup(code)
+        self._terug_gelukt(room, player)
 
         player.connected = True
         player.disconnected_at = None
@@ -625,6 +634,69 @@ class RoomManager:
         if not self._has_humans(room):
             self._schedule_room_cleanup(room.code)
 
+        # Valt een ACCOUNT tijdens het spel weg, dan komt er na een minuut een
+        # melding klaar te staan waarmee hij terug de room in kan, zonder code.
+        # Een minuut en niet meteen: de verbinding valt ook weg als iemand even
+        # naar een andere app gaat, en wie binnen een minuut terug is heeft
+        # nergens last van gehad.
+        if (room.phase not in ("lobby", "rules", "final") and player.user_id
+                and not player.is_bot and not player.is_spectator):
+            asyncio.create_task(self._meld_terug_na(room.code, player_id))
+
+    TERUG_NA_S = 60.0
+
+    async def _meld_terug_na(self, code: str, player_id: str) -> None:
+        """De 'je potje loopt nog'-melding, een minuut na een wegval.
+
+        Alles wordt op het moment van sturen OPNIEUW gecontroleerd: de room kan
+        weg zijn, het potje afgelopen, de speler terug. Een taak annuleren bij
+        terugkomst hoeft daardoor niet; een taak die niets meer te melden heeft
+        doet gewoon niets.
+        """
+        try:
+            await asyncio.sleep(self.TERUG_NA_S)
+        except asyncio.CancelledError:
+            return
+        room = self.rooms.get(code)
+        if room is None or room.phase in ("lobby", "rules", "final"):
+            return
+        player = room.get_player(player_id)
+        if player is None or player.connected or not player.user_id:
+            return
+        if player.user_id in room.terug_gemeld:
+            return  # een per potje is genoeg
+        room.terug_gemeld.add(player.user_id)
+        try:
+            from .social import accounts
+            await accounts.stuur(player.user_id, "room_terug",
+                                 data={"room_code": code}, code=code)
+        except Exception:
+            pass  # een melding mag het spel nooit raken
+
+    def _terug_gelukt(self, room: Room, player) -> None:
+        """Terug in de room: de melding is klaar met zijn werk. De rij gaat weg
+        (anders blijft er een knop staan naar waar je al bent) en het id gaat
+        uit de dedupe-set, zodat een LATERE wegval in ditzelfde potje weer een
+        verse melding oplevert."""
+        uid = getattr(player, "user_id", None)
+        if not uid or uid not in room.terug_gemeld:
+            return
+        room.terug_gemeld.discard(uid)
+        try:
+            get_db().meldingen_weg_soort(uid, "room_terug")
+        except Exception:
+            pass
+
+    def _terug_voorbij(self, room: Room) -> None:
+        """Het potje is klaar (of de room gaat weg): elke openstaande
+        terugkeer-melding wijst nu naar iets wat er niet meer is."""
+        for uid in list(room.terug_gemeld):
+            try:
+                get_db().meldingen_weg_soort(uid, "room_terug")
+            except Exception:
+                pass
+        room.terug_gemeld.clear()
+
     def _migrate_host(self, room: Room) -> None:
         # Only a connected HUMAN PLAYER can hold the crown: a bot can't drive
         # host controls (the room would stall) and a spectator isn't playing.
@@ -662,6 +734,9 @@ class RoomManager:
         self.empty_room_tasks.pop(code, None)
 
     def _destroy_room(self, code: str) -> None:
+        room = self.rooms.get(code)
+        if room is not None:
+            self._terug_voorbij(room)
         self.rooms.pop(code, None)
         self.pending.pop(code, None)
         task = self.timer_tasks.pop(code, None)
@@ -1281,6 +1356,7 @@ class RoomManager:
     async def _game_over(self, room: Room) -> None:
         room.phase = "final"
         room.timer.ends_at = None
+        self._terug_voorbij(room)
         winner_id = None
         if room.scores:
             winner_id = max(room.scores, key=lambda pid: room.scores[pid])

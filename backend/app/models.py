@@ -187,6 +187,10 @@ class Room:
     # Players who left mid-round and came back: they sit out the CURRENT round
     # (cannot fill in, score no points) and rejoin play next round.
     sat_out: list[str] = field(default_factory=list)
+    # Accounts (user_ids) die voor DIT potje al een "je potje loopt nog"-melding
+    # kregen. Zo krijgt niemand er twee voor hetzelfde potje; bij terugkomst en
+    # bij het einde van het potje gaat je id er weer uit. Niet in public().
+    terug_gemeld: set = field(default_factory=set)
     # Spelleider rotation: fixed at game start; the pointer only advances past a
     # player when they actually GOT a turn (or were offline for it), so nobody
     # gets extra turns when someone else drops out.

@@ -3483,6 +3483,12 @@ class Database:
         uit de client is een getal dat iemand kan verzinnen."""
         self._exec("DELETE FROM meldingen WHERE id=? AND user_id=?", (int(melding_id), user_id))
 
+    def meldingen_weg_soort(self, user_id: str, soort: str) -> None:
+        """Alle meldingen van een soort weg. Voor meldingen die een TOESTAND
+        melden (je potje loopt nog): zodra de toestand voorbij is, is de
+        melding geen bericht meer maar een dode knop."""
+        self._exec("DELETE FROM meldingen WHERE user_id=? AND soort=?", (user_id, soort))
+
     def melding_laatst(self, user_id: str, soort: str) -> float:
         """Wanneer deze soort voor het laatst naar deze speler ging. Voor de
         herinneringen: hoogstens één per dag, anders is het gezeur."""

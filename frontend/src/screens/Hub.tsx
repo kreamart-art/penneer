@@ -3752,6 +3752,12 @@ function InboxTab({ game, onGaNaar }: { game: GameApi; onGaNaar: (naar: string) 
     // Een gesprek en een profiel kunnen hier open; alles wat een EIGEN SCHERM
     // is (duel, dagronde, je profiel) gaat via App, want die kent de schermen.
     if (m.naar === "dm" && d.user_id) game.dmOpen(d.user_id);
+    else if (m.naar === "room" && d.room_code) {
+      // Terug (of binnen) in een potje: de server herkent je account en geeft
+      // je je eigen stoel terug. De inbox gaat dicht, want de room IS het scherm.
+      game.joinRoom(d.room_code, game.state.account?.name || "Speler");
+      onGaNaar("home");
+    }
     else if (m.naar === "duel" || m.naar === "dagronde" || m.naar === "profiel") onGaNaar(m.naar);
     else if (d.user_id) { game.viewProfile(d.user_id); setViewing(d.user_id); }
   };

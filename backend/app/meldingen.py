@@ -82,6 +82,21 @@ SOORTEN: dict[str, dict] = {
         "naar": "room",
         "push": True,
     },
+    "room_terug": {
+        "titel": "Je potje loopt nog",
+        "body": "Je viel uit room {code}. Tik om terug te keren.",
+        "tag": "room",
+        "icoon": "potjes",
+        # Naar de ROOM, net als de uitnodiging: de code reist mee in de data en
+        # de server zet je terug op je EIGEN plek (join_room herkent je account
+        # en geeft je je stoel terug in plaats van een nieuwe).
+        "naar": "room",
+        # Wel een push: wie er middenin een potje uitvalt heeft de app juist
+        # NIET open, en dit is precies het moment waarop een bericht op de
+        # telefoon iets oplost. Hoogstens een per potje (de room onthoudt wie
+        # hem kreeg), dus spammen kan hij niet.
+        "push": True,
+    },
     "uitdaging": {
         "titel": "Uitdaging",
         # De inzet staat in de melding: je beslist of je hem opent op basis van

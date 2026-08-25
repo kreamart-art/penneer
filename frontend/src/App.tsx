@@ -650,6 +650,7 @@ export default function App() {
           if (naar === "duel" || naar === "duel_live") { setShowHub(null); setShowDuel(true); }
           else if (naar === "dagronde") { setShowHub(null); setShowDaily(true); }
           else if (naar === "profiel") setShowHub("profile");
+          else if (naar === "home") setShowHub(null);
         }}
         onChallenge={(userId) => {
           pendingChallenge.current = userId;
