@@ -1059,6 +1059,10 @@ const nl: Dict = {
   installUitleg: "Zet Pen Neer op je beginscherm om te spelen.",
   installTegel: "{wat} speel je in de app.",
   installKnop: "Installeren",
+  installMetCode: "Je bent uitgenodigd."
+  ,installMetCodeUitleg: "Zet Pen Neer op je beginscherm en doe mee met deze code:",
+  installTikCode: "tik om te kopieren",
+  installGekopieerd: "gekopieerd",
   missiesPrestaties: "Prestaties",
   bordDagKop: "Dagelijkse missies",
   bordWeekKop: "Wekelijkse missies",
@@ -2473,6 +2477,10 @@ const en: Dict = {
   installUitleg: "Add Pen Neer to your home screen to play.",
   installTegel: "Play {wat} in the app.",
   installKnop: "Install",
+  installMetCode: "You have an invite."
+  ,installMetCodeUitleg: "Add Pen Neer to your home screen and join with this code:",
+  installTikCode: "tap to copy",
+  installGekopieerd: "copied",
   missiesPrestaties: "Badges",
   bordDagKop: "Daily missions",
   bordWeekKop: "Weekly missions",

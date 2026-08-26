@@ -8,6 +8,7 @@ import { sound } from "./sound/sound";
 import { colors } from "./theme/tokens";
 import { useTileSkin } from "./theme/tileSkin";
 import { ontdekAan } from "./util/ontdekvlag";
+import { moetInstalleren } from "./pwa/install";
 import { Intro } from "./screens/Intro";
 import { LanguagePage } from "./screens/LanguagePage";
 const Rules = lazy(() => import("./screens/Rules").then((m) => ({ default: m.Rules })));
@@ -134,6 +135,10 @@ export default function App() {
   // The bottom bar owns which section is open; Hub renders whichever one the
   // bar points at, so there is no in-screen tab strip any more.
   const [showHub, setShowHub] = useState<HubSection | null>(null);
+  // Een roomcode uit een uitnodiging die binnenkwam terwijl de app nog in de
+  // browser draait. Spelen doe je in de app, dus we zetten hem niet door naar
+  // de server maar leggen hem op de main page klaar.
+  const [wachtCode, setWachtCode] = useState<string | null>(null);
   const [showShop, setShowShop] = useState(false);
   const [showTraining, setShowTraining] = useState(false);
   const [showOntdekken, setShowOntdekken] = useState(false);
@@ -335,7 +340,12 @@ export default function App() {
       // Een uitnodiging voor een potje zet je IN dat potje. Ben je al ergens
       // anders bezig, dan is de room-code alsnog het enige wat telt: de server
       // haalt je uit je vorige room zodra je hier binnenkomt.
+      //
+      // Behalve in de browser op een telefoon: daar geldt dezelfde muur als
+      // voor de speeltegels. De code raakt niet kwijt, die komt op de main page
+      // te staan zodat je hem na het installeren kunt intikken.
       setShowHub(null);
+      if (moetInstalleren()) { setWachtCode(String(d.room_code).toUpperCase()); return; }
       game.joinRoom(d.room_code, game.state.account?.name || "Speler");
     } else if (naar === "home") {
       setShowHub(null);
@@ -651,6 +661,9 @@ export default function App() {
           else if (naar === "dagronde") { setShowHub(null); setShowDaily(true); }
           else if (naar === "profiel") setShowHub("profile");
           else if (naar === "home") setShowHub(null);
+          // "room:ABCD" komt uit de inbox: de muur staat ertussen, dus de code
+          // gaat naar de main page in plaats van naar de server.
+          else if (naar.startsWith("room:")) { setShowHub(null); setWachtCode(naar.slice(5)); }
         }}
         onChallenge={(userId) => {
           pendingChallenge.current = userId;
@@ -691,7 +704,7 @@ export default function App() {
           // daar, en oefenen zit erin via "Speel de letter". Staat de
           // admin-schakelaar uit, dan komt de speler gewoon in Oefenen zoals
           // altijd.
-          onShowTraining={() => { if (ontdekVrij) setShowOntdekken(true); else setShowTraining(true); }} ontdekVrij={ontdekVrij} onShowDaily={() => setShowDaily(true)} onShowDuel={() => setShowDuel(true)} onShowProfile={() => setShowHub("profile")} onShowInbox={() => setShowHub("inbox")} />;
+          onShowTraining={() => { if (ontdekVrij) setShowOntdekken(true); else setShowTraining(true); }} ontdekVrij={ontdekVrij} onShowDaily={() => setShowDaily(true)} onShowDuel={() => setShowDuel(true)} onShowProfile={() => setShowHub("profile")} onShowInbox={() => setShowHub("inbox")} wachtCode={wachtCode} onWachtCodeWeg={() => setWachtCode(null)} />;
   }
 
   // Which bar item is lit. Sub-flows that are not bar destinations (rules,

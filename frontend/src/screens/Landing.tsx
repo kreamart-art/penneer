@@ -71,6 +71,8 @@ export function Landing({
   onShowDuel,
   onShowProfile,
   onShowInbox,
+  wachtCode = null,
+  onWachtCodeWeg,
 }: {
   game: GameApi;
   onShowRules: () => void;
@@ -85,6 +87,11 @@ export function Landing({
   onShowProfile: () => void;
   onShowDuel: () => void;
   onShowInbox: () => void;
+  /** Een roomcode die binnenkwam terwijl de app nog niet op het beginscherm
+   *  staat. Die gooien we niet weg: hij komt in de balk te staan, zodat je hem
+   *  na het installeren kunt intikken. */
+  wachtCode?: string | null;
+  onWachtCodeWeg?: () => void;
 }) {
   const { t } = useT();
   const online = useOnline();
@@ -106,6 +113,18 @@ export function Landing({
   // een muur kijkt. Op een computer geldt dit niet, daar is installeren
   // ongebruikelijk en zou de eis alleen mensen buitensluiten.
   const [webOnly, setWebOnly] = useState(() => moetInstalleren());
+  const [eigenCode, setEigenCode] = useState<string | null>(null);
+  const setInstalleerCode = (c: string) => { sound.uiTap(); setEigenCode(c); };
+  // De code uit een uitnodiging telt net zo goed als een zelf ingetikte.
+  const codeWacht = eigenCode || wachtCode || null;
+  const [gekopieerd, setGekopieerd] = useState(false);
+  useEffect(() => { setGekopieerd(false); }, [codeWacht]);
+  // Zodra de app WEL op het beginscherm staat is de code niet meer nodig hier:
+  // dan mag je gewoon meedoen.
+  useEffect(() => {
+    if (!webOnly && codeWacht) { setEigenCode(null); onWachtCodeWeg?.(); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [webOnly, codeWacht]);
   useEffect(() => {
     // Zet iemand hem tijdens de sessie op zijn beginscherm, dan hoort de muur
     // meteen weg te zijn.
@@ -318,7 +337,13 @@ export function Landing({
   const join = () => {
     sound.unlock();
     sound.uiTap();
-    game.joinRoom(code.trim().toUpperCase(), effectiveName);
+    const c = code.trim().toUpperCase();
+    // Een code is een potje, en spelen doe je in de app. De code raakt niet
+    // kwijt: hij gaat naar de balk zodat je hem na het installeren kunt
+    // intikken.
+    if (!online) { setOfflineReden(t("offlineTegel", { wat: t("join") })); return; }
+    if (webOnly) { setInstalleerCode(c); return; }
+    game.joinRoom(c, effectiveName);
   };
 
   return (
@@ -685,7 +710,41 @@ export function Landing({
                   offline-balk hoort de kop er wel bij, want daar zeggen kop en
                   reden elk iets anders. */}
               <span style={{ flex: 1, minWidth: 0, fontFamily: font.ui, fontSize: 12, lineHeight: 1.35, color: colors.sub }}>
-                {offlineReden ? (
+                {codeWacht ? (
+                  // MET EEN CODE IN DE HAND. Die gooien we niet weg omdat de
+                  // muur ertussen staat: hij komt hier te staan, groot genoeg
+                  // om over te tikken, met een knop om hem te kopieren. Op
+                  // Android reist het klembord mee naar de app, op de iPhone
+                  // ook; de opslag van een app op het beginscherm doet dat
+                  // niet, dus de code zelf kan de sprong niet maken.
+                  <>
+                    <strong style={{ color: colors.gold, fontWeight: 700 }}>{t("installMetCode")}</strong>{" "}
+                    {t("installMetCodeUitleg")}{" "}
+                    <span
+                      onClick={() => {
+                        sound.uiTap();
+                        navigator.clipboard?.writeText(codeWacht).catch(() => {});
+                        setGekopieerd(true);
+                      }}
+                      style={{
+                        display: "inline-block",
+                        marginTop: 3,
+                        padding: "2px 9px",
+                        borderRadius: 7,
+                        background: "rgba(0,0,0,.32)",
+                        border: `1px solid ${withAlpha(colors.gold, 0.5)}`,
+                        fontFamily: font.wide,
+                        fontSize: 15,
+                        letterSpacing: 2,
+                        color: GOUD[3],
+                        cursor: "pointer",
+                      }}
+                    >
+                      {codeWacht}
+                    </span>{" "}
+                    <span style={{ fontSize: 11, color: colors.faint }}>{gekopieerd ? t("installGekopieerd") : t("installTikCode")}</span>
+                  </>
+                ) : offlineReden ? (
                   <strong style={{ color: colors.gold, fontWeight: 700 }}>{offlineReden}</strong>
                 ) : (
                   <>

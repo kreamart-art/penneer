@@ -35,6 +35,7 @@ import { Toggle } from "../components/Toggle";
 import { Screen, Card } from "../components/Layout";
 import type { AccountStats, DmMessage, Friend, GameApi, InboxItem, LeaderboardRow, LevelInfo } from "../net/socket";
 import { LANDEN, landNaam } from "../util/landen";
+import { moetInstalleren } from "../pwa/install";
 import { VOLGORDE, badgeArt, teken, usePrestaties, voortgang } from "../data/prestaties";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
@@ -3755,6 +3756,10 @@ function InboxTab({ game, onGaNaar }: { game: GameApi; onGaNaar: (naar: string) 
     else if (m.naar === "room" && d.room_code) {
       // Terug (of binnen) in een potje: de server herkent je account en geeft
       // je je eigen stoel terug. De inbox gaat dicht, want de room IS het scherm.
+      //
+      // In de browser op een telefoon gaat dat langs dezelfde muur als de
+      // speeltegels: App vangt hem op en legt de code klaar op de main page.
+      if (moetInstalleren()) { onGaNaar("room:" + String(d.room_code).toUpperCase()); return; }
       game.joinRoom(d.room_code, game.state.account?.name || "Speler");
       onGaNaar("home");
     }
