@@ -41,6 +41,13 @@ export default defineConfig({
       "/api": {
         target: API,
       },
+      // De hartslag van de offline-check. Zonder deze regel beantwoordt Vite
+      // hem zelf met de index (SPA-terugval) en test hij dus niets; in
+      // productie serveert FastAPI de app en /healthz allebei, en daar hoort
+      // dev hetzelfde te doen.
+      "/healthz": {
+        target: API,
+      },
       // Kaart-art van Ontdekken. In productie serveert FastAPI dit pad zelf;
       // in dev moet Vite het doorsturen, anders zoekt hij het in public/.
       "/static": {

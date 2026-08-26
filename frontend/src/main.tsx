@@ -3,6 +3,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import { LangProvider } from "./i18n/i18n";
+import { OnlineProvider } from "./net/online";
 import { initPwa } from "./pwa/install";
 import { armViewportHealer } from "./pwa/viewportFix";
 import "./index.css";
@@ -13,7 +14,9 @@ armViewportHealer();
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <LangProvider>
-      <App />
+      <OnlineProvider>
+        <App />
+      </OnlineProvider>
     </LangProvider>
   </React.StrictMode>
 );

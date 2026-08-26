@@ -16,6 +16,11 @@
             if (!el || !el.tagName) return;
             var src = el.src || el.href || "";
             if (!/^(SCRIPT|LINK)$/.test(el.tagName) || src.indexOf("/assets/") === -1) return;
+            // NIET OFFLINE. Dit vangnet wist de service worker en ALLE caches,
+            // en dat is precies wat een offline app nodig heeft om te starten.
+            // Een brok dat niet laadt omdat er geen netwerk is, is geen kapotte
+            // schil; die repareren we zodra er weer verbinding is.
+            if (navigator.onLine === false) return;
             try {
               if (sessionStorage.getItem("pn-healed")) return;
               sessionStorage.setItem("pn-healed", "1");

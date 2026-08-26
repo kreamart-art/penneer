@@ -14,6 +14,7 @@ import { canInstall, isIos, isIosChrome, isIosInAppBrowser, isStandalone, onInst
 import { Screen, Card } from "../components/Layout";
 import type { GameApi } from "../net/socket";
 import { CANVAS, useCanvasKleur } from "../lib/canvaskleur";
+import { useOnline } from "../net/online";
 import { useT } from "../i18n/i18n";
 import { sound } from "../sound/sound";
 import { NeonText } from "../components/NeonText";
@@ -86,7 +87,25 @@ export function Landing({
   onShowInbox: () => void;
 }) {
   const { t } = useT();
+  const online = useOnline();
   const skin = useTileSkin();
+  // Waarom een tegel niet kan. Die tekst gaat in dezelfde balk als de
+  // offline-melding: een tweede venster over iets wat je net zelf aantikte is
+  // te zwaar, en een toast die telkens terugkomt is erger dan de balk die er
+  // toch al staat.
+  const [offlineReden, setOfflineReden] = useState<string | null>(null);
+  useEffect(() => {
+    if (!offlineReden) return;
+    const id = window.setTimeout(() => setOfflineReden(null), 3600);
+    return () => window.clearTimeout(id);
+  }, [offlineReden]);
+  useEffect(() => { if (online) setOfflineReden(null); }, [online]);
+  /** Een tegel die verbinding nodig heeft: uit als je offline bent, en een tik
+   *  legt uit waarom in plaats van niets te doen. */
+  const netNodig = (wat: string, doe: () => void) => () => {
+    if (!online) { sound.uiTap(); setOfflineReden(t("offlineTegel", { wat })); return; }
+    doe();
+  };
   // De lijst meet zichzelf, en omdat hij de kaart precies vult is dat meteen de
   // maat van de kaart. Daar kiezen we de passende maat art bij.
   const card = useRef<HTMLImageElement | null>(null);
@@ -620,6 +639,32 @@ export function Landing({
               style={{ position: "absolute", inset: 0, width: "100%", height: "100%", zIndex: -1, pointerEvents: "none" }}
             />
           )}
+          {/* DE OFFLINE-BALK. Geen venster en geen toast die telkens terugkomt:
+              een rustige regel die blijft staan zolang er niets is, met de
+              reden erin zodra je een tegel aantikt die verbinding nodig heeft.
+              Hij staat binnen de kaart, direct boven de tegels, want daar kijk
+              je als je je afvraagt waarom er niets gebeurt. */}
+          {!online && (
+            <div
+              role="status"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 9,
+                padding: "9px 12px",
+                borderRadius: 12,
+                background: "linear-gradient(180deg, rgba(255,159,69,.16), rgba(255,159,69,.07))",
+                border: `1px solid ${withAlpha(colors.orange, 0.42)}`,
+                boxShadow: "inset 0 1px 0 rgba(255,236,190,.12)",
+              }}
+            >
+              <WolkUit />
+              <span style={{ minWidth: 0, fontFamily: font.ui, fontSize: 12, lineHeight: 1.35, color: colors.sub }}>
+                <strong style={{ color: colors.orange, fontWeight: 700 }}>{t("offlineTitel")}</strong>{" "}
+                {offlineReden || t("offlineUitleg")}
+              </span>
+            </div>
+          )}
           {account ? (
             <p style={{ margin: 0, fontFamily: font.wide, fontSize: 16, letterSpacing: 0.8, color: colors.sub, textAlign: "center" }}>
               {t("playingAs")} <span style={{ color: colors.gold, fontWeight: 700 }}>{account.name}</span>
@@ -640,10 +685,11 @@ export function Landing({
               <Tile
                 primary
                 disabled={!canCreate}
-                onClick={() => {
+                gedimd={!online}
+                onClick={netNodig(t("playFriends"), () => {
                   sound.uiTap();
                   setShowFriends(true);
-                }}
+                })}
                 art="friends"
                 icon={<Play size={30} strokeWidth={2.2} fill="currentColor" />}
                 label={t("playFriends")}
@@ -651,17 +697,19 @@ export function Landing({
               <Tile
                 accent={colors.violet}
                 disabled={!canCreate}
-                onClick={() => createRoom(true)}
+                gedimd={!online}
+                onClick={netNodig(t("playCpu"), () => createRoom(true))}
                 art="bots"
                 icon={<Bot size={30} strokeWidth={2.2} />}
                 label={t("playCpu")}
               />
               <Tile
                 accent={colors.orange}
-                onClick={() => {
+                gedimd={!online}
+                onClick={netNodig(t("dailyTitle"), () => {
                   sound.uiTap();
                   onShowDaily();
-                }}
+                })}
                 art="daily"
                 icon={<CalendarDays size={30} strokeWidth={2.2} />}
                 label={t("dailyTitle")}
@@ -669,10 +717,11 @@ export function Landing({
               />
               <Tile
                 accent={colors.green}
-                onClick={() => {
+                gedimd={!online}
+                onClick={netNodig(ontdekVrij ? t("ontdekkenTitel") : t("trainTitle"), () => {
                   sound.uiTap();
                   onShowTraining();
-                }}
+                })}
                 art="train"
                 icon={<GraduationCap size={30} strokeWidth={2.2} />}
                 label={ontdekVrij ? t("ontdekkenTitel") : t("trainTitle")}
@@ -684,10 +733,11 @@ export function Landing({
                 wide
                 accent={colors.red}
                 art="duel"
-                onClick={() => {
+                gedimd={!online}
+                onClick={netNodig(t("duelTitle"), () => {
                   sound.uiTap();
                   onShowDuel();
-                }}
+                })}
                 icon={<Swords size={26} strokeWidth={2.2} />}
                 label={t("duelTitle")}
                 badge={duelLeft}
@@ -847,6 +897,19 @@ function CountBadge({ n, x, y, size = 23 }: { n: number; x: string; y: string; s
   );
 }
 
+/** Een wolk met een streep erdoor. Getekend en niet uit de iconenbibliotheek,
+ *  want die kost een extra brok in de hoofdbundel voor een tekentje dat je
+ *  hooguit een paar keer per jaar ziet. */
+function WolkUit() {
+  return (
+    <svg width={17} height={17} viewBox="0 0 24 24" fill="none" stroke={colors.orange} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ flexShrink: 0 }}>
+      <path d="M17.5 17H7a4 4 0 0 1-.5-7.97" />
+      <path d="M9.5 6.2A5 5 0 0 1 17 9h.5a3.5 3.5 0 0 1 2.6 5.8" />
+      <path d="M3 3l18 18" />
+    </svg>
+  );
+}
+
 function Tile({
   icon,
   label,
@@ -854,6 +917,7 @@ function Tile({
   accent = colors.gold,
   primary = false,
   disabled = false,
+  gedimd = false,
   badge = 0,
   wide = false,
   art,
@@ -864,6 +928,11 @@ function Tile({
   accent?: string;
   primary?: boolean;
   disabled?: boolean;
+  /** Uit, maar niet dood. Een tegel die verbinding nodig heeft ziet er precies
+   *  zo uit als een uitgeschakelde, maar hij VANGT de tik nog, want anders
+   *  gebeurt er niets als je erop drukt en blijf je in het duister tasten over
+   *  waarom. `disabled` op een knop slikt de klik namelijk helemaal. */
+  gedimd?: boolean;
   /** Hoeveel er nog te doen is. 0 is geen knopje. */
   badge?: number;
   wide?: boolean;
@@ -888,14 +957,14 @@ function Tile({
     justifyContent: "center",
     gap: wide ? 10 : 6,
     padding: wide ? "13px 12px" : 10,
-    cursor: disabled ? "default" : "pointer",
+    cursor: disabled || gedimd ? "default" : "pointer",
     fontFamily: font.display,
     fontWeight: 700,
     fontSize: 16,
     lineHeight: 1.22,
     letterSpacing: 0.2,
     textAlign: "center",
-    opacity: disabled ? 0.45 : 1,
+    opacity: disabled || gedimd ? 0.45 : 1,
     overflow: "hidden",
   };
   const iconSlot: React.CSSProperties = wide
@@ -915,6 +984,7 @@ function Tile({
       <button
         onClick={onClick}
         disabled={disabled}
+        aria-disabled={disabled || gedimd}
         aria-label={label}
         className="pressable"
         style={{
@@ -924,8 +994,8 @@ function Tile({
           border: "none",
           background: "transparent",
           padding: 0,
-          cursor: disabled ? "default" : "pointer",
-          opacity: disabled ? 0.45 : 1,
+          cursor: disabled || gedimd ? "default" : "pointer",
+          opacity: disabled || gedimd ? 0.45 : 1,
           display: "block",
           lineHeight: 0,
         }}
@@ -1015,6 +1085,7 @@ function Tile({
       <button
         onClick={onClick}
         disabled={disabled}
+        aria-disabled={disabled || gedimd}
         aria-label={label}
         className="pressable"
         style={{
@@ -1027,7 +1098,7 @@ function Tile({
           padding: 2,
           border: "none",
           backgroundImage: rim,
-          cursor: disabled ? "default" : "pointer",
+          cursor: disabled || gedimd ? "default" : "pointer",
           // Alleen een zachte slagschaduw en een donkere onderlip. Geen gloed.
           boxShadow: "0 5px 12px rgba(0,0,0,.45), 0 2px 0 rgba(107,52,0,.9)",
         }}
@@ -1058,6 +1129,7 @@ function Tile({
     <button
       onClick={onClick}
       disabled={disabled}
+      aria-disabled={disabled || gedimd}
       aria-label={label}
       className="pressable panel-neon"
       style={{
