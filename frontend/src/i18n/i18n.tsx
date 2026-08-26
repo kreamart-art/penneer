@@ -1053,6 +1053,12 @@ const nl: Dict = {
   offlineTitel: "Je bent offline.",
   offlineUitleg: "Pen Neer heeft verbinding nodig om te spelen. De app blijft open, dus je kunt rondkijken.",
   offlineTegel: "{wat} heeft verbinding nodig.",
+  // Spelen doe je in de app. Kort en zonder verwijt: dit is het eerste wat een
+  // nieuwe bezoeker leest.
+  installTitel: "Speel in de app.",
+  installUitleg: "Zet Pen Neer op je beginscherm om te spelen.",
+  installTegel: "{wat} speel je in de app.",
+  installKnop: "Installeren",
   missiesPrestaties: "Prestaties",
   bordDagKop: "Dagelijkse missies",
   bordWeekKop: "Wekelijkse missies",
@@ -2463,6 +2469,10 @@ const en: Dict = {
   offlineTitel: "You are offline.",
   offlineUitleg: "Pen Neer needs a connection to play. The app stays open, so you can look around.",
   offlineTegel: "{wat} needs a connection.",
+  installTitel: "Play in the app.",
+  installUitleg: "Add Pen Neer to your home screen to play.",
+  installTegel: "Play {wat} in the app.",
+  installKnop: "Install",
   missiesPrestaties: "Badges",
   bordDagKop: "Daily missions",
   bordWeekKop: "Weekly missions",

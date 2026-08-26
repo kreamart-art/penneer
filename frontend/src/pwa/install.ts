@@ -18,6 +18,39 @@ export function isStandalone(): boolean {
   );
 }
 
+/** Een telefoon of tablet. Alleen daar eisen we dat de app op het beginscherm
+ *  staat: op een laptop is installeren ongebruikelijk en zou de eis vooral
+ *  mensen buitensluiten die gewoon willen spelen.
+ *
+ *  De user-agent EN een grove aanwijzer: een iPad meldt zich als desktop Safari
+ *  (vandaar isIos, die op de aanraakpunten let), en een Android-tablet in
+ *  bureaubladstand is nog steeds een tablet. */
+export function isMobiel(): boolean {
+  if (isIos()) return true;
+  if (/Android|Mobile|Silk|Kindle|Opera Mini|IEMobile/i.test(navigator.userAgent)) return true;
+  return (navigator as Navigator & { maxTouchPoints?: number }).maxTouchPoints > 1
+    && window.matchMedia?.("(pointer: coarse)").matches === true;
+}
+
+/** Moet deze bezoeker de app eerst op zijn beginscherm zetten voor hij mag
+ *  spelen? Alleen op een telefoon of tablet, en alleen zolang hij in de browser
+ *  zit.
+ *
+ *  De ONTSNAPPING is er met opzet: met ?web=1 in het adres blijft de browser
+ *  gewoon werken, en dat onthouden we. Zonder zo'n deur kan niemand de webversie
+ *  meer testen of laten zien, en zou een verkeerde herkenning van een toestel
+ *  meteen betekenen dat iemand niet meer kan spelen. */
+export function moetInstalleren(): boolean {
+  try {
+    const p = new URLSearchParams(window.location.search);
+    if (p.get("web") === "1") localStorage.setItem("penneer.webOk", "1");
+    if (localStorage.getItem("penneer.webOk") === "1") return false;
+  } catch {
+    /* een browser zonder opslag mag gewoon door */
+  }
+  return isMobiel() && !isStandalone();
+}
+
 export function canInstall(): boolean {
   return deferred !== null && !isStandalone();
 }

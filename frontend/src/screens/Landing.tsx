@@ -10,7 +10,7 @@ import { DagUitslagPopup } from "../components/DagUitslagPopup";
 import { MissieBord } from "../components/MissieBord";
 import { ProfilePrompt, profilePromptSeen } from "../components/ProfilePrompt";
 import { InstallPrompt, installPromptSeen, type InstallVariant } from "../components/InstallPrompt";
-import { canInstall, isIos, isIosChrome, isIosInAppBrowser, isStandalone, onInstallChange } from "../pwa/install";
+import { canInstall, isIos, isIosChrome, isIosInAppBrowser, isStandalone, moetInstalleren, onInstallChange, promptInstall } from "../pwa/install";
 import { Screen, Card } from "../components/Layout";
 import type { GameApi } from "../net/socket";
 import { CANVAS, useCanvasKleur } from "../lib/canvaskleur";
@@ -100,10 +100,28 @@ export function Landing({
     return () => window.clearTimeout(id);
   }, [offlineReden]);
   useEffect(() => { if (online) setOfflineReden(null); }, [online]);
-  /** Een tegel die verbinding nodig heeft: uit als je offline bent, en een tik
-   *  legt uit waarom in plaats van niets te doen. */
+  // SPELEN DOE JE IN DE APP. In de browser op een telefoon zijn de speeltegels
+  // dicht: de rest van de main page blijft staan (je profiel, je munten, je
+  // prestaties), want wie ziet wat hij mist installeert eerder dan wie tegen
+  // een muur kijkt. Op een computer geldt dit niet, daar is installeren
+  // ongebruikelijk en zou de eis alleen mensen buitensluiten.
+  const [webOnly, setWebOnly] = useState(() => moetInstalleren());
+  useEffect(() => {
+    // Zet iemand hem tijdens de sessie op zijn beginscherm, dan hoort de muur
+    // meteen weg te zijn.
+    const kijk = () => setWebOnly(moetInstalleren());
+    const mq = window.matchMedia?.("(display-mode: standalone)");
+    mq?.addEventListener?.("change", kijk);
+    window.addEventListener("focus", kijk);
+    return () => { mq?.removeEventListener?.("change", kijk); window.removeEventListener("focus", kijk); };
+  }, []);
+  /** Welke uitleg hoort bij deze tegel: eerst de verbinding, dan de app. */
+  const dicht = webOnly || !online;
+  /** Een tegel die verbinding of de app nodig heeft: uit, en een tik legt uit
+   *  waarom in plaats van niets te doen. */
   const netNodig = (wat: string, doe: () => void) => () => {
     if (!online) { sound.uiTap(); setOfflineReden(t("offlineTegel", { wat })); return; }
+    if (webOnly) { sound.uiTap(); setOfflineReden(t("installTegel", { wat })); return; }
     doe();
   };
   // De lijst meet zichzelf, en omdat hij de kaart precies vult is dat meteen de
@@ -644,6 +662,65 @@ export function Landing({
               reden erin zodra je een tegel aantikt die verbinding nodig heeft.
               Hij staat binnen de kaart, direct boven de tegels, want daar kijk
               je als je je afvraagt waarom er niets gebeurt. */}
+          {/* DE APP-BALK. Zelfde vorm als de offline-balk, andere reden, met een
+              knop erbij: de uitleg zonder de weg ernaartoe is een dood punt.
+              Offline wint als het allebei speelt, want dan valt er ook niets te
+              installeren. */}
+          {online && webOnly && (
+            <div
+              role="status"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                padding: "9px 10px 9px 12px",
+                borderRadius: 12,
+                background: "linear-gradient(180deg, rgba(255,194,61,.16), rgba(255,194,61,.07))",
+                border: `1px solid ${withAlpha(colors.gold, 0.45)}`,
+                boxShadow: "inset 0 1px 0 rgba(255,236,190,.14)",
+              }}
+            >
+              {/* De kop valt WEG zodra er een reden staat. "Speel in de app.
+                  Dagronde speel je in de app." zegt twee keer hetzelfde; bij de
+                  offline-balk hoort de kop er wel bij, want daar zeggen kop en
+                  reden elk iets anders. */}
+              <span style={{ flex: 1, minWidth: 0, fontFamily: font.ui, fontSize: 12, lineHeight: 1.35, color: colors.sub }}>
+                {offlineReden ? (
+                  <strong style={{ color: colors.gold, fontWeight: 700 }}>{offlineReden}</strong>
+                ) : (
+                  <>
+                    <strong style={{ color: colors.gold, fontWeight: 700 }}>{t("installTitel")}</strong>{" "}
+                    {t("installUitleg")}
+                  </>
+                )}
+              </span>
+              <button
+                onClick={() => {
+                  sound.uiTap();
+                  // Android mag het echte installatievenster van de browser
+                  // krijgen; op de iPhone bestaat dat niet, dus daar opent de
+                  // uitleg met het deel-icoon.
+                  if (canInstall()) { void promptInstall(); return; }
+                  setInstallVariant(isIosInAppBrowser() ? "inapp" : isIosChrome() ? "chromeios" : isIos() ? "ios" : "android");
+                }}
+                className="pressable"
+                style={{
+                  flexShrink: 0,
+                  border: "none",
+                  borderRadius: 999,
+                  padding: "7px 13px",
+                  cursor: "pointer",
+                  background: `linear-gradient(180deg, ${GOUD[3]}, ${GOUD[1]})`,
+                  color: "#2A1A05",
+                  fontFamily: font.ui,
+                  fontSize: 12,
+                  fontWeight: 800,
+                }}
+              >
+                {t("installKnop")}
+              </button>
+            </div>
+          )}
           {!online && (
             <div
               role="status"
@@ -685,7 +762,7 @@ export function Landing({
               <Tile
                 primary
                 disabled={!canCreate}
-                gedimd={!online}
+                gedimd={dicht}
                 onClick={netNodig(t("playFriends"), () => {
                   sound.uiTap();
                   setShowFriends(true);
@@ -697,7 +774,7 @@ export function Landing({
               <Tile
                 accent={colors.violet}
                 disabled={!canCreate}
-                gedimd={!online}
+                gedimd={dicht}
                 onClick={netNodig(t("playCpu"), () => createRoom(true))}
                 art="bots"
                 icon={<Bot size={30} strokeWidth={2.2} />}
@@ -705,7 +782,7 @@ export function Landing({
               />
               <Tile
                 accent={colors.orange}
-                gedimd={!online}
+                gedimd={dicht}
                 onClick={netNodig(t("dailyTitle"), () => {
                   sound.uiTap();
                   onShowDaily();
@@ -717,7 +794,7 @@ export function Landing({
               />
               <Tile
                 accent={colors.green}
-                gedimd={!online}
+                gedimd={dicht}
                 onClick={netNodig(ontdekVrij ? t("ontdekkenTitel") : t("trainTitle"), () => {
                   sound.uiTap();
                   onShowTraining();
@@ -733,7 +810,7 @@ export function Landing({
                 wide
                 accent={colors.red}
                 art="duel"
-                gedimd={!online}
+                gedimd={dicht}
                 onClick={netNodig(t("duelTitle"), () => {
                   sound.uiTap();
                   onShowDuel();
