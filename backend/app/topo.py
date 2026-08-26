@@ -24,8 +24,9 @@ from __future__ import annotations
 
 import datetime as dt
 import random
+import re
 
-from .game import _edit_distance_capped, normalize
+from .game import _edit_distance_capped, normalize, strip_diacritics
 
 QUESTIONS_PER_DAY = 8
 QUESTION_S = 15          # per vraag, net als een duelronde
@@ -41,7 +42,7 @@ BOARD_LIMIT = 25
 BANK: list[dict] = [
     # --- Nederland en Belgie ---
     {"id": "nl-hoofdstad", "nl": "Wat is de hoofdstad van Nederland?", "en": "What is the capital of the Netherlands?", "a": ["Amsterdam"]},
-    {"id": "nl-regering", "nl": "In welke stad zetelt de Nederlandse regering?", "en": "In which city does the Dutch government sit?", "a": ["Den Haag", "The Hague", "s-Gravenhage", "'s-Gravenhage"]},
+    {"id": "nl-regering", "nl": "In welke stad zetelt de Nederlandse regering?", "en": "In which city does the Dutch government sit?", "a": ["Den Haag", "The Hague", "s-Gravenhage"]},
     {"id": "be-hoofdstad", "nl": "Wat is de hoofdstad van Belgie?", "en": "What is the capital of Belgium?", "a": ["Brussel", "Brussels", "Bruxelles"]},
     {"id": "prov-maastricht", "nl": "In welke provincie ligt Maastricht?", "en": "Which province is Maastricht in?", "a": ["Limburg"]},
     {"id": "prov-eindhoven", "nl": "In welke provincie ligt Eindhoven?", "en": "Which province is Eindhoven in?", "a": ["Noord-Brabant", "Brabant", "North Brabant"]},
@@ -53,10 +54,10 @@ BANK: list[dict] = [
     {"id": "hs-overijssel", "nl": "Wat is de hoofdstad van Overijssel?", "en": "What is the capital of Overijssel?", "a": ["Zwolle"]},
     {"id": "hs-drenthe", "nl": "Wat is de hoofdstad van Drenthe?", "en": "What is the capital of Drenthe?", "a": ["Assen"]},
     {"id": "hs-noordholland", "nl": "Wat is de hoofdstad van Noord-Holland?", "en": "What is the capital of North Holland?", "a": ["Haarlem"]},
-    {"id": "hs-noordbrabant", "nl": "Wat is de hoofdstad van Noord-Brabant?", "en": "What is the capital of North Brabant?", "a": ["Den Bosch", "s-Hertogenbosch", "'s-Hertogenbosch", "Den Bosch"]},
-    {"id": "nl-zuiden", "nl": "Welk land ligt ten zuiden van Nederland?", "en": "Which country lies south of the Netherlands?", "a": ["Belgie", "Belgium"]},
-    {"id": "nl-oosten", "nl": "Welk land ligt ten oosten van Nederland?", "en": "Which country lies east of the Netherlands?", "a": ["Duitsland", "Germany"]},
-    {"id": "land-antwerpen", "nl": "In welk land ligt Antwerpen?", "en": "Which country is Antwerp in?", "a": ["Belgie", "Belgium"]},
+    {"id": "hs-noordbrabant", "nl": "Wat is de hoofdstad van Noord-Brabant?", "en": "What is the capital of North Brabant?", "a": ["Den Bosch", "s-Hertogenbosch"]},
+    {"id": "nl-zuiden", "nl": "Welk land ligt ten zuiden van Nederland?", "en": "Which country lies south of the Netherlands?", "a": ["Belgie", "Belgium", "Belgique", "Belgien"]},
+    {"id": "nl-oosten", "nl": "Welk land ligt ten oosten van Nederland?", "en": "Which country lies east of the Netherlands?", "a": ["Duitsland", "Germany", "Deutschland", "BRD"]},
+    {"id": "land-antwerpen", "nl": "In welk land ligt Antwerpen?", "en": "Which country is Antwerp in?", "a": ["Belgie", "Belgium", "Belgique", "Belgien"]},
     {"id": "sur-hoofdstad", "nl": "Wat is de hoofdstad van Suriname?", "en": "What is the capital of Suriname?", "a": ["Paramaribo"]},
     {"id": "cur-hoofdstad", "nl": "Wat is de hoofdstad van Curacao?", "en": "What is the capital of Curacao?", "a": ["Willemstad"]},
     {"id": "aru-hoofdstad", "nl": "Wat is de hoofdstad van Aruba?", "en": "What is the capital of Aruba?", "a": ["Oranjestad"]},
@@ -85,18 +86,18 @@ BANK: list[dict] = [
     {"id": "hs-turkije", "nl": "Wat is de hoofdstad van Turkije?", "en": "What is the capital of Turkey?", "a": ["Ankara"]},
     {"id": "hs-rusland", "nl": "Wat is de hoofdstad van Rusland?", "en": "What is the capital of Russia?", "a": ["Moskou", "Moscow", "Moskva"]},
     {"id": "hs-servie", "nl": "Wat is de hoofdstad van Servie?", "en": "What is the capital of Serbia?", "a": ["Belgrado", "Belgrade", "Beograd"]},
-    {"id": "hs-bulgarije", "nl": "Wat is de hoofdstad van Bulgarije?", "en": "What is the capital of Bulgaria?", "a": ["Sofia"]},
+    {"id": "hs-bulgarije", "nl": "Wat is de hoofdstad van Bulgarije?", "en": "What is the capital of Bulgaria?", "a": ["Sofia", "Sofija"]},
 
     # --- Wereld ---
     {"id": "hs-japan", "nl": "Wat is de hoofdstad van Japan?", "en": "What is the capital of Japan?", "a": ["Tokio", "Tokyo"]},
-    {"id": "hs-china", "nl": "Wat is de hoofdstad van China?", "en": "What is the capital of China?", "a": ["Peking", "Beijing"]},
+    {"id": "hs-china", "nl": "Wat is de hoofdstad van China?", "en": "What is the capital of China?", "a": ["Peking", "Beijing", "Bejing"]},
     {"id": "hs-india", "nl": "Wat is de hoofdstad van India?", "en": "What is the capital of India?", "a": ["New Delhi", "Nieuw-Delhi", "Delhi"]},
     {"id": "hs-brazilie", "nl": "Wat is de hoofdstad van Brazilie?", "en": "What is the capital of Brazil?", "a": ["Brasilia"]},
     {"id": "hs-argentinie", "nl": "Wat is de hoofdstad van Argentinie?", "en": "What is the capital of Argentina?", "a": ["Buenos Aires"]},
     {"id": "hs-canada", "nl": "Wat is de hoofdstad van Canada?", "en": "What is the capital of Canada?", "a": ["Ottawa"]},
     {"id": "hs-vs", "nl": "Wat is de hoofdstad van de Verenigde Staten?", "en": "What is the capital of the United States?", "a": ["Washington", "Washington DC"]},
     {"id": "hs-australie", "nl": "Wat is de hoofdstad van Australie?", "en": "What is the capital of Australia?", "a": ["Canberra"]},
-    {"id": "hs-egypte", "nl": "Wat is de hoofdstad van Egypte?", "en": "What is the capital of Egypt?", "a": ["Cairo", "Kairo"]},
+    {"id": "hs-egypte", "nl": "Wat is de hoofdstad van Egypte?", "en": "What is the capital of Egypt?", "a": ["Cairo", "Kairo", "Al Qahirah"]},
     {"id": "hs-marokko", "nl": "Wat is de hoofdstad van Marokko?", "en": "What is the capital of Morocco?", "a": ["Rabat"]},
     {"id": "hs-kenia", "nl": "Wat is de hoofdstad van Kenia?", "en": "What is the capital of Kenya?", "a": ["Nairobi"]},
     {"id": "hs-nigeria", "nl": "Wat is de hoofdstad van Nigeria?", "en": "What is the capital of Nigeria?", "a": ["Abuja"]},
@@ -111,7 +112,7 @@ BANK: list[dict] = [
     {"id": "hs-ethiopie", "nl": "Wat is de hoofdstad van Ethiopie?", "en": "What is the capital of Ethiopia?", "a": ["Addis Abeba", "Addis Ababa"]},
     {"id": "hs-ghana", "nl": "Wat is de hoofdstad van Ghana?", "en": "What is the capital of Ghana?", "a": ["Accra"]},
     {"id": "hs-vietnam", "nl": "Wat is de hoofdstad van Vietnam?", "en": "What is the capital of Vietnam?", "a": ["Hanoi"]},
-    {"id": "hs-chili", "nl": "Wat is de hoofdstad van Chili?", "en": "What is the capital of Chile?", "a": ["Santiago"]},
+    {"id": "hs-chili", "nl": "Wat is de hoofdstad van Chili?", "en": "What is the capital of Chile?", "a": ["Santiago", "Santiago de Chile"]},
     {"id": "hs-colombia", "nl": "Wat is de hoofdstad van Colombia?", "en": "What is the capital of Colombia?", "a": ["Bogota"]},
 
     # --- Waar ligt het? ---
@@ -124,17 +125,17 @@ BANK: list[dict] = [
     {"id": "land-machu", "nl": "In welk land ligt Machu Picchu?", "en": "Which country is Machu Picchu in?", "a": ["Peru"]},
     {"id": "land-kilimanjaro", "nl": "In welk land ligt de Kilimanjaro?", "en": "Which country is Kilimanjaro in?", "a": ["Tanzania"]},
     {"id": "land-piramides", "nl": "In welk land liggen de piramides van Gizeh?", "en": "Which country are the pyramids of Giza in?", "a": ["Egypte", "Egypt"]},
-    {"id": "land-kremlin", "nl": "In welk land staat het Kremlin?", "en": "Which country is the Kremlin in?", "a": ["Rusland", "Russia"]},
-    {"id": "land-atomium", "nl": "In welk land staat het Atomium?", "en": "Which country is the Atomium in?", "a": ["Belgie", "Belgium"]},
-    {"id": "land-stonehenge", "nl": "In welk land ligt Stonehenge?", "en": "Which country is Stonehenge in?", "a": ["Engeland", "England", "Verenigd Koninkrijk", "United Kingdom", "Groot-Brittannie"]},
-    {"id": "land-hollywood", "nl": "In welk land ligt Hollywood?", "en": "Which country is Hollywood in?", "a": ["Verenigde Staten", "United States", "Amerika", "America", "USA", "VS"]},
+    {"id": "land-kremlin", "nl": "In welk land staat het Kremlin?", "en": "Which country is the Kremlin in?", "a": ["Rusland", "Russia", "Russische Federatie", "Russian Federation"]},
+    {"id": "land-atomium", "nl": "In welk land staat het Atomium?", "en": "Which country is the Atomium in?", "a": ["Belgie", "Belgium", "Belgique", "Belgien"]},
+    {"id": "land-stonehenge", "nl": "In welk land ligt Stonehenge?", "en": "Which country is Stonehenge in?", "a": ["Engeland", "England", "Verenigd Koninkrijk", "United Kingdom", "Groot-Brittannie", "Great Britain", "Britain", "VK", "UK"]},
+    {"id": "land-hollywood", "nl": "In welk land ligt Hollywood?", "en": "Which country is Hollywood in?", "a": ["Verenigde Staten", "United States", "Amerika", "America", "USA", "VS", "Verenigde Staten van Amerika", "United States of America", "US"]},
     {"id": "land-bali", "nl": "In welk land ligt Bali?", "en": "Which country is Bali in?", "a": ["Indonesie", "Indonesia"]},
     {"id": "land-ibiza", "nl": "In welk land ligt Ibiza?", "en": "Which country is Ibiza in?", "a": ["Spanje", "Spain"]},
     {"id": "land-sicilie", "nl": "In welk land ligt Sicilie?", "en": "Which country is Sicily in?", "a": ["Italie", "Italy"]},
     {"id": "land-kreta", "nl": "In welk land ligt Kreta?", "en": "Which country is Crete in?", "a": ["Griekenland", "Greece"]},
     {"id": "land-casablanca", "nl": "In welk land ligt Casablanca?", "en": "Which country is Casablanca in?", "a": ["Marokko", "Morocco"]},
     {"id": "land-istanbul", "nl": "In welk land ligt Istanbul?", "en": "Which country is Istanbul in?", "a": ["Turkije", "Turkey"]},
-    {"id": "land-dubai", "nl": "In welk land ligt Dubai?", "en": "Which country is Dubai in?", "a": ["Verenigde Arabische Emiraten", "United Arab Emirates", "Emiraten", "UAE", "VAE"]},
+    {"id": "land-dubai", "nl": "In welk land ligt Dubai?", "en": "Which country is Dubai in?", "a": ["Verenigde Arabische Emiraten", "United Arab Emirates", "Emiraten", "UAE", "VAE", "Verenigde Emiraten"]},
     {"id": "land-zurich", "nl": "In welk land ligt Zurich?", "en": "Which country is Zurich in?", "a": ["Zwitserland", "Switzerland"]},
     {"id": "land-everest", "nl": "In welk land ligt de Mount Everest?", "en": "Which country is Mount Everest in?", "a": ["Nepal", "China", "Tibet"]},
     {"id": "land-montblanc", "nl": "In welk land ligt de Mont Blanc?", "en": "Which country is Mont Blanc in?", "a": ["Frankrijk", "France", "Italie", "Italy"]},
@@ -151,19 +152,19 @@ BANK: list[dict] = [
     # --- Water en bergen ---
     {"id": "riv-parijs", "nl": "Welke rivier stroomt door Parijs?", "en": "Which river flows through Paris?", "a": ["Seine"]},
     {"id": "riv-londen", "nl": "Welke rivier stroomt door Londen?", "en": "Which river flows through London?", "a": ["Theems", "Thames"]},
-    {"id": "riv-rome", "nl": "Welke rivier stroomt door Rome?", "en": "Which river flows through Rome?", "a": ["Tiber"]},
+    {"id": "riv-rome", "nl": "Welke rivier stroomt door Rome?", "en": "Which river flows through Rome?", "a": ["Tiber", "Tevere"]},
     {"id": "riv-donau", "nl": "Welke rivier stroomt door Wenen en Boedapest?", "en": "Which river flows through Vienna and Budapest?", "a": ["Donau", "Danube"]},
     {"id": "riv-egypte", "nl": "Welke rivier stroomt door Egypte?", "en": "Which river flows through Egypt?", "a": ["Nijl", "Nile"]},
     {"id": "riv-zuidamerika", "nl": "Wat is de langste rivier van Zuid-Amerika?", "en": "What is the longest river in South America?", "a": ["Amazone", "Amazon"]},
     {"id": "zee-noord", "nl": "Welke zee ligt ten noorden van Nederland?", "en": "Which sea lies north of the Netherlands?", "a": ["Noordzee", "North Sea"]},
-    {"id": "zee-europa-afrika", "nl": "Welke zee ligt tussen Europa en Afrika?", "en": "Which sea lies between Europe and Africa?", "a": ["Middellandse Zee", "Mediterranean", "Mediterranean Sea"]},
-    {"id": "oc-europa-amerika", "nl": "Welke oceaan ligt tussen Europa en Amerika?", "en": "Which ocean lies between Europe and America?", "a": ["Atlantische Oceaan", "Atlantic", "Atlantic Ocean"]},
-    {"id": "oc-grootste", "nl": "Wat is de grootste oceaan?", "en": "What is the largest ocean?", "a": ["Grote Oceaan", "Stille Oceaan", "Pacific", "Pacific Ocean"]},
-    {"id": "meer-afrika", "nl": "Wat is het grootste meer van Afrika?", "en": "What is the largest lake in Africa?", "a": ["Victoriameer", "Lake Victoria", "Victoria"]},
+    {"id": "zee-europa-afrika", "nl": "Welke zee ligt tussen Europa en Afrika?", "en": "Which sea lies between Europe and Africa?", "a": ["Middellandse Zee", "Mediterranean"]},
+    {"id": "oc-europa-amerika", "nl": "Welke oceaan ligt tussen Europa en Amerika?", "en": "Which ocean lies between Europe and America?", "a": ["Atlantische Oceaan", "Atlantic"]},
+    {"id": "oc-grootste", "nl": "Wat is de grootste oceaan?", "en": "What is the largest ocean?", "a": ["Grote Oceaan", "Stille Oceaan", "Pacific"]},
+    {"id": "meer-afrika", "nl": "Wat is het grootste meer van Afrika?", "en": "What is the largest lake in Africa?", "a": ["Victoriameer", "Lake Victoria"]},
 
     # --- Records ---
-    {"id": "rec-kleinste", "nl": "Wat is het kleinste land ter wereld?", "en": "What is the smallest country in the world?", "a": ["Vaticaanstad", "Vaticaan", "Vatican", "Vatican City"]},
-    {"id": "rec-grootste", "nl": "Wat is het grootste land ter wereld?", "en": "What is the largest country in the world?", "a": ["Rusland", "Russia"]},
+    {"id": "rec-kleinste", "nl": "Wat is het kleinste land ter wereld?", "en": "What is the smallest country in the world?", "a": ["Vaticaanstad", "Vaticaan", "Vatican"]},
+    {"id": "rec-grootste", "nl": "Wat is het grootste land ter wereld?", "en": "What is the largest country in the world?", "a": ["Rusland", "Russia", "Russische Federatie", "Russian Federation"]},
 ]
 
 BANK_BY_ID = {q["id"]: q for q in BANK}
@@ -239,16 +240,61 @@ def _budget(key: str, lenient: bool) -> int:
     return base + (1 if lenient and n >= 4 else 0)
 
 
+# Woorden die niets zeggen over of je het WEET. "De Nijl" is hetzelfde antwoord
+# als "Nijl", en "The Nile" ook. Zonder deze lijst kostte dat lidwoord twee
+# bewerkingen, meer dan het foutenbudget, dus het antwoord viel om; met soepele
+# spelling aan viel het net binnen, en dan levert dezelfde inzending bij de een
+# tien punten op en bij de ander nul. In een dagranglijst die iedereen deelt
+# hoort dat niet.
+#
+# Ze gaan aan BEIDE kanten weg, bij het gegeven antwoord en bij het goede. Dat
+# is wat het veilig maakt: "Den Haag" wordt links en rechts "haag", dus een
+# naam die zelf met een lidwoord begint blijft gewoon kloppen.
+#
+# Alleen HELE woorden. Vandaar dat het splitsen vóór het normaliseren gebeurt:
+# normalize gooit de spaties weg, en daarna zou "Noordzee" ook zijn "zee"
+# kwijtraken. Nu blijft dat één woord en verandert er niets aan.
+VULWOORDEN = {
+    # lidwoorden en voorzetsels, Nederlands en de talen die op een kaart staan
+    "de", "het", "een", "den", "der", "des", "s",
+    "the", "an", "of",
+    "la", "le", "les", "l", "du", "el", "los", "las", "il", "lo",
+    "die", "das", "dem",
+    # soortnamen die bij het aardrijkskundige woord horen
+    "rivier", "river", "zee", "sea", "oceaan", "ocean", "meer", "lake",
+    "gebergte", "mountains", "mount", "mt", "eiland", "island",
+    "stad", "city", "republiek", "republic", "koninkrijk", "kingdom",
+}
+
+
+def kern(tekst: str) -> str:
+    """Het antwoord zonder de woorden die er niet toe doen.
+
+    Blijft er niets over (iemand typte alleen "de"), dan houden we de volledige
+    vorm, want een leeg antwoord zou op alles passen.
+    """
+    schoon = strip_diacritics(tekst or "").lower()
+    woorden = [w for w in re.split(r"[^a-z0-9]+", schoon) if w]
+    over = [w for w in woorden if w not in VULWOORDEN]
+    return "".join(over or woorden)
+
+
 def check(answer: str, question: dict, lenient: bool = False) -> bool:
     given = normalize(answer or "")
     if not given:
         return False
+    kern_given = kern(answer)
     for good in question["a"]:
         key = normalize(good)
         if given == key:
             return True
-        budget = _budget(key, lenient)
-        if budget and _edit_distance_capped(given, key, budget) <= budget:
+        kern_key = kern(good)
+        if kern_given and kern_given == kern_key:
+            return True
+        # Het foutenbudget hoort bij de KERN: dat is het stuk dat je echt moet
+        # weten, en anders krijgt een lang lidwoord er speling bij cadeau.
+        budget = _budget(kern_key, lenient)
+        if budget and _edit_distance_capped(kern_given, kern_key, budget) <= budget:
             return True
     return False
 
