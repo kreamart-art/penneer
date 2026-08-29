@@ -22,7 +22,7 @@ import { Avatar } from "../components/Avatar";
 import { KnopPlaat } from "../components/KnopPlaat";
 import { Screen } from "../components/Layout";
 import { NeonText } from "../components/NeonText";
-import { ArtSchaduw, GOUD, KADER_LIJN_ROOD, NeonKader, Paneel, PlekWapen } from "../components/ProfileHero";
+import { ArtSchaduw, GOUD, KADER_LIJN_ROOD, NeonKader, Paneel, PlekWapen, SierKop } from "../components/ProfileHero";
 import { GlasRij, Lijst } from "./Hub";
 import { Kleurenklem } from "./_PreviewKleurenklem";
 import { Rekenladder } from "./_PreviewRekenladder";
@@ -60,6 +60,9 @@ interface Info {
   rank: number;
   beste: number;
   pogingen: number;
+  /** Alle zeven spellen: dat van vandaag telt voor het bord, de rest speel je
+   *  vrij, met je eigen record ernaast. */
+  spellen?: { key: string; af: boolean; vandaag: boolean; record: number; pogingen: number }[];
 }
 
 /** Seeded RNG (mulberry32) uit de dag-seed van de server: elke speler krijgt
@@ -485,7 +488,9 @@ export function ArenaDeel({ game, onBack }: { game: GameApi; onBack: () => void 
   const account = game.state.account;
   const [info, setInfo] = useState<Info | null>(null);
   const [fase, setFase] = useState<"intro" | "spel" | "klaar">("intro");
-  const [poging, setPoging] = useState<{ attempt_id: number; seed: string } | null>(null);
+  const [poging, setPoging] = useState<{ attempt_id: number; seed: string; game?: string; vrij?: boolean } | null>(null);
+  // Welk spel je koos. Leeg = dat van vandaag, en dan telt hij voor het bord.
+  const [gekozen, setGekozen] = useState("");
   const [uitslag, setUitslag] = useState<{ score: number; level: number; rank: number } | null>(null);
   const [over, setOver] = useState(0);
 
@@ -522,9 +527,14 @@ export function ArenaDeel({ game, onBack }: { game: GameApi; onBack: () => void 
     return SPELLEN.has(p) ? p : "";
   }, []);
 
-  const start = () => {
+  const start = (welk = gekozen) => {
     sound.uiTap();
-    fetch("/api/arena/start", { method: "POST", headers: { "Content-Type": "application/json", ...authHeaders() }, body: "{}" })
+    setGekozen(welk);
+    fetch("/api/arena/start", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(welk ? { game: welk } : {}),
+    })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (d?.attempt_id) { setPoging(d); setUitslag(null); setFase("spel"); }
@@ -551,7 +561,7 @@ export function ArenaDeel({ game, onBack }: { game: GameApi; onBack: () => void 
     fetch("/api/arena/submit", {
       method: "POST",
       headers: { "Content-Type": "application/json", ...authHeaders() },
-      body: JSON.stringify({ attempt_id: poging.attempt_id, score, level, time_ms: timeMs }),
+      body: JSON.stringify({ attempt_id: poging.attempt_id, score, level, time_ms: timeMs, game: poging.game }),
     })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
@@ -563,7 +573,7 @@ export function ArenaDeel({ game, onBack }: { game: GameApi; onBack: () => void 
       .catch(() => { setUitslag({ score, level, rank: 0 }); setFase("klaar"); });
   }, [poging, testSpel]);
 
-  const spel = testSpel || info?.game || "";
+  const spel = testSpel || poging?.game || gekozen || info?.game || "";
   const spelNaam = spel ? t(`arenaSpel_${spel}`) : "";
 
   const header = (
@@ -706,6 +716,52 @@ export function ArenaDeel({ game, onBack }: { game: GameApi; onBack: () => void 
             />
           </div>
         ) : null}
+
+        {/* HET REKJE MET DE ZEVEN. Zes ervan lagen zes dagen per week stil
+            terwijl ze af waren; nu speel je ze wanneer je wil. Alleen dat van
+            vandaag telt voor het bord en voor je dagtotaal, de rest is voor je
+            eigen record. Dat verschil staat er ook bij, want een score die
+            nergens heen gaat zonder dat je dat weet is een teleurstelling. */}
+        {!!account && !!info?.spellen && fase !== "spel" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <SierKop label={t("arenaAlleSpellen").toUpperCase()} />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              {info.spellen.map((sp) => {
+                const nu = spel === sp.key;
+                return (
+                  <button
+                    key={sp.key}
+                    onClick={() => { if (sp.af) start(sp.vandaag ? "" : sp.key); }}
+                    disabled={!sp.af}
+                    className="pressable"
+                    style={{
+                      textAlign: "left",
+                      padding: "9px 11px",
+                      borderRadius: 13,
+                      cursor: sp.af ? "pointer" : "default",
+                      opacity: sp.af ? 1 : 0.45,
+                      background: sp.vandaag
+                        ? "linear-gradient(168deg, rgba(255,194,61,.2), rgba(40,18,80,.5))"
+                        : "linear-gradient(168deg, rgba(58,30,110,.38), rgba(20,8,46,.5))",
+                      border: `1px solid ${sp.vandaag ? withAlpha(colors.gold, 0.5) : nu ? withAlpha(colors.violet, 0.5) : "rgba(255,255,255,.09)"}`,
+                      boxShadow: "inset 0 1px 0 rgba(255,236,190,.1)",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 3,
+                    }}
+                  >
+                    <span style={{ fontFamily: font.ui, fontSize: 12.5, fontWeight: 700, color: colors.ink }}>
+                      {t(`arenaSpel_${sp.key}`)}
+                    </span>
+                    <span style={{ fontFamily: font.ui, fontSize: 10.5, color: sp.vandaag ? GOUD[3] : colors.faint }}>
+                      {sp.vandaag ? t("arenaVandaag") : sp.record ? t("arenaRecord", { n: sp.record }) : t("arenaVrij")}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {bord}
       </div>

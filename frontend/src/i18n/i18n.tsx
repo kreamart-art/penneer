@@ -1050,6 +1050,10 @@ const nl: Dict = {
   // opschriften en geen zinnen.
   // Offline. Geen streepjes, geen emoji: dit is de enige tekst die je ziet als
   // er iets stuk is, dus hij hoort rustig te zijn.
+  arenaAlleSpellen: "Alle spellen",
+  arenaVandaag: "Vandaag, telt voor het bord",
+  arenaVrij: "Vrij spelen",
+  arenaRecord: "Jouw record: {n}",
   offlineTitel: "Je bent offline.",
   offlineUitleg: "Pen Neer heeft verbinding nodig om te spelen. De app blijft open, dus je kunt rondkijken.",
   offlineTegel: "{wat} heeft verbinding nodig.",
@@ -2470,6 +2474,10 @@ const en: Dict = {
   missiesNogTeGaan: "{t} left",
   missiesLeeg: "No missions right now",
   missiesGast: "Create a profile to track missions",
+  arenaAlleSpellen: "All games",
+  arenaVandaag: "Today, counts for the board",
+  arenaVrij: "Free play",
+  arenaRecord: "Your record: {n}",
   offlineTitel: "You are offline.",
   offlineUitleg: "Pen Neer needs a connection to play. The app stays open, so you can look around.",
   offlineTegel: "{wat} needs a connection.",
