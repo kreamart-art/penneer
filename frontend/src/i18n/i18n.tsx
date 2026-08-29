@@ -1050,6 +1050,12 @@ const nl: Dict = {
   // opschriften en geen zinnen.
   // Offline. Geen streepjes, geen emoji: dit is de enige tekst die je ziet als
   // er iets stuk is, dus hij hoort rustig te zijn.
+  rivalenTitel: "Rivalen",
+  rivalenOntmoetingen: "{n} keer tegenover elkaar",
+  rivalenRevanche: "Daag opnieuw uit",
+  trainHintKnop: "Koop een woord voor {n} munten",
+  trainHintTeWeinig: "Je hebt {n} munten nodig voor een woord.",
+  trainHintNiets: "Er is hier geen woord meer te kopen.",
   arenaAlleSpellen: "Alle spellen",
   arenaVandaag: "Vandaag, telt voor het bord",
   arenaVrij: "Vrij spelen",
@@ -2474,6 +2480,12 @@ const en: Dict = {
   missiesNogTeGaan: "{t} left",
   missiesLeeg: "No missions right now",
   missiesGast: "Create a profile to track missions",
+  rivalenTitel: "Rivals",
+  rivalenOntmoetingen: "{n} times head to head",
+  rivalenRevanche: "Challenge again",
+  trainHintKnop: "Buy a word for {n} coins",
+  trainHintTeWeinig: "You need {n} coins for a word.",
+  trainHintNiets: "There is no word left to buy here.",
   arenaAlleSpellen: "All games",
   arenaVandaag: "Today, counts for the board",
   arenaVrij: "Free play",

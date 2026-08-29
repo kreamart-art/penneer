@@ -155,7 +155,7 @@ export function Hub({ game, section, onBack, onShowShop, onChallenge, onGaNaar }
       }
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        {tab === "profile" && <ProfileTab game={game} onShowShop={onShowShop} />}
+        {tab === "profile" && <ProfileTab game={game} onShowShop={onShowShop} onChallenge={onChallenge} />}
         {tab === "friends" && (
           <>
             <PilKeuze
@@ -1086,7 +1086,7 @@ function DmThreadOverlay({ game }: { game: GameApi }) {
 
 // ---- Profiel ----------------------------------------------------------------
 
-function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => void }) {
+function ProfileTab({ game, onShowShop, onChallenge }: { game: GameApi; onShowShop: () => void; onChallenge: (userId: string) => void }) {
   const { t } = useT();
   const account = game.state.account;
   const [sharing, setSharing] = useState(false);
@@ -1625,6 +1625,11 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
       {/* laatste potjes */}
       <HistoryCard game={game} meId={account.id} vitrine />
 
+      {/* RIVALEN. Je speelt steeds tegen dezelfde mensen, maar de app onthield
+          de onderlinge stand niet. Hij wordt geteld uit de potjes en de duels
+          die er toch al liggen, dus er valt niets uit de pas te lopen. */}
+      <RivalenKaart onChallenge={onChallenge} />
+
       {/* prestaties */}
       {/* De hele kast, niet alleen wat je al hebt: verdiend goud met een vinkje,
           de rest grijs met een teller. Ze staan naast elkaar en niet onder
@@ -1682,6 +1687,84 @@ function ProfileTab({ game, onShowShop }: { game: GameApi; onShowShop: () => voi
       </NeonKader>
 
     </Fragment>
+  );
+}
+
+/** Tegen wie je het vaakst speelde, met de stand en een knop om het opnieuw te
+ *  doen. Alles komt van /api/rivalen; hier staat alleen hoe het eruitziet. */
+function RivalenKaart({ onChallenge }: { onChallenge: (userId: string) => void }) {
+  const { t } = useT();
+  const [rijen, setRijen] = useState<
+    { id: string; name: string; color: string; avatar_ver: number; has_avatar: number; divisie?: number;
+      ik: number; hij: number; potjes: number; duels: number; ontmoetingen: number }[]
+  >([]);
+  const [uit, setUit] = useState(false);
+  useEffect(() => {
+    const tok = localStorage.getItem("penneer.accountToken");
+    fetch("/api/rivalen", { headers: tok ? { Authorization: `Bearer ${tok}` } : {} })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d?.rivalen) setRijen(d.rivalen); })
+      .catch(() => {});
+  }, []);
+  if (rijen.length === 0) return null;
+  const zicht = uit ? rijen : rijen.slice(0, 3);
+  return (
+    <NeonKader
+      radius={18}
+      vulling="geen"
+      dik={0.35}
+      lijn={KADER_LIJN_LOOP}
+      gloed="none"
+      animeer
+      sterkte={0.32}
+      style={{ marginInline: 5 }}
+      binnen={{ padding: "10px 7px 11px", display: "flex", flexDirection: "column", gap: 7 }}
+    >
+      <div style={{ paddingInline: 4 }}>
+        <SectieKop
+          label={t("rivalenTitel").toUpperCase()}
+          actie={rijen.length > 3 ? (uit ? t("showLess") : t("showAll")) : undefined}
+          onActie={() => { sound.uiTap(); setUit((v) => !v); }}
+        />
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        {zicht.map((r) => {
+          // De stand kleurt naar wie er voor staat. Gelijk is geen van beide:
+          // dan is er niets te vieren en niets goed te maken.
+          const voor = r.ik > r.hij;
+          const achter = r.hij > r.ik;
+          return (
+            <GlasRij key={r.id} dun>
+              <Avatar name={r.name} color={r.color} size={26} userId={r.id} hasAvatar={!!r.has_avatar} avatarVer={r.avatar_ver} divisie={r.divisie} />
+              <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 1 }}>
+                <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: colors.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {r.name}
+                </span>
+                <span style={{ fontFamily: font.ui, fontSize: 10.5, color: colors.faint }}>
+                  {t("rivalenOntmoetingen", { n: r.ontmoetingen })}
+                </span>
+              </div>
+              <span style={{ fontFamily: font.display, fontWeight: 800, fontSize: 15, fontVariantNumeric: "tabular-nums", color: voor ? colors.green : achter ? colors.red : colors.sub }}>
+                {r.ik} - {r.hij}
+              </span>
+              <button
+                onClick={() => { sound.uiTap(); onChallenge(r.id); }}
+                aria-label={t("rivalenRevanche")}
+                title={t("rivalenRevanche")}
+                className="pressable"
+                style={{
+                  flexShrink: 0, width: 30, height: 30, borderRadius: 999, border: "none", cursor: "pointer",
+                  display: "grid", placeItems: "center",
+                  background: withAlpha(colors.red, 0.16), color: colors.red,
+                }}
+              >
+                <Swords size={15} />
+              </button>
+            </GlasRij>
+          );
+        })}
+      </div>
+    </NeonKader>
   );
 }
 

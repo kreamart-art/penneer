@@ -8,6 +8,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import random
 import sys
 from datetime import datetime
 import time
@@ -470,6 +471,48 @@ async def train_round(request: Request) -> JSONResponse:
     return JSONResponse({"letter": letter})
 
 
+# Welke woorden iemand als HINT kreeg, per speler en letter. In het geheugen en
+# niet in de database: het is een halve minuut geldig, precies tot het einde van
+# de ronde die je nu speelt.
+#
+# Waarom het bijgehouden moet worden: een woord dat je gekocht hebt is niet een
+# woord dat je WIST. Het telt dus niet mee voor de muntenbeloning van de ronde
+# (anders koop je munten terug) en het levert in Ontdekken geen kaart op maar
+# een spoor, precies zoals een woord dat je na afloop te zien kreeg.
+_HINTS: dict[tuple[str, str], set[str]] = {}
+_HINTS_MAX = 2000
+
+
+@app.post("/api/train/hint")
+async def train_hint(request: Request) -> JSONResponse:
+    """Koop een woord voor een categorie die je nog niet af hebt.
+
+    Alleen in Oefenen: dat is solo, er is geen ranglijst en er staat niets op
+    het spel. In de dagronde of in een potje zou dit punten kopen.
+    """
+    db = get_db()
+    uid = db.auth(_bearer(request))
+    if not uid:
+        return JSONResponse({"error": "auth"}, status_code=401)
+    body = await request.json() or {}
+    letter = (str(body.get("letter") or "").strip() or "?")[:1].upper()
+    cat = str(body.get("category") or "")
+    if cat not in game.TRAINABLE_CATEGORIES:
+        return JSONResponse({"error": "categorie"}, status_code=400)
+    al = [game.normalize(str(w)) for w in (body.get("ingevuld") or [])]
+    keuze = [w for w in game.list_words_for_letter(cat, letter) if game.normalize(w) not in al]
+    if not keuze:
+        return JSONResponse({"error": "geen_woord"}, status_code=409)
+    if not db.hulp_betaal(uid, db.HINT_COINS):
+        return JSONResponse({"error": "te_weinig", "prijs": db.HINT_COINS}, status_code=402)
+    woord = random.choice(keuze)
+    if len(_HINTS) > _HINTS_MAX:
+        _HINTS.clear()
+    _HINTS.setdefault((uid, letter), set()).add(game.normalize(woord))
+    await accounts.push_account(uid)
+    return JSONResponse({"woord": woord, "prijs": db.HINT_COINS})
+
+
 @app.post("/api/train/check")
 async def train_check(request: Request) -> JSONResponse:
     body = await request.json()
@@ -486,6 +529,9 @@ async def train_check(request: Request) -> JSONResponse:
     # Ontdekken haakt hier in. Optioneel: een gast speelt precies zoals eerst.
     db = get_db()
     uid = db.auth(_bearer(request))
+    # Wat je met een hint kocht, telde je niet zelf. Het levert dus geen munten
+    # op (anders koop je ze terug) en in Ontdekken geen kaart maar een spoor.
+    gekocht = _HINTS.pop((uid or "", letter.upper()), set())
     for cat in cats:
         word = str(answers.get(cat) or "").strip()
         valid, in_list_exact = game.classify(word, letter, cat)
@@ -497,7 +543,10 @@ async def train_check(request: Request) -> JSONResponse:
             canon = game.list_canonical(word, cat) if in_list else None
         all_words = game.list_words_for_letter(cat, letter)
         missed = [w for w in all_words if game.normalize(w) != canon]
-        if in_list:
+        # Een gekocht woord telt niet als goed antwoord: de munten die de
+        # ronde uitbetaalt zijn voor wat je wist.
+        via_hint = game.normalize(word) in gekocht
+        if in_list and not via_hint:
             correct += 1
         learned += len(missed)
         # De reveal is afgekapt op TRAIN_REVEAL_CAP en `missed` staat op
@@ -536,7 +585,11 @@ async def train_check(request: Request) -> JSONResponse:
                 continue  # categorie zonder curated lijst, dus zonder kaarten
             words = ([own] if own else []) + shown
             norms = discover.match_words(dcat, letter, words)
-            known = frozenset(discover.match_words(dcat, letter, [own])) if own else frozenset()
+            # `known` is wat je ZELF noemde, en dat bepaalt of het een kaart
+            # wordt of een spoor. Een woord dat je met munten kocht hoort daar
+            # niet bij: dan koop je je verzameling bij elkaar.
+            eigen = [own] if own and game.normalize(own) not in gekocht else []
+            known = frozenset(discover.match_words(dcat, letter, eigen)) if eigen else frozenset()
             new_cards.extend(db.discover_unlock(uid, dcat, norms, source="practice", known=known))
         beloning = _oefen_beloning(db, uid, letter, cats, correct, new_cards)
     return JSONResponse({
@@ -1969,6 +2022,22 @@ async def duel_rematch(duel_id: str, request: Request) -> JSONResponse:
     await accounts.stuur(other, "duel_herkansing", data={"duel_id": did}, naam=name)
     await accounts.push_account(uid)
     return JSONResponse(_duel_payload(db, uid, db.duel_get(did)))
+
+
+# ---- rivalen -----------------------------------------------------------------
+
+@app.get("/api/rivalen")
+async def rivalen_get(request: Request) -> JSONResponse:
+    """Tegen wie je het vaakst speelde, en hoe het onderling staat.
+
+    Geteld uit de potjes en de duels die er toch al liggen, dus er valt niets
+    uit de pas te lopen en er hoeft niets bijgehouden te worden.
+    """
+    db = get_db()
+    uid = db.auth(_bearer(request))
+    if not uid:
+        return JSONResponse({"rivalen": []})
+    return JSONResponse({"rivalen": db.rivalen(uid, 12)})
 
 
 # ---- prestaties --------------------------------------------------------------

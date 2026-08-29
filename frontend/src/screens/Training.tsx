@@ -4,7 +4,7 @@
 // reveals the words from the list you did not name yet. Stateless: no account
 // needed, nothing stored (the progress/collection layer is a later step).
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Apple, Brain, Briefcase, Building2, Check, ChevronDown, Globe, HelpCircle, Info, Layers, PawPrint, RotateCw, Shuffle, Target, X } from "lucide-react";
+import { ArrowLeft, Apple, Brain, Briefcase, Building2, Check, ChevronDown, Globe, HelpCircle, Info, Layers, Lightbulb, PawPrint, RotateCw, Shuffle, Target, X } from "lucide-react";
 import { BredeKnop } from "../components/BredeKnop";
 import { GoudKader } from "../components/GoudKader";
 import { RondeVoltooid, type Beloning, type NieuweKaart } from "../components/RondeVoltooid";
@@ -23,6 +23,10 @@ import { colors, font, withAlpha } from "../theme/tokens";
 // The trainable categories (server: game.TRAINABLE_CATEGORIES). Land/Stad/Vrucht
 // are pre-selected (what the request centered on); Dier/Beroep are opt-in.
 const TRAIN_CATS = ["Land", "Stad", "Vrucht", "Dier", "Beroep"] as const;
+/** Wat een gekocht woord kost. De server rekent af (db.HINT_COINS); dit is
+ *  alleen de tekst op de knop, zodat je weet waar je aan begint. */
+const HINT_PRIJS = 15;
+
 const DEFAULT_ON = new Set(["Land", "Stad", "Vrucht"]);
 
 // Dezelfde iconen als in Ontdekken, zodat een categorie er overal hetzelfde
@@ -76,6 +80,15 @@ export function Training({ onBack, lenient = false, onOntdekken, startLetter, on
   const [busy, setBusy] = useState(false);
   const [used, setUsed] = useState<string[]>([]);
   const [rounds, setRounds] = useState(0);
+  // EEN WOORD KOPEN. Alleen hier: Oefenen is solo, er is geen ranglijst en er
+  // staat niets op het spel. In de dagronde of in een potje zou dit punten
+  // kopen, en daarom kan het daar niet.
+  //
+  // Wat je koopt telt niet als goed antwoord (de munten van de ronde zijn voor
+  // wat je wist) en het levert in Ontdekken een spoor op in plaats van een
+  // kaart. Dat rekent de server na; hier staat alleen de knop.
+  const [hintBezig, setHintBezig] = useState("");
+  const [hintFout, setHintFout] = useState("");
   const [sessionCorrect, setSessionCorrect] = useState(0);
   const [sessionSeen, setSessionSeen] = useState(0);
   // Wat er NIET goed was, over de hele sessie. De server telt alleen wat wel
@@ -404,6 +417,9 @@ export function Training({ onBack, lenient = false, onOntdekken, startLetter, on
               daar, dus hij hoort er hetzelfde uit te zien. */}
           <Tv letter={letter} label={t("letterIs")} />
 
+          {!!hintFout && (
+            <p style={{ margin: 0, textAlign: "center", fontFamily: font.ui, fontSize: 12, color: colors.gold }}>{hintFout}</p>
+          )}
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {cats.map((cat, i) => (
               <div key={cat}>
@@ -426,6 +442,46 @@ export function Training({ onBack, lenient = false, onOntdekken, startLetter, on
                     placeholder={t("fillPlaceholder", { cat: tCat(cat), letter })}
                     kaderStyle={{ marginTop: 4 }}
                   />
+                  {/* Het lampje: koop een woord voor dit vakje. Alleen als het
+                      nog leeg is, want een hint voor iets wat je al weet is
+                      alleen munten weggooien. */}
+                  {!answers[cat] && (
+                    <button
+                      type="button"
+                      aria-label={t("trainHintKnop", { n: HINT_PRIJS })}
+                      title={t("trainHintKnop", { n: HINT_PRIJS })}
+                      disabled={hintBezig === cat}
+                      onClick={() => {
+                        sound.uiTap();
+                        setHintFout("");
+                        setHintBezig(cat);
+                        const tok = localStorage.getItem("penneer.accountToken");
+                        fetch("/api/train/hint", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json", ...(tok ? { Authorization: `Bearer ${tok}` } : {}) },
+                          body: JSON.stringify({ letter, category: cat, ingevuld: Object.values(answers).filter(Boolean) }),
+                        })
+                          .then(async (r) => ({ ok: r.ok, d: await r.json().catch(() => null) }))
+                          .then(({ ok, d }) => {
+                            if (ok && d?.woord) { setAnswers((a) => ({ ...a, [cat]: d.woord })); sound.win(); }
+                            else setHintFout(d?.error === "te_weinig" ? t("trainHintTeWeinig", { n: HINT_PRIJS }) : t("trainHintNiets"));
+                          })
+                          .catch(() => setHintFout(t("trainHintNiets")))
+                          .finally(() => setHintBezig(""));
+                      }}
+                      style={{
+                        position: "absolute",
+                        right: i + 1 < cats.length ? 44 : 8,
+                        top: "calc(50% + 2px)", transform: "translateY(-50%)",
+                        width: 32, height: 32, display: "grid", placeItems: "center",
+                        borderRadius: 999, border: "none", cursor: "pointer",
+                        background: withAlpha(colors.gold, 0.14), color: colors.gold,
+                        opacity: hintBezig === cat ? 0.5 : 1,
+                      }}
+                    >
+                      <Lightbulb size={16} />
+                    </button>
+                  )}
                   {i + 1 < cats.length && (
                     <button
                       type="button"

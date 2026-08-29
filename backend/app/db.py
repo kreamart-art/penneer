@@ -2312,6 +2312,26 @@ class Database:
         with self._lock:
             return bool(self._q("SELECT 1 FROM daily_retries WHERE day=? AND user_id=?", (day, user_id)))
 
+    # Wat een hint in Oefenen kost. Duurder dan wat het woord oplevert (drie
+    # munten per goed antwoord), en met opzet: een hint is hulp bij leren, geen
+    # kraan. Wie er tien koopt is honderdvijftig munten kwijt en heeft er dertig
+    # terug, plus wat hij ervan opstak.
+    HINT_COINS = 15
+
+    def hulp_betaal(self, user_id: str, prijs: int) -> bool:
+        """Reken een hulpmiddel af. True alleen als er ook echt betaald is.
+
+        Onder hetzelfde slot als het saldo lezen, want twee tikken tegelijk
+        mogen niet allebei doorgaan op hetzelfde saldo."""
+        if not user_id or prijs <= 0:
+            return False
+        with self._lock:
+            rows = self._q("SELECT coins FROM users WHERE id=?", (user_id,))
+            if not rows or int(rows[0]["coins"]) < prijs:
+                return False
+            self._exec("UPDATE users SET coins=coins-? WHERE id=?", (int(prijs), user_id))
+        return True
+
     def daily_retry(self, user_id: str, day: str) -> str:
         """Spend DAILY_RETRY_COINS to wipe today's daily attempt for one fresh try.
         Returns 'ok' | 'no_entry' | 'already' | 'insufficient'. Once per day. The
@@ -2547,6 +2567,87 @@ class Database:
         with self._lock:
             rows = self._q("SELECT day FROM topo_scores WHERE user_id=? ORDER BY day DESC LIMIT ?", (user_id, limit))
         return [r["day"] for r in rows]
+
+    def rivalen(self, user_id: str, limit: int = 12) -> list[dict]:
+        """Tegen wie je het vaakst speelde, en hoe het onderling staat.
+
+        Alles GETELD uit wat er toch al ligt: game_players voor de potjes en
+        duels voor de duels. Er wordt dus niets bijgehouden, en een stand kan
+        niet uit de pas lopen met de wedstrijden waar hij uit volgt.
+
+        Wat telt als winst: in een potje jij wel en hij niet. Wonnen jullie
+        allebei (dat kan, in teams) of geen van beiden, dan is het voor deze
+        stand geen van beide. Bij een duel is de winnaar de winnaar; een duel
+        zonder winnaar (gelijk of verlopen) telt alleen mee als ontmoeting.
+        """
+        if not user_id:
+            return []
+        with self._lock:
+            potjes = self._q(
+                """
+                WITH mijn AS (
+                    SELECT game_id, is_winner FROM game_players WHERE user_id = ?
+                )
+                SELECT gp.user_id AS id,
+                       COUNT(*) AS samen,
+                       SUM(CASE WHEN m.is_winner = 1 AND gp.is_winner = 0 THEN 1 ELSE 0 END) AS ik,
+                       SUM(CASE WHEN gp.is_winner = 1 AND m.is_winner = 0 THEN 1 ELSE 0 END) AS hij,
+                       MAX(g.finished_at) AS laatst
+                FROM mijn m
+                JOIN game_players gp ON gp.game_id = m.game_id AND gp.user_id <> ?
+                JOIN games g ON g.id = m.game_id
+                GROUP BY gp.user_id
+                """,
+                (user_id, user_id),
+            )
+            duels = self._q(
+                """
+                SELECT CASE WHEN a = ? THEN b ELSE a END AS id,
+                       COUNT(*) AS samen,
+                       SUM(CASE WHEN winner = ? THEN 1 ELSE 0 END) AS ik,
+                       SUM(CASE WHEN winner IS NOT NULL AND winner <> ? THEN 1 ELSE 0 END) AS hij,
+                       MAX(finished_at) AS laatst
+                FROM duels
+                WHERE (a = ? OR b = ?) AND status = 'done'
+                GROUP BY id
+                """,
+                (user_id, user_id, user_id, user_id, user_id),
+            )
+        samen: dict[str, dict] = {}
+        # Twee bronnen, een teller. De soort staat NAAST de rij en niet in een
+        # vergelijking met de lijst waar hij uit kwam: rijen uit sqlite laten
+        # zich niet betrouwbaar met `in` opzoeken.
+        for soort, rijen in (("potjes", potjes), ("duels", duels)):
+            for rij in rijen:
+                r = samen.setdefault(str(rij["id"]), {"id": rij["id"], "potjes": 0, "duels": 0,
+                                                      "ik": 0, "hij": 0, "laatst": 0.0})
+                r[soort] += int(rij["samen"] or 0)
+                r["ik"] += int(rij["ik"] or 0)
+                r["hij"] += int(rij["hij"] or 0)
+                r["laatst"] = max(r["laatst"], float(rij["laatst"] or 0))
+        if not samen:
+            return []
+        # De meest gespeelde eerst, en bij gelijk aantal de meest recente. Dat
+        # is wat een rivaal is: iemand die je vaak tegenkomt, niet iemand tegen
+        # wie je ooit een keer speelde.
+        beste = sorted(samen.values(), key=lambda r: (r["potjes"] + r["duels"], r["laatst"]), reverse=True)[:limit]
+        ids = [r["id"] for r in beste]
+        with self._lock:
+            wie = {
+                r["id"]: dict(r)
+                for r in self._q(
+                    "SELECT id, name, color, avatar_ver, divisie, avatar IS NOT NULL AS has_avatar"
+                    " FROM users WHERE id IN (%s)" % ",".join("?" * len(ids)),
+                    tuple(ids),
+                )
+            }
+        uit = []
+        for r in beste:
+            u = wie.get(r["id"])
+            if not u:
+                continue  # account verwijderd; dan is er ook geen rivaal meer
+            uit.append({**r, **u, "ontmoetingen": r["potjes"] + r["duels"]})
+        return uit
 
     # ---- duel (1v1 om beurten, gescoord op zeldzaamheid) --------------------
 
