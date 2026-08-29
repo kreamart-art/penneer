@@ -76,18 +76,34 @@ def test_unlock_geeft_alleen_nieuwe_kaarten_terug(db):
     add(db, "land", "Brazilië")
     norms = discover.match_words("land", "B", ["België", "Brazilië"])
 
-    eerste = db.discover_unlock("u", "land", norms)
+    # ZELF genoemd, want alleen dan is het een kaart. Zonder `known` zijn het
+    # sporen: je hebt het woord na afloop te zien gekregen en niet verdiend.
+    # Deze test dateert van voor dat onderscheid en telde daardoor nul kaarten.
+    eerste = db.discover_unlock("u", "land", norms, known=frozenset(norms))
     assert {c["word"] for c in eerste} == {"België", "Brazilië"}
 
-    tweede = db.discover_unlock("u", "land", norms)
+    tweede = db.discover_unlock("u", "land", norms, known=frozenset(norms))
     assert tweede == [], "een tweede ronde mag dezelfde kaarten niet opnieuw geven"
     assert db.discover_owned_counts("u") == {"land": 2}
+
+
+def test_alleen_voorgeschoteld_is_een_spoor_en_geen_kaart(db):
+    """Het onderscheid zelf: wat je na afloop te zien kreeg telt niet mee voor
+    je verzameling, tot je het een keer zelf noemt."""
+    add(db, "land", "België")
+    norms = discover.match_words("land", "B", ["België"])
+    db.discover_unlock("u", "land", norms)
+    assert db.discover_owned_counts("u") == {}
+    assert db.discover_spoor_counts("u") == {"land": 1}
+    db.discover_unlock("u", "land", norms, known=frozenset(norms))
+    assert db.discover_owned_counts("u") == {"land": 1}
 
 
 def test_engelse_variant_ontgrendelt_de_nederlandse_kaart(db):
     # Dit is waarvoor aliases bestaat: anders wordt Belgium een tweede kaart.
     add(db, "land", "België", aliases=["Belgium"])
-    got = db.discover_unlock("u", "land", discover.match_words("land", "B", ["Belgium"]))
+    norms = discover.match_words("land", "B", ["Belgium"])
+    got = db.discover_unlock("u", "land", norms, known=frozenset(norms))
     assert [c["word"] for c in got] == ["België"]
     assert db.discover_owned_counts("u") == {"land": 1}
 

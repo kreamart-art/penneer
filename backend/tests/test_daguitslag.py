@@ -45,14 +45,16 @@ def saldo(db: Database, uid: str) -> tuple[int, int]:
     return int(r["coins"]), int(r["cash"])
 
 
-def test_winnaar_krijgt_kist_munten_en_cash(db):
+def test_winnaar_krijgt_kist_en_munten(db):
+    """Geen cash: die is de schaarse munt en hoort bij mijlpalen, niet bij een
+    ronde die elke dag opnieuw te winnen is. Zie app/dagprijzen.py."""
     uid = speler(db, "Kream")
     woorden(db, uid, 50)
 
     bon = db.dag_uitslag(uid, DAG, time.time())
     assert bon["plek"] == 1 and bon["spelers"] == 1
-    assert (bon["coins"], bon["cash"], bon["kist"]) == (500, 5, "kist5")
-    assert saldo(db, uid) == (500, 5)
+    assert (bon["coins"], bon["cash"], bon["kist"]) == (500, 0, "kist5")
+    assert saldo(db, uid) == (500, 0)
     # De kist staat klaar om te openen, hij is niet al leeggehaald.
     assert db.kist_dicht(uid)["kist"] == "kist5"
 
@@ -64,7 +66,7 @@ def test_tweede_keer_ophalen_betaalt_niet_opnieuw(db):
     eerste = db.dag_uitslag(uid, DAG, time.time())
     tweede = db.dag_uitslag(uid, DAG, time.time())
     assert eerste["coins"] == tweede["coins"]
-    assert saldo(db, uid) == (500, 5)          # niet verdubbeld
+    assert saldo(db, uid) == (500, 0)          # niet verdubbeld
     with db._lock:
         assert len(db._q("SELECT id FROM kisten WHERE user_id=?", (uid,))) == 1
 
@@ -75,7 +77,7 @@ def test_lagere_plek_krijgt_de_ladder_van_die_plek(db):
     woorden(db, laag, 10)
 
     assert db.dag_uitslag(laag, DAG, time.time())["plek"] == 2
-    assert saldo(db, laag) == (350, 2)
+    assert saldo(db, laag) == (350, 0)
     assert saldo(db, hoog) == (0, 0)           # die heeft nog niet opgehaald
 
 
