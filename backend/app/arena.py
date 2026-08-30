@@ -58,17 +58,6 @@ def spel_voor(day: str) -> dict:
     return GAMES[wd]
 
 
-ALLE = [g["key"] for g in GAMES.values()]
-
-
-def bestaat(key: str) -> bool:
-    return key in ALLE
-
-
-def af(key: str) -> bool:
-    return any(g["key"] == key and g["af"] for g in GAMES.values())
-
-
 def seed_voor(day: str) -> str:
     """De dagseed waar de client het spel uit genereert. Deterministisch uit de
     datum, zodat elke speler exact dezelfde opgaven krijgt."""

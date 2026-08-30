@@ -822,16 +822,6 @@ class Database:
         if "divisie_change" not in cols:
             self._conn.execute("ALTER TABLE users ADD COLUMN divisie_change TEXT")
             self._conn.commit()
-        # VRIJ SPELEN in de arena. Zes van de zeven spellen lagen zes dagen per
-        # week stil, want de rotatie geeft er een per weekdag. Een vrije poging
-        # is een echte poging (hij telt voor je eigen record en voor de
-        # penning) maar hij staat buiten het dagbord en buiten het dagtotaal:
-        # anders zou je de ranglijst van vandaag kunnen vullen met een spel van
-        # gisteren.
-        acols = {r["name"] for r in self._conn.execute("PRAGMA table_info(arena_attempts)").fetchall()}
-        if acols and "vrij" not in acols:
-            self._conn.execute("ALTER TABLE arena_attempts ADD COLUMN vrij INTEGER NOT NULL DEFAULT 0")
-            self._conn.commit()
         # Emotes in DMs (room chat keeps its message dicts in memory).
         dcols2 = {r["name"] for r in self._conn.execute("PRAGMA table_info(dms)").fetchall()}
         if dcols2 and "emote" not in dcols2:
@@ -1795,54 +1785,25 @@ class Database:
 
     # De beste afgeronde poging per speler, met dezelfde beslisregels overal:
     # hoogste score, dan snelste tijd, dan wie er het eerst was.
-    # Overal `vrij = 0`: een vrije poging is geen inzending voor vandaag.
     _ARENA_BESTE = """
         FROM arena_attempts a JOIN users u ON u.id = a.user_id
-        WHERE a.day = ? AND a.finished_at IS NOT NULL AND a.vrij = 0
+        WHERE a.day = ? AND a.finished_at IS NOT NULL
           AND a.id = (
             SELECT b.id FROM arena_attempts b
-            WHERE b.day = a.day AND b.user_id = a.user_id AND b.finished_at IS NOT NULL AND b.vrij = 0
+            WHERE b.day = a.day AND b.user_id = a.user_id AND b.finished_at IS NOT NULL
             ORDER BY b.score DESC, b.time_ms ASC, b.finished_at ASC LIMIT 1
           )
     """
     _ARENA_ORDER = " ORDER BY a.score DESC, a.time_ms ASC, a.finished_at ASC "
 
-    def arena_start(self, user_id: str, day: str, game: str, now: float, vrij: bool = False) -> int:
+    def arena_start(self, user_id: str, day: str, game: str, now: float) -> int:
         with self._lock:
             cur = self._conn.execute(
-                "INSERT INTO arena_attempts (day, user_id, game, started_at, vrij) VALUES (?,?,?,?,?)",
-                (day, user_id, game, now, 1 if vrij else 0),
+                "INSERT INTO arena_attempts (day, user_id, game, started_at) VALUES (?,?,?,?)",
+                (day, user_id, game, now),
             )
             self._conn.commit()
             return int(cur.lastrowid)
-
-    def arena_is_vrij(self, attempt_id: int, user_id: str) -> Optional[bool]:
-        """Was dit een vrije poging? None als de poging niet van jou is. De
-        server kijkt dat zelf na bij het inleveren; de client mag niet zeggen
-        of zijn score voor het bord telt."""
-        with self._lock:
-            rows = self._q("SELECT vrij FROM arena_attempts WHERE id=? AND user_id=?", (attempt_id, user_id))
-        return bool(rows[0]["vrij"]) if rows else None
-
-    def arena_records(self, user_id: str) -> dict[str, dict]:
-        """Je beste score per spel, over alle dagen en ook uit vrije pogingen.
-        Een record is een record; alleen de RANGLIJST van vandaag is streng."""
-        if not user_id:
-            return {}
-        with self._lock:
-            rows = self._q(
-                """SELECT game, MAX(score) AS beste, COUNT(*) AS pogingen
-                   FROM arena_attempts WHERE user_id=? AND finished_at IS NOT NULL
-                   GROUP BY game""",
-                (user_id,),
-            )
-        return {r["game"]: {"beste": int(r["beste"] or 0), "pogingen": int(r["pogingen"])} for r in rows}
-
-    def arena_record_zetten(self, user_id: str, attempt_id: int, day: str,
-                            score: int, level: int, time_ms: int, now: float) -> bool:
-        """Een VRIJE poging afronden. Zelfde slot als arena_finish (een poging
-        kan maar een keer af), maar zonder de rest van de dagronde aan te raken."""
-        return self.arena_finish(user_id, attempt_id, day, score, level, time_ms, now)
 
     def arena_finish(self, user_id: str, attempt_id: int, day: str,
                      score: int, level: int, time_ms: int, now: float) -> bool:
@@ -1886,7 +1847,7 @@ class Database:
         with self._lock:
             rows = self._q(
                 """SELECT COUNT(*) AS pogingen, COALESCE(MAX(score), 0) AS beste
-                   FROM arena_attempts WHERE day=? AND user_id=? AND finished_at IS NOT NULL AND vrij=0""",
+                   FROM arena_attempts WHERE day=? AND user_id=? AND finished_at IS NOT NULL""",
                 (day, user_id),
             )
         return dict(rows[0])
@@ -1894,7 +1855,7 @@ class Database:
     def arena_players_count(self, day: str) -> int:
         with self._lock:
             return int(self._q(
-                "SELECT COUNT(DISTINCT user_id) AS n FROM arena_attempts WHERE day=? AND finished_at IS NOT NULL AND vrij=0",
+                "SELECT COUNT(DISTINCT user_id) AS n FROM arena_attempts WHERE day=? AND finished_at IS NOT NULL",
                 (day,),
             )[0]["n"])
 
@@ -2504,7 +2465,7 @@ class Database:
     _TOTAAL_SQL = """
         WITH arena_best AS (
             SELECT user_id, MAX(score) AS score, MIN(time_ms) AS time_ms, MIN(finished_at) AS created_at
-            FROM arena_attempts WHERE day = :dag AND finished_at IS NOT NULL AND vrij = 0
+            FROM arena_attempts WHERE day = :dag AND finished_at IS NOT NULL
             GROUP BY user_id
         ),
         deelnemers AS (
@@ -2557,7 +2518,7 @@ class Database:
                     UNION
                     SELECT user_id FROM topo_scores  WHERE day=?
                     UNION
-                    SELECT user_id FROM arena_attempts WHERE day=? AND finished_at IS NOT NULL AND vrij=0
+                    SELECT user_id FROM arena_attempts WHERE day=? AND finished_at IS NOT NULL
                 )
                 """,
                 (day, day, day),

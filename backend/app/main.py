@@ -2168,10 +2168,6 @@ async def arena_info(request: Request) -> JSONResponse:
     uid = db.auth(_bearer(request))
     spel = arena.spel_voor(day)
     mijn = db.arena_mijn(uid, day) if uid else {"pogingen": 0, "beste": 0}
-    # ALLE ZEVEN, niet alleen die van vandaag. Zes ervan lagen zes dagen per
-    # week stil terwijl ze af waren; vrij spelen zet ze open, met je eigen
-    # record ernaast in plaats van een plek op het dagbord.
-    records = db.arena_records(uid) if uid else {}
     return JSONResponse({
         "day": day,
         "game": spel["key"],
@@ -2182,16 +2178,6 @@ async def arena_info(request: Request) -> JSONResponse:
         "rank": (db.arena_rank(uid, day)[0] if uid else 0),
         "beste": int(mijn["beste"]),
         "pogingen": int(mijn["pogingen"]),
-        "spellen": [
-            {
-                "key": k,
-                "af": arena.af(k),
-                "vandaag": k == spel["key"],
-                "record": int(records.get(k, {}).get("beste", 0)),
-                "pogingen": int(records.get(k, {}).get("pogingen", 0)),
-            }
-            for k in arena.ALLE
-        ],
     })
 
 
@@ -2205,26 +2191,11 @@ async def arena_start(request: Request) -> JSONResponse:
         return JSONResponse({"error": "auth"}, status_code=401)
     day = daily.today()
     spel = arena.spel_voor(day)
-    body = {}
-    try:
-        body = await request.json() or {}
-    except Exception:
-        body = {}
-    gevraagd = str(body.get("game") or "").strip()
-    # Vrij spelen: elk ander spel dat af is. Het telt niet mee voor het dagbord
-    # en niet voor het dagtotaal (zie de kolom `vrij`), maar het is een echte
-    # poging: hij komt in je record en telt voor de penning.
-    vrij = bool(gevraagd) and gevraagd != spel["key"]
-    key = gevraagd if gevraagd else spel["key"]
-    if not arena.bestaat(key) or not arena.af(key):
+    if not spel["af"]:
         return JSONResponse({"error": "not_ready"}, status_code=409)
-    attempt = db.arena_start(uid, day, key, time.time(), vrij=vrij)
-    # EEN EIGEN SEED voor een vrije poging. De dagseed is voor iedereen gelijk,
-    # want de ranglijst moet vergelijkbaar zijn; bij vrij spelen is dat juist
-    # verkeerd, dan speel je elke keer dezelfde reeks.
-    seed = arena.seed_voor(day) if not vrij else uuid.uuid4().hex
-    return JSONResponse({"attempt_id": attempt, "day": day, "game": key,
-                         "vrij": vrij, "seed": seed})
+    attempt = db.arena_start(uid, day, spel["key"], time.time())
+    return JSONResponse({"attempt_id": attempt, "day": day, "game": spel["key"],
+                         "seed": arena.seed_voor(day)})
 
 
 @app.post("/api/arena/submit")
@@ -2246,28 +2217,8 @@ async def arena_submit(request: Request) -> JSONResponse:
         time_ms = int(body.get("time_ms") or 0)
     except (TypeError, ValueError):
         return JSONResponse({"error": "bad"}, status_code=400)
-    # WAS HET EEN VRIJE POGING? Dat vraagt de server aan zijn eigen tabel en
-    # niet aan de client: anders zou een dagpoging zich kunnen voordoen als
-    # vrij, of erger, andersom.
-    vrij = db.arena_is_vrij(attempt_id, uid)
-    if vrij is None:
-        return JSONResponse({"error": "geen_poging"}, status_code=404)
-    # Bij vrij spelen gaat de controle over het spel dat JIJ speelde, niet over
-    # dat van vandaag.
-    gespeeld = str(body.get("game") or "") if vrij else spel["key"]
-    if vrij and not arena.bestaat(gespeeld):
-        gespeeld = spel["key"]
-    if not arena.plausibel(gespeeld, score, level, time_ms):
+    if not arena.plausibel(spel["key"], score, level, time_ms):
         return JSONResponse({"error": "implausible"}, status_code=422)
-    if vrij:
-        # Geen bord, geen verdringing, geen dagpunten. Wel je record.
-        if not db.arena_finish(uid, attempt_id, day, score, level, time_ms, time.time()):
-            return JSONResponse({"error": "geen_poging"}, status_code=404)
-        # "Alle zeven arenaspellen gespeeld" is een penning, en die was tot nu
-        # toe bijna onhaalbaar: je moest zeven weken lang elke dag langskomen.
-        prestaties.herzie(db, uid)
-        return JSONResponse({"ok": True, "vrij": True,
-                             "records": db.arena_records(uid)})
     leider_voor = db.arena_leider(day)
     if not db.arena_finish(uid, attempt_id, day, score, level, time_ms, time.time()):
         return JSONResponse({"error": "geen_poging"}, status_code=404)
