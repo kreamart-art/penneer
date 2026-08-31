@@ -357,6 +357,16 @@ CREATE TABLE IF NOT EXISTS daily_retries (
 -- herhaalbaar, dus zonder plafond is XP daar gratis: dezelfde letter opnieuw
 -- doen zou blijven uitbetalen. Deze regel houdt de dagpot bij; is die op, dan
 -- gaat het oefenen gewoon door en levert het alleen geen munten meer op.
+-- De betaalde herkansing van het TOPOGRAFIE-deel. Een eigen tabel en geen
+-- kolom bij daily_retries: die heeft (day, user_id) als primaire sleutel, en
+-- daar een soort aan toevoegen betekent in SQLite de hele tabel herbouwen. Twee
+-- tabellen naast elkaar is hier eerlijker dan een migratie met risico.
+CREATE TABLE IF NOT EXISTS topo_retries (
+    day TEXT NOT NULL,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    used_at REAL NOT NULL,
+    PRIMARY KEY (day, user_id)
+);
 CREATE TABLE IF NOT EXISTS practice_rewards (
     day TEXT NOT NULL,
     user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -2310,6 +2320,37 @@ class Database:
             self._exec("DELETE FROM daily_scores WHERE day=? AND user_id=?", (day, user_id))
             self._exec("DELETE FROM daily_starts WHERE day=? AND user_id=?", (day, user_id))
             self._exec("INSERT OR IGNORE INTO daily_retries (day, user_id, used_at) VALUES (?,?,?)", (day, user_id, time.time()))
+        return "ok"
+
+    def topo_retried(self, user_id: str, day: str) -> bool:
+        if not user_id:
+            return False
+        with self._lock:
+            return bool(self._q("SELECT 1 FROM topo_retries WHERE day=? AND user_id=?", (day, user_id)))
+
+    def topo_retry(self, user_id: str, day: str) -> str:
+        """Dezelfde herkansing als bij de woorden, voor het topografiedeel.
+        'ok' | 'no_entry' | 'already' | 'insufficient'. Een keer per dag.
+
+        Er gaat MEER weg dan bij de woorden: het topografiedeel serveert zijn
+        vragen een voor een en stempelt per vraag wanneer hij kwam en wanneer je
+        antwoordde (topo_progress). Blijft dat staan, dan zou de tweede poging
+        de tijd van de eerste erven en meteen aflopen.
+        """
+        cost = self.DAILY_RETRY_COINS
+        with self._lock:
+            if not self._q("SELECT 1 FROM topo_scores WHERE day=? AND user_id=?", (day, user_id)):
+                return "no_entry"
+            if self._q("SELECT 1 FROM topo_retries WHERE day=? AND user_id=?", (day, user_id)):
+                return "already"
+            rows = self._q("SELECT coins FROM users WHERE id=?", (user_id,))
+            if not rows or rows[0]["coins"] < cost:
+                return "insufficient"
+            self._exec("UPDATE users SET coins=coins-? WHERE id=?", (cost, user_id))
+            self._exec("DELETE FROM topo_scores WHERE day=? AND user_id=?", (day, user_id))
+            self._exec("DELETE FROM topo_starts WHERE day=? AND user_id=?", (day, user_id))
+            self._exec("DELETE FROM topo_progress WHERE day=? AND user_id=?", (day, user_id))
+            self._exec("INSERT OR IGNORE INTO topo_retries (day, user_id, used_at) VALUES (?,?,?)", (day, user_id, time.time()))
         return "ok"
 
     def daily_board(self, day: str, limit: int = 25) -> list[dict]:

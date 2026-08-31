@@ -247,6 +247,19 @@ SOORTEN: dict[str, dict] = {
         "push": True,
     },
 
+    # ---- de app zelf -------------------------------------------------------
+    # Voor een aankondiging aan iedereen. Niet iets wat uit een gebeurtenis
+    # komt, dus hij wordt met de hand gestuurd (scripts/omroep.py) en staat
+    # daarom los van de rest.
+    "update": {
+        "titel": "Nieuwe versie",
+        "body": "Sluit de app helemaal af en open hem opnieuw, dan werk je bij.",
+        "tag": "update",
+        "icoon": "ster",
+        "naar": "home",
+        "push": True,
+    },
+
     # ---- herinneringen -----------------------------------------------------
     # Deze komen niet uit een gebeurtenis maar uit een SWEEP: iets staat al een
     # tijd open en niemand heeft er iets mee gedaan. Hoogstens één per dag per

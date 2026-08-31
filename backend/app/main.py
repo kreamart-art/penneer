@@ -1487,7 +1487,25 @@ async def topo_submit(request: Request) -> JSONResponse:
             # Zelfde beloningsvorm als het woordendeel: 20 basis + 1 per punt,
             # eenmalig per dag, want `ranked` is de eerste echte inzending.
             db.grant_coins(uid, 20 + max(0, int(score)))
+        # Zelfde anti-valsspel als bij de woorden: de herkansing wordt aangeboden
+        # VOOR de score in beeld komt, dus die houden we hier helemaal achter.
+        # Je beslist blind; anders kijk je eerst en speel je daarna pas opnieuw.
+        if ranked and not db.topo_retried(uid, day) and db.coins_of(uid) >= db.DAILY_RETRY_COINS:
+            return JSONResponse({"day": day, "retry_available": True, "retry_cost": db.DAILY_RETRY_COINS})
     return JSONResponse({**_topo_result_payload(db, uid, day, score, breakdown, ranked, time_ms, lang), "already": False})
+
+
+@app.post("/api/daily/topo/retry")
+async def topo_retry(request: Request) -> JSONResponse:
+    """Betaal coins voor een tweede poging op het topografiedeel (1x per dag)."""
+    db = get_db()
+    uid = db.auth(_bearer(request))
+    if not uid:
+        return JSONResponse({"error": "auth"}, status_code=401)
+    res = db.topo_retry(uid, daily.today())
+    if res != "ok":
+        return JSONResponse({"error": res}, status_code=402 if res == "insufficient" else 409)
+    return JSONResponse({"ok": True, "coins": db.coins_of(uid)})
 
 
 @app.get("/api/daily/topo/result")

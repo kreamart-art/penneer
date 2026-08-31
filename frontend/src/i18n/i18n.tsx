@@ -795,6 +795,9 @@ const nl: Dict = {
   dailyDone: "Ik ben klaar",
   dailyRetryTitle: "Nog een poging?",
   dailyRetryBody: "Je ziet je score pas daarna. Kies je een nieuwe poging, dan telt die, ook als 'ie lager is. Eén keer per dag.",
+  // Bij topografie krijg je dezelfde acht vragen terug, dus dat hoort erbij te
+  // staan: je weet dan al waar ze over gaan.
+  topoRetryBody: "Je ziet je score pas daarna. Je krijgt dezelfde acht vragen, en de nieuwe poging telt, ook als 'ie lager is. Eén keer per dag.",
   dailyRetryYes: "Opnieuw voor {n}",
   dailyRetryNo: "Nee, laat mijn score zien",
   dailyListOnly: "Lijstwoorden tellen, plus wat de scheidsrechter goedkeurt.",
@@ -2234,6 +2237,7 @@ const en: Dict = {
   dailyDone: "I am done",
   dailyRetryTitle: "One more try?",
   dailyRetryBody: "You'll only see your score afterwards. If you take another try it counts, even if it's lower. Once per day.",
+  topoRetryBody: "You'll only see your score afterwards. You get the same eight questions, and the new attempt counts, even if it's lower. Once per day.",
   dailyRetryYes: "Retry for {n}",
   dailyRetryNo: "No, show my score",
   dailyListOnly: "List words count, plus whatever the referee approves.",

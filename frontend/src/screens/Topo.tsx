@@ -51,6 +51,11 @@ interface BoardRow {
 }
 interface TopoResult {
   day: string;
+  /** Staat er een betaalde herkansing open, dan houdt de server de score
+   *  HELEMAAL achter: je beslist blind, anders kijk je eerst en speel je
+   *  daarna pas opnieuw. Zelfde afspraak als bij het woordendeel. */
+  retry_available?: boolean;
+  retry_cost?: number;
   score: number;
   max_score: number;
   questions: ResultRow[];
@@ -93,6 +98,10 @@ export function Topo({ game, onBack, onProfile, played, spelers = 0 }: { game: G
   const [remaining, setRemaining] = useState(15);
   const [result, setResult] = useState<TopoResult | null>(null);
   const [busy, setBusy] = useState(false);
+  const [retryOffer, setRetryOffer] = useState<{ cost: number } | null>(null);
+  // Het venster reageert pas als het even heeft gestaan: anders landt de tik
+  // waarmee je je laatste antwoord gaf meteen op een van deze knoppen.
+  const [armed, setArmed] = useState(false);
   const input = useRef<HTMLInputElement | null>(null);
   const deadline = useRef(0);
   const submitted = useRef(false);
@@ -203,9 +212,44 @@ export function Topo({ game, onBack, onProfile, played, spelers = 0 }: { game: G
         headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify({ answers: guestAnswers.current, lang }),
       });
-      openResult(await res.json());
+      const data: TopoResult = await res.json();
+      if (data.retry_available) {
+        setArmed(false);
+        setRetryOffer({ cost: data.retry_cost ?? 100 });
+        window.setTimeout(() => setArmed(true), 550);
+        return;
+      }
+      openResult(data);
     } catch {
       submitted.current = false; // netwerkhikje: laat ze nog een keer drukken
+    }
+  };
+
+  // De betaalde herkansing, een keer per dag. Na het inleveren, voor de
+  // onthulling.
+  const doeHerkansing = async () => {
+    setBusy(true);
+    try {
+      const res = await fetch("/api/daily/topo/retry", { method: "POST", headers: authHeaders() });
+      if (!res.ok) return; // te weinig munten of al gebruikt: laat het aanbod staan
+      setRetryOffer(null);
+      game.send({ type: "account_get" }); // saldo verversen
+      sound.uiTap();
+      submitted.current = false;
+      await beginnen(); // server-side gewist, dus dezelfde vragen met een verse klok
+    } finally {
+      setBusy(false);
+    }
+  };
+  const weigerHerkansing = async () => {
+    setRetryOffer(null);
+    setBusy(true);
+    try {
+      // De score stond nog achtergehouden; nu pas ophalen.
+      const res = await fetch("/api/daily/topo/result", { headers: authHeaders() });
+      if (res.ok) openResult(await res.json());
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -367,6 +411,28 @@ export function Topo({ game, onBack, onProfile, played, spelers = 0 }: { game: G
             {last ? t("topoDone") : t("topoNext")}
           </Button>
         </div>
+
+        {/* HET AANBOD, voor de onthulling. Zelfde venster en dezelfde afspraken
+            als bij het woordendeel: twee volwaardige knoppen (een klein "nee"
+            onder een grote gouden knop kost per ongeluk munten), en ze doen de
+            eerste halve seconde niets, want dit venster verschijnt precies
+            onder de duim die net inleverde. */}
+        {retryOffer && (
+          <div style={{ position: "fixed", inset: 0, zIndex: 95, background: "rgba(6,3,18,.82)", backdropFilter: "blur(5px)", WebkitBackdropFilter: "blur(5px)", display: "grid", placeItems: "center", padding: 22 }}>
+            <div className="pop-in" style={{ width: "100%", maxWidth: 340, display: "flex", flexDirection: "column", alignItems: "center", gap: 12, padding: "26px 22px 20px", borderRadius: 24, background: "linear-gradient(180deg, #2a1c48, #160D30)", border: `1px solid ${withAlpha(colors.gold, 0.5)}`, boxShadow: "0 24px 80px rgba(0,0,0,.65)", textAlign: "center" }}>
+              <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 20, color: colors.gold }}>{t("dailyRetryTitle")}</span>
+              <p style={{ margin: 0, fontFamily: font.ui, fontSize: 13.5, color: colors.sub, lineHeight: 1.55 }}>{t("topoRetryBody")}</p>
+              <Button variant="gold" full disabled={busy || !armed} onClick={() => void doeHerkansing()}>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>{t("dailyRetryYes", { n: retryOffer.cost })}<img src="/coin.webp" alt="" width={17} height={17} /></span>
+              </Button>
+              <div style={{ width: "86%", marginTop: 6 }}>
+                <Button variant="primary" full disabled={busy || !armed} onClick={() => void weigerHerkansing()}>
+                  {t("dailyRetryNo")}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </Screen>
     );
   }
