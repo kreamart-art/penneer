@@ -3772,15 +3772,33 @@ class Database:
     BUZZER_PACK_COINS = 25     # legacy (the old all-in-one country pack)
     COINS_PER_PACK = 100       # legacy single coin bundle
 
-    # Coin PRICES of shop items (buy_item_coins): each country buzzer sells on its
-    # own (cheap, reachable early); the premium avatars sell as two packs (pricier).
+    # EEN ITEM, EEN MUNT.
+    #
+    # Hiervoor was bijna alles met allebei te koop, tegen een vaste koers van
+    # ongeveer 1 cash = 27 coins. Daarmee was cash geen tweede munt maar een
+    # compactere versie van dezelfde: je betaalde met wat je toevallig had, en
+    # de winkel vroeg je elke keer om een omrekensom.
+    #
+    # Nu vertellen de twee munten twee verschillende verhalen:
+    #
+    #   COINS verdien je door te SPELEN. Elke week een paar duizend, dus daar
+    #   staat wat je vaak koopt en wat je in het moment ziet: de rol-skins en de
+    #   emote-packs.
+    #
+    #   CASH verdien je door te BLIJVEN. Alleen mijlpalen betalen hem uit, dus
+    #   daar staat wat blijft: de scheidsrechter (die het spel zelf raakt) en de
+    #   avatar-packs (wat iedereen van je ziet, op elk scherm).
+    #
+    # De landenknoppen zijn de ene uitzondering, en die bestond al: de knop van
+    # JOUW land koop je met coins (dat is wat je terugkrijgt voor het invullen
+    # van je land), alle andere met cash. Per speler is het dus nog steeds een
+    # munt per item.
     COIN_PRICES = {
         "bz01": 800, "bz02": 800, "bz03": 800, "bz04": 800, "bz05": 800, "bz13": 800, "bz14": 800,
         "bz15": 800, "bz16": 800, "bz17": 800,
         "rs01": 1000, "rs02": 1000, "rs03": 1000, "rs04": 1000, "rs05": 1000,
         "rs06": 1000, "rs07": 1000, "rs08": 1000, "rs09": 1000,
         "empack4": 2000, "empack5": 2000,
-        "avpack1": 4000, "avpack2": 4000,
     }
     # PayPal coin BUNDLES: product id -> coins granted (price via env, see paypal.py).
     COIN_BUNDLES = {"coins%d" % n: n for n in (100, 300, 500, 1000, 1800, 3000, 5000, 8000, 12000)}
@@ -3894,16 +3912,18 @@ class Database:
     CASH_TIER = 10
     CASH_JUBILEUM = 50         # level 50 krijgt dit BOVENOP zijn tienvoud-bonus
 
-    # Wat je met cash kunt kopen. Ongeveer een derde van de coin-prijs, want
-    # cash komt ongeveer drie keer zo langzaam binnen. De scheidsrechter staat
-    # hier ALLEEN: die is niet met coins te koop.
+    # Wat je met cash koopt: de scheidsrechter, de avatar-packs, en de
+    # landenknoppen van landen die niet de jouwe zijn. Zie de uitleg bij
+    # COIN_PRICES; wat hier staat, staat daar niet.
+    #
+    # De maat: op level 20 heb je 120 cash verdiend, op level 45 precies 250.
+    # Een avatar-pack van 150 is dus een doel van een paar weken en de
+    # scheidsrechter een doel van een half seizoen. Zonder dit tussenstation
+    # was cash sparen tot de 250 een lange stilte.
     CASH_PRICES = {
         "referee": 250,
         "bz01": 30, "bz02": 30, "bz03": 30, "bz04": 30, "bz05": 30, "bz13": 30, "bz14": 30,
         "bz15": 30, "bz16": 30, "bz17": 30,
-        "rs01": 40, "rs02": 40, "rs03": 40, "rs04": 40, "rs05": 40,
-        "rs06": 40, "rs07": 40, "rs08": 40, "rs09": 40,
-        "empack4": 75, "empack5": 75,
         "avpack1": 150, "avpack2": 150,
     }
     # PayPal cash-BUNDELS: product id -> cash. 250 is er met opzet bij: dat is

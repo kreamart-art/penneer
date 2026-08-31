@@ -93,7 +93,11 @@ function Coins({ n, color = colors.gold, size = 16 }: { n: number; color?: strin
 // One coin-bought item (a buzzer or an avatar pack): art, title, and a price
 // pill you tap to buy (dimmed when you can't afford it; green when owned).
 function CoinItem({ title, owned, price, coins, cashPrice, cash, slot, index, veeg, onBuy, onBuyCash, children }: {
-  title: string; owned: boolean; price: number; coins: number;
+  title: string; owned: boolean;
+  /** Leeg = niet met coins te koop. Sinds "een item, een munt" hebben de
+   *  avatar-packs alleen nog een cash-prijs, en dan hoort er geen coin-pil te
+   *  staan in plaats van een verzonnen bedrag. */
+  price?: number; coins: number;
   cashPrice?: number; cash?: number;
   // `slot` = wel te zien, maar niet met COINS te koop: de landenknoppen van
   // andere landen. Die koop je met cash, of je zet je land om.
@@ -101,7 +105,7 @@ function CoinItem({ title, owned, price, coins, cashPrice, cash, slot, index, ve
   index?: number; veeg?: boolean; onBuy: () => void; onBuyCash?: () => void; children: React.ReactNode;
 }) {
   const { t } = useT();
-  const affordable = !slot && coins >= price;
+  const affordable = price != null && !slot && coins >= price;
   const cashAf = cashPrice != null && (cash ?? 0) >= cashPrice;
   return (
     <GlasVak index={index} veeg={veeg}>
@@ -112,11 +116,16 @@ function CoinItem({ title, owned, price, coins, cashPrice, cash, slot, index, ve
           <Check size={13} /> {t("shopItemOwned")}
         </span>
       ) : (
-        // Twee prijzen naast elkaar: coins links, cash rechts. Bijna alles is
-        // met allebei te betalen. Wat NIET met coins kan (een landenknop van
-        // een ander land) laat zijn coin-prijs zien met een slotje, zodat je
-        // ziet dat hij bestaat en hoe je hem opent.
+        // EEN PRIJS PER TEGEL, want elk item hoort bij een munt: rol-skins en
+        // emotes met coins, avatars en de scheidsrechter met cash.
+        //
+        // De landenknoppen zijn de uitzondering die er al was: die van JOUW
+        // land koop je met coins, de andere met cash. Bij een ander land blijft
+        // de coin-prijs met een slotje staan, want dat vertelt hoe je hem
+        // alsnog opent (je land instellen); bij je eigen land valt de cash-pil
+        // juist weg, zodat er ook daar maar een knop is die iets doet.
         <div style={{ display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap", justifyContent: "center" }}>
+          {price != null && (
           <button
             onClick={() => { if (affordable) { sound.uiTap(); onBuy(); } }}
             disabled={!affordable}
@@ -133,6 +142,7 @@ function CoinItem({ title, owned, price, coins, cashPrice, cash, slot, index, ve
             {slot && <Lock size={10} color={colors.faint} />}
             <Coins n={price} color={affordable ? colors.gold : colors.faint} size={13} />
           </button>
+          )}
           {cashPrice != null && onBuyCash && (
             <button
               onClick={() => { if (cashAf) { sound.uiTap(); onBuyCash(); } }}
@@ -466,9 +476,6 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
         : shopResult.reason === "auth" ? t("shopNeedProfile") : t("shopCodeInvalid")
     : null;
 
-  const buzzPrice = prices.bz01 ?? 8;
-  const packPrice = prices.avpack1 ?? 40;
-
   // De vakken in de volgorde waarin je erlangs veegt.
   const vakken = [
     t("shopTabCoins"),
@@ -690,7 +697,7 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
             <Card style={{ padding: "9px 8px 10px" }}>
               <Raster kolommen={3} aantal={BUZZERS_FOR_SALE.length}>
                 {BUZZERS_FOR_SALE.map((bz, i) => (
-                  <CoinItem key={bz.id} title={t(bz.name)} owned={owned.has(bz.id)} price={prices[bz.id] ?? buzzPrice} coins={coins} cashPrice={cashPrices[bz.id]} cash={cash} slot={eigenBuzzer !== bz.id} index={i} veeg={i === beurt} onBuy={() => game.buyItemCoins(bz.id)} onBuyCash={() => game.buyItemCash(bz.id)}>
+                  <CoinItem key={bz.id} title={t(bz.name)} owned={owned.has(bz.id)} price={prices[bz.id]} coins={coins} cashPrice={eigenBuzzer === bz.id ? undefined : cashPrices[bz.id]} cash={cash} slot={eigenBuzzer !== bz.id} index={i} veeg={i === beurt} onBuy={() => game.buyItemCoins(bz.id)} onBuyCash={() => game.buyItemCash(bz.id)}>
                     <img src={`/buzzers/${bz.id}.webp`} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
                   </CoinItem>
                 ))}
@@ -708,7 +715,7 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
             <Card style={{ padding: "9px 8px 10px" }}>
               <Raster kolommen={3} aantal={REELS_FOR_SALE.length}>
                 {REELS_FOR_SALE.map((rs, i) => (
-                  <CoinItem key={rs.id} title={t(rs.name)} owned={owned.has(rs.id)} price={prices[rs.id] ?? 100} coins={coins} cashPrice={cashPrices[rs.id]} cash={cash} index={i} veeg={i === beurt} onBuy={() => game.buyItemCoins(rs.id)} onBuyCash={() => game.buyItemCash(rs.id)}>
+                  <CoinItem key={rs.id} title={t(rs.name)} owned={owned.has(rs.id)} price={prices[rs.id]} coins={coins} cashPrice={cashPrices[rs.id]} cash={cash} index={i} veeg={i === beurt} onBuy={() => game.buyItemCoins(rs.id)} onBuyCash={() => game.buyItemCash(rs.id)}>
                     <ReelSwatch id={rs.id} />
                   </CoinItem>
                 ))}
@@ -726,7 +733,7 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
             <Card style={{ padding: "9px 8px 10px" }}>
               <Raster kolommen={2} aantal={EMOTE_PACKS_FOR_SALE.length}>
                 {EMOTE_PACKS_FOR_SALE.map((pk, i) => (
-                  <CoinItem key={pk.id} title={t(pk.name)} owned={owned.has(pk.id)} price={prices[pk.id] ?? 200} coins={coins} cashPrice={cashPrices[pk.id]} cash={cash} index={i} veeg={i === beurt} onBuy={() => game.buyItemCoins(pk.id)} onBuyCash={() => game.buyItemCash(pk.id)}>
+                  <CoinItem key={pk.id} title={t(pk.name)} owned={owned.has(pk.id)} price={prices[pk.id]} coins={coins} cashPrice={cashPrices[pk.id]} cash={cash} index={i} veeg={i === beurt} onBuy={() => game.buyItemCoins(pk.id)} onBuyCash={() => game.buyItemCash(pk.id)}>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 1.5, width: "100%" }}>
                       {pk.emotes.map((id) => (
                         <img key={id} src={EMOTE_SRC(id)} alt="" loading="lazy" style={{ width: "100%", aspectRatio: "1 / 1", objectFit: "contain", display: "block" }} />
@@ -748,7 +755,7 @@ export function Shop({ game, onBack }: { game: GameApi; onBack: () => void }) {
             <Card style={{ padding: "9px 8px 10px" }}>
               <Raster kolommen={2} aantal={AVATAR_PACKS.length}>
                 {AVATAR_PACKS.map((pk, i) => (
-                  <CoinItem key={pk.id} title={t(pk.name)} owned={owned.has(pk.id)} price={prices[pk.id] ?? packPrice} coins={coins} cashPrice={cashPrices[pk.id]} cash={cash} index={i} veeg={i === beurt} onBuy={() => game.buyItemCoins(pk.id)} onBuyCash={() => game.buyItemCash(pk.id)}>
+                  <CoinItem key={pk.id} title={t(pk.name)} owned={owned.has(pk.id)} price={prices[pk.id]} coins={coins} cashPrice={cashPrices[pk.id]} cash={cash} index={i} veeg={i === beurt} onBuy={() => game.buyItemCoins(pk.id)} onBuyCash={() => game.buyItemCash(pk.id)}>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 2, width: "100%" }}>
                       {pk.preview.map((n) => (
                         <div key={n} style={{ aspectRatio: "1 / 1", borderRadius: 6, overflow: "hidden", border: `1px solid ${colors.panelBorder}` }}>
