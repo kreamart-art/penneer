@@ -22,7 +22,7 @@ from fastapi.staticfiles import StaticFiles
 
 from . import ai_referee, arena, daily, dagprijzen, discover, duel, game, missies_lang, missions, paypal, prestaties, push
 from . import topo
-from . import backup, rem, toezicht
+from . import backup, jarvis_stats, rem, toezicht
 from .db import AVATAR_MAX_BYTES, DB_PATH, get_db
 from .social import accounts, _level_of
 from .ws import manager, router as ws_router
@@ -676,6 +676,17 @@ def _oefen_beloning(db, uid: str, letter: str, cats: list[str], correct: int, ne
 def _discover_uid(request: Request) -> str | None:
     """De speler, of None voor een gast. Geen 401: rondkijken mag."""
     return get_db().auth(_bearer(request))
+
+
+@app.get("/api/jarvis/stats")
+async def jarvis_stats_endpoint(request: Request) -> JSONResponse:
+    """Tellingen voor JARVIS, de desktop-app van de eigenaar (jarvis_stats.py). Uit zonder JARVIS_STATS_KEY."""
+    ok = jarvis_stats.key_ok(request.headers.get("authorization"))
+    if ok is None:
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+    if not ok:
+        return JSONResponse({"detail": "Unauthorized"}, status_code=401)
+    return JSONResponse(jarvis_stats.stats(get_db()), headers={"Cache-Control": "no-store"})
 
 
 @app.get("/api/discover/overview")
